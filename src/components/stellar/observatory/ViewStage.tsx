@@ -84,7 +84,12 @@ function ViewStage(p: ViewStageProps) {
     return () => window.removeEventListener('resize', measure);
   }, [p.full]);
   // The feed is a 16:9 frame covering the view, so the sky's scale follows the wider of the two.
-  const pxPerDeg = Math.max(size.w, (size.h * 16) / 9) / p.fovDeg;
+  const feedW = Math.max(size.w, (size.h * 16) / 9);
+  const pxPerDeg = feedW / p.fovDeg;
+  const feedStyle = {
+    ...(feedW > 0 ? { inset: 'auto', left: '50%', top: '50%', width: feedW, height: (feedW * 9) / 16, transform: 'translate(-50%, -50%)' } : {}),
+    ...(p.art !== 'none' ? { filter: LOCKED_FEED_FILTER } : {}),
+  };
   const artStyle = { transform: `translate(${(p.offsetDeg.x * pxPerDeg).toFixed(1)}px, ${(-p.offsetDeg.y * pxPerDeg).toFixed(1)}px) scale(${k})` };
   const trains = (Object.keys(TRAIN_K) as Train[]).map((t) => (
     <button key={t} type="button" className={p.train === t ? 'is-on' : ''} aria-pressed={p.train === t} title={TRAIN_LABEL[t][1]} onClick={() => p.onTrain(t)}>
@@ -102,7 +107,7 @@ function ViewStage(p: ViewStageProps) {
     <section ref={stageRef} className={`sdo-view${p.full ? ' is-full' : ''}${p.status.go ? ' is-go' : ''}`} aria-label="Telescope view">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="sdo-view__sky" src={p.backdrop} alt="" />
-      <div className="sdo-view__feed" ref={p.viewRef} style={p.art !== 'none' ? { filter: LOCKED_FEED_FILTER } : undefined}>{p.feed}</div>
+      <div className="sdo-view__feed" ref={p.viewRef} style={feedStyle}>{p.feed}</div>
       {p.pan && p.art === 'pan' && <SlewField pan={p.pan} artRef={artRef} />}
       {p.objectSrc && p.art !== 'none' && (
         <div ref={artRef} className={`sdo-art sdo-art--photo${p.art === 'pan' ? ' is-pan' : ''}`} style={artStyle}>

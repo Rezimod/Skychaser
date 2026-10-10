@@ -72,6 +72,8 @@ export function slewMs(from: AltAz, to: AltAz): number {
   return (Math.max(dAlt, dAz) / SLEW_RATE_DEG_S) * 1000;
 }
 
+export type AcquisitionPace = { axesMs: (from: AltAz, to: AltAz) => number; settleMs: number; solveMs: number; centreMs: number };
+
 export function planAcquisition(input: {
   targetId: string;
   targetName: string;
@@ -80,8 +82,10 @@ export function planAcquisition(input: {
   startedAtMs: number;
   /** Skip the unpark when the instrument is already awake and on sky. */
   warm?: boolean;
+  /** Phase lengths for a brisker telling of the same sequence; the instrument's own when absent. */
+  pace?: AcquisitionPace;
 }): Acquisition {
-  const { targetId, targetName, from, to, startedAtMs, warm = false } = input;
+  const { targetId, targetName, from, to, startedAtMs, warm = false, pace } = input;
 
   const durations: Array<[MissionState, number, string]> = [
     ...(warm
@@ -89,9 +93,9 @@ export function planAcquisition(input: {
       : ([['PREPARING', PREPARE_MS, 'Unparking mount, waking camera']] as Array<
           [MissionState, number, string]
         >)),
-    ['SLEWING', slewMs(from, to) + SETTLE_MS, `Slewing to ${targetName}`],
-    ['VERIFYING', PLATE_SOLVE_MS, 'Plate-solving the field'],
-    ['CENTERING', CENTER_MS, `Centring ${targetName}`],
+    ['SLEWING', (pace ? pace.axesMs(from, to) + pace.settleMs : slewMs(from, to) + SETTLE_MS), `Slewing to ${targetName}`],
+    ['VERIFYING', pace?.solveMs ?? PLATE_SOLVE_MS, 'Plate-solving the field'],
+    ['CENTERING', pace?.centreMs ?? CENTER_MS, `Centring ${targetName}`],
   ];
 
   let cursor = startedAtMs;

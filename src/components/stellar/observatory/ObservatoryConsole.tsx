@@ -7,7 +7,7 @@ import StellarAccount from '@/components/stellar/StellarAccount';
 import StellarNavLinks from '@/components/stellar/StellarNavLinks';
 import type { Rarity } from '@/lib/rarity';
 import { getSunAltitude, getTonightDarkWindow } from '@/lib/dark-window';
-import { acquisitionStateAt, planAcquisition, slewMs, type Acquisition } from '@/lib/observatory/mission';
+import { acquisitionStateAt, planAcquisition, slewMs, type Acquisition, type AcquisitionPace } from '@/lib/observatory/mission';
 import { ALT_TRAVEL, MountDrive, SPIN_DOWN_S, SPIN_UP_S, type Axis } from '@/lib/observatory/mount-drive';
 import { DEFAULT_SEEING_ARCSEC, ROI_BY_ID, TRAIN_BY_ID, effectiveFocalLength, fieldOfView, resolvingPowerArcsec } from '@/lib/observatory/optics';
 import { LIMITS, angularSeparation, evaluateSafety, sunPosition, type AltAz } from '@/lib/observatory/safety';
@@ -36,6 +36,14 @@ const HANDOVER: AltAz = { altitude: 55, azimuth: 200 };
 const LANDING_ERROR: AltAz = { altitude: 0.04, azimuth: 0.11 };
 const CONNECT_MS = 2_000;
 const SETTLE_MS = 3_000;
+/** The GoTo as the console tells it: the whole sweep in a few seconds, then a short solve and centre. */
+const GOTO_PACE: AcquisitionPace = {
+  axesMs: (from, to) => Math.min(1_800, Math.max(1_000, slewMs(from, to) / 8)),
+  settleMs: 200,
+  solveMs: 500,
+  centreMs: 600,
+};
+const gotoMs = (from: AltAz, to: AltAz) => GOTO_PACE.axesMs(from, to) + GOTO_PACE.settleMs + GOTO_PACE.solveMs + GOTO_PACE.centreMs;
 const CALIBRATE_MS = 6_000;
 const OBJECT_RADIUS_DEG = 1.5;
 const TICK_MS = 250;
@@ -181,7 +189,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
     if (!acquisition || !slew) return null;
     const { from, to } = acquisition;
     const cosAlt = Math.cos((((from.altitude + to.altitude) / 2) * Math.PI) / 180);
-    return { startsAtMs: slew.startsAtMs, stopsAtMs: slew.startsAtMs + slewMs(from, to), dx: wrapDelta(to.azimuth - from.azimuth) * cosAlt, dy: from.altitude - to.altitude };
+    return { startsAtMs: slew.startsAtMs, stopsAtMs: slew.endsAtMs - GOTO_PACE.settleMs, dx: wrapDelta(to.azimuth - from.azimuth) * cosAlt, dy: from.altitude - to.altitude };
   }, [acquisition]);
 
   const cameraOn = station !== null && !connecting && cal !== 'todo';
@@ -221,7 +229,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       const targetAt = targetNowRef.current ?? acq.to;
       // The axes run for the slew itself and stand still through the settle that ends the phase.
       const slew = acq.phases.find((ph) => ph.state === 'SLEWING')!;
-      const axesMs = slewMs(acq.from, acq.to);
+      const axesMs = slew.endsAtMs - slew.startsAtMs - GOTO_PACE.settleMs;
       const landed = { altitude: acq.to.altitude + LANDING_ERROR.altitude, azimuth: acq.to.azimuth + LANDING_ERROR.azimuth };
       let p: AltAz;
       if (st.state === 'CENTERING') {
@@ -374,7 +382,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
     setTarget(next);
     setStack(null);
     setModal(null);
-    setAcquisition(planAcquisition({ targetId: next.id, targetName: targetTitle(next), from: drive.pointing, to, startedAtMs: Date.now(), warm: true }));
+    setAcquisition(planAcquisition({ targetId: next.id, targetName: targetTitle(next), from: drive.pointing, to, startedAtMs: Date.now(), warm: true, pace: GOTO_PACE }));
   }, [station]);
 
   const cancelGoto = useCallback(() => {
@@ -532,7 +540,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
   const expTotal = `${subsGoal} × ${exp} S · ${duration(subsGoal * exp)}`;
   const pointEstimate = acquisition
     ? Math.round((acquisition.settledAtMs - acquisition.startedAtMs) / 1000)
-    : targetNow ? Math.round((slewMs(pointing, targetNow) + 20_000) / 1000) : 30;
+    : targetNow ? Math.round(gotoMs(pointing, targetNow) / 1000) : 7;
 
   let primary: { label: string; run: () => void; disabled?: boolean };
   let secondary: Array<{ label: string; run: () => void; disabled?: boolean }> = [];
