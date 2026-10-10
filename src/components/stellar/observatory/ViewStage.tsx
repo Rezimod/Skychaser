@@ -1,13 +1,14 @@
 'use client';
 
-import { memo, type ReactNode, type RefObject } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Icon from './icons';
+import SlewField, { type SlewPan } from './SlewField';
 import { plateArt } from './sky';
 
 export type Train = 'reducer' | 'native' | 'barlow2';
 export const TRAIN_K: Record<Train, number> = { reducer: 0.7, native: 1, barlow2: 1.9 };
-/** How much of the field a photograph fills at native focus. */
-export const PHOTO_SCALE = 0.46;
+/** On target the camera runs planetary exposures: the sky goes black and only the stars stay. */
+export const LOCKED_FEED_FILTER = 'contrast(1.35) brightness(.9)';
 const TRAIN_LABEL: Record<Train, [string, string]> = { reducer: ['0.63×', 'Focal reducer'], native: ['1×', 'Native'], barlow2: ['2×', 'Barlow'] };
 
 const RULER = (() => {
@@ -45,7 +46,13 @@ export type ViewStageProps = {
   feed: ReactNode | null;
   backdrop: string;
   plate: string | null;
-  art: 'none' | 'blur' | 'sharp';
+  /** pan: the mount is slewing and the object is on its way in; sharp: it is in the field. */
+  art: 'none' | 'pan' | 'sharp';
+  /** Where the object sits from the centre of the field, degrees on the sky (x right, y up). */
+  offsetDeg: { x: number; y: number };
+  /** Width of the camera frame on the sky, degrees. */
+  fovDeg: number;
+  pan: SlewPan | null;
   train: Train;
   onTrain: (t: Train) => void;
   reticle: boolean;
@@ -65,7 +72,20 @@ export type ViewStageProps = {
 
 function ViewStage(p: ViewStageProps) {
   const k = TRAIN_K[p.train];
-  const artStyle = { transform: `scale(${k})${p.art === 'blur' ? ' translate(34px,-22px)' : ''}`, filter: p.art === 'blur' ? 'blur(6px) brightness(.75)' : undefined };
+  const stageRef = useRef<HTMLElement>(null);
+  const artRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [p.full]);
+  // The feed is a 16:9 frame covering the view, so the sky's scale follows the wider of the two.
+  const pxPerDeg = Math.max(size.w, (size.h * 16) / 9) / p.fovDeg;
+  const artStyle = { transform: `translate(${(p.offsetDeg.x * pxPerDeg).toFixed(1)}px, ${(-p.offsetDeg.y * pxPerDeg).toFixed(1)}px) scale(${k})` };
   const trains = (Object.keys(TRAIN_K) as Train[]).map((t) => (
     <button key={t} type="button" className={p.train === t ? 'is-on' : ''} aria-pressed={p.train === t} title={TRAIN_LABEL[t][1]} onClick={() => p.onTrain(t)}>
       {TRAIN_LABEL[t][0]}
@@ -79,12 +99,13 @@ function ViewStage(p: ViewStageProps) {
   );
 
   return (
-    <section className={`sdo-view${p.full ? ' is-full' : ''}${p.status.go ? ' is-go' : ''}${p.art === 'blur' ? ' is-slewing' : ''}`} aria-label="Telescope view">
+    <section ref={stageRef} className={`sdo-view${p.full ? ' is-full' : ''}${p.status.go ? ' is-go' : ''}`} aria-label="Telescope view">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="sdo-view__sky" src={p.backdrop} alt="" />
-      <div className="sdo-view__feed" ref={p.viewRef}>{p.feed}</div>
+      <div className="sdo-view__feed" ref={p.viewRef} style={p.art !== 'none' ? { filter: LOCKED_FEED_FILTER } : undefined}>{p.feed}</div>
+      {p.pan && p.art === 'pan' && <SlewField pan={p.pan} artRef={artRef} />}
       {p.objectSrc && p.art !== 'none' && (
-        <div className={`sdo-art sdo-art--photo${p.art === 'blur' ? ' is-slewing' : ''}`} style={artStyle}>
+        <div ref={artRef} className={`sdo-art sdo-art--photo${p.art === 'pan' ? ' is-pan' : ''}`} style={artStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={p.objectSrc} alt="" />
         </div>

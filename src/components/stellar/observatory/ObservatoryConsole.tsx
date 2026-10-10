@@ -7,7 +7,7 @@ import StellarAccount from '@/components/stellar/StellarAccount';
 import StellarNavLinks from '@/components/stellar/StellarNavLinks';
 import type { Rarity } from '@/lib/rarity';
 import { getSunAltitude, getTonightDarkWindow } from '@/lib/dark-window';
-import { acquisitionStateAt, planAcquisition, pointingAt, slewMs, type Acquisition } from '@/lib/observatory/mission';
+import { acquisitionStateAt, planAcquisition, slewMs, type Acquisition } from '@/lib/observatory/mission';
 import { ALT_TRAVEL, MountDrive, SPIN_DOWN_S, SPIN_UP_S, type Axis } from '@/lib/observatory/mount-drive';
 import { DEFAULT_SEEING_ARCSEC, ROI_BY_ID, TRAIN_BY_ID, effectiveFocalLength, fieldOfView, resolvingPowerArcsec } from '@/lib/observatory/optics';
 import { LIMITS, angularSeparation, evaluateSafety, sunPosition, type AltAz } from '@/lib/observatory/safety';
@@ -19,9 +19,9 @@ import { CaptureDialog, RefusedDialog, SheetDialog, TargetsDialog, displayName, 
 import Icon from './icons';
 import { Camera, FrameThumbs, Frames, HandControl, Pointing, QuickStart, Session, StationList, Telescopes, type StationRow } from './panels';
 import { photoFor } from '@/lib/stellar/photos';
-import { PHOTO_SCALE } from './ViewStage';
 import { altitudePath, bestOf, cardForTarget, clock, nightSpan, plateArt, settleSkyClock, skyNow } from './sky';
-import ViewStage, { TRAIN_K, type Train } from './ViewStage';
+import type { SlewPan } from './SlewField';
+import ViewStage, { LOCKED_FEED_FILTER, TRAIN_K, type Train } from './ViewStage';
 import './console.css';
 
 export type TonightCard = { designation: string; name: string; targetId: string; rarity: Rarity } | null;
@@ -176,6 +176,13 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
   const targetNowRef = useRef(targetNow);
   targetNowRef.current = targetNow;
   const trackedRef = useRef<AltAz | null>(null);
+  const pan = useMemo<SlewPan | null>(() => {
+    const slew = acquisition?.phases.find((ph) => ph.state === 'SLEWING');
+    if (!acquisition || !slew) return null;
+    const { from, to } = acquisition;
+    const cosAlt = Math.cos((((from.altitude + to.altitude) / 2) * Math.PI) / 180);
+    return { startsAtMs: slew.startsAtMs, stopsAtMs: slew.startsAtMs + slewMs(from, to), dx: wrapDelta(to.azimuth - from.azimuth) * cosAlt, dy: from.altitude - to.altitude };
+  }, [acquisition]);
 
   const cameraOn = station !== null && !connecting && cal !== 'todo';
   const objects = useMemo(
@@ -212,6 +219,9 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       altRate = seconds > 0 ? (Math.abs(parkSlew.to.altitude - parkSlew.from.altitude) / seconds) * envelope(parkSlew.startedAtMs, parkSlew.endsAtMs) : 0;
     } else if (acq && st && st.state !== 'OBSERVING') {
       const targetAt = targetNowRef.current ?? acq.to;
+      // The axes run for the slew itself and stand still through the settle that ends the phase.
+      const slew = acq.phases.find((ph) => ph.state === 'SLEWING')!;
+      const axesMs = slewMs(acq.from, acq.to);
       const landed = { altitude: acq.to.altitude + LANDING_ERROR.altitude, azimuth: acq.to.azimuth + LANDING_ERROR.azimuth };
       let p: AltAz;
       if (st.state === 'CENTERING') {
@@ -222,15 +232,18 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       } else if (st.state === 'VERIFYING') {
         p = landed;
       } else {
-        p = pointingAt(acq, simNow);
+        const t = Math.max(0, Math.min(1, (simNow - slew.startsAtMs) / Math.max(1, axesMs)));
+        p = {
+          altitude: acq.from.altitude + (acq.to.altitude - acq.from.altitude) * t,
+          azimuth: (acq.from.azimuth + wrapDelta(acq.to.azimuth - acq.from.azimuth) * t + 360) % 360,
+        };
       }
       drive.setPointing(p);
       drive.halt();
       trackedRef.current = null;
-      if (st.state === 'SLEWING') {
-        const slew = acq.phases.find((ph) => ph.state === 'SLEWING')!;
-        const seconds = (slew.endsAtMs - slew.startsAtMs) / 1000;
-        const e = envelope(slew.startsAtMs, slew.endsAtMs);
+      if (st.state === 'SLEWING' && axesMs > 0) {
+        const seconds = axesMs / 1000;
+        const e = envelope(slew.startsAtMs, slew.startsAtMs + axesMs);
         azRate = (Math.abs(wrapDelta(acq.to.azimuth - acq.from.azimuth)) / seconds) * e;
         altRate = (Math.abs(acq.to.altitude - acq.from.altitude) / seconds) * e;
       }
@@ -400,7 +413,9 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       out.width = canvas.width;
       out.height = canvas.height;
       const ctx = out.getContext('2d')!;
+      ctx.filter = LOCKED_FEED_FILTER;
       ctx.drawImage(canvas, 0, 0);
+      ctx.filter = 'none';
       const plate = cardForTarget(target.id);
       let composed = false;
       if (plate) {
@@ -408,11 +423,16 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
           const real = photoFor(plate)?.file;
           const img = await loadImage(real ?? plateArt(plate, 'object'));
           if (real) {
-            // A photograph on black: screened onto the stars, at the size the eyepiece shows it.
-            const s = Math.min(out.width, out.height) * PHOTO_SCALE * TRAIN_K[train] / Math.max(img.width, img.height);
-            ctx.globalCompositeOperation = 'screen';
-            ctx.drawImage(img, (out.width - img.width * s) / 2, (out.height - img.height * s) / 2, img.width * s, img.height * s);
-            ctx.globalCompositeOperation = 'source-over';
+            // A photograph on black, screened onto the stars exactly where and as large as the eyepiece shows it.
+            const shown = viewRef.current?.parentElement?.querySelector('.sdo-art--photo img');
+            if (shown) {
+              const c = canvas.getBoundingClientRect();
+              const r = shown.getBoundingClientRect();
+              const k = out.width / c.width;
+              ctx.globalCompositeOperation = 'screen';
+              ctx.drawImage(img, (r.left - c.left) * k, (r.top - c.top) * k, r.width * k, r.height * k);
+              ctx.globalCompositeOperation = 'source-over';
+            }
           } else {
             const s = Math.max(out.width / 582, out.height / 620) * TRAIN_K[train];
             ctx.drawImage(img, (out.width - 582 * s) / 2, (out.height - 620 * s) / 2, 582 * s, 620 * s);
@@ -630,7 +650,13 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
     : darkWin.duskStart && darkWin.duskStart.getTime() > skyMs ? hoursLeft('Dark in', darkWin.duskStart.getTime() - skyMs) : (['Dark left', '—'] as const);
 
   const plate = target ? cardForTarget(target.id) : null;
-  const art: 'none' | 'blur' | 'sharp' = !plate || !cameraOn ? 'none' : onTarget || gotoState === 'centring' ? 'sharp' : inGoto ? 'blur' : 'none';
+  const art: 'none' | 'pan' | 'sharp' = !plate || !cameraOn ? 'none' : gotoState === 'slewing' ? 'pan' : onTarget || inGoto ? 'sharp' : 'none';
+  // The mount lands a little off the target; centring walks it in, as the feed does.
+  const landedBy = gotoState === 'centring' && status ? 1 - status.progress : inGoto ? 1 : 0;
+  const artOffset = {
+    x: -LANDING_ERROR.azimuth * Math.cos(((targetNow ?? pointing).altitude * Math.PI) / 180) * landedBy,
+    y: -LANDING_ERROR.altitude * landedBy,
+  };
   const statusText = !station ? 'Standby'
     : connecting ? 'Connecting'
     : stacking ? `Stacking · ${subsDone} / ${subsGoal}`
@@ -767,6 +793,9 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
             backdrop={plateArt(tonight?.designation ?? 'SATURN', 'sky')}
             plate={plate}
             art={art}
+            offsetDeg={artOffset}
+            fovDeg={fov.widthArcmin / 60}
+            pan={pan}
             train={train}
             onTrain={setTrain}
             reticle={reticle}

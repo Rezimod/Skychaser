@@ -465,10 +465,13 @@
 .sdo-pill--live .sdo-led { background: #2ecc71; box-shadow: 0 0 0 3px rgba(46, 204, 113, .2), 0 0 10px #2ecc71; }
 /* A photograph on black, screened onto the live star field, a little smaller than the field, with the air moving over it. */
 .sdo-art--photo { display: grid; place-items: center; mix-blend-mode: screen; }
-.sdo-art--photo img { width: auto; height: auto; max-width: 70%; max-height: 74%; object-fit: contain; filter: contrast(1.08) saturate(.92); }
+.sdo-art--photo img { width: auto; height: auto; max-width: 92%; max-height: 96%; object-fit: contain; filter: contrast(1.08) saturate(.92); }
+.sdo-art.is-pan { transition: none; }
+.sdo-view__feed { transition: filter .6s; }
+/* The field streaming past while the mount slews; it covers the live feed until the axes stop. */
+.sdo-slewfield { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {
   .sdo-art--photo img { animation: sdo-seeing 2.6s ease-in-out infinite; }
-  .sdo-view.is-slewing .sdo-view__feed { animation: sdo-slew .9s ease-in-out infinite alternate; }
 }
 @keyframes sdo-seeing {
   0%, 100% { translate: 0 0; filter: contrast(1.08) saturate(.92) blur(0.25px); }
@@ -476,8 +479,6 @@
   45% { translate: -0.5px 0.5px; filter: contrast(1.08) saturate(.92) blur(0.2px); }
   70% { translate: 0.3px 0.6px; filter: contrast(1.08) saturate(.92) blur(0.5px); }
 }
-/* While the mount slews, the stars smear along the move. */
-@keyframes sdo-slew { 0% { translate: 0 0; filter: blur(1.2px); } 100% { translate: -14px 6px; filter: blur(2.4px); } }
 /* Where the strip is tight, only the step in hand keeps its name. */
 @media (min-width: 1280px) and (max-width: 1599px) {
   .sdo-fs:not(.is-now) .sdo-fs__nm { display: none; }
