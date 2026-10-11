@@ -54,7 +54,10 @@ export type ListedOutcome = { demo?: boolean; tier?: string; oddsBps?: Record<Ra
  * payment. A rehearsal is a note, not a flag: it is in the log, and the log
  * explains it.
  */
-export type PurchasedOutcome = { expiresAt?: string; simulated?: boolean } | null;
+export type PurchasedOutcome = { expiresAt?: string; simulated?: boolean; reference?: string } | null;
+
+/** The paying transfer's block, logged at opening: its hash is mixed into the draws. */
+export type BeaconOutcome = { signature: string; slot: number; blockhash: string };
 
 /** What an 'opened' row's outcome carries. */
 export type OpenedOutcome = {
@@ -63,6 +66,7 @@ export type OpenedOutcome = {
   oddsBps: Record<Rarity, number>;
   supply: SupplyEntry[];
   pulls: Array<{ drawIndex: number; designation: string; rarity: string; editionNumber: number }>;
+  beacon?: BeaconOutcome;
 };
 
 /**
@@ -76,7 +80,7 @@ export type VoidedOutcome = {
   reason: string;
   priorState: 'listed' | 'purchased';
   demo?: boolean;
-  soldOut?: { draws: number; oddsBps: Record<Rarity, number>; supply: SupplyEntry[] };
+  soldOut?: { draws: number; oddsBps: Record<Rarity, number>; supply: SupplyEntry[]; beacon?: BeaconOutcome };
 };
 
 /** What a 'released' row's outcome carries. */
@@ -104,6 +108,7 @@ export type AuditFlag = {
     | 'released_while_paid'
     | 'edition_duplicate'
     | 'verification_failed'
+    | 'beacon_missing'
     // Notes: in the log, explained by it.
     | 'awaiting_payment'
     | 'simulated_payment'
@@ -278,7 +283,8 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
         let soldOut = false;
         if (v?.soldOut) {
           try {
-            planPulls({ secret: v.secret as string, nonce: purchased.buyerNonce ?? '', capsuleId, ...v.soldOut });
+            const { beacon, ...soldOut } = v.soldOut;
+            planPulls({ secret: v.secret as string, nonce: purchased.buyerNonce ?? '', capsuleId, ...soldOut, beacon: beacon?.blockhash });
           } catch (err) {
             soldOut = err instanceof SoldOutError;
           }
@@ -314,10 +320,17 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
             supply: o.supply ?? [],
             draws: o.draws,
             oddsBps: o.oddsBps,
+            beacon: o.beacon?.blockhash,
           })
         : { ok: false, problems: ['no outcome recorded'] };
       if (result.ok) verified++;
       else flag('verification_failed', result.problems.join('; '));
+      // A purchase that logged its payment reference was paid on chain: its
+      // draws must have been mixed with the paying block's hash.
+      const bought = purchased?.outcome as PurchasedOutcome;
+      if (o && bought?.reference && !bought.simulated && !demo && !o.beacon) {
+        flag('beacon_missing', 'paid on chain, but opened without the paying block’s hash in its draws');
+      }
       const promised = (listed?.outcome as ListedOutcome)?.oddsBps;
       if (promised && o && JSON.stringify(RARITIES.map((r) => promised[r])) !== JSON.stringify(RARITIES.map((r) => o.oddsBps?.[r]))) {
         flag('odds_changed', 'opened under odds other than those logged when it was listed');

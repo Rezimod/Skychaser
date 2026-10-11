@@ -28,12 +28,15 @@ import {
   RECHECK_CLOSED_DAYS,
   alertRefundDue,
   findPayment,
+  isRehearsalSignature,
   markPaid,
+  paymentBeacon,
   orderExpiry,
   reportExtraTransfers,
   reportSharedTransfers,
   paymentLedger,
   simulatedPayments,
+  type Beacon,
   type OrderRow,
   type PaymentCheck,
 } from './orders';
@@ -359,7 +362,7 @@ export async function purchaseCapsule(
       )
       INSERT INTO capsule_log (capsule_id, capsule_sequence, event, commitment, buyer_wallet, buyer_nonce, purchase_hash, outcome)
       SELECT id, sequence, 'purchased', commitment, buyer_wallet, buyer_nonce, purchase_hash,
-        ${JSON.stringify(simulatedPayments() ? { expiresAt, simulated: true } : { expiresAt })}::jsonb FROM c
+        ${JSON.stringify(simulatedPayments() ? { expiresAt, simulated: true } : { expiresAt, reference: input.paymentReference })}::jsonb FROM c
       RETURNING seq
     `),
     db.execute(sql`
@@ -439,6 +442,7 @@ export function openStatements(
     supply: SupplyRow[];
     draws: number;
     oddsBps: Record<Rarity, number>;
+    beacon?: Beacon | null;
   },
 ) {
   const bySupply = new Map(input.supply.map((s) => [s.designation, s]));
@@ -495,7 +499,7 @@ export function openStatements(
             FROM capsule_pull p JOIN edition e ON e.id = p.edition_id JOIN card k ON k.id = p.card_id
             WHERE p.capsule_id = c.id
           )
-        )
+        ) || ${JSON.stringify(input.beacon ? { beacon: input.beacon } : {})}::jsonb
       FROM capsule c WHERE c.id = ${input.capsuleId}::uuid AND c.state = 'opened'
       RETURNING seq
     `),
@@ -520,8 +524,13 @@ export type OpenResult =
  * id, never the caller's string. If the set cannot fill the capsule, it is
  * voided with the supply that could not, its order is marked refund_due, both
  * are logged, and SoldOutError is thrown.
+ *
+ * A capsule paid on chain draws with the beacon — the hash of the block its
+ * paying transfer landed in — read once, before the first attempt. One paid
+ * in a rehearsal, or a demo capsule, moved no money and has none.
  */
 export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult> {
+  let beacon: Beacon | null | undefined;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const c = await readCapsule(db, capsuleId);
     if (!c) return { ok: false, reason: 'not_found' };
@@ -530,13 +539,19 @@ export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult
     }
     if (c.state !== 'purchased' || !c.buyer_wallet || !c.buyer_nonce) return { ok: false, reason: 'not_purchased' };
 
+    if (beacon === undefined) {
+      const order = c.order_id ? await readOrder(db, c.order_id) : null;
+      if (c.demo || isRehearsalSignature(order?.signature)) beacon = null;
+      else if (order?.signature) beacon = await paymentBeacon(order.signature);
+      else throw new Error(`capsule ${c.id} has no paying transfer on record to draw with`);
+    }
     const secret = unsealSecret(c.server_secret_sealed, c.id);
     const supply = await readSupply(db, c.set_id);
     const draws = Number(c.cards_per_capsule);
     const oddsBps = oddsOf(c);
     let plan: PlannedPull[];
     try {
-      plan = planPulls({ secret, nonce: c.buyer_nonce, capsuleId: c.id, supply, draws, oddsBps });
+      plan = planPulls({ secret, nonce: c.buyer_nonce, capsuleId: c.id, supply, draws, oddsBps, beacon: beacon?.blockhash });
     } catch (err) {
       if (!(err instanceof SoldOutError)) throw err;
       await closeCapsule(db, c, {
@@ -548,14 +563,14 @@ export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult
           reason: 'sold_out',
           priorState: 'purchased',
           ...(c.demo ? { demo: true } : {}),
-          soldOut: { draws, oddsBps, supply: publishedSupply(supply) },
+          soldOut: { draws, oddsBps, supply: publishedSupply(supply), ...(beacon ? { beacon } : {}) },
         },
         refundReason: 'every edition of the set was allocated before the capsule could be opened',
       });
       throw err;
     }
 
-    const statements = openStatements(db, { capsuleId: c.id, secret, owner: c.buyer_wallet, plan, supply, draws, oddsBps });
+    const statements = openStatements(db, { capsuleId: c.id, secret, owner: c.buyer_wallet, plan, supply, draws, oddsBps, beacon });
     try {
       await runBatch(db, statements);
       return { ok: true, alreadyOpened: false, secret, pulls: await readPulls(db, c.id) };

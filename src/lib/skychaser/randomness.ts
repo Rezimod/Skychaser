@@ -13,10 +13,18 @@
  *      purchase message (capsule id, listing sequence, commitment, holder
  *      wallet, nonce), whose SHA-256 is logged with the nonce. A wallet
  *      signature over the message is recorded when the buyer gives one.
- *   3. OUTCOME. seed = HMAC-SHA256(key = secret, nonce ‖ capsule_id), and draw
- *      i reads block_i = HMAC-SHA256(key = seed, uint32be(i)).
- *   4. OPEN. The secret is revealed and logged with the pulls and the supply
- *      the draws were made against. Anyone can re-run `verifyCapsule`.
+ *   3. PAYMENT. The order's payment reference is logged with the purchase.
+ *      The transfer that completes the payment lands in a Solana block whose
+ *      hash nobody — buyer, operator, or anyone holding the seal key — can
+ *      know before it is produced: the beacon.
+ *   4. OUTCOME. seed = HMAC-SHA256(key = secret, nonce ‖ capsule_id ‖ beacon),
+ *      the beacon as its 32 bytes, and draw i reads
+ *      block_i = HMAC-SHA256(key = seed, uint32be(i)). A capsule with no
+ *      beacon (a rehearsal or demo, which moved no money, or one opened before
+ *      beacons) uses nonce ‖ capsule_id alone.
+ *   5. OPEN. The secret is revealed and logged with the pulls, the supply the
+ *      draws were made against and the beacon (signature, slot, block hash).
+ *      Anyone can re-run `verifyCapsule`, and look the block up on chain.
  *
  * This is verifiable randomness with a public audit log. It is not trustless:
  * see docs/skychaser/capsule-randomness.md for what it does and does not rule out.
@@ -84,10 +92,25 @@ export function verifyPurchaseSignature(t: PurchaseTerms, signature: string): bo
   }
 }
 
-/** seed = HMAC-SHA256(secret, nonce ‖ capsule_id): the nonce as its 32 bytes, the id as its 36 ASCII characters. */
-export function outcomeSeed(secretHex: string, nonceHex: string, capsuleId: string): Buffer {
+/** A Solana block hash, base58, as its 32 bytes; throws on anything else. */
+export function beaconBytes(blockhash: string): Buffer {
+  const bytes = bs58.decode(blockhash);
+  if (bytes.length !== 32) throw new Error('the beacon is not a 32-byte block hash');
+  return Buffer.from(bytes);
+}
+
+/**
+ * seed = HMAC-SHA256(secret, nonce ‖ capsule_id ‖ beacon): the nonce as its 32
+ * bytes, the id as its 36 ASCII characters, the beacon block hash as its 32
+ * bytes. Without a beacon, nonce ‖ capsule_id.
+ */
+export function outcomeSeed(secretHex: string, nonceHex: string, capsuleId: string, beacon?: string): Buffer {
   return createHmac('sha256', Buffer.from(secretHex, 'hex'))
-    .update(Buffer.concat([Buffer.from(nonceHex, 'hex'), Buffer.from(capsuleId, 'utf8')]))
+    .update(Buffer.concat([
+      Buffer.from(nonceHex, 'hex'),
+      Buffer.from(capsuleId, 'utf8'),
+      ...(beacon ? [beaconBytes(beacon)] : []),
+    ]))
     .digest();
 }
 
@@ -135,10 +158,12 @@ export function planPulls(input: {
   supply: SupplyEntry[];
   draws?: number;
   oddsBps?: Record<Rarity, number>;
+  /** The block hash of the paying transfer's block, base58; absent for a capsule opened without one. */
+  beacon?: string;
 }): PlannedPull[] {
   const odds = input.oddsBps ?? RARITY_ODDS_BPS;
   const draws = input.draws ?? CARDS_PER_CAPSULE;
-  const seed = outcomeSeed(input.secret, input.nonce, input.capsuleId);
+  const seed = outcomeSeed(input.secret, input.nonce, input.capsuleId, input.beacon);
   const remaining = new Map(input.supply.map((s) => [s.designation, s.remaining]));
   const byTier = new Map<Rarity, string[]>(
     RARITIES.map((r) => [
@@ -180,7 +205,7 @@ export type Verification = { ok: boolean; problems: string[] };
  * Anyone's check of an opened capsule, from what the log publishes.
  *
  * Confirms the revealed secret is the one committed to at listing, that the
- * secret, the buyer's nonce and the logged supply produce exactly these pulls,
+ * secret, the buyer's nonce, the beacon and the logged supply produce exactly these pulls,
  * in this order, and no others — and, where the supply carries edition sizes,
  * that each pull took the card's next edition number: editionSize − remaining
  * + 1, plus one for every earlier pull of the same card in this capsule.
@@ -194,10 +219,18 @@ export function verifyCapsule(input: {
   supply: SupplyEntry[];
   draws?: number;
   oddsBps?: Record<Rarity, number>;
+  beacon?: string;
 }): Verification {
   const problems: string[] = [];
   if (!isHex32(input.secret)) problems.push('secret is not 32 bytes of hex');
   if (!isHex32(input.nonce)) problems.push('nonce is not 32 bytes of hex');
+  if (input.beacon !== undefined) {
+    try {
+      beaconBytes(input.beacon);
+    } catch {
+      problems.push('the beacon is not a 32-byte block hash');
+    }
+  }
   if (problems.length) return { ok: false, problems };
 
   if (commitmentOf(input.secret) !== input.commitment) {

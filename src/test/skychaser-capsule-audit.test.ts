@@ -297,3 +297,17 @@ describe('capsule_log is append-only', () => {
     );
   });
 });
+
+describe('the paying block in the log', () => {
+  it('flags a capsule paid on chain that was opened without it, but not a rehearsal or an older capsule', () => {
+    const rows = honestLog(3);
+    const purchase = (i: number) => rows.filter((r) => r.event === 'purchased')[i];
+    // Capsule 1 logged its payment reference (paid on chain) and opened without a beacon.
+    purchase(0).outcome = { ...(purchase(0).outcome as object), reference: 'ref-1' };
+    // Capsule 2 was a rehearsal: it logged a reference too, but nothing was paid.
+    purchase(1).outcome = { ...(purchase(1).outcome as object), reference: 'ref-2', simulated: true };
+    // Capsule 3 predates references in the log.
+    const a = auditLog(rows, NOW);
+    expect(a.flags.filter((f) => f.kind === 'beacon_missing').map((f) => f.capsuleSequence)).toEqual([1]);
+  });
+});

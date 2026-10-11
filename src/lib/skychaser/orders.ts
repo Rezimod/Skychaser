@@ -40,6 +40,11 @@ export function simulatedSignature(reference: string): string {
   return `${REHEARSAL_PREFIX}${reference}`;
 }
 
+/** Whether a recorded signature is a rehearsal's stand-in rather than a transaction. */
+export function isRehearsalSignature(signature: string | null | undefined): boolean {
+  return Boolean(signature?.startsWith(REHEARSAL_PREFIX));
+}
+
 /**
  * An order a rehearsal marked paid, read by a deployment that sells for real:
  * nothing was paid for it, so it opens and fulfils nothing here. Guards a
@@ -248,6 +253,31 @@ async function signaturesFor(connection: Connection, reference: PublicKey) {
     before = found[found.length - 1].signature;
   }
   return all.reverse();
+}
+
+/** The paying transfer's block: what a capsule's draws are mixed with. */
+export type Beacon = { signature: string; slot: number; blockhash: string };
+
+/**
+ * The hash of the block a finalized transaction landed in. Nobody knows it
+ * before the block is produced, so mixed into a capsule's draws it takes the
+ * outcome out of the hands of anyone who could otherwise compute it in
+ * advance — the buyer, the operator, or whoever holds the seal key. Throws
+ * when the chain cannot say; the caller tries again later rather than open
+ * without it.
+ */
+export async function paymentBeacon(signature: string): Promise<Beacon> {
+  const connection = new Connection(PAYMENT_RPC(), 'finalized');
+  const tx = await connection.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 });
+  if (!tx || tx.meta?.err) throw new Error(`no finalized transaction ${signature}`);
+  const block = await connection.getBlock(tx.slot, {
+    commitment: 'finalized',
+    maxSupportedTransactionVersion: 0,
+    transactionDetails: 'none',
+    rewards: false,
+  });
+  if (!block?.blockhash) throw new Error(`no finalized block at slot ${tx.slot}`);
+  return { signature, slot: tx.slot, blockhash: block.blockhash };
 }
 
 /**

@@ -41,15 +41,25 @@ how many editions exist, and the draws owed to unopened capsules).
    nonce: <nonce>
    ```
 
-   and logs `purchase_hash = SHA-256(message)` with the nonce, the wallet and
+   and logs `purchase_hash = SHA-256(message)` with the nonce, the wallet,
    the moment the payment window closes (`event = 'purchased'`,
-   `outcome.expiresAt`, `ORDER_WINDOW_MINUTES` after purchase), in the same
+   `outcome.expiresAt`, `ORDER_WINDOW_MINUTES` after purchase) and the
+   order's Solana Pay reference (`outcome.reference`), in the same
    transaction as the capsule changing hands and the order being created. The
    buyer's response carries the message and hash. If the buyer sends a base58
    ed25519 signature of the message by the wallet, it is verified and stored;
    a bad one is refused. No quote is given without a live SOL price.
-3. **Outcome.**
-   `seed = HMAC-SHA256(key = secret, message = nonce_bytes(32) ‖ ascii(capsule_id)(36))`.
+3. **Payment, and the beacon.** The order is paid by a Solana transfer that
+   names the logged reference. Its signature is the earliest finalized
+   transfer naming the reference that brings what it paid up to the quote.
+   That transfer lands in a block whose hash nobody — buyer, operator, or
+   anyone holding `CAPSULE_SEAL_KEY` — can know before the block exists: the
+   **beacon**.
+4. **Outcome.**
+   `seed = HMAC-SHA256(key = secret, message = nonce_bytes(32) ‖ ascii(capsule_id)(36) ‖ beacon_bytes(32))`,
+   the beacon being the paying block's hash (base58-decoded). A capsule that
+   moved no money — a rehearsal or a demo — has no beacon, and its seed is
+   the same without the last 32 bytes.
    Draw `i` (0-based) reads `block_i = HMAC-SHA256(key = seed, message = uint32_be(i))`;
    bytes 0–5 are a big-endian 48-bit integer `r_tier`, bytes 6–11 `r_card`.
    `pick(r, n) = floor(r · n / 2^48)` in exact integer arithmetic.
@@ -63,21 +73,29 @@ how many editions exist, and the draws owed to unopened capsules).
 
    The capsule id is always the capsule row's own (lowercase) id, never the
    string a caller sent.
-4. **Open.** Only the buyer, only once the order is paid. The secret is
-   revealed; the log gets `event = 'opened'` with
-   `outcome = {secret, draws, oddsBps, supply, pulls}`. `supply` is every card
+5. **Open.** Only the buyer, only once the order is paid. The beacon is read
+   from chain (the transaction's slot, then that slot's finalized block hash);
+   if the chain cannot say, the capsule is not opened until it can. The secret
+   is revealed; the log gets `event = 'opened'` with
+   `outcome = {secret, draws, oddsBps, supply, pulls, beacon}`, where
+   `beacon = {signature, slot, blockhash}`. `supply` is every card
    of the set with its edition size and remaining editions at the moment the
    draws were made. Each draw takes exactly edition number
    `editionSize − remaining + 1`, plus one for every earlier draw of the same
    card in this capsule.
-5. **Verify.** `verifyCapsule({commitment, secret, nonce, capsuleId, pulls, supply, draws, oddsBps})`
+6. **Verify.** `verifyCapsule({commitment, secret, nonce, capsuleId, pulls, supply, draws, oddsBps, beacon})`
    checks `SHA-256(secret) = commitment`, that the draws above reproduce
    exactly the logged pulls, in order, and no others, and that each pull's
    edition number is the one the logged supply implies. The verify endpoint
    takes the commitment from the `'listed'` entry and the nonce from the
    `'purchased'` entry, not from the `'opened'` entry that repeats them.
    Entries logged before supply carried edition sizes are verified without
-   the edition check, and the audit notes them.
+   the edition check, and the audit notes them. The beacon can be checked
+   against the chain by anyone: the logged signature must be a finalized
+   transaction in the logged slot that names the purchase's logged reference
+   and pays the merchant, and the slot's block hash must be the logged one.
+   The audit flags a capsule whose purchase logged a reference (paid on chain)
+   but whose opening has no beacon (`beacon_missing`).
 
 ## Closing a capsule without opening it
 
@@ -174,8 +192,10 @@ their holders are not Solana addresses, which every real purchase requires.
 | Threat | Status |
 | --- | --- |
 | Server grinds the secret after seeing the nonce | **Prevented.** The secret is fixed by a commitment logged before any purchase. A different secret fails `SHA-256(secret) = commitment`. |
+| Someone holding `CAPSULE_SEAL_KEY` and the database (the operator, anyone with the deployment's environment, a stolen laptop) unseals a listed capsule's secret and buys it with a nonce ground offline for a good outcome | **Prevented.** The draws also depend on the paying block's hash, which does not exist until after the payment is sent, so no nonce chosen at purchase can fix the outcome. What remains is the withholding threat below: a paid capsule that is never opened stays visible. |
 | Server grinds the secret at listing, against a predictable nonce | **Buyer's responsibility.** The secret is chosen before the nonce exists, so grinding only helps if the nonce is guessable. The client must draw the nonce from `crypto.getRandomValues`. |
-| Buyer predicts the outcome | **Prevented.** The secret is unknown until the capsule is opened, after the nonce is fixed. |
+| Buyer predicts the outcome | **Prevented.** The secret is unknown until the capsule is opened, after the nonce is fixed, and the beacon until the payment lands. |
+| Block producer biases the beacon | **Out of scope.** The leader that produces the paying block could in principle choose among block contents; doing so for one capsule means withholding or reordering a block on a public chain, against an outcome it cannot compute without the secret. |
 | Server substitutes the nonce after purchase | **Detectable.** The nonce is logged at purchase and bound into `purchase_hash`; the buyer holds the message and hash as a receipt. With a wallet signature, anyone can check it. Without one (the beta default, since the purchase is authenticated by the Privy session and `assertOwnsWallet`), only the buyer's receipt contradicts a substitution — a third party cannot tell who is lying. |
 | Server erases an unwanted outcome | **Detectable.** Listing numbers are gapless; a capsule removed from the log leaves a gap (`sequence_gap`), and its editions show as `editions_outside_log`. |
 | Server withholds an unwanted outcome after purchase | **Detectable.** A purchased capsule never opened after its window (`purchased_not_opened`), voided (`voided_after_purchase`), or released while paid or early (`released_while_paid`, `released_early`) stays visible, with the secret revealed where it was closed. These are evidence to examine, not proof. |

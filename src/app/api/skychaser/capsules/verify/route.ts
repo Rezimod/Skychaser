@@ -14,6 +14,8 @@ export const runtime = 'nodejs';
  * returns every input so the same check can be run anywhere else. The secret
  * is checked against the commitment published at listing — not the one the
  * 'opened' entry repeats — and the nonce against the one logged at purchase.
+ * The beacon is the block hash the 'opened' entry logs with its slot and
+ * signature; anyone can look that block up on chain.
  */
 export async function GET(req: NextRequest) {
   const l = await limited(skychaserLogRateLimit, clientIp(req));
@@ -46,6 +48,7 @@ export async function GET(req: NextRequest) {
     supply: o.supply,
     draws: o.draws,
     oddsBps: o.oddsBps,
+    beacon: o.beacon?.blockhash,
   };
   const verification = verifyCapsule(inputs);
   // The odds that count are the ones published when the capsule was listed, not the ones the opening repeats.

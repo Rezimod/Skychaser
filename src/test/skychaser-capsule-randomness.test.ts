@@ -211,3 +211,32 @@ describe('the purchase message', () => {
     expect(verifyPurchaseSignature(terms, 'not-base58-0OIl')).toBe(false);
   });
 });
+
+describe('the paying block', () => {
+  const secret = hex('beacon-secret');
+  const nonce = hex('beacon-nonce');
+  const capsuleId = capsuleIdOf(77);
+  const blockA = bs58.encode(createHash('sha256').update('block-a').digest());
+  const blockB = bs58.encode(createHash('sha256').update('block-b').digest());
+  const draw = (beacon?: string) => planPulls({ secret, nonce, capsuleId, supply: PLENTY, draws: 32, beacon });
+
+  it('changes the draws: the secret and the nonce alone no longer decide them', () => {
+    expect(draw(blockA)).not.toEqual(draw(blockB));
+    expect(draw(blockA)).not.toEqual(draw());
+    expect(draw(blockA)).toEqual(draw(blockA));
+  });
+
+  it('is part of the check: the right block verifies, any other does not', () => {
+    const pulls = draw(blockA);
+    const base = { commitment: commitmentOf(secret), secret, nonce, capsuleId, pulls, supply: PLENTY, draws: 32 };
+    expect(verifyCapsule({ ...base, beacon: blockA }).ok).toBe(true);
+    expect(verifyCapsule({ ...base, beacon: blockB }).ok).toBe(false);
+    expect(verifyCapsule(base).ok).toBe(false);
+  });
+
+  it('must be a 32-byte block hash', () => {
+    expect(() => draw('abc')).toThrow(/32-byte/);
+    const check = verifyCapsule({ commitment: commitmentOf(secret), secret, nonce, capsuleId, pulls: [], supply: PLENTY, beacon: 'abc' });
+    expect(check.problems).toContain('the beacon is not a 32-byte block hash');
+  });
+});

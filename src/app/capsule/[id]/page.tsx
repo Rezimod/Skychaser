@@ -9,7 +9,8 @@ import SkychaserVerify from '@/components/skychaser/SkychaserVerify';
 import DataRow from '@/components/skychaser/ui/DataRow';
 import Chapter from '@/components/skychaser/ui/Chapter';
 import { getDb } from '@/lib/db';
-import type { OpenedOutcome } from '@/lib/skychaser/audit';
+import type { ListedOutcome, OpenedOutcome } from '@/lib/skychaser/audit';
+import { RARITIES } from '@/lib/rarity';
 import { readFullLog } from '@/lib/skychaser/capsule';
 import { verifyCapsule } from '@/lib/skychaser/randomness';
 import { isUuid } from '@/lib/skychaser/route-guards';
@@ -59,8 +60,15 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
           supply: outcome.supply,
           draws: outcome.draws,
           oddsBps: outcome.oddsBps,
+          beacon: outcome.beacon?.blockhash,
         })
       : null;
+  // The odds that count are the ones published when the capsule was listed, as the verify route checks.
+  const promised = (listed?.outcome as ListedOutcome | null)?.oddsBps;
+  if (verification && outcome && promised && RARITIES.some((r) => promised[r] !== outcome.oddsBps?.[r])) {
+    verification.ok = false;
+    verification.problems.push('opened under odds other than those logged when it was listed');
+  }
 
   return (
     <SkychaserShell title={sequence !== null ? `Capsule ${String(sequence).padStart(3, '0')}` : 'Capsule'}>

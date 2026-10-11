@@ -30,9 +30,11 @@ const STEPS = ['Buy', 'Pay', 'Open'] as const;
  * cracks open by itself the moment the payment is confirmed.
  *
  * The nonce is drawn here, in the buyer's own browser, and sent with the
- * commitment they can see published. Neither side can choose the outcome
- * alone: the secret was committed to before the sale, the nonce after it. The
- * receipt — the purchase message and its hash — stays one press away.
+ * commitment they can see published. Nobody can choose the outcome: the
+ * secret was committed to before the sale, the nonce after it, and the draws
+ * are mixed with the hash of the block the payment lands in, which no one
+ * knows until it exists. The receipt — the purchase message and its hash —
+ * stays one press away.
  */
 export default function SkychaserBuyCapsule({
   capsuleId,

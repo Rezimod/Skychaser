@@ -40,6 +40,7 @@ const FLAG: Record<AuditFlag['kind'], string> = {
   released_while_paid: 'Released while paid for',
   edition_duplicate: 'One edition issued twice',
   verification_failed: 'Draw does not recompute',
+  beacon_missing: 'Opened without the paying block',
   awaiting_payment: 'Awaiting payment',
   simulated_payment: 'Rehearsal sale',
   released_unpaid: 'Released unpaid',

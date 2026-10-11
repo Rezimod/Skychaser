@@ -9,12 +9,18 @@ import { SoldOutError, commitmentOf, purchaseHash } from '@/lib/skychaser/random
 import { TIERS } from '@/lib/skychaser/tiers';
 import { CARDS_PER_CAPSULE } from '@/lib/skychaser/economics';
 
-const payments = vi.hoisted(() => ({ findPayment: vi.fn(), markPaid: vi.fn() }));
+/** The block the fixtures' capsules were paid in: any 32-byte base58 value. */
+const BEACON = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
+const payments = vi.hoisted(() => ({ findPayment: vi.fn(), markPaid: vi.fn(), paymentBeacon: vi.fn() }));
 vi.mock('@/lib/skychaser/orders', async (actual) => ({
   ...(await actual<typeof import('@/lib/skychaser/orders')>()),
   findPayment: payments.findPayment,
   markPaid: payments.markPaid,
+  paymentBeacon: payments.paymentBeacon,
 }));
+beforeEach(() => {
+  payments.paymentBeacon.mockReset().mockImplementation(async (signature: string) => ({ signature, slot: 1, blockhash: BEACON }));
+});
 import { listCapsules, openCapsule, releaseCapsule, sealSecret, settleCapsulePayment, voidCapsule } from '@/lib/skychaser/capsule';
 
 /**
@@ -119,7 +125,7 @@ function fakePostgres(state: State) {
       return { rows: [{ id: randomUUID() }] };
     }
     if (/INSERT INTO capsule_log[\s\S]*'opened'/.test(sql)) {
-      const [draws, odds, supply, id] = p as [number, string, string, string];
+      const [draws, odds, supply, extra, id] = p as [number, string, string, string, string];
       const c = tx.capsules.find((x) => x.id === id && x.state === 'opened');
       if (!c) return { rows: [] };
       const pulls = tx.pulls
@@ -134,7 +140,7 @@ function fakePostgres(state: State) {
       tx.log.push({
         seq: 0, capsuleId: id, capsuleSequence: c.sequence, event: 'opened', commitment: c.commitment,
         buyerWallet: c.buyer_wallet, buyerNonce: c.buyer_nonce, purchaseHash: c.purchase_hash,
-        outcome: { secret: c.server_secret, draws, oddsBps: JSON.parse(odds), supply: JSON.parse(supply), pulls }, at: '',
+        outcome: { secret: c.server_secret, draws, oddsBps: JSON.parse(odds), supply: JSON.parse(supply), pulls, ...JSON.parse(extra) }, at: '',
       });
       return { rows: [{ seq: 0 }] };
     }
@@ -220,10 +226,11 @@ function fakePostgres(state: State) {
   };
 
   // Orders are read with drizzle's builder; each scenario here has one order.
+  // Scenarios without one read a paid order whose transfer is 'paid-sig'.
   const select = () => {
     const chain: Record<string, unknown> = {};
     for (const m of ['from', 'where']) chain[m] = () => chain;
-    chain.limit = async () => structuredClone(state.orders ?? []);
+    chain.limit = async () => structuredClone(state.orders ?? [{ status: 'paid', signature: 'paid-sig' }]);
     return chain;
   };
 
@@ -422,7 +429,7 @@ describe('capsules listed as a tier', () => {
     for (const [i, c] of state.capsules.entries()) {
       const nonce = createHash('sha256').update(`tier-nonce-${i}`).digest('hex');
       const wallet = `holder-${i}`;
-      Object.assign(c, { state: 'purchased', buyer_wallet: wallet, buyer_nonce: nonce, purchase_hash: purchaseHash({ capsuleId: c.id, sequence: c.sequence, commitment: c.commitment, wallet, nonce }) });
+      Object.assign(c, { state: 'purchased', buyer_wallet: wallet, buyer_nonce: nonce, order_id: randomUUID(), purchase_hash: purchaseHash({ capsuleId: c.id, sequence: c.sequence, commitment: c.commitment, wallet, nonce }) });
       state.log.push({ seq: 0, capsuleId: c.id, capsuleSequence: c.sequence, event: 'purchased', commitment: c.commitment, buyerWallet: wallet, buyerNonce: nonce, purchaseHash: c.purchase_hash, outcome: null, at: '' });
     }
     for (const c of listed) await openCapsule(db, c.id);
@@ -445,12 +452,58 @@ describe('capsules listed as a tier', () => {
   });
 });
 
+describe('the paying block', () => {
+  it('is mixed into the draws: another block, other cards, and the log says which block', async () => {
+    const run = async (blockhash: string) => {
+      const cards = [card('C1', 'common', 500), card('R1', 'rare', 500), card('E1', 'epic', 500), card('L1', 'legendary', 500)];
+      const capsules = purchased(8);
+      const state: State = { capsules, cards, editions: [], pulls: [], log: [] };
+      const { db } = fakePostgres(state);
+      payments.paymentBeacon.mockImplementation(async (signature: string) => ({ signature, slot: 7, blockhash }));
+      for (const c of capsules) await openCapsule(db, c.id);
+      return { state, pulls: state.pulls.map((p) => p.card_id).join() };
+    };
+    const a = await run(BEACON);
+    const b = await run('11111111111111111111111111111111');
+    expect(a.pulls).not.toEqual(b.pulls);
+    const opened = a.state.log.filter((r) => r.event === 'opened');
+    expect(opened.every((r) => (r.outcome as { beacon?: unknown }).beacon !== undefined)).toBe(true);
+    expect((opened[0].outcome as { beacon: unknown }).beacon).toEqual({ signature: 'paid-sig', slot: 7, blockhash: BEACON });
+    // Each opening still verifies from the log alone, beacon included.
+    const report = auditLog([...earlierEntries(a.state.capsules), ...a.state.log]);
+    expect(report.flags).toEqual([]);
+    expect(report.verified).toBe(8);
+  });
+
+  it('is not asked for a capsule paid in a rehearsal, which moved no money', async () => {
+    const [c] = purchased(1);
+    const state: State = {
+      capsules: [c], cards: [card('C1', 'common', 50)], editions: [], pulls: [], log: [],
+      orders: [{ id: c.order_id!, status: 'paid', expiresAt: new Date(), signature: 'simulated-no-payment:ref', paidAt: null, amountSol: 0.1, paymentReference: 'ref' }],
+    };
+    const { db } = fakePostgres(state);
+    await openCapsule(db, c.id);
+    expect(payments.paymentBeacon).not.toHaveBeenCalled();
+    expect((state.log.find((r) => r.event === 'opened')!.outcome as { beacon?: unknown }).beacon).toBeUndefined();
+  });
+
+  it('is never skipped for a capsule paid on chain: no block, no opening', async () => {
+    const [c] = purchased(1);
+    const state: State = { capsules: [c], cards: [card('C1', 'common', 50)], editions: [], pulls: [], log: [] };
+    const { db } = fakePostgres(state);
+    payments.paymentBeacon.mockRejectedValue(new Error('fetch failed'));
+    await expect(openCapsule(db, c.id)).rejects.toThrow('fetch failed');
+    expect(state.capsules[0].state).toBe('purchased');
+    expect(state.log).toEqual([]);
+  });
+});
+
 describe('closing a capsule without taking a payment silently', () => {
   const cards = () => [card('C1', 'common', 50), card('R1', 'rare', 50), card('E1', 'epic', 50), card('L1', 'legendary', 50)];
   function bought(status: string, expiresInMs: number) {
     const [c] = purchased(1);
     const order: Order = {
-      id: c.order_id!, status, expiresAt: new Date(Date.now() + expiresInMs), signature: null, paidAt: null, amountSol: 0.1, paymentReference: 'ref',
+      id: c.order_id!, status, expiresAt: new Date(Date.now() + expiresInMs), signature: status === 'paid' ? 'paid-sig' : null, paidAt: null, amountSol: 0.1, paymentReference: 'ref',
     };
     const state: State = { capsules: [c], cards: cards(), editions: [], pulls: [], log: [], orders: [order] };
     return { state, c, order: state.orders![0], ...fakePostgres(state) };

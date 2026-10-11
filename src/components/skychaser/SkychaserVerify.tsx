@@ -42,7 +42,7 @@ export default function SkychaserVerify({ capsuleId }: { capsuleId: string }) {
           {verification === null
             ? 'This capsule has not been opened, so there is nothing to check yet.'
             : verification.ok
-              ? 'Checked: the draws follow from the secret and the nonce, and every edition number matches the supply logged with them.'
+              ? 'Checked: the draws follow from the secret, the nonce and the paying block, and every edition number matches the supply logged with them.'
               : `Checked: ${verification.problems.join('; ')}`}
         </p>
       )}
