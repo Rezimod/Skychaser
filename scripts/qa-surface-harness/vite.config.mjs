@@ -19,6 +19,7 @@ export default defineConfig({
     'process.env.NEXT_PUBLIC_SUPABASE_URL': 'undefined',
     'process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': 'undefined',
   },
-  server: { port: Number(process.env.QA_PORT ?? 3112), strictPort: true, host: '127.0.0.1', fs: { allow: [repo] } },
+  // No hot reload: a run must not be thrown out of its scene by an edit; the next page load picks it up.
+  server: { port: Number(process.env.QA_PORT ?? 3112), strictPort: true, host: '127.0.0.1', hmr: false, fs: { allow: [repo, process.env.QA_SRC ?? repo] } },
   logLevel: 'warn',
 });

@@ -88,7 +88,7 @@ vec4 detail2(vec3 p, float lam) {
 // adds the albedo change to alb: young craters throw bright ejecta, floors
 // run a touch dark. The 2×2×2 cells toward the nearest corner hold every
 // crater that can reach p (jitter + reach stay under one cell).
-vec3 craterField(vec3 p, vec3 up, float cell, inout float alb) {
+vec3 craterField(vec3 p, vec3 up, float cell, float fill, inout float alb) {
   vec3 q = p / cell;
   vec3 i0 = floor(q);
   vec3 o = step(0.5, q - i0) - 1.0;
@@ -96,7 +96,7 @@ vec3 craterField(vec3 p, vec3 up, float cell, inout float alb) {
   for (int k = 0; k < 8; k++) {
     vec3 c = i0 + o + vec3(float(k & 1), float((k >> 1) & 1), float((k >> 2) & 1));
     float hs = hash13(c + 0.37);
-    if (hs > CRATER_FILL) continue;
+    if (hs > fill) continue;
     vec3 jit = vec3(hash13(c + 11.1), hash13(c + 23.7), hash13(c + 5.3)) - 0.5;
     vec3 d = q - (c + 0.5 + jit * 0.5);
     d -= up * dot(d, up);
@@ -242,7 +242,10 @@ void main() {
       float w = 1.0 - smoothstep(0.05, 0.2, foot / cell);
       if (w <= 0.0) break;
       float a = 0.0;
-      bend += craterField(p, dir, cell, a) * w * uCraterDepth;
+      // Few big ones, many small: the sizes go as a power law, so the
+      // coarse scales are sparse and the fine ones crowd.
+      float fill = CRATER_FILL * mix(0.32, 1.0, float(o) / max(1.0, float(CRATER_OCTAVES - 1)));
+      bend += craterField(p, dir, cell, fill, a) * w * uCraterDepth;
       calb += a * w;
       cell *= 0.36;
     }

@@ -233,6 +233,37 @@ function rockGeometry(seed: number, detail: number): THREE.BufferGeometry {
   return g;
 }
 
+/** Craters at one scale for the horizon ring's shading (GLSL, world xz):
+ *  at most one a cell, a bowl and a sharp rim, the same profile as the
+ *  globe's (planet-globe-material). Returns the ground's slope; adds the
+ *  albedo change to alb. */
+const RING_CRATERS = /* glsl */ `
+float ringHash( vec2 c ) { return fract( sin( dot( c, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+vec2 ringCraters( vec2 p, float cell, float fill, inout float alb ) {
+  vec2 q = p / cell;
+  vec2 i0 = floor( q );
+  vec2 o = step( 0.5, q - i0 ) - 1.0;
+  vec2 g = vec2( 0.0 );
+  for ( int k = 0; k < 4; k++ ) {
+    vec2 c = i0 + o + vec2( float( k & 1 ), float( k >> 1 ) );
+    float hs = ringHash( c );
+    if ( hs > fill ) continue;
+    vec2 d = q - ( c + 0.5 + ( vec2( ringHash( c + 11.1 ), ringHash( c + 23.7 ) ) - 0.5 ) * 0.5 );
+    float rad = 0.12 + 0.3 * ringHash( c + 41.9 );
+    float dl = length( d );
+    float r = dl / rad;
+    if ( r > 1.7 ) continue;
+    float dh = r < 1.0 ? 0.8 * r : 0.0;
+    float x = r - 1.0;
+    dh += 0.07 * exp( -x * x / 0.035 ) * ( -2.0 * x / 0.035 );
+    g += ( d / max( dl, 1e-5 ) ) * dh;
+    float young = step( 0.72, fract( hs * 13.17 ) );
+    alb += young * 0.16 * exp( -( r - 1.1 ) * ( r - 1.1 ) / 0.18 ) - 0.04 * ( 1.0 - smoothstep( 0.55, 1.0, r ) );
+  }
+  return g;
+}
+`;
+
 /** 0 inside, 1 at the horizon ring's outer edge (1500 m): how far its
  *  ground has come back down to the datum, where the globe meets it. */
 export function ringEdge(r: number): number {
@@ -248,7 +279,7 @@ export function ringEdge(r: number): number {
 export function makeMoonHorizon(terrain: TerrainHandle, lite: boolean): THREE.Mesh {
   const inner = 172;
   const outer = 1500;
-  const geom = new THREE.RingGeometry(inner, outer, lite ? 96 : 160, lite ? 10 : 18);
+  const geom = new THREE.RingGeometry(inner, outer, lite ? 96 : 160, lite ? 16 : 36);
   geom.rotateX(-Math.PI / 2);
   const pos = geom.attributes.position as THREE.BufferAttribute;
   const colors = new Float32Array(pos.count * 3);
@@ -446,14 +477,33 @@ export function makeMoonTerrain(lite: boolean, density = 1): TerrainHandle {
       .replace('#include <common>', '#include <common>\nvarying vec3 vMoonPos;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvMoonPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uSunView; varying vec3 vMoonPos;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uSunView; varying vec3 vMoonPos;\n' + RING_CRATERS)
       .replace('#include <normal_fragment_maps>', `
         vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
         vec3 mapN2 = texture2D( normalMap, vNormalMapUv * 6.37 + vec2(0.31, 0.77) ).xyz * 2.0 - 1.0;
         float graze = pow( 1.0 - max( dot( normal, normalize( vViewPosition ) ), 0.0 ), 3.0 );
         vec3 mapN3 = texture2D( normalMap, vMoonPos.xz * 0.61 + vec2( 0.13, 0.49 ) ).xyz * 2.0 - 1.0;
         mapN = normalize( vec3( mapN.xy * normalScale + mapN2.xy * normalScale * 0.35 + mapN3.xy * normalScale * 0.45 * graze, mapN.z * mapN2.z ) );
-        normal = normalize( tbn * mapN );`)
+        normal = normalize( tbn * mapN );
+        {
+          // Past the square (the horizon ring), craters in the shading: the
+          // ring's mesh is far too coarse to carry them, and from the air its
+          // smooth hills read as mush next to the cratered globe beyond.
+          float ringK = smoothstep( 170.0, 260.0, length( vMoonPos.xz ) );
+          if ( ringK > 0.0 ) {
+            float foot = length( fwidth( vMoonPos.xz ) );
+            float alb = 0.0;
+            vec2 g = vec2( 0.0 );
+            float cell = 140.0;
+            for ( int o = 0; o < 4; o++ ) {
+              float w = 1.0 - smoothstep( 0.05, 0.2, foot / cell );
+              if ( w > 0.0 ) g += ringCraters( vMoonPos.xz, cell, mix( 0.25, 0.6, float( o ) / 3.0 ), alb ) * w;
+              cell *= 0.36;
+            }
+            normal = normalize( normal - ringK * ( mat3( viewMatrix ) * vec3( g.x, 0.0, g.y ) ) );
+            diffuseColor.rgb *= 1.0 + ringK * alb;
+          }
+        }`)
       .replace('#include <lights_fragment_begin>', `
         {
           vec3 V = normalize( -vViewPosition );
