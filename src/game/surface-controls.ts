@@ -6,7 +6,7 @@
 // key and button does comes from the bindings table.
 
 import { deadZone, footActionOf, footBinding, padButtons, standardPad, type FootAction } from '@/game/bindings';
-import { lockPointer } from '@/game/console';
+import { eventElement, lockPointer } from '@/game/console';
 import { setSoundOn, soundOn } from '@/lib/solar-system/sound-prefs';
 
 /** What the Moon and every world take from their controls. */
@@ -187,7 +187,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
   const onHidden = () => { if (document.hidden) onBlur(); };
   // Press and hold selects nothing and calls up no menu: this is a game.
   const noSelect = (e: Event) => {
-    const el = e.target as Element | null;
+    const el = eventElement(e);
     if (el && el.closest(o.selectable)) return;
     e.preventDefault();
   };

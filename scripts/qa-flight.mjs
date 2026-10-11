@@ -300,7 +300,9 @@ async function landOn(page, site, label, { tap = false } = {}) {
     const there = await page.evaluate(() => window.__stellarFlight.session.telemetry.systemName);
     if (there !== 'alphaCentauri') { fail(`[${label}] Proxima b needs the ship at Alpha Centauri, it is at ${there}`); return false; }
   }
-  if (!(await spawnNear(page, site, 2.2))) { fail(`[${label}] no ${site} in this system`); return false; }
+  // Under each world's landing ceiling (world-profiles LANDING_SITES): 2.2
+  // radii is 2,090 km over the Moon but 7,650 km over Earth, above its 6,000.
+  if (!(await spawnNear(page, site, site === 'earth' ? 1.7 : 2.2))) { fail(`[${label}] no ${site} in this system`); return false; }
   const ready = await waitFor(page, ([s]) => {
     const k = document.querySelector('.flight-hud__land');
     const t = window.__stellarFlight.session.telemetry;

@@ -62,10 +62,20 @@ export function unlockPointer() {
   if (document.pointerLockElement && typeof document.exitPointerLock === 'function') document.exitPointerLock();
 }
 
+/** The element an event happened on. `selectstart` and some touch events
+ *  arrive with a text node as their target, and the document or the window
+ *  can be one too: none of those has `closest`. */
+export function eventElement(e: Event): Element | null {
+  const n = e.target;
+  if (typeof Element !== 'undefined' && n instanceof Element) return n;
+  if (typeof Node !== 'undefined' && n instanceof Node) return n.parentElement;
+  return null;
+}
+
 /** No context menu, no text selection, no pull-to-refresh on the game's root. */
 export function attachConsoleGuards(root: HTMLElement): () => void {
   const stop = (e: Event) => {
-    const el = e.target as Element | null;
+    const el = eventElement(e);
     if (el && el.closest('input, textarea, select, [data-selectable]')) return;
     e.preventDefault();
   };

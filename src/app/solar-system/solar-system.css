@@ -493,7 +493,11 @@
 /* ── The immersive view: only the eye is drawn; the stick and the look pad
    stay live but unseen, so the view is the whole screen and the ship still
    answers. ── */
-.flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
+.flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); }
+/* `.flight-hud button` sets display: flex and outranks a lone class, so the
+   hidden state needs the HUD in its selector too — otherwise this key sat
+   over the top-right session key and took its taps. */
+.flight-hud .flight-hud__unhide { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
 .flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
@@ -3006,3 +3010,22 @@
 .flight-arrival__list li svg { opacity: 0; transition: opacity 0.3s ease; }
 .flight-arrival__list li[data-done='true'] svg { opacity: 1; }
 .flight-arrival__skip { margin: 0; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hud-dim); }
+
+/* ── Touch: every key a thumb can reach is at least 44 px, and no label on
+   the flight deck is smaller than 10 px (Georgian at 8–9 px is unreadable). */
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__round { width: max(44px, var(--hud-round)); height: max(44px, var(--hud-round)); }
+  .flight-hud .flight-hud__radar { min-width: 44px; min-height: 44px; }
+  .flight-hud .flight-hud__key,
+  .flight-hud .flight-drive__gear,
+  .flight-hud .flight-hud__card { min-height: 44px; }
+  .solar-system__dockbtn { min-width: 44px; min-height: 44px; }
+  .solar-system__chip.solar-system__ratebtn { min-height: 44px; }
+}
+/* The small-phone block above takes these to 8–9 px to fit the dial; 10 px
+   still fits, and reads. */
+.flight-hud .flight-hud__console-label,
+.flight-hud .flight-hud__speed .flight-hud__console-label,
+.flight-hud .flight-hud__speed small,
+.flight-hud .flight-hud__sys-name,
+.flight-hud .flight-drive__gear kbd { font-size: 10px; }

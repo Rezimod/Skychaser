@@ -533,3 +533,9 @@
 .game-missions__item[data-state='next'] .game-missions__mark { border-color: var(--terracotta, #ffb347); color: var(--terracotta, #ffb347); }
 .game-missions__item[data-state='next'] .game-missions__state { color: var(--terracotta, #ffb347); }
 .game-missions__item[data-state='locked'] .game-missions__name { color: rgba(196, 210, 232, 0.72); }
+/* The on-foot rows come from the surfaces' own help (moon-hud__bind): give
+   them the sheet's type and spacing rather than the HUD's. */
+.game-controls__binds { display: grid; gap: 6px; }
+.game-controls__binds .moon-hud__bind { font: 500 13px/1.45 var(--font-body, system-ui), sans-serif; color: rgba(186, 214, 240, 0.9); margin: 0; }
+.game-controls__binds .moon-hud__bind kbd { font: 600 12px/1 var(--font-mono, ui-monospace), monospace; padding: 4px 7px; border-radius: 5px; border: 1px solid rgba(140, 180, 220, 0.3); background: rgba(6, 10, 20, 0.6); color: #f4f8ff; }
+.game-controls__binds .moon-hud__bind .moon-hud__pad { color: rgba(186, 206, 232, 0.62); }

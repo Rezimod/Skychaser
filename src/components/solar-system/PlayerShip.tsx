@@ -22,6 +22,7 @@ import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import { settle } from '@/game/settle';
 import { getSettings } from '@/game/settings';
+import { eventElement } from '@/game/console';
 
 /** The launch screen stays at least this long, and until the ship has flown a few frames. */
 const LAUNCH_MIN_MS = 1500;
@@ -216,7 +217,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     if (!active) return;
     const noSelect = (e: Event) => e.preventDefault();
     const noGesture = (e: TouchEvent) => {
-      const el = e.target as Element | null;
+      const el = eventElement(e);
       if (el && el.closest('button, [role="menu"], .flight-hud__help, .flight-hud__editor-bar')) return;
       if (e.cancelable) e.preventDefault();
     };
