@@ -32,7 +32,7 @@ import {
   orderExpiry,
   reportExtraTransfers,
   reportSharedTransfers,
-  sharedReferences,
+  paymentLedger,
   simulatedPayments,
   type OrderRow,
   type PaymentCheck,
@@ -661,7 +661,7 @@ async function paymentBeforeClosing(
   order: OrderRow,
   known?: PaymentCheck,
 ): Promise<{ late: LatePayment | null; shared?: string[] } | { refuse: 'paid' | 'payment_unknown' }> {
-  const payment = known ?? (await findPayment(order, sharedReferences(db)));
+  const payment = known ?? (await findPayment(order, paymentLedger(db)));
   if (payment.paid && !payment.late) {
     const row = await markPaid(db, order.id, payment.signature, payment.paidAt);
     if (order.status === 'pending' && row.status === 'paid') {
@@ -832,7 +832,7 @@ export async function recheckClosedCapsuleOrders(db: Db, limit = 50): Promise<Ar
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {
     try {
-      const payment = await findPayment(order, sharedReferences(db));
+      const payment = await findPayment(order, paymentLedger(db));
       const owed = payment.paid ? payment : payment.partial;
       if (!owed) continue;
       const row = await settleCapsulePayment(db, order, { paid: true, signature: owed.signature, paidAt: owed.paidAt, late: true });

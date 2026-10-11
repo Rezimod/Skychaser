@@ -11,8 +11,20 @@
  * dropped. Past nights and their decisions are kept. Then SHELF is listed at
  * the tier prices and odds in tiers.ts.
  *
- * Refuses once a Skychaser order is paid with an on-chain signature, unless told
- * those were devnet test SOL: after a stranger has paid, the log is never reset.
+ * Refuses once any Skychaser order carries an on-chain signature: after a
+ * stranger has paid, the log is never reset.
+ *
+ * Before anything, it checks that this machine's CAPSULE_SEAL_KEY opens a
+ * capsule the database already holds (unseals it and recomputes its
+ * commitment): the new shelf is sealed with this key, and production must be
+ * able to open it. In the same transaction as the clear-out it sets
+ * app_flag 'payments_live', after which no rehearsal anywhere may sell from,
+ * or mark anything paid in, this database. Apply scripts/skychaser-constraints.sql
+ * first: without the app_flag table the reset refuses.
+ *
+ * Order of go-live: deploy the build that carries the payments_live guard,
+ * pause (STELLAR_PAUSED=1 and redeploy), run this with --apply, deploy a fresh
+ * build without NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT, then unpause.
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs'
@@ -22,7 +34,8 @@ import { neon } from '@neondatabase/serverless'
 import { sql } from 'drizzle-orm'
 import { getDb } from '../src/lib/db'
 import { SET_001 } from '../src/lib/sets/set-001'
-import { listCapsules } from '../src/lib/skychaser/capsule'
+import { listCapsules, unsealSecret } from '../src/lib/skychaser/capsule'
+import { commitmentOf } from '../src/lib/skychaser/randomness'
 import { tierByKey } from '../src/lib/skychaser/tiers'
 import { requireSkychaserDatabase } from './skychaser-guard'
 
@@ -52,6 +65,22 @@ async function main() {
 
   // Any real signature, whatever the order's status (a refund_due is real money owed), means the shop has traded.
   const onChain = backup.orders.filter((o) => o.signature && !String(o.signature).startsWith('simulated-no-payment:'))
+
+  // The new shelf is sealed with this machine's key; production opens it with its own. They must be the same key.
+  const sample = backup.capsule.find((c) => c.server_secret_sealed)
+  let sealCheck: string
+  if (!sample) sealCheck = 'no capsule to check the seal key against'
+  else {
+    try {
+      sealCheck = commitmentOf(unsealSecret(String(sample.server_secret_sealed), String(sample.id))) === sample.commitment
+        ? 'ok'
+        : 'the unsealed secret does not match its commitment'
+    } catch {
+      sealCheck = 'this CAPSULE_SEAL_KEY cannot open the capsules already in the database'
+    }
+  }
+  const { rows: flagTable } = (await db.execute(sql`SELECT to_regclass('public.app_flag') AS t`)) as { rows: Array<{ t: string | null }> }
+  const hasFlagTable = Boolean(flagTable[0]?.t)
   const states = backup.capsule.reduce<Record<string, number>>((m, c) => ({ ...m, [c.state]: (m[c.state] ?? 0) + 1 }), {})
 
   console.log(`capsules: ${Object.entries(states).map(([s, n]) => `${n} ${s}`).join(', ') || 'none'}`)
@@ -60,6 +89,8 @@ async function main() {
   for (const o of onChain) console.log(`  on-chain: order ${o.id} ${o.amount_sol} SOL ${o.signature}`)
   console.log(`votes for tonight onward: ${backup.card_vote.length}`)
   console.log(`then list: ${Object.entries(SHELF).map(([t, n]) => `${n} ${t}`).join(', ')}`)
+  console.log(`seal key: ${sealCheck}${sample ? ` (capsule ${sample.sequence})` : ''}`)
+  console.log(`app_flag table: ${hasFlagTable ? 'present' : 'MISSING — apply scripts/skychaser-constraints.sql first'}`)
   if (!apply) {
     console.log('Dry run. Pass --apply to do it.')
     return
@@ -68,6 +99,8 @@ async function main() {
   if (onChain.length) {
     throw new Error('Orders with on-chain signatures exist. This reset is for rehearsal data only and refuses to erase real sales.')
   }
+  if (sealCheck !== 'ok') throw new Error(`Seal key check failed: ${sealCheck}. Copy production's CAPSULE_SEAL_KEY into .env.local first.`)
+  if (!hasFlagTable) throw new Error('The app_flag table is missing. Apply scripts/skychaser-constraints.sql first.')
 
   const dir = join(homedir(), 'Desktop', 'Stellar', 'backups')
   mkdirSync(dir, { recursive: true })
@@ -81,8 +114,10 @@ async function main() {
     q`ALTER TABLE capsule_log ENABLE TRIGGER capsule_log_no_truncate`,
     q`DELETE FROM orders WHERE dealer_id = 'stellar'`,
     q`DELETE FROM card_vote WHERE night_date >= current_date`,
+    q`INSERT INTO app_flag (name, value) VALUES ('payments_live', '1')
+      ON CONFLICT (name) DO UPDATE SET value = '1', set_at = now()`,
   ])
-  console.log('rehearsal sales cleared')
+  console.log('rehearsal sales cleared; payments_live set — no rehearsal may sell from this database now')
 
   for (const [key, count] of Object.entries(SHELF)) {
     const done = await listCapsules(db, { setId, count, tier: tierByKey(key) })

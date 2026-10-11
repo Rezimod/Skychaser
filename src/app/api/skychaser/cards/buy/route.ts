@@ -6,7 +6,7 @@ import { skychaserBuyRateLimit } from '@/lib/rate-limit';
 import { isRarity } from '@/lib/rarity';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { cardAvailability, createCardOrder, settleCardOrders, usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
-import { holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-guards';
+import { holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
 export const runtime = 'nodejs';
@@ -43,6 +43,8 @@ export async function POST(req: NextRequest) {
   if (!recipient) return NextResponse.json({ error: 'Merchant wallet not configured' }, { status: 503 });
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  const r = await rehearsalOnLiveDatabase(db);
+  if (r) return r;
 
   // Orders left pending past their window are settled from the chain now, not only at the nightly sweep.
   after(() => settleCardOrders(db, 10).catch((err) => console.error('[skychaser/cards/buy] settle sweep', err)));

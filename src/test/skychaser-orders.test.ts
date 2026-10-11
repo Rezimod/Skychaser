@@ -19,7 +19,7 @@ import { findPayment, fulfilCardOrder, markPaid, paymentNetworkProblem, recheckC
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
-const NO_SHARED = async () => false;
+const NO_SHARED = { sharedWith: async () => false, live: async () => false };
 const REFERENCE = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const EXPIRES = new Date('2026-09-20T12:15:00Z');
 
@@ -163,6 +163,22 @@ describe('the payment network', () => {
 
 describe('a rehearsal deployment', () => {
   afterEach(() => { delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT; });
+
+  it('refuses to mark anything paid in a database that takes real payments', async () => {
+    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
+    expect(await findPayment(order(), { ...NO_SHARED, live: async () => true })).toMatchObject({ paid: false, status: 503 });
+    expect(pay.signatures).not.toHaveBeenCalled();
+  });
+
+  it('reads a database without the flag table as not live, and the flag as set only when it is', async () => {
+    const { paymentsLive } = await import('@/lib/skychaser/orders');
+    const missing = { execute: async () => { throw Object.assign(new Error('relation "app_flag" does not exist'), { code: '42P01' }); } } as unknown as Db;
+    expect(await paymentsLive(missing)).toBe(false);
+    expect(await paymentsLive({ execute: async () => ({ rows: [] }) } as unknown as Db)).toBe(false);
+    expect(await paymentsLive({ execute: async () => ({ rows: [{ value: '1' }] }) } as unknown as Db)).toBe(true);
+    // Any other failure is not read as "not live".
+    await expect(paymentsLive({ execute: async () => { throw new Error('connection reset'); } } as unknown as Db)).rejects.toThrow();
+  });
 
   it('settles the order itself, asks no chain, and records a signature that says so', async () => {
     process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
@@ -317,7 +333,7 @@ describe('one transfer, one order', () => {
     pay.signatures.mockResolvedValue([sig('both', '2026-09-20T12:10:00Z')]);
     pay.transaction.mockResolvedValue(tx(100_000_000, { also: OTHER_REF }));
     const sharedWith = vi.fn(async (_id: string, keys: string[]) => keys.includes(OTHER_REF));
-    expect(await findPayment(order(), sharedWith)).toEqual({ paid: false, shared: ['both'] });
+    expect(await findPayment(order(), { ...NO_SHARED, sharedWith })).toEqual({ paid: false, shared: ['both'] });
     // The order's own reference is never what makes a transaction shared.
     expect(sharedWith.mock.calls[0][1]).not.toContain(REFERENCE);
   });
@@ -326,7 +342,7 @@ describe('one transfer, one order', () => {
     pay.signatures.mockResolvedValue([sig('own', '2026-09-20T12:11:00Z'), sig('both', '2026-09-20T12:10:00Z')]);
     pay.transaction.mockImplementation(async (s: string) => tx(100_000_000, s === 'both' ? { also: OTHER_REF } : {}));
     const sharedWith = async (_id: string, keys: string[]) => keys.includes(OTHER_REF);
-    expect(await findPayment(order(), sharedWith)).toMatchObject({ paid: true, signature: 'own', shared: ['both'] });
+    expect(await findPayment(order(), { ...NO_SHARED, sharedWith })).toMatchObject({ paid: true, signature: 'own', shared: ['both'] });
   });
 
   it('a signature that already paid another order pays nothing here: refund_due, and said', async () => {

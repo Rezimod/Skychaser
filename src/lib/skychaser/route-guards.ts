@@ -7,6 +7,8 @@ import { verifyCronSecret } from '@/lib/cron-auth';
 import { getSessionWalletAddresses, verifyPrivy } from '@/lib/api-auth';
 import { isValidPublicKey } from '@/lib/validate';
 import { checkRateLimit } from '@/lib/rate-limit';
+import type { Db } from './attach';
+import { paymentsLive } from './orders';
 import { simulatedPayments } from './rehearsal';
 
 /** A lowercase RFC 4122 UUID, exactly: what every capsule and order id is. */
@@ -38,6 +40,17 @@ export async function limited(limiter: Limiter, id: string): Promise<NextRespons
   } catch {
     return NextResponse.json({ error: 'Service temporarily unavailable' }, { status: 503 });
   }
+}
+
+/**
+ * A 503 when this deployment rehearses but its database takes real payments
+ * (the go-live reset has run): a rehearsal build, a rolled-back one or a local
+ * server must never sell from, or settle orders in, a live database.
+ */
+export async function rehearsalOnLiveDatabase(db: Db): Promise<NextResponse | null> {
+  if (!simulatedPayments() || !(await paymentsLive(db))) return null;
+  console.error('[skychaser] refusing: a rehearsal build is pointed at a database that takes real payments');
+  return NextResponse.json({ error: 'Payments are not available right now' }, { status: 503 });
 }
 
 export function clientIp(req: NextRequest): string {

@@ -177,22 +177,46 @@ const MAX_SCANNED = 25;
 const MAX_SIGNATURE_PAGES = 10;
 
 /**
- * Whether any of these account keys is another order's payment reference. A
- * transaction that names two orders could otherwise pay both with one
- * amount, so it pays neither and is owed back.
+ * What findPayment asks the database. `sharedWith`: whether any of these
+ * account keys is another order's payment reference — a transaction that
+ * names two orders could otherwise pay both with one amount, so it pays
+ * neither and is owed back. `live`: whether this database takes real
+ * payments, in which case a rehearsal may mark nothing paid in it.
  */
-export type SharedReferenceCheck = (orderId: string, keys: string[]) => Promise<boolean>;
+export type PaymentLedger = {
+  sharedWith: (orderId: string, keys: string[]) => Promise<boolean>;
+  live: () => Promise<boolean>;
+};
 
-export function sharedReferences(db: Db): SharedReferenceCheck {
-  return async (orderId, keys) => {
-    if (!keys.length) return false;
-    const [hit] = await db
-      .select({ id: orders.id })
-      .from(orders)
-      .where(and(inArray(orders.paymentReference, keys), sql`${orders.id} <> ${orderId}::uuid`))
-      .limit(1);
-    return Boolean(hit);
+export function paymentLedger(db: Db): PaymentLedger {
+  return {
+    sharedWith: async (orderId, keys) => {
+      if (!keys.length) return false;
+      const [hit] = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(and(inArray(orders.paymentReference, keys), sql`${orders.id} <> ${orderId}::uuid`))
+        .limit(1);
+      return Boolean(hit);
+    },
+    live: () => paymentsLive(db),
   };
+}
+
+/**
+ * Whether the go-live reset has run on this database: from then on it holds
+ * real sales, and no deployment or local server that rehearses — whatever its
+ * build says — may mark anything in it paid, or sell from it. A database
+ * without the app_flag table has not gone live.
+ */
+export async function paymentsLive(db: Db): Promise<boolean> {
+  try {
+    const { rows } = (await db.execute(sql`SELECT value FROM app_flag WHERE name = 'payments_live'`)) as Rows<{ value: string }>;
+    return rows[0]?.value === '1';
+  } catch (err) {
+    if (pgCode(err) === '42P01') return false;
+    throw err;
+  }
 }
 
 const lamportsOf = (sol: number) => BigInt(new BigNumber(sol).shiftedBy(9).integerValue(BigNumber.ROUND_CEIL).toFixed(0));
@@ -231,8 +255,12 @@ async function signaturesFor(connection: Connection, reference: PublicKey) {
  * also names another order's reference counts for neither: it comes back in
  * `shared`, owed back.
  */
-export async function findPayment(order: OrderRow, sharedWith: SharedReferenceCheck): Promise<PaymentCheck> {
+export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promise<PaymentCheck> {
   if (simulatedPayments()) {
+    if (await ledger.live()) {
+      console.error('[skychaser/payments] refusing: a rehearsal build is pointed at a database that takes real payments');
+      return { paid: false, error: 'Payments are not available right now', status: 503 };
+    }
     return { paid: true, signature: simulatedSignature(order.paymentReference), paidAt: new Date(), late: false };
   }
   const recipient = merchantWallet();
@@ -264,7 +292,7 @@ export async function findPayment(order: OrderRow, sharedWith: SharedReferenceCh
       if (++scanned > MAX_SCANNED) break;
       const r = await received(connection, f.signature, recipient, reference);
       if (!r || r.lamports <= BigInt(0)) continue;
-      if (await sharedWith(order.id, r.keys.filter((k) => k !== reference.toBase58()))) {
+      if (await ledger.sharedWith(order.id, r.keys.filter((k) => k !== reference.toBase58()))) {
         shared.push(f.signature);
         continue;
       }
@@ -564,7 +592,7 @@ export async function settleCardOrders(db: Db, limit = 25): Promise<Array<{ orde
 }
 
 async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
-  const payment = await findPayment(order, sharedReferences(db));
+  const payment = await findPayment(order, paymentLedger(db));
   let row: OrderRow = order;
   if (payment.paid && !payment.late) {
     row = await markPaid(db, order.id, payment.signature, payment.paidAt);
@@ -609,7 +637,7 @@ export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {
     try {
-      const payment = await findPayment(order, sharedReferences(db));
+      const payment = await findPayment(order, paymentLedger(db));
       const owed = payment.paid ? payment : payment.partial;
       if (!owed) continue;
       const row = await markRefundDue(db, order.id, owed.signature, owed.paidAt, 'paid after the order was closed');

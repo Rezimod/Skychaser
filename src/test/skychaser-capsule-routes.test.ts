@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   findPayment: vi.fn(),
   markPaid: vi.fn(),
   markRefundDue: vi.fn(),
+  paymentsLive: vi.fn(async () => false),
   cardAvailability: vi.fn(),
   createCardOrder: vi.fn(),
   unpaidCapsules: vi.fn(),
@@ -51,7 +52,8 @@ vi.mock('@/lib/skychaser/orders', () => ({
   markRefundDue: mocks.markRefundDue,
   reportExtraTransfers: vi.fn(),
   reportSharedTransfers: vi.fn(),
-  sharedReferences: () => async () => false,
+  paymentLedger: () => ({ sharedWith: async () => false, live: async () => false }),
+  paymentsLive: mocks.paymentsLive,
   settleCardOrders: vi.fn(async () => []),
   fulfilCardOrder: vi.fn(),
   cardAvailability: mocks.cardAvailability,
@@ -150,6 +152,20 @@ describe('opening a capsule', () => {
 
 describe('buying a capsule', () => {
   const body = { walletAddress: HOLDER, capsuleId: CAPSULE, commitment: HEX, nonce: HEX };
+
+  it('sells nothing, and confirms nothing, from a rehearsal pointed at a database that has gone live', async () => {
+    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
+    mocks.paymentsLive.mockResolvedValue(true);
+    try {
+      expect((await buy(post('/api/skychaser/capsules/buy', body))).status).toBe(503);
+      expect((await confirm(post('/api/skychaser/orders/confirm', { orderId: '00000000-0000-4000-8000-0000000000aa' }))).status).toBe(503);
+      expect(mocks.purchaseCapsule).not.toHaveBeenCalled();
+      expect(mocks.findPayment).not.toHaveBeenCalled();
+    } finally {
+      delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
+      mocks.paymentsLive.mockResolvedValue(false);
+    }
+  });
 
   it('holds no more than two unpaid capsules for one account', async () => {
     mocks.purchaseCapsule.mockResolvedValue({ ok: false, reason: 'too_many_unpaid' });

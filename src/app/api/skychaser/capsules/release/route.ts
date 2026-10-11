@@ -4,7 +4,7 @@ import { paused } from '@/lib/kill-switch';
 import { recheckClosedCapsuleOrders, releaseCapsule, releaseLapsed } from '@/lib/skychaser/capsule';
 import { recheckClosedCardOrders, refundsOwed, settleCardOrders } from '@/lib/skychaser/orders';
 import { sendTelegram } from '@/lib/telegram';
-import { isSkychaserAdmin, isUuid } from '@/lib/skychaser/route-guards';
+import { isSkychaserAdmin, isUuid, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
 
@@ -23,6 +23,8 @@ export async function GET(req: NextRequest) {
   if (!(await isSkychaserAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  const r = await rehearsalOnLiveDatabase(db);
+  if (r) return r;
   // Each step stands alone: one that fails is reported and the rest still run.
   const step = async <T,>(name: string, run: () => Promise<T>): Promise<T | { error: string }> => {
     try {
@@ -55,6 +57,8 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
+  const r = await rehearsalOnLiveDatabase(db);
+  if (r) return r;
   const result = await releaseCapsule(db, capsuleId);
   if (!result.ok) {
     const status = result.reason === 'not_found' ? 404 : result.reason === 'payment_unknown' ? 503 : 409;
