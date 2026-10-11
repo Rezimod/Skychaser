@@ -18,6 +18,7 @@ import {
 import { disposePlanetTexture, makePlanetTextureLoader } from '@/lib/solar-system/texture-load';
 import { createPlanetMaterial, disposePlanetMaterial, tickPlanetMaterial } from '@/lib/solar-system/planet-textures';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
+import { releaseSaturnRingStripTexture } from '@/lib/solar-system/saturn-ring-strip';
 import {
   makeOrbitRings,
   disposeOrbitRings,
@@ -92,7 +93,11 @@ declare global {
   interface Window {
     /** Development only: lets a headless capture teleport the ship and read the session. */
     __stellarFlight?: { session: FlightSession; ship: PlayerShipHandle; world: FlightWorld; aliens: AlienHandle };
-    __stellarOrrery?: { probe: (within?: string) => Record<string, number> };
+    __stellarOrrery?: {
+      probe: (within?: string) => Record<string, number>;
+      /** Frame the system (theta, phi, radius) or select and orbit a body: for captures. */
+      view: (v: { theta?: number; phi?: number; radius?: number; focus?: SolarBodyId | null; dist?: number }) => void;
+    };
   }
 }
 
@@ -1566,7 +1571,18 @@ export function SolarSystemCanvas({
     let warmed = false;
     let settledFrames = 0;
     startLoop();
-    if (process.env.NODE_ENV !== 'production') window.__stellarOrrery = { probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within) };
+    if (process.env.NODE_ENV !== 'production') {
+      window.__stellarOrrery = {
+        probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within),
+        view: (v) => {
+          if (v.theta !== undefined) sysTheta = v.theta;
+          if (v.phi !== undefined) sysPhi = v.phi;
+          if (v.radius !== undefined) sysRadius = THREE.MathUtils.clamp(v.radius, 5.2, MAX_SYS_RADIUS);
+          if (v.focus !== undefined) onSelectRef.current(v.focus);
+          if (v.dist !== undefined) { lastFocus = v.focus ?? lastFocus; orbDist = v.dist; }
+        },
+      };
+    }
 
     return () => {
       stopLoop();
@@ -1665,11 +1681,20 @@ export function SolarSystemCanvas({
       hitById.clear();
       starGeo.dispose();
       (stars.material as THREE.Material).dispose();
+      // The soft sprite is one texture for the whole page (stars, glows,
+      // plumes): each renderer that uploads it hangs a dispose listener on
+      // it, and that listener keeps the whole renderer reachable after this
+      // canvas is gone — one more per trip to a surface and back. Disposing
+      // it frees only this context's copy; the next renderer re-uploads it.
+      starSprite.dispose();
+      releaseSaturnRingStripTexture();
       postFx.dispose();
       renderer.dispose();
       // Give the context back now rather than when the canvas is collected:
       // the Moon scene and every rebuild after a context loss want one too.
-      renderer.forceContextLoss();
+      // (A context the GPU already took has nothing to give back, and asking
+      // for its extension only logs a warning.)
+      if (!contextLost) renderer.forceContextLoss();
       if (renderer.domElement.parentNode === mount) {
         mount.removeChild(renderer.domElement);
       }

@@ -463,6 +463,23 @@
   background:
     radial-gradient(125% 95% at 50% 50%, rgba(120, 190, 255, 0) 34%, rgba(38, 96, 220, 0.3) 74%, rgba(6, 14, 42, 0.8) 100%);
 }
+/* A hit: the glass rims blue while the shield takes it, red once the hull does. */
+.flight-hud__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: var(--hit, 0);
+  background: radial-gradient(130% 110% at 50% 50%, rgba(80, 170, 255, 0) 52%, rgba(80, 170, 255, 0.22) 78%, rgba(120, 200, 255, 0.55) 100%);
+  box-shadow: inset 0 0 0 2px rgba(140, 210, 255, 0.5);
+}
+.flight-hud[data-guard='hull'] .flight-hud__hit {
+  background: radial-gradient(130% 110% at 50% 50%, rgba(255, 60, 40, 0) 48%, rgba(255, 60, 40, 0.28) 76%, rgba(255, 70, 50, 0.7) 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 110, 90, 0.6);
+}
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__track > span { background: #ff7a5c; }
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child svg,
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__sys-name { color: #ff9a80; }
 .flight-hud__flash {
   position: absolute;
   inset: 0;
@@ -478,7 +495,7 @@
    answers. ── */
 .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
-.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash) { display: none; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
 .flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
 .flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
@@ -573,6 +590,8 @@
 .flight-hud__card-text { display: grid; gap: 3px; min-width: 0; flex: 1; }
 .flight-hud__card-label { font-size: 10px; line-height: 1.35; color: var(--hud-dim); }
 .flight-hud__card-value { font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+.flight-drive__jump .flight-hud__card-value { white-space: nowrap; }
+.flight-drive__dist { font-family: var(--font-mono, ui-monospace, monospace); letter-spacing: 0.02em; }
 .flight-hud__card-go { flex: none; color: var(--hud-dim); }
 /* The state light in the card's corner. */
 .flight-hud__dot {
@@ -815,7 +834,7 @@
   --land: 0;
   height: auto;
   width: max-content;
-  max-width: min(236px, calc(100cqw - 2 * var(--gutter)));
+  max-width: min(280px, calc(100cqw - 2 * var(--gutter)));
   padding: 6px 11px 6px 6px;
   gap: 9px;
   border-radius: 14px;
@@ -855,7 +874,7 @@
   transform-origin: left;
   transition: transform 0.2s linear;
 }
-.flight-hud__land-state { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.2; color: var(--hud-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flight-hud__land-state { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.25; color: var(--hud-dim); }
 .flight-hud__land[data-ready='true'] .flight-hud__land-state { color: var(--terracotta); }
 .flight-hud__land-key {
   flex: none;
@@ -1189,6 +1208,10 @@
   .flight-hud__menu-group { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 2px 6px; padding: 3px 0; }
   .flight-hud__menu-row { grid-column: 1 / -1; }
 }
+/* A thumb is not a cursor: every row it can hit in the deck's menus is 44 px,
+   on its side too — the menu scrolls the last row in rather than shrink them. */
+.flight-hud[data-touch='true'] .flight-hud__menu button,
+.flight-hud[data-touch='true'] .flight-drive__menu button { height: 44px; }
 
 /* ──────────────────── planet info chip (opens the facts card) ────────────────────
    Picking a body no longer throws a panel over it. A callout docks beside the
@@ -2274,13 +2297,34 @@
   justify-items: center;
   gap: 22px;
   overflow: hidden;
-  background: #050812;
+  background:
+    radial-gradient(120% 90% at 70% 110%, rgba(30, 72, 140, 0.3), rgba(5, 8, 18, 0) 60%),
+    radial-gradient(90% 70% at 15% 0%, rgba(40, 30, 90, 0.26), rgba(5, 8, 18, 0) 70%),
+    #050812;
   color: #eef2fb;
   text-align: center;
   padding-inline: 16px;
   transition: opacity 0.6s ease, visibility 0s linear 0s;
 }
 .cosmic-loader__sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* Two slow clouds of colour behind the stars, and a vignette over all of it. */
+.cosmic-loader__sky::after { content: ''; position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 50%, rgba(2, 3, 8, 0) 55%, rgba(2, 3, 8, 0.6) 100%); }
+.cosmic-loader__nebula { position: absolute; inset: 0; }
+.cosmic-loader__nebula i { position: absolute; width: 90vmax; height: 60vmax; border-radius: 50%; opacity: 0.55; }
+.cosmic-loader__nebula i:first-child {
+  left: -30vmax;
+  top: -18vmax;
+  background: radial-gradient(closest-side, rgba(94, 234, 212, 0.13), rgba(94, 234, 212, 0.04) 55%, rgba(94, 234, 212, 0));
+  animation: cosmic-nebula-a 70s ease-in-out infinite alternate;
+}
+.cosmic-loader__nebula i:last-child {
+  right: -34vmax;
+  top: 4vmax;
+  background: radial-gradient(closest-side, rgba(150, 110, 255, 0.14), rgba(110, 80, 220, 0.05) 55%, rgba(110, 80, 220, 0));
+  animation: cosmic-nebula-b 90s ease-in-out infinite alternate;
+}
+@keyframes cosmic-nebula-a { to { transform: translate3d(8vmax, 5vmax, 0) scale(1.12); } }
+@keyframes cosmic-nebula-b { to { transform: translate3d(-10vmax, 4vmax, 0) scale(0.92); } }
 .cosmic-loader__stars {
   position: absolute;
   top: 0;
@@ -2475,18 +2519,22 @@
   letter-spacing: 0.02em;
 }
 .cosmic-loader__detail {
+  display: inline-flex;
+  gap: 10px;
   margin: 0;
   font: 500 12px/1.4 var(--font-mono, ui-monospace), monospace;
   letter-spacing: 0.03em;
   color: rgba(168, 180, 200, 0.85);
 }
+.cosmic-loader__pct { font-weight: 500; color: var(--terracotta, #ffb347); }
 .cosmic-loader__bar {
   position: relative;
-  width: 200px;
-  height: 2px;
+  width: min(240px, 70vw);
+  height: 3px;
   margin-top: 4px;
-  border-radius: 2px;
+  border-radius: 3px;
   background: rgba(168, 180, 200, 0.16);
+  box-shadow: 0 0 0 1px rgba(168, 180, 200, 0.06);
   overflow: hidden;
 }
 .cosmic-loader__bar i {
@@ -2495,8 +2543,9 @@
   bottom: 0;
   left: 0;
   width: 40%;
-  border-radius: 2px;
-  background: var(--terracotta, #ffb347);
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 150, 60, 0.85), var(--terracotta, #ffb347) 70%, #fff1d6);
+  box-shadow: 0 0 10px rgba(255, 170, 70, 0.6);
   animation: cosmic-sweep 1.6s ease-in-out infinite;
 }
 .cosmic-loader__bar[data-determinate] i {
@@ -2554,7 +2603,7 @@
 @keyframes cosmic-glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @keyframes cosmic-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .cosmic-loader__stars, .cosmic-globe__map, .cosmic-loader__orbit, .cosmic-loader__satellite, .cosmic-loader__craft,
+  .cosmic-loader__stars, .cosmic-loader__nebula i, .cosmic-globe__map, .cosmic-loader__orbit, .cosmic-loader__satellite, .cosmic-loader__craft,
   .cosmic-loader__flame, .cosmic-loader__dust, .cosmic-loader__streaks span::before, .cosmic-loader__streaks b,
   .cosmic-loader__bar i, .cosmic-loader__bar::after, .cosmic-loader__tip { animation: none; }
   .cosmic-loader__craft { transform: translate3d(0, 100px, 0); }

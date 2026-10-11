@@ -22,7 +22,7 @@ export function ControlsPanel({ onClose }: ControlsPanelProps) {
   useEffect(() => { setTouch(window.matchMedia('(pointer: coarse)').matches); }, []);
   return (
     <GamePanel title={t('controls')} onClose={onClose}>
-      <p className="game-controls__shell">{t('controlsPanel.shell')}</p>
+      <p className="game-controls__shell">{t('controlsPanel.shellKeys')}</p>
       <h3 className="game-controls__head">{t('controlsPanel.surface')}</h3>
       {(touch ? SURFACE_TOUCH : SURFACE_KEYS).map((k) => <p key={k} className="game-controls__row">{tm(k)}</p>)}
       <h3 className="game-controls__head">{t('controlsPanel.ship')}</h3>

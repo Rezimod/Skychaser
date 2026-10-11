@@ -71,6 +71,7 @@ function Globe({ body, className }: { body: LoaderBody; className: string }) {
 export function CosmicSky() {
   return (
     <span className="cosmic-loader__sky" aria-hidden>
+      <span className="cosmic-loader__nebula"><i /><i /></span>
       <span className="cosmic-loader__stars" style={{ boxShadow: FAR }} />
       <span className="cosmic-loader__stars cosmic-loader__stars--near" style={{ boxShadow: NEAR }} />
     </span>
@@ -147,7 +148,7 @@ export function CosmicLoader({ label, detail, className, variant = 'orrery', bod
       </div>
       <div className="cosmic-loader__copy">
         <p className="cosmic-loader__label">{label}</p>
-        {detail && <p className="cosmic-loader__detail">{detail}</p>}
+        {detail && <p className="cosmic-loader__detail">{detail}{known && <b className="cosmic-loader__pct">{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</b>}</p>}
         <span className="cosmic-loader__bar" data-determinate={known ? '' : undefined} aria-hidden>
           <i style={known ? { transform: `scaleX(${Math.min(1, Math.max(0.02, progress))})` } : undefined} />
         </span>

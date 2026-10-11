@@ -233,6 +233,13 @@ function rockGeometry(seed: number, detail: number): THREE.BufferGeometry {
   return g;
 }
 
+/** 0 inside, 1 at the horizon ring's outer edge (1500 m): how far its
+ *  ground has come back down to the datum, where the globe meets it. */
+export function ringEdge(r: number): number {
+  const k = THREE.MathUtils.clamp((r - 1040) / 440, 0, 1);
+  return k * k * (3 - 2 * k);
+}
+
 /**
  * Beyond the playable square: a ring of hills out to the horizon, sharing
  * the terrain's material, sitting just under the square where they overlap
@@ -253,7 +260,10 @@ export function makeMoonHorizon(terrain: TerrainHandle, lite: boolean): THREE.Me
     const hills = fbm(x / 260, z / 260, 4, seed + 71) * 34 + ridged(x / 520 + 9, z / 520, seed + 77) * 46 * Math.min(1, (r - 300) / 600);
     const k = r <= 250 ? 0 : Math.min(1, (r - 250) / 90);
     const t = k * k * (3 - 2 * k);
-    pos.setY(i, near * (1 - t) + hills * t);
+    // The hills settle back to the datum by the ring's outer edge, where the
+    // globe (planet-globe.ts: flat to the datum for 8 km round the site)
+    // takes the ground on: no step at the seam, no wall from above.
+    pos.setY(i, (near * (1 - t) + hills * t) * (1 - ringEdge(r)));
     const v = 0.95 + fbm(x / 120, z / 120, 3, seed + 33) * 0.1;
     colors[i * 3] = colors[i * 3 + 1] = colors[i * 3 + 2] = v;
   }

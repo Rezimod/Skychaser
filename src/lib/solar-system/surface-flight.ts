@@ -19,7 +19,7 @@ import type { GlobeWorld } from '@/lib/solar-system/planet-frame';
 import {
   makeOrbitalAscent, makeOrbitalDescent, type OrbitalDescent, type OrbitalFlight, type OrbitalInput, type OrbitalTelemetry,
 } from '@/lib/solar-system/orbital-descent';
-import { makeEntryFx } from '@/lib/solar-system/entry-fx';
+import { makeEntryFx, PLASMA } from '@/lib/solar-system/entry-fx';
 import type { LanderHandle } from '@/lib/solar-system/moon-lander';
 
 export interface SurfaceFlightSounds {
@@ -68,7 +68,7 @@ const INTRO = 7;
 
 export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
   const { world, lander, scene, camera, lite } = opts;
-  const fx = makeEntryFx(lander.hull, lite);
+  const fx = makeEntryFx(lander.hull, lite, world === 'earth' ? PLASMA.earth : world === 'mars' ? PLASMA.mars : PLASMA.default);
   scene.add(fx.group);
   const air = world !== 'moon';
   const handoverAt = {
@@ -102,6 +102,7 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
   const back = new THREE.Vector3();
   const look = new THREE.Vector3();
   const flowUp = new THREE.Vector3();
+  const flowDir = new THREE.Vector3();
   let camInit = false;
   let legT = 0;
   let booms = 0;
@@ -156,6 +157,38 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     if (Math.abs(camera.fov - fov) > 0.01) { camera.fov += (fov - camera.fov) * (1 - Math.exp(-dt * 3)); camera.updateProjectionMatrix(); }
   };
 
+  /** The hull as the air meets it: the widest reach of its box off the
+   *  flow's axis, and how far its front stands ahead of its origin. The
+   *  box's corners overreach a rounded hull, so a little comes off. */
+  const corner = new THREE.Vector3();
+  const fit = { radius: 0, front: 0, side: 0, up: 0 };
+  const fitSide = new THREE.Vector3();
+  const fitUp = new THREE.Vector3();
+  const fitHull = () => {
+    const box = lander.extent();
+    if (!box) return null;
+    // The flow's frame as entry-fx builds it: +Z the flow, +Y the planet's up square to it.
+    fitUp.copy(flowUp).addScaledVector(flowDir, -flowUp.dot(flowDir));
+    if (fitUp.lengthSq() < 1e-6) fitUp.set(0, 1, 0).addScaledVector(flowDir, -flowDir.y);
+    fitUp.normalize();
+    fitSide.crossVectors(fitUp, flowDir).normalize();
+    let radius = 0; let front = -Infinity; let side = 0; let up = 0;
+    for (let i = 0; i < 8; i++) {
+      corner.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z)
+        .applyQuaternion(lander.group.quaternion);
+      const z = corner.dot(flowDir);
+      front = Math.max(front, z);
+      radius = Math.max(radius, Math.sqrt(Math.max(0, corner.lengthSq() - z * z)));
+      side = Math.max(side, Math.abs(corner.dot(fitSide)));
+      up = Math.max(up, Math.abs(corner.dot(fitUp)));
+    }
+    fit.radius = radius * 0.72;
+    fit.side = side * 0.78;
+    fit.up = up * 0.78;
+    fit.front = front * 0.85;
+    return fit;
+  };
+
   const flyShip = (dt: number, f: OrbitalFlight) => {
     const T = f.telemetry;
     // The hull takes the buffet too: a degree or two of shudder.
@@ -163,7 +196,7 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     buffetB += ((Math.random() * 2 - 1) * 0.02 * T.turbulence - buffetB) * (1 - Math.exp(-dt * 14));
     attitude.copy(f.attitude).multiply(jolt.setFromEuler(joltE.set(buffetA, 0, buffetB)));
     lander.fly(dt, f.position, attitude, T.burn);
-    lander.setHeat(T.heat);
+    lander.setHeat(T.heat, flowDir.copy(f.velocity).normalize());
     // Vapour: contrails in the cold of the upper air on Earth, a cone round
     // the hull as it comes down through the speed of sound on either air world.
     const vapour = world === 'earth'
@@ -171,7 +204,7 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
       : 0;
     const transonic = air ? Math.exp(-(((T.mach - 1) / 0.07) ** 2)) : 0;
     flowUp.copy(f.up);
-    fx.update(dt, { position: lander.position, velocity: f.velocity, up: flowUp, heat: T.heat, vapour, transonic });
+    fx.update(dt, { position: lander.position, velocity: f.velocity, up: flowUp, heat: T.heat, vapour, transonic, fit: T.heat > 0.01 ? fitHull() : null });
     opts.sounds?.reentry?.(air ? Math.max(T.heat, T.turbulence * 0.7) : 0);
     if (T.booms > booms) { booms = T.booms; opts.sounds?.boom?.(); shakeX += 0.6; shakeR += 0.03; }
   };

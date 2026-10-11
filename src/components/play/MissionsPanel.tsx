@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Check, Circle, Lock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useLogin, usePrivy } from '@privy-io/react-auth';
-import { readExpeditionStage, type MissionStage } from '@/lib/solar-system/moon-mission';
-import { JOB_ORDER, readJobsDone } from '@/lib/solar-system/moon-jobs';
+import { localMissionStore } from '@/lib/solar-system/mission-store';
+import { MOON_MISSIONS } from '@/lib/solar-system/moon-missions';
 import { DISCOVERIES, readDiscoveryCount } from '@/lib/solar-system/flight-missions';
 import { localRewardSink } from '@/lib/solar-system/achievements';
 import { EXPLORE_MAX_STARS, type ExploreProgress } from '@/lib/games/explore';
@@ -14,18 +15,38 @@ interface MissionsPanelProps {
   onClose: () => void;
 }
 
-interface Progress { stage: MissionStage; jobs: number; discoveries: number; records: number }
+/** Where a mission stands for this crew. */
+export type MissionState = 'done' | 'next' | 'open' | 'locked';
 
-/** What the saves say, read after mount so the first paint has nothing to
- *  disagree with; and what the platform has credited for it. */
+interface Progress { missions: { id: string; state: MissionState }[]; discoveries: number; records: number }
+
+/** The five Moon missions as the store has them: done, the one being flown
+ *  (or the first that can be), the others that could be taken on, and those
+ *  still behind one that has not. Pure, so it is tested. */
+export function missionStates(done: readonly string[], active: string): { id: string; state: MissionState }[] {
+  let next = MOON_MISSIONS.find((m) => m.id === active && !done.includes(m.id))?.id ?? '';
+  return MOON_MISSIONS.map((m) => {
+    if (done.includes(m.id)) return { id: m.id, state: 'done' as const };
+    const open = (m.requires ?? []).every((r) => done.includes(r));
+    if (!open) return { id: m.id, state: 'locked' as const };
+    if (!next) next = m.id;
+    return { id: m.id, state: next === m.id ? 'next' as const : 'open' as const };
+  });
+}
+
+/** What the saves say — the same mission store the Moon reads and writes —
+ *  read after mount so the first paint has nothing to disagree with; and
+ *  what the platform has credited for it. */
 export function MissionsPanel({ onClose }: MissionsPanelProps) {
   const t = useTranslations('play');
+  const tm = useTranslations('solarSystem.moon.missions');
   const { ready, authenticated, getAccessToken } = usePrivy();
   const { login } = useLogin();
   const [p, setP] = useState<Progress | null>(null);
   const [credited, setCredited] = useState<ExploreProgress | null>(null);
   useEffect(() => {
-    setP({ stage: readExpeditionStage(), jobs: readJobsDone().length, discoveries: readDiscoveryCount(), records: localRewardSink().list().length });
+    const saved = localMissionStore(MOON_MISSIONS.map((m) => m.id)).load();
+    setP({ missions: missionStates(saved.done, saved.active), discoveries: readDiscoveryCount(), records: localRewardSink().list().length });
   }, []);
   useEffect(() => {
     if (!ready || !authenticated) { setCredited(null); return; }
@@ -39,27 +60,42 @@ export function MissionsPanel({ onClose }: MissionsPanelProps) {
     });
     return () => { cancelled = true; };
   }, [ready, authenticated, getAccessToken]);
-  const empty = p && p.stage === 'survey' && p.jobs === 0 && p.discoveries === 0 && p.records === 0;
+  const doneCount = p?.missions.filter((m) => m.state === 'done').length ?? 0;
+  const empty = p && doneCount === 0 && p.discoveries === 0 && p.records === 0;
   const max = credited?.maxStars ?? EXPLORE_MAX_STARS;
   const stars = credited?.totalStars ?? 0;
   return (
     <GamePanel title={t('missions')} onClose={onClose}>
-      {p && (empty ? <p className="game-missions__empty">{t('missionsPanel.empty')}</p> : (
-        <dl className="game-missions">
-          <dt>{t('missionsPanel.moon')}</dt>
-          <dd data-done={p.stage === 'done'}>{t(`missionsPanel.stage.${p.stage}`)}</dd>
-          <dt>{t('missionsPanel.jobs', { n: p.jobs, total: JOB_ORDER.length })}</dt>
-          <dd><span className="game-missions__track"><i style={{ width: `${(p.jobs / JOB_ORDER.length) * 100}%` }} /></span></dd>
-          <dt>{t('missionsPanel.discoveries', { n: p.discoveries, total: DISCOVERIES.length })}</dt>
-          <dd><span className="game-missions__track"><i style={{ width: `${(p.discoveries / DISCOVERIES.length) * 100}%` }} /></span></dd>
-          {ready && authenticated && (
-            <>
-              <dt>{t('stars.credited', { n: stars, max })}</dt>
-              <dd data-done={stars >= max}><span className="game-missions__track"><i style={{ width: `${Math.min(100, (stars / max) * 100)}%` }} /></span></dd>
-            </>
-          )}
-        </dl>
-      ))}
+      {p && (
+        <>
+          <div className="game-missions__head">
+            <span>{t('missionsPanel.moon')}</span>
+            <b>{t('missionsPanel.count', { n: doneCount, total: p.missions.length })}</b>
+          </div>
+          <ol className="game-missions__list">
+            {p.missions.map((m) => (
+              <li key={m.id} className="game-missions__item" data-state={m.state}>
+                <span className="game-missions__mark" aria-hidden>
+                  {m.state === 'done' ? <Check size={14} /> : m.state === 'locked' ? <Lock size={12} /> : <Circle size={10} />}
+                </span>
+                <span className="game-missions__name">{tm(`${m.id}.title`)}</span>
+                <small className="game-missions__state">{t(`missionsPanel.state.${m.state}`)}</small>
+              </li>
+            ))}
+          </ol>
+          {empty && <p className="game-missions__empty">{t('missionsPanel.empty')}</p>}
+          <dl className="game-missions">
+            <dt>{t('missionsPanel.discoveries', { n: p.discoveries, total: DISCOVERIES.length })}</dt>
+            <dd><span className="game-missions__track"><i style={{ width: `${(p.discoveries / DISCOVERIES.length) * 100}%` }} /></span></dd>
+            {ready && authenticated && (
+              <>
+                <dt>{t('stars.credited', { n: stars, max })}</dt>
+                <dd data-done={stars >= max}><span className="game-missions__track"><i style={{ width: `${Math.min(100, (stars / max) * 100)}%` }} /></span></dd>
+              </>
+            )}
+          </dl>
+        </>
+      )}
       {p && ready && !authenticated && (
         <p className="game-missions__signin">
           {t('stars.signIn', { max })}

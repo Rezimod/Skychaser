@@ -105,6 +105,20 @@
   letter-spacing: 0;
   color: var(--hud-ink);
 }
+/* On a touch screen the exit is a key of its own, a thumb's size. */
+.moon-hud__plaque-exit button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 18px;
+  border: 1px solid var(--hud-accent);
+  border-radius: 6px;
+  background: var(--hud-glass);
+  color: var(--hud-ink);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  pointer-events: auto;
+}
 @keyframes landing-exit-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* ── The loader between the two renderers: the entry. The world grows in
@@ -282,7 +296,10 @@
   color: var(--hud-ink);
 }
 .orbital-hud__skip button {
-  padding: 7px 12px;
+  /* A thumb's worth on a touch screen. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: 7px 14px;
   border: 1px solid var(--hud-line);
   border-radius: 6px;
   background: var(--hud-glass);
@@ -301,8 +318,8 @@
   inset: -4vmin;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(255, 120, 40, 0) 42%, rgba(255, 128, 48, 0.34) 70%, rgba(255, 96, 24, 0.75) 100%),
-    linear-gradient(to top, rgba(255, 150, 70, 0.22), rgba(255, 150, 70, 0) 32%);
+    radial-gradient(ellipse at 50% 50%, rgba(255, 120, 40, 0) 50%, rgba(255, 128, 48, 0.16) 74%, rgba(255, 96, 24, 0.42) 100%),
+    linear-gradient(to top, rgba(255, 150, 70, 0.14), rgba(255, 150, 70, 0) 28%);
   mix-blend-mode: screen;
   opacity: var(--heat, 0);
   animation: orbital-heat-flicker 0.19s steps(3) infinite alternate;

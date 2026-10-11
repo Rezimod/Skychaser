@@ -98,8 +98,13 @@ export interface LanderHandle {
   /** The powered descent takes over from a flight down from orbit: from
    *  here, moving like this, level on this heading. */
   handover: (position: THREE.Vector3, velocity: THREE.Vector3, yaw: number) => void;
-  /** Heat on the hull, 0…1: the skin glows orange and then white. */
-  setHeat: (k: number) => void;
+  /** Heat on the hull, 0…1: the skin glows orange and then white — on the
+   *  windward side, the side facing `flow` (world, unit; the way the ship
+   *  moves), when one is given, and all over when not. */
+  setHeat: (k: number, flow?: THREE.Vector3) => void;
+  /** The hull's bounding box in the vehicle's own frame (the one `fly`'s
+   *  attitude turns), once the model is in; null before. */
+  extent: () => THREE.Box3 | null;
   dispose: () => void;
 }
 
@@ -326,18 +331,49 @@ export function makeLander(
   // never far from the camera on the ground. ──
   let releaseModel: (() => void) | null = null;
   let disposed = false;
+  let extentBox: THREE.Box3 | null = null;
   /** The hull's own materials and what they glowed before the heat. */
   const skins: { mat: THREE.MeshStandardMaterial; base: THREE.Color; baseI: number }[] = [];
   let heatK = 0;
   const hot = new THREE.Color();
+  // The heat shield's glow, shared by every skin: where the flow meets the
+  // hull square on it burns, round the edges it fades, and the lee side
+  // stays dark — the way a capsule's shield glows and its back does not.
+  const heatUniforms = {
+    uHeatFlow: { value: new THREE.Vector3(0, -1, 0) },
+    uHeatGlow: { value: new THREE.Color(0, 0, 0) },
+    uHeatAll: { value: 1 },
+  };
+  const windward = (mat: THREE.MeshStandardMaterial) => {
+    mat.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, heatUniforms);
+      shader.vertexShader = 'varying vec3 vHeatN;\n' + shader.vertexShader.replace(
+        '#include <defaultnormal_vertex>',
+        '#include <defaultnormal_vertex>\n  vHeatN = normalize(mat3(modelMatrix) * objectNormal);',
+      );
+      shader.fragmentShader = 'varying vec3 vHeatN;\nuniform vec3 uHeatFlow;\nuniform vec3 uHeatGlow;\nuniform float uHeatAll;\n' + shader.fragmentShader.replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+  {
+    float wind = dot(normalize(vHeatN), uHeatFlow);
+    float face = mix(smoothstep(-0.25, 0.85, wind), 1.0, uHeatAll);
+    // The stagnation region runs hotter and whiter than the shoulders.
+    vec3 glow = uHeatGlow * face * (0.35 + 0.65 * face);
+    glow += vec3(0.35, 0.3, 0.22) * uHeatGlow.r * pow(max(wind, 0.0), 6.0) * (1.0 - uHeatAll);
+    totalEmissiveRadiance += glow;
+  }`,
+      );
+    };
+    mat.customProgramCacheKey = () => 'lander-windward';
+  };
   const paintHeat = () => {
     // Dull red to orange, a little toward yellow at the peak: a glow in the
     // skin, not a lamp — the plasma round it carries the brightness.
-    hot.setRGB(0.9, 0.2 + 0.22 * heatK, 0.03 + 0.05 * heatK).multiplyScalar(0.55 * heatK);
+    hot.setRGB(0.9, 0.2 + 0.22 * heatK, 0.03 + 0.05 * heatK).multiplyScalar(1.1 * heatK);
+    heatUniforms.uHeatGlow.value.copy(hot);
     for (const sk of skins) {
-      if (heatK <= 0.001) { sk.mat.emissive.copy(sk.base); sk.mat.emissiveIntensity = sk.baseI; continue; }
-      sk.mat.emissive.copy(sk.base).multiplyScalar(sk.baseI).add(hot);
-      sk.mat.emissiveIntensity = 1;
+      sk.mat.emissive.copy(sk.base);
+      sk.mat.emissiveIntensity = sk.baseI;
     }
   };
   acquireModel(spec.url, true).then((handle) => {
@@ -367,6 +403,7 @@ export function makeLander(
             cloned.set(src, own);
             owned.push(own);
             skins.push({ mat: own, base: own.emissive.clone(), baseI: own.emissiveIntensity });
+            windward(own);
           }
           mm.material = own;
         }
@@ -379,6 +416,20 @@ export function makeLander(
     for (const o of drop) o.removeFromParent();
     if (engines.length) buildPlumes(engines);
     hull.add(shell);
+    // The hull's own box in the vehicle's frame, for the plasma to wrap.
+    group.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+    const rel = new THREE.Matrix4();
+    const part = new THREE.Box3();
+    const box = new THREE.Box3();
+    shell.traverse((o) => {
+      const mm = o as THREE.Mesh;
+      if (!mm.isMesh || !mm.geometry) return;
+      if (!mm.geometry.boundingBox) mm.geometry.computeBoundingBox();
+      rel.multiplyMatrices(inv, mm.matrixWorld);
+      box.union(part.copy(mm.geometry.boundingBox!).applyMatrix4(rel));
+    });
+    if (!box.isEmpty()) extentBox = box;
     paintHeat();
   }, () => undefined);
   if (kind === 'lander') mesh(hull, new THREE.SphereGeometry(0.1, 8, 6), lampMat, 0, 2.95, 2.6);
@@ -527,6 +578,7 @@ export function makeLander(
   const thrustTilt = Math.atan2(-spec.thrust.z, -spec.thrust.y);
   const handle: LanderHandle = {
     group, telemetry, position, yaw: spec.yaw, kind, chase: spec.chase, hull: spec.hull,
+    extent: () => extentBox,
     start: startAt, pad: { x: padX, z: padZ }, velocity: vel, thrustTilt,
     update(dt, input, height) {
       if (telemetry.climb >= 0) {
@@ -622,8 +674,10 @@ export function makeLander(
       telemetry.driftZ = vel.z;
       telemetry.drift = Math.hypot(vel.x, vel.z);
     },
-    setHeat(k) {
+    setHeat(k, flow) {
       const next = THREE.MathUtils.clamp(k, 0, 1);
+      heatUniforms.uHeatAll.value = flow ? 0 : 1;
+      if (flow) heatUniforms.uHeatFlow.value.copy(flow).normalize();
       if (Math.abs(next - heatK) < 0.004 && (next > 0 || heatK === 0)) return;
       heatK = next;
       paintHeat();

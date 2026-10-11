@@ -4,6 +4,8 @@ import { useSyncExternalStore } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { FOV_RANGE, getSettings, onSettingsChange, resetSettings, SENSITIVITY_RANGE, updateSettings, type QualityPreset } from '@/game/settings';
 import { clearQualityGovernor, governedQuality, QUALITY_LEVELS, type QualityLevel } from '@/game/quality';
+import { game } from '@/game/state';
+import { markRelocale } from '@/game/save';
 import { GamePanel } from './GamePanel';
 
 interface SettingsPanelProps {
@@ -21,6 +23,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const setLocale = (next: string) => {
     if (next === locale) return;
     document.cookie = `stellar_locale=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    // The new language needs a reload; a player mid-game comes back to the
+    // scene they were in, not to the title.
+    markRelocale(game.get());
     window.location.reload();
   };
   return (

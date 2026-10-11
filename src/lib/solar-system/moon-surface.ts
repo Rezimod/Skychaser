@@ -529,7 +529,10 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   // ── The Moon under the patch, from the ground to orbit (surface-orbit):
   // the sky on its own layer, the ground and the base under the ceiling. ──
   const orbit = attachOrbitView(host, 'moon', {
-    sky: [sky.group], sunDir: SUN_DIR, groundAt: terrain.heightAt, curve: [horizon.material],
+    // The regolith's albedo as the terrain draws it (0xe2e0dc over the
+    // drawn map's ~0.76 grey, linear): the globe takes it on round the
+    // patch, so the edge of the walkable ground does not show from above.
+    sky: [sky.group], sunDir: SUN_DIR, groundAt: terrain.heightAt, curve: [horizon.material], siteColor: [0.4, 0.39, 0.375],
     tiers: patchTiers('moon', [terrain.mesh, terrain.rocks, horizon, sinkhole.group, dust.points, prints.mesh, history.mesh, base.group,
       mission.group, meteors.group, jobs.group, moonMissions.props.group]),
   });

@@ -1,14 +1,17 @@
 import type { Metadata, Viewport } from 'next';
 import PlayClient from '@/components/play/PlayClient';
+import { PWA_THEME, pwaMetadata } from '../explore/pwa-meta';
 import '../solar-system/solar-system.css';
 import '../solar-system/suit-jet.css';
 import '../solar-system/landing.css';
 import './play.css';
 
 export const metadata: Metadata = {
+  // Manifest, icons and the iOS home-screen tags: the installed app starts here.
+  ...pwaMetadata,
   title: 'Stellar Explore',
   description: 'Land at Stellar Base on the Moon. A lunar expedition from Georgia, inside a real astronomy platform.',
-  manifest: '/play.webmanifest',
+  applicationName: 'Stellar Explore',
   alternates: { canonical: '/play' },
   robots: { index: false, follow: false },
 };
@@ -20,7 +23,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#050812',
+  themeColor: PWA_THEME,
 };
 
 export default function PlayPage() {

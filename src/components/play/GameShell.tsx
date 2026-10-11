@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useTranslations } from 'next-intl';
 import { game, STAGE_PROGRESS } from '@/game/state';
-import { isGameScene, type GameScene } from '@/game/save';
+import { isGameScene, takeRelocale, type GameScene } from '@/game/save';
 import { attachConsoleGuards, enterFullscreen, exitFullscreen, unlockPointer } from '@/game/console';
 import { exitToStellar } from '@/game/platform';
 import { takeEscape } from '@/game/escape';
@@ -23,8 +23,11 @@ import { MissionsPanel } from './MissionsPanel';
 /** How long the loading screen takes to fade off the scene; the CSS transition matches. */
 const LOADER_FADE_MS = 700;
 
-/** A deep link straight onto a scene: /play?moon, ?land=mars, ?orbit. */
+/** A deep link straight onto a scene: /play?moon, ?land=mars, ?orbit — or
+ *  the scene a language switch reloaded the page out of. */
 function sceneFromQuery(): GameScene | undefined {
+  const back = takeRelocale();
+  if (back) return back;
   const q = new URLSearchParams(window.location.search);
   if (q.has('moon')) return 'moon';
   if (q.has('orbit')) return 'orbit';
@@ -153,7 +156,7 @@ export default function GameShell() {
       {inWorld && <GameWorld key={snap.generation} scene={scene} state={state} />}
       {(state === 'loading' || loaderFading) && (
         <CosmicLoader className={state === 'loading' ? 'game-shell__loader' : 'game-shell__loader is-done'} variant={loaderVariant} body={loaderBody}
-          label={loaderVariant === 'ascent' ? tl('ascent') : insertion ? t(`loading.insertion.${scene}`) : t(`loading.scene.${scene}`)} detail={t(`loading.${stage}`)} progress={STAGE_PROGRESS[stage]} tips={tips} />
+          label={loaderVariant === 'ascent' ? tl('ascent') : insertion ? t(`loading.insertion.${scene}`) : t(`loading.scene.${scene}`)} detail={t(scene === 'orbit' && stage === 'build' ? 'loading.buildOrbit' : `loading.${stage}`)} progress={STAGE_PROGRESS[stage]} tips={tips} />
       )}
       {dropped && state === 'playing' && <p className="game-shell__notice" role="status">{t('qualityDrop')}</p>}
       {state === 'title' && overlay === 'none' && <TitleScreen onStart={start} />}

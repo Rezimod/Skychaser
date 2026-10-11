@@ -21,6 +21,7 @@ import { GameStick, tapKey } from './GameStick';
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import { settle } from '@/game/settle';
+import { getSettings } from '@/game/settings';
 
 /** The launch screen stays at least this long, and until the ship has flown a few frames. */
 const LAUNCH_MIN_MS = 1500;
@@ -183,6 +184,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const dockTextRef = useRef<HTMLSpanElement>(null);
   const railRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const guardNameRef = useRef<HTMLSpanElement>(null);
   const placedRefs = useRef<Partial<Record<Placeable, HTMLElement | null>>>({});
   const ghostRefs = useRef<Partial<Record<Placeable, HTMLElement | null>>>({});
   const layoutBefore = useRef<Layout>({});
@@ -242,8 +244,11 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     }
   }, [layout, active, touch, immersive, editing]);
 
-  const pause = useCallback(() => {
-    if (!session.active || session.paused) return;
+  /** Hold the deck: the ship stops, the input lets go. The arrival and the
+   *  layout editor hold it for themselves; only a pause the pilot asked
+   *  for (`pause`) brings the shell's menu up over it. */
+  const holdDeck = useCallback((): boolean => {
+    if (!session.active || session.paused) return false;
     zoomRef.current = session.input.camZoom;
     session.paused = true;
     detachRef.current?.();
@@ -254,8 +259,11 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     heldRef.current = {};
     lookRef.current = null;
     setPaused(true);
-    onPauseRequestRef.current?.();
+    return true;
   }, [session]);
+  const pause = useCallback(() => {
+    if (holdDeck()) onPauseRequestRef.current?.();
+  }, [holdDeck]);
   pauseRef.current = pause;
   const onPauseRequestRef = useRef(onPauseRequest);
   onPauseRequestRef.current = onPauseRequest;
@@ -324,7 +332,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       // Private mode — it plays in full every time.
     }
     setArrival(null);
-    pause();
+    holdDeck();
     onLandRef.current(site);
   };
   const exit = () => {
@@ -359,7 +367,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   // The shell's pause menu holds the deck, and letting go of it flies on.
   const shellPausedWas = useRef(false);
   useEffect(() => {
-    if (shellPaused && active && !session.paused) pause();
+    if (shellPaused && active && !session.paused) holdDeck();
     else if (!shellPaused && shellPausedWas.current && active && session.paused && !editing) resume();
     shellPausedWas.current = !!shellPaused;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -625,10 +633,21 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
           orderBarRef.current?.style.setProperty('transform', `scaleX(${tel.orderDone ? 0 : tel.orderIntegrity})`);
         }
       }
-      const levels = [tel.shield / tel.maxShield, tel.energy, tel.boostCharge];
+      // With the shields down the first bar reads the hull instead, in the
+      // warning colour: what is left between the crew and the next hit.
+      const shieldsDown = tel.shield <= 0 && !tel.crashed;
+      const levels = [shieldsDown ? tel.hp / tel.maxHp : tel.shield / tel.maxShield, tel.energy, tel.boostCharge];
       levels.forEach((level, i) => {
         barRefs.current[i]?.style.setProperty('transform', `scaleX(${Math.max(0, Math.min(1, level))})`);
       });
+      const guard = shieldsDown ? 'hull' : 'shield';
+      if (root && root.dataset.guard !== guard) {
+        root.dataset.guard = guard;
+        text(guardNameRef.current, t(guard));
+      }
+      // A hit on the glass: the shield's blue shimmer while it holds, red once
+      // the hull is taking it.
+      root?.style.setProperty('--hit', tel.hitFlash.toFixed(3));
       const marker = markerRef.current;
       if (marker) {
         const locked = tel.navId && tel.nav.on;
@@ -705,13 +724,15 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
       const l = lookRef.current;
       if (!l || l.id !== e.pointerId) return;
-      let dx = (e.clientX - l.x) * LOOK_GAIN;
-      let dy = (e.clientY - l.y) * LOOK_GAIN;
+      // The same look settings the mouse and the pad answer to.
+      const s = getSettings();
+      let dx = (e.clientX - l.x) * LOOK_GAIN * s.sensitivity;
+      let dy = (e.clientY - l.y) * LOOK_GAIN * s.sensitivity;
       l.x = e.clientX; l.y = e.clientY;
       // A quarter turn clockwise: the pad's right is the screen's down.
       if (landscapeRef.current) [dx, dy] = [dy, -dx];
       session.input.mouseDX += dx;
-      session.input.mouseDY += dy;
+      session.input.mouseDY += s.invertY ? -dy : dy;
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
     onPointerCancel: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
@@ -732,7 +753,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     setHelp(false);
     onLandscape(false);
     pausedBefore.current = session.paused;
-    pause();
+    holdDeck();
     layoutBefore.current = layout;
     setPicked(null);
     setEditing(true);
@@ -829,6 +850,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
               edges of the glass that follows the heat, and the ground's haze
               coming up through the glide. */}
           <div className="flight-heat" aria-hidden />
+          <div className="flight-hud__hit" aria-hidden />
 
           {/* The world's name, letter-spaced across the glass, with one line
               of what it is like down there — the entry's title card. */}
@@ -1016,7 +1038,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
               </div>
               <div className="flight-hud__systems">
                 {BARS.map((key, i) => { const Icon = ICONS[i]; return <div key={key} className="flight-hud__sys" aria-label={t(key)}>
-                  <Icon size={15} aria-hidden /><span className="flight-hud__sys-name">{t(key)}</span>
+                  <Icon size={15} aria-hidden /><span ref={i === 0 ? guardNameRef : undefined} className="flight-hud__sys-name">{t(key)}</span>
                   <span className="flight-hud__track"><span ref={(el) => { barRefs.current[i] = el; }} /></span>
                 </div>; })}
               </div>

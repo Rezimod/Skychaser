@@ -115,7 +115,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   // The game (/play, flagged by the middleware) is its own document: no site
   // chrome, no scroll, and only the providers it uses — auth and messages.
-  if ((await headers()).get('x-stellar-game') === '1') {
+  // Its platform page (/explore, `site`) is the same document with messages only.
+  const gameDocument = (await headers()).get('x-stellar-game');
+  if (gameDocument === 'site') {
+    return (
+      <html lang={locale} className={fonts}>
+        <body className="explore-site-body">
+          <ErrorBoundary>
+            {/* The page renders its copy on the server; the client needs only its own namespace. */}
+            <NextIntlClientProvider locale={locale} messages={{ exploreSite: messages.exploreSite }}>{children}</NextIntlClientProvider>
+          </ErrorBoundary>
+        </body>
+      </html>
+    );
+  }
+  if (gameDocument === '1') {
     return (
       <html lang={locale} className={fonts}>
         <body className="game-body">

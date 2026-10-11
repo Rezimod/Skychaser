@@ -676,7 +676,11 @@ export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseR
           <div ref={plaqueRef} className="moon-hud__plaque" role="status" hidden>
             <span ref={plaqueGradeRef} className="moon-hud__plaque-grade" />
             <span ref={plaqueSpeedRef} className="moon-hud__plaque-speed" />
-            <span ref={plaqueExitRef} className="moon-hud__plaque-exit" hidden><kbd>E</kbd>{t('landing.exit')}</span>
+            <span ref={plaqueExitRef} className="moon-hud__plaque-exit" hidden>
+              {touch
+                ? <button type="button" onClick={() => { const h = handleRef.current; if (h) h.input.interact = true; }}>{t('landing.exit')}</button>
+                : <><kbd>E</kbd>{t('landing.exit')}</>}
+            </span>
           </div>
         </div>
 

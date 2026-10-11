@@ -101,6 +101,8 @@ const SITE_ZOOM_CAP = 13;
 const SITE_ZOOM_KM = 60;
 /** Earth's cloud deck, km above the sea. */
 const CLOUD_KM = 8;
+/** Chunks this coarse are never let go of once built (see the cache in `update`). */
+const KEEP_LEVEL = 3;
 /** How long a chunk waits for its terrarium tiles before building with a coarser one, ms. */
 const TILE_WAIT_MS = 1200;
 
@@ -219,7 +221,13 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       apply(tex);
     }, () => { /* the fallback colour stays */ });
   };
-  loadMap(lite ? MAPS[world].lite : MAPS[world].full, (t) => {
+  // A 4K map is 45 MB of GPU memory with its mips: never on a phone or a
+  // tablet, whatever preset was picked — mobile browsers kill the tab long
+  // before the GPU runs out, and the 2K map is under a pixel per cell at
+  // every height the descent flies on a screen that size.
+  const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  const smallMaps = lite || coarse;
+  loadMap(smallMaps ? MAPS[world].lite : MAPS[world].full, (t) => {
     ground.uniforms.uMap.value = t;
     ground.uniforms.uMapOn.value = 1;
   });
@@ -237,7 +245,7 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     clouds.renderOrder = 2;
     clouds.visible = false;
     scene.add(clouds);
-    loadMap(lite ? EARTH_CLOUDS.lite : EARTH_CLOUDS.full, (t) => {
+    loadMap(smallMaps ? EARTH_CLOUDS.lite : EARTH_CLOUDS.full, (t) => {
       ground.uniforms.uClouds.value = t;
       ground.uniforms.uCloudsOn.value = 1;
       cloudMat!.uniforms.uClouds.value = t;
@@ -382,7 +390,9 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     epoch++;
     const shown = new Set(drawn);
     for (const c of [...chunks.values()]) {
-      if (shown.has(c) || c.node.level === 0) c.stale = true;
+      // Drawn chunks and the ones split above them stay (stale) until
+      // rebuilt: dropping the split ones would cut every branch to its root.
+      if (shown.has(c) || c.node.level === 0 || prevSplit.has(c.node.key)) c.stale = true;
       else disposeChunk(c);
     }
     job = null;
@@ -454,6 +464,13 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       frame,
     });
     prevSplit = sel.split;
+    // The chunks split on the way down to what is drawn are in use too: the
+    // next frame descends through them, and without one the whole branch
+    // falls back to its root until it is rebuilt.
+    for (const k of sel.split) {
+      const c = chunks.get(k);
+      if (c) c.lastUsed = frame;
+    }
     for (const c of drawn) c.mesh.visible = false;
     drawn = [];
     for (const n of sel.draw) {
@@ -493,11 +510,16 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     store?.pump(() => nowMs() < deadline + 1);
     imagery?.pump();
 
-    // Keep a few built chunks round after they go out of view; let the rest go.
+    // Keep a few built chunks round after they go out of view; let the rest
+    // go. Never the coarse levels (at most 6 + 24 + 96 + 384 chunks, and only
+    // the few the flight has seen are ever built): a node is split only when
+    // all its children in view are built, so one missing coarse child sends
+    // the whole view back to its root — the planet turns to a blur each time
+    // the camera swings back to ground it saw a while ago.
     const spare = chunks.size - drawn.length;
     if (spare > budget.cache) {
       const shown = new Set(drawn);
-      const idle = [...chunks.values()].filter((c) => !shown.has(c) && c.node.level > 0).sort((a, b) => a.lastUsed - b.lastUsed);
+      const idle = [...chunks.values()].filter((c) => !shown.has(c) && c.node.level > KEEP_LEVEL && !prevSplit.has(c.node.key)).sort((a, b) => a.lastUsed - b.lastUsed);
       for (let i = 0; i < idle.length && chunks.size - drawn.length > budget.cache; i++) disposeChunk(idle[i]);
     }
     if (frame % 240 === 0) {

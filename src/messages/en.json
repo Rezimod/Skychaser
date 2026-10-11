@@ -4225,18 +4225,22 @@
     "tagline": "A lunar expedition from Georgia",
     "enter": "Enter the solar system",
     "enterSub": "Look around, then Explore to fly",
+    "continue": "Continue",
+    "continueSub": "Back where you left off — {place}",
     "missions": "Missions",
     "settings": "Settings",
     "controls": "Controls",
     "exit": "Exit to Stellar",
     "paused": "Paused",
     "resume": "Resume",
+    "pauseHint": "Esc — resume",
     "restart": "Restart checkpoint",
     "back": "Back",
     "loading": {
       "module": "Loading the game",
       "build": "Building the surface",
       "compile": "Compiling the shaders",
+      "buildOrbit": "Building the solar system",
       "ready": "Ready",
       "scene": {
         "orbit": "Charting the orbits",
@@ -4273,7 +4277,8 @@
     "controlsPanel": {
       "surface": "On the surface",
       "ship": "In the ship",
-      "shell": "Esc — pause · Tab — mission panel (coming) · M — sound"
+      "shell": "Esc — pause · Tab — mission panel (coming) · M — sound",
+      "shellKeys": "Esc — pause · Tab — mission panel on the Moon · M — sound"
     },
     "missionsPanel": {
       "moon": "Stellar Base expedition",
@@ -4287,7 +4292,14 @@
       },
       "jobs": "{n} of {total} base jobs done",
       "discoveries": "{n} of {total} discoveries logged",
-      "empty": "Nothing logged yet. Land at Stellar Base to begin."
+      "empty": "Nothing logged yet. Land at Stellar Base to begin.",
+      "count": "{n} of {total} done",
+      "state": {
+        "done": "Done",
+        "next": "Up next",
+        "open": "Open",
+        "locked": "Locked"
+      }
     },
     "qualityDrop": "Detail reduced to hold the frame rate — change it in Settings.",
     "stars": {
@@ -4295,6 +4307,257 @@
       "credited": "{n} of {max} Stars credited to your account",
       "signIn": "Sign in and each mission you finish is credited as Stars — up to {max} for the expedition.",
       "signInAction": "Sign in"
+    }
+  },
+  "exploreSite": {
+    "meta": {
+      "title": "Stellar Explore — fly from orbit to the surface",
+      "description": "A free space game in your browser: fly from orbit to the ground of the Moon, Mars and Earth, walk out as a cosmonaut, fly the jetpack, land with friends and earn Stars. Install it on iPhone, Android or a computer.",
+      "ogAlt": "Stellar Explore — a ship in atmospheric entry over Earth"
+    },
+    "nav": {
+      "home": "Stellar Explore home",
+      "worlds": "Worlds",
+      "features": "Features",
+      "gallery": "Gallery",
+      "install": "Install",
+      "requirements": "Requirements",
+      "play": "Play",
+      "language": "Language",
+      "byStellar": "by Stellar"
+    },
+    "hero": {
+      "eyebrow": "A space game from Georgia · Free to play",
+      "titleA": "From orbit",
+      "titleB": "to footprints.",
+      "lede": "Fly the whole descent — orbit, atmospheric entry, powered landing — to the ground of the Moon, Mars and Earth. Then open the hatch and walk out.",
+      "play": "Play now",
+      "note": "Runs in your browser. No store, no download wait, no account needed to fly.",
+      "reelLabel": "Moments from the game, captured as it runs",
+      "body": "Body",
+      "phase": "Phase",
+      "altitude": "Altitude",
+      "pause": "Pause the reel",
+      "resume": "Play the reel",
+      "scroll": "Scroll",
+      "phases": {
+        "orbit": "Orbit insertion",
+        "entry": "Atmospheric entry",
+        "descent": "Powered descent",
+        "jetpack": "Jetpack hop",
+        "eva": "Surface EVA"
+      },
+      "bodies": {
+        "moon": "Moon",
+        "earth": "Earth",
+        "mars": "Mars"
+      }
+    },
+    "flight": {
+      "kicker": "The descent",
+      "title": "Every landing is a flight.",
+      "lede": "No cutscene drops you on the ground. You bring the ship down yourself, from the first burn to the last metre.",
+      "steps": {
+        "orbit": {
+          "name": "Orbit",
+          "body": "Choose a world from the ship and line up the approach."
+        },
+        "entry": {
+          "name": "Entry",
+          "body": "Heat, plasma and Mach numbers as you fall into the atmosphere."
+        },
+        "descent": {
+          "name": "Powered descent",
+          "body": "Light the engines, kill the drift, read the altitude down."
+        },
+        "touchdown": {
+          "name": "Touchdown",
+          "body": "Set the lander on the pad — or skip straight to it when you just want to land."
+        },
+        "eva": {
+          "name": "Walk out",
+          "body": "Step onto the surface as a cosmonaut, footprints behind you."
+        }
+      }
+    },
+    "worlds": {
+      "kicker": "Where you land",
+      "title": "Three worlds. One ship.",
+      "cta": "Land here",
+      "moon": {
+        "name": "The Moon",
+        "place": "Stellar Base",
+        "body": "A lunar base flying the Georgian flag. Restore its power, bring the comms back, calibrate the telescope and take a core sample from the mare."
+      },
+      "mars": {
+        "name": "Mars",
+        "place": "Mars Base · Jezero",
+        "body": "Domes, dunes and rock arches under a butterscotch sky. Mars holds you down twice as hard as the Moon — the jetpack works for its fuel here."
+      },
+      "earth": {
+        "name": "Earth",
+        "place": "Tbilisi",
+        "body": "Come home at night: the city's lights rise to meet the ship. Land in the park and cross the Bridge of Peace into the Old Town."
+      },
+      "beyond": "And further out, for those who keep flying: Proxima b."
+    },
+    "features": {
+      "kicker": "What you do there",
+      "title": "A cosmonaut, a jetpack and a base full of work.",
+      "maxStars": "up to {max} Stars",
+      "items": {
+        "suit": {
+          "title": "Walk out as a cosmonaut",
+          "body": "Third-person EVA with a helmet lamp, footprints in the regolith and the right gravity on every world."
+        },
+        "jetpack": {
+          "title": "Fly the jetpack",
+          "body": "Lift off the ground, hop the crater rims and race the fuel gauge back to the lander."
+        },
+        "missions": {
+          "title": "Missions",
+          "body": "Base jobs and discoveries: restore the power, fix the comms, calibrate the telescope, photograph the Earthrise."
+        },
+        "multiplayer": {
+          "title": "Multiplayer rooms",
+          "body": "Share a five-letter room code and land together — you see each other's ships in orbit and suits on the ground."
+        },
+        "stars": {
+          "title": "Earn Stars",
+          "body": "Sign in and every finished mission is credited to your Stellar account — up to {max} Stars on the Moon expedition."
+        },
+        "anywhere": {
+          "title": "Plays anywhere",
+          "body": "Touch controls on phones, upright or sideways; keyboard and mouse on a computer. Quality adapts to the device, from Performance to Ultra."
+        }
+      }
+    },
+    "gallery": {
+      "kicker": "Captured in game",
+      "title": "Nothing here is a render.",
+      "lede": "Every frame on this page is the browser build, captured while it runs — HUD and all.",
+      "open": "Open image: {label}",
+      "close": "Close",
+      "prev": "Previous image",
+      "next": "Next image",
+      "items": {
+        "entry": "Atmospheric entry over Earth",
+        "jetpack": "Jetpack over Stellar Base",
+        "marsSuit": "A cosmonaut at Mars Base, Jezero",
+        "tbilisi": "Powered descent onto Tbilisi at night",
+        "marsArch": "Under a rock arch on Mars",
+        "lander": "The lander, flying the Georgian flag",
+        "proximaCrystals": "Glowing crystals on Proxima b",
+        "proximaGiant": "A ringed giant over Proxima b",
+        "moonBraking": "Braking burn, twelve kilometres above the Moon",
+        "marsDomes": "The domes of Mars Base"
+      }
+    },
+    "install": {
+      "kicker": "Install",
+      "title": "Put it on your home screen.",
+      "lede": "Installed, Stellar Explore opens full screen like any other app, starts straight in the game, and keeps what it has loaded for when the signal drops.",
+      "button": "Install",
+      "buttonLong": "Install the app",
+      "how": "How to install",
+      "installed": "Installed — open it from your home screen.",
+      "installedDesktop": "Installed — open it from your apps.",
+      "inApp": "You're in the installed app.",
+      "accepted": "Installing… it will appear with your apps.",
+      "dismissed": "No problem — the button stays here when you want it.",
+      "detected": "Your device",
+      "sheetTitle": "Install Stellar Explore",
+      "close": "Close",
+      "openGame": "Open the game",
+      "copyLink": "Copy link",
+      "copied": "Link copied — paste it into Safari.",
+      "platforms": {
+        "ios-safari": "iPhone or iPad · Safari",
+        "ios-other": "iPhone or iPad · not Safari",
+        "android": "Android",
+        "android-firefox": "Android · Firefox",
+        "desktop-chromium": "Computer · Chrome or Edge",
+        "mac-safari": "Mac · Safari",
+        "desktop-other": "Computer · this browser can't install apps"
+      },
+      "tabs": {
+        "ios": "iPhone & iPad",
+        "android": "Android",
+        "desktop": "Chrome & Edge",
+        "mac": "Mac Safari"
+      },
+      "ios": {
+        "s1": "Open this page in Safari.",
+        "s2": "Tap Share — the square with the arrow — in the toolbar. On iOS 26, tap ••• first, then Share.",
+        "s3": "Scroll down and tap “Add to Home Screen”.",
+        "s4": "Tap “Add”. Stellar Explore lands among your apps and opens full screen.",
+        "otherBrowser": "You're in another browser or inside an app. Open this page in Safari to install it — some browsers on iOS 16.4 and later also offer Share → Add to Home Screen.",
+        "illoToolbar": "Safari toolbar with the Share button highlighted",
+        "illoSheet": "Share menu with Add to Home Screen highlighted",
+        "illoHome": "The Stellar Explore icon on the home screen",
+        "addToHome": "Add to Home Screen",
+        "share": "Share"
+      },
+      "android": {
+        "ready": "Tap Install above and confirm — that's all.",
+        "s1": "Open the browser menu ⋮ (top right in Chrome).",
+        "s2": "Tap “Install app” or “Add to Home screen”.",
+        "s3": "Confirm. Stellar Explore appears in your app drawer and on the home screen.",
+        "firefox": "In Firefox: open the menu ⋮ and tap “Install” (or “Add app to Home screen”)."
+      },
+      "desktop": {
+        "ready": "Click Install above and confirm.",
+        "s1": "Click the install icon at the right end of the address bar — or open the browser menu.",
+        "s2": "Choose “Install Stellar Explore”.",
+        "s3": "It opens in its own window and joins your Start menu, Dock or launcher."
+      },
+      "mac": {
+        "s1": "In Safari 17 or later (macOS Sonoma and newer), open the File menu — or click Share.",
+        "s2": "Choose “Add to Dock”.",
+        "s3": "Click “Add”. Stellar Explore opens in its own window from the Dock."
+      },
+      "other": "This browser can't install web apps. Play right here — or open the page in Chrome, Edge or Safari to install it."
+    },
+    "requirements": {
+      "kicker": "System requirements",
+      "title": "It runs in the browser you already have.",
+      "rows": {
+        "phones": {
+          "label": "Phones & tablets",
+          "value": "iPhone or iPad with iOS 16.4 or later (Safari) · Android 10 or later with Chrome, Edge or Samsung Internet"
+        },
+        "computers": {
+          "label": "Computers",
+          "value": "Windows, macOS or Linux with a current Chrome, Edge, Firefox or Safari"
+        },
+        "graphics": {
+          "label": "Graphics",
+          "value": "WebGL 2. Quality picks itself, from Performance to High; a discrete GPU unlocks Ultra — 4K shadows, 8× anti-aliasing and light shafts."
+        },
+        "controls": {
+          "label": "Controls",
+          "value": "Touch, or keyboard and mouse"
+        },
+        "network": {
+          "label": "Internet",
+          "value": "Needed for the first launch, multiplayer and Earth's map tiles. The installed app keeps what it has loaded."
+        },
+        "account": {
+          "label": "Account",
+          "value": "None needed to fly. Sign in with Stellar to keep your Stars."
+        }
+      }
+    },
+    "finale": {
+      "title": "The pad is clear.",
+      "body": "Free, in your browser, on any screen.",
+      "play": "Launch"
+    },
+    "footer": {
+      "made": "Made in Tbilisi by Stellar",
+      "site": "Stellar — astronomy platform",
+      "privacy": "Privacy",
+      "terms": "Terms"
     }
   }
 }

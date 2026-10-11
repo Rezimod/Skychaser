@@ -171,6 +171,12 @@ export interface WorldSurfaceHandle {
   sky: () => Record<string, number | number[]> | null;
   /** Player base building (Mars only). */
   build: BuildHandle | null;
+  /** Development: use the thing with this id wherever the crew is (a hold runs to the end). */
+  forceInteract: (id: string, seconds?: number) => boolean;
+  /** Development: where the ship stands. */
+  landerAt: () => { x: number; z: number };
+  /** Development: hold the camera at this offset from the crew (world metres), looking at them; null lets it go. */
+  devCamera: (offset: [number, number, number] | null) => void;
   dispose: () => void;
 }
 
@@ -430,6 +436,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     });
   }
   const ascentFrom = new THREE.Vector3();
+  let devCam: [number, number, number] | null = null;
 
   let t = 0;
   const clock = makeFixedStep(STEP, MAX_STEPS);
@@ -740,6 +747,10 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     if (telemetry.headlamp && !earth?.driving()) headlamp(lightPool, crew, view === 'helmet' ? cam.yaw + Math.PI : cosmonaut.yaw);
     if (!earth?.driving()) jetLight(lightPool, crew, cosmonaut.yaw, cosmonaut.state.jetK);
     lightPool.flush(crew.x, crew.y, crew.z);
+    if (devCam) {
+      camera.position.set(crew.x + devCam[0], crew.y + devCam[1], crew.z + devCam[2]);
+      camera.lookAt(crew.x, crew.y + 1.0, crew.z);
+    }
     if (telemetry.phase === 'surface') build?.update(crew.x, crew.z, camera);
     orbit?.update(dt);
     host.render(dt);
@@ -816,6 +827,15 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
         hemiSky: st.hemiSky.toArray(), keyColor: st.keyColor.toArray(), exposure: renderer.toneMappingExposure,
       };
     },
+    forceInteract(id, seconds = 3) {
+      const i = interactions.find(id);
+      if (!i) return false;
+      if (i.kind() === 'tap') { i.use(0); return true; }
+      for (let k = 0; k < Math.ceil(seconds / 0.05) + 1; k++) i.use(0.05);
+      return true;
+    },
+    landerAt: () => ({ x: lander.position.x, z: lander.position.z }),
+    devCamera(offset) { devCam = offset; },
     look(heading, pitch) {
       // Heading is clockwise from north (−z); the camera looks along (−sin yaw, −cos yaw).
       cam.yaw = Math.atan2(-Math.sin((heading * Math.PI) / 180), Math.cos((heading * Math.PI) / 180));

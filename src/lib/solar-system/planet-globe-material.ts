@@ -81,6 +81,41 @@ vec4 detail2(vec3 p, float lam) {
   vec3 g = (a.xyz + 0.5 * gb + 0.25 * gc) / lam;
   return vec4(g, (a.w + 0.5 * b.w + 0.25 * c.w) / 1.75);
 }
+#ifdef CRATERS
+// Craters at one scale: at most one per cell of a 3D lattice of \`cell\` m,
+// a disc on the ground round its jittered centre (the radial is projected
+// out). Returns the ground's slope (dh/dx, unitless, in the frame of p) and
+// adds the albedo change to alb: young craters throw bright ejecta, floors
+// run a touch dark. The 2×2×2 cells toward the nearest corner hold every
+// crater that can reach p (jitter + reach stay under one cell).
+vec3 craterField(vec3 p, vec3 up, float cell, inout float alb) {
+  vec3 q = p / cell;
+  vec3 i0 = floor(q);
+  vec3 o = step(0.5, q - i0) - 1.0;
+  vec3 g = vec3(0.0);
+  for (int k = 0; k < 8; k++) {
+    vec3 c = i0 + o + vec3(float(k & 1), float((k >> 1) & 1), float((k >> 2) & 1));
+    float hs = hash13(c + 0.37);
+    if (hs > CRATER_FILL) continue;
+    vec3 jit = vec3(hash13(c + 11.1), hash13(c + 23.7), hash13(c + 5.3)) - 0.5;
+    vec3 d = q - (c + 0.5 + jit * 0.5);
+    d -= up * dot(d, up);
+    float rad = 0.12 + 0.3 * hash13(c + 41.9);
+    float dl = length(d);
+    float r = dl / rad;
+    if (r > 1.7) continue;
+    // A bowl (depth 0.4 radii: a fifth of the diameter, as fresh lunar
+    // craters are), a sharp raised rim, and the ejecta apron falling away.
+    float dh = r < 1.0 ? 0.8 * r : 0.0;
+    float x = r - 1.0;
+    dh += 0.07 * exp(-x * x / 0.035) * (-2.0 * x / 0.035);
+    g += (d / max(dl, 1e-5)) * dh;
+    float young = step(0.72, fract(hs * 13.17));
+    alb += young * 0.2 * exp(-(r - 1.1) * (r - 1.1) / 0.18) - 0.05 * (1.0 - smoothstep(0.55, 1.0, r));
+  }
+  return g;
+}
+#endif
 `;
 
 const VERT = /* glsl */ `
@@ -118,6 +153,9 @@ uniform float uSiteMix;
 uniform float uSiteBlendKm;
 uniform vec3 uRock;
 uniform float uDetail;
+uniform float uRoll;
+uniform float uMacro;
+uniform float uCraterDepth;
 uniform vec2 uTerminator;
 #ifdef EARTH
 uniform sampler2D uNight;
@@ -171,18 +209,45 @@ void main() {
   vec3 bend = vec3(0.0);
   float tone = 0.0;
   if (uDetail > 0.0) {
+    // Rolling ground at two scales. Gentle on the airless worlds: steep
+    // noise under a low sun is a field of black blotches, and their relief
+    // is the craters'.
     float w1 = 1.0 - smoothstep(0.12, 0.45, foot / 60.0);
     float w2 = 1.0 - smoothstep(0.12, 0.45, foot / 700.0);
+    // Between the map's pixel (kilometres) and the rolling ground: broad
+    // patches of lighter and darker ground, so from a few kilometres up the
+    // map's texels do not show as soft squares.
+    float w3 = 1.0 - smoothstep(0.12, 0.45, foot / 2600.0);
+    if (w3 > 0.0) {
+      vec4 d3 = detail2(p * vec3(1.0, 1.3, 0.8), 2600.0);
+      tone += d3.w * uMacro * w3;
+      bend += d3.xyz * 2600.0 * uRoll * 0.4 * w3;
+    }
     if (w2 > 0.0) {
       vec4 d2 = detail2(p, 700.0);
-      bend += d2.xyz * 700.0 * 0.16 * w2;
-      tone += d2.w * 0.14 * w2;
+      bend += d2.xyz * 700.0 * uRoll * w2;
+      tone += d2.w * 0.12 * w2;
       if (w1 > 0.0) {
         vec4 d1 = detail2(p, 60.0);
-        bend += d1.xyz * 60.0 * 0.22 * w1;
-        tone += d1.w * 0.12 * w1;
+        bend += d1.xyz * 60.0 * uRoll * 1.35 * w1;
+        tone += d1.w * 0.1 * w1;
       }
     }
+#ifdef CRATERS
+    // Craters, coarse to fine, each scale in while its cells span more
+    // than a few pixels and out (smoothly) once they do not.
+    float cell = CRATER_CELL;
+    float calb = 0.0;
+    for (int o = 0; o < CRATER_OCTAVES; o++) {
+      float w = 1.0 - smoothstep(0.05, 0.2, foot / cell);
+      if (w <= 0.0) break;
+      float a = 0.0;
+      bend += craterField(p, dir, cell, a) * w * uCraterDepth;
+      calb += a * w;
+      cell *= 0.36;
+    }
+    tone += calb * uCraterDepth;
+#endif
     bend *= uDetail;
     tone *= uDetail;
   }
@@ -271,6 +336,15 @@ export const GROUND_LOOK: Record<GlobeWorld, GroundLook> = {
   earth: { fallback: [0.05, 0.08, 0.12], rock: [0.2, 0.18, 0.16], sun: sunOf(0xfff4e6, 3), ambient: [0.03, 0.04, 0.055], terminator: [-0.1, 0.1] },
 };
 
+/** The globe's close-in craters (shader only; the geometry carries its own
+ *  at its grid's resolution): the coarsest cell, m, how many scales down
+ *  from it (each 0.36 of the last), how many cells hold one, how deep they
+ *  read (Mars's are worn), and how steep the rolling noise under them is. */
+export const CRATERS: Partial<Record<GlobeWorld, { cell: number; octaves: number; fill: number; depth: number; roll: number }>> = {
+  moon: { cell: 2600, octaves: 6, fill: 0.62, depth: 1, roll: 0.045 },
+  mars: { cell: 3200, octaves: 5, fill: 0.4, depth: 0.5, roll: 0.07 },
+};
+
 export function makeGroundMaterial(world: GlobeWorld, air: GlobeAir | null, radiusKm: number, lite: boolean): THREE.ShaderMaterial {
   const look = GROUND_LOOK[world];
   const uniforms: Record<string, THREE.IUniform> = {
@@ -287,11 +361,23 @@ export function makeGroundMaterial(world: GlobeWorld, air: GlobeAir | null, radi
     uSiteBlendKm: { value: 30 },
     uRock: { value: new THREE.Vector3(...look.rock) },
     uDetail: { value: 1 },
+    uRoll: { value: CRATERS[world] ? CRATERS[world]!.roll : 0.16 },
+    uCraterDepth: { value: CRATERS[world] ? CRATERS[world]!.depth : 0 },
+    uMacro: { value: world === 'mars' ? 0.2 : world === 'moon' ? 0.12 : 0.08 },
     uTerminator: { value: new THREE.Vector2(...look.terminator) },
     uChunkSite: { value: new THREE.Vector3() },
   };
   const defines: Record<string, string | number | boolean> = {};
   if (world === 'moon') defines.MOON = 1;
+  const cr = CRATERS[world];
+  if (cr) {
+    defines.CRATERS = 1;
+    // Lite starts a scale finer and stops two sooner: the near ground is
+    // where the eye is, and every scale is eight cells a pixel.
+    defines.CRATER_OCTAVES = lite ? cr.octaves - 2 : cr.octaves;
+    defines.CRATER_CELL = (lite ? cr.cell * 0.36 : cr.cell).toFixed(1);
+    defines.CRATER_FILL = cr.fill.toFixed(2);
+  }
   if (world === 'earth') {
     defines.EARTH = 1;
     Object.assign(uniforms, {

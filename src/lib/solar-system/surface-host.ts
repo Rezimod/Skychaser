@@ -57,8 +57,19 @@ export interface SurfaceHost {
   dispose: (release: () => void) => void;
 }
 
-const SHADOW_BIAS = -0.0004;
-const SHADOW_NORMAL_BIAS = 0.22;
+/** The PCF kernel's radius in texels: a wider, softer penumbra where the
+ *  map has the texels to spare (the taps are the same five either way). */
+export function shadowSoftness(q: Pick<QualityProfile, 'level'>): number {
+  return q.level === 'ultra' ? 2.6 : q.level === 'high' ? 2 : 1.25;
+}
+
+/** The shadow's biases for a map of `texel` metres a texel and a PCF
+ *  kernel of `radius` texels: the normal offset in metres (the receiver
+ *  moved off its surface), and the depth bias in the shadow camera's depth
+ *  (its range is 419 m, so 1e-4 is about 4 cm). */
+export function shadowBiasFor(texel: number, radius: number): { normal: number; depth: number } {
+  return { normal: texel * (1.1 + 0.55 * radius), depth: -0.00012 };
+}
 
 export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): SurfaceHost {
   const buildStart = performance.now();
@@ -76,10 +87,13 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = opts.exposure;
   renderer.shadowMap.enabled = quality.shadowMapSize > 0;
-  // Soft PCF is the extra taps a desktop can spare; three recompiles the
-  // materials itself when the type changes live.
-  const shadowTypeFor = (q: QualityProfile) => (q.level === 'high' || q.level === 'ultra' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap);
-  renderer.shadowMap.type = shadowTypeFor(quality);
+  // Always PCF. three r184 dropped PCFSoftShadowMap: it has no define of its
+  // own, so a program compiled while it is set gets the BASIC path and a
+  // plain sampler2D, then the first shadow pass swaps the type to PCF and
+  // allocates a depth texture with a compare mode — the two meet as
+  // "Mismatch between texture format and sampler type" on every lit draw.
+  // The softness is the PCF kernel's radius instead (`shadowSoftness`).
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setClearColor(opts.clearColor, 1);
   mount.appendChild(renderer.domElement);
   renderer.domElement.style.cssText = 'display:block;width:100%;height:100%;touch-action:none;';
@@ -91,8 +105,6 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   sun.castShadow = true;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 420;
-  sun.shadow.bias = SHADOW_BIAS;
-  sun.shadow.normalBias = SHADOW_NORMAL_BIAS;
   let shadowTexel = 1;
   const fitShadow = (q: QualityProfile) => {
     const size = Math.max(1, q.shadowMapSize);
@@ -101,6 +113,15 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     sun.shadow.camera.left = -sr; sun.shadow.camera.right = sr; sun.shadow.camera.top = sr; sun.shadow.camera.bottom = -sr;
     sun.shadow.camera.updateProjectionMatrix();
     shadowTexel = (sr * 2) / size;
+    sun.shadow.radius = shadowSoftness(q);
+    // Bias in texels, not metres: the old fixed 0.22 m of normal offset and
+    // 0.17 m of depth bias lifted every receiver a third of a metre toward
+    // the sun, so boots, rocks and anything under knee height cast nothing,
+    // and every shadow stood short of what cast it. A texel and a bit, plus
+    // the PCF kernel's own reach, keeps the ground clean under a low sun.
+    const b = shadowBiasFor(shadowTexel, sun.shadow.radius);
+    sun.shadow.normalBias = b.normal;
+    sun.shadow.bias = b.depth;
   };
   fitShadow(quality);
   scene.add(sun);
@@ -148,7 +169,6 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     sun.shadow.map?.dispose();
     sun.shadow.map = null;
     renderer.shadowMap.enabled = q.shadowMapSize > 0;
-    renderer.shadowMap.type = shadowTypeFor(q);
     post.setQuality(q);
     post.setSize(mount.clientWidth, mount.clientHeight);
   });

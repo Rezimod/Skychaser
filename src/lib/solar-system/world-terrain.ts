@@ -7,7 +7,7 @@
 // can hold water.
 
 import * as THREE from 'three';
-import { fbm } from '@/lib/solar-system/moon-terrain';
+import { fbm, ringEdge } from '@/lib/solar-system/moon-terrain';
 import { withHaze } from '@/lib/solar-system/world-earth-haze';
 import type { WorldProfile } from '@/lib/solar-system/world-profiles';
 
@@ -396,7 +396,8 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
     if (G.mesas > 0) hills += terrace(clamp01((fbm(x / 210 + 5, z / 210, 3, seed + 63) - 0.05) / 0.5), G.terraces + 1) * G.mesas * 5 * Math.min(1, (r - 250) / 200);
     const k = Math.min(1, (r - 250) / 90);
     const t = k * k * (3 - 2 * k);
-    return near * (1 - t) + hills * t;
+    // Back down to the datum by the outer edge, where the globe takes over.
+    return (near * (1 - t) + hills * t) * (1 - ringEdge(r));
   };
   const groundAt = (x: number, z: number): number => (Math.hypot(x, z) < 172 && Math.abs(x) < half && Math.abs(z) < half ? heightAt(x, z) : ringHeightAt(x, z));
   const hGeom = new THREE.RingGeometry(172, 1500, lite ? 96 : 160, lite ? 10 : 18);
