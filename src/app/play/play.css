@@ -408,7 +408,9 @@
   width: min(100%, 460px);
   max-height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr;
+  /* minmax(0, …): a plain 1fr row grows with its content, so the body
+     never scrolled and the last setting fell off the bottom of a phone. */
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0;
   justify-items: stretch;
   border: 1px solid var(--menu-line);
@@ -445,7 +447,10 @@
 .game-panel__close::before { content: none; }
 .game-panel__body {
   padding: 16px;
+  /* The last row scrolls clear of the iPhone's home indicator. */
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: grid;
   gap: 16px;
   -webkit-user-select: text;

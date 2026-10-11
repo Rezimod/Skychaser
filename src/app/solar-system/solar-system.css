@@ -803,6 +803,22 @@
   color: var(--hud-accent);
 }
 .flight-hud .flight-hud__help-head button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--hud-dim); }
+/* On a narrow screen the centred card ran under the round keys down the
+   right edge (menu, hide the deck) and took their taps: it keeps clear of
+   that column instead. */
+@media (max-width: 600px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--hud-round) + 10px);
+    width: auto;
+    transform: none;
+    max-height: calc(100% - var(--edge-top) - var(--edge-bottom) - 120px);
+    overflow-y: auto;
+  }
+}
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+}
 .flight-hud__help p { margin: 0; font-size: 11px; line-height: 1.55; color: var(--hud-dim); }
 
 /* ── The dock ── */
@@ -818,6 +834,10 @@
   grid-template-areas: 'land' 'keys' 'console';
 }
 .flight-hud__prompts { grid-area: land; justify-self: start; display: flex; align-items: flex-end; gap: 8px; }
+/* The menu drops down over the deck; on an upright phone it reaches the
+   land and dock prompts, which would draw over its rows. They step aside
+   while it is open. */
+.flight-hud[data-menu='true'] .flight-hud__prompts { visibility: hidden; }
 .flight-hud .flight-hud__dock-key { border-color: rgba(77, 163, 255, 0.55); color: var(--hud-accent); }
 .flight-hud .flight-hud__dock-key[data-on='true'] { background: rgba(77, 163, 255, 0.2); }
 
@@ -3018,7 +3038,7 @@
   .flight-hud .flight-hud__radar { min-width: 44px; min-height: 44px; }
   .flight-hud .flight-hud__key,
   .flight-hud .flight-drive__gear,
-  .flight-hud .flight-hud__card { min-height: 44px; }
+  .flight-hud .flight-hud__card { min-height: 44px; min-width: 44px; }
   .solar-system__dockbtn { min-width: 44px; min-height: 44px; }
   .solar-system__chip.solar-system__ratebtn { min-height: 44px; }
 }

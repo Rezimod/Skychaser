@@ -827,7 +827,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const keysOff = (paused && !editing);
 
   return (
-    <div ref={rootRef} className="flight-hud" data-touch={touch} data-phase={active ? 'flying' : 'idle'} data-paused={paused} data-immersive={immersive} data-editing={editing} data-arrival={arrival !== null} hidden={landed}>
+    <div ref={rootRef} className="flight-hud" data-touch={touch} data-phase={active ? 'flying' : 'idle'} data-paused={paused} data-immersive={immersive} data-menu={menu} data-editing={editing} data-arrival={arrival !== null} hidden={landed}>
       {!active ? (
         <div className="flight-hud__launch">
           <button type="button" className="flight-hud__ship" onClick={() => setShipKind(SHIPS[(SHIPS.indexOf(shipKind) + 1) % SHIPS.length])} aria-label={t('hangar')}>
@@ -901,7 +901,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
 
           {/* Top right: the menu and the eye. Everything else lives in the menu. */}
           <div className="flight-hud__top-keys" {...placed('topkeys')}>
-            <button type="button" className="flight-hud__round" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
+            <button type="button" className="flight-hud__round" onClick={() => { setMenu((m) => !m); setHelp(false); }} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
               {menu ? <X size={19} aria-hidden /> : <Menu size={19} aria-hidden />}
             </button>
             <button type="button" className="flight-hud__round" onClick={() => { setImmersive(true); setMenu(false); }} aria-label={t('hudHide')} title={t('hudHide')}>
