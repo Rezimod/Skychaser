@@ -13,7 +13,7 @@ export const runtime = 'nodejs';
  * chain first: if it arrived, the order is marked paid and the void refused.
  */
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   if (!(await isSkychaserAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

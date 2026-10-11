@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
  * check the draws themselves. Opening twice returns the same cards.
  */
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   const privyId = await verifyPrivy(req);
   if (!privyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

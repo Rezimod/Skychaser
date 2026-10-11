@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
  * its commitment logged here, before any purchase of it can exist.
  */
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   if (!(await isSkychaserAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 

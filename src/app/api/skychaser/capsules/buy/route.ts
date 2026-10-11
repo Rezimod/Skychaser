@@ -28,7 +28,7 @@ const MAX_UNPAID = 2;
  * SOL price.
  */
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   const n = paymentNetworkMisconfig();
   if (n) return n;

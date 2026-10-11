@@ -18,7 +18,7 @@ export const runtime = 'nodejs';
  * revealed — never as a void.
  */
 export async function GET(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   if (!(await isSkychaserAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const db = getDb();
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   if (!(await isSkychaserAdmin(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = (await req.json().catch(() => null)) as { capsuleId?: unknown } | null;

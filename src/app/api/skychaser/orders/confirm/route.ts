@@ -34,7 +34,7 @@ export const runtime = 'nodejs';
  * capsule, logged publicly against it.
  */
 export async function POST(req: NextRequest) {
-  const p = paused();
+  const p = await paused();
   if (p) return p;
   const n = paymentNetworkMisconfig();
   if (n) return n;
