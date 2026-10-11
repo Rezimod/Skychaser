@@ -11,14 +11,14 @@ import { getDb } from '@/lib/db';
 import { CLOUD_LIMIT } from '@/lib/observatory/adapter';
 import { getNode } from '@/lib/observatory/nodes';
 import { isRarity, type Rarity } from '@/lib/rarity';
-import { addDays, tonightView, type TonightView } from '@/lib/skychaser/night';
+import { addDays, tonightView, weekOf, type TonightView } from '@/lib/skychaser/night';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Tonight — the card the Live Telescope will photograph',
-  description: 'One object a night, chosen by the holders among what the Live Telescope can photograph. First light in November.',
+  title: 'Vote — the week’s observation',
+  description: 'One object a week, chosen by the holders among what the Live Telescope can photograph. First light in November.',
 };
 
 const RESULT: Record<TonightView['recent'][number]['result'], string> = {
@@ -29,7 +29,7 @@ const RESULT: Record<TonightView['recent'][number]['result'], string> = {
 
 const rarityOf = (r: string): Rarity => (isRarity(r) ? r : 'common');
 
-export default async function TonightPage() {
+export default async function VotePage() {
   const node = getNode('tbilisi-01')!;
   const now = new Date();
   const db = getDb();
@@ -49,8 +49,16 @@ export default async function TonightPage() {
   const dateOf = (night: string, opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', ...opts }).format(new Date(`${night}T00:00:00Z`));
   const nightLabel = (night: string) => dateOf(night, { day: 'numeric', month: 'long' });
+  const weekLabel = (week: string) => {
+    const end = addDays(week, 6);
+    return week.slice(5, 7) === end.slice(5, 7)
+      ? `${dateOf(week, { day: 'numeric' })}–${nightLabel(end)}`
+      : `${nightLabel(week)} – ${nightLabel(end)}`;
+  };
 
   const d = view?.decided ?? null;
+  const lockOn = view ? dateOf(view.voting.night, { weekday: 'long' }) : '';
+  const weekEnds = d ? addDays(weekOf(d.night), 6) === d.night : false;
   const lastLost = view?.recent.find((r) => r.night === addDays(view.night, -1) && r.result === 'lost') ?? null;
   const candidates = view?.voting.candidates ?? [];
   const cast = candidates.reduce((sum, c) => sum + c.votes, 0);
@@ -62,7 +70,7 @@ export default async function TonightPage() {
 
   const facts: Datum[] = d
     ? [
-        { label: 'Planned', value: d.plannedAt ? localTime(d.plannedAt) : '—' },
+        { label: 'Planned', value: d.plannedAt ? `${dateOf(d.night, { weekday: 'short', day: 'numeric', month: 'short' })} ${localTime(d.plannedAt)}` : '—' },
         { label: 'Cloud', value: d.cloudForecast === null ? '—' : `${d.cloudForecast}%` },
         { label: 'Live Telescope', value: node.status === 'commissioning' ? 'Coming soon' : node.status },
       ]
@@ -83,20 +91,18 @@ export default async function TonightPage() {
         <section className="sd-container sd-top sd-vote-block">
           <Chapter
             n="01"
-            title={`Tonight’s vote · ${nightLabel(view.voting.night)}`}
+            title={`The week’s vote · ${weekLabel(view.voting.week)}`}
             aside={`${cast} weighted ${cast === 1 ? 'vote' : 'votes'}`}
           />
-          {view.voting.carried ? (
-            <p className="sd-note">
-              {view.voting.carried} takes this night, carried from a night lost to cloud. Votes count from the next.
-            </p>
-          ) : candidates.length === 0 ? (
-            <p className="sd-note">Nothing in the set clears the horizon for the Live Telescope that night.</p>
+          {candidates.length === 0 ? (
+            <p className="sd-note">Nothing in the set clears the horizon for the Live Telescope that week.</p>
           ) : (
             <>
-              <p className="sd-strip-note">One vote per holder · every card held adds to it: commons ×1 to ×3, rares ×4, epics and legendaries ×5</p>
+              <p className="sd-strip-note">
+                One vote per holder a week · every card held adds to it: commons ×1 to ×3, rares ×4, epics and legendaries ×5 · the vote locks {dateOf(view.voting.night, { weekday: 'long', day: 'numeric', month: 'long' })} at 13:00 UTC, and the winner is observed on the first clear night of the week
+              </p>
               <SkychaserBallot
-                night={view.voting.night}
+                week={view.voting.week}
                 candidates={candidates.map((c) => ({
                   designation: c.designation,
                   name: c.name,
@@ -117,13 +123,13 @@ export default async function TonightPage() {
 
           <div className="sd-poster__grid">
             <div className="sd-poster__copy">
-              <p className="sd-eyebrow">{d ? 'Tonight’s card' : leading ? (cast ? 'Leading the vote' : 'Highest tonight') : 'Live Telescope'}</p>
+              <p className="sd-eyebrow">{d ? 'This week’s card' : leading ? (cast ? 'Leading the vote' : 'Highest that night') : 'Live Telescope'}</p>
               <p className="sd-lead">{lead ? lead.name : 'A quiet sky.'}</p>
               <p className="sd-poster__sub">
                 {d
                   ? d.basis
                   : lead
-                    ? 'Holders’ votes lock tonight’s card at 13:00 UTC.'
+                    ? `Holders’ votes lock the week’s card on ${lockOn} at 13:00 UTC.`
                     : 'Nothing in the set clears the horizon for the Live Telescope.'}
               </p>
             </div>
@@ -132,7 +138,7 @@ export default async function TonightPage() {
               {facts.length > 0 && <DataRow className="sd-facts" items={facts} />}
               {d && !d.capture && d.cloudForecast !== null && d.cloudForecast > CLOUD_LIMIT && (
                 <p className="sd-alert">
-                  <strong>Cloud is forecast over the {CLOUD_LIMIT}% limit.</strong> If it holds at {d.plannedAt ? localTime(d.plannedAt) : 'the planned hour'}, the night is lost and {d.name} is carried to the next night, if it is up — for up to three nights in a row.
+                  <strong>Cloud is forecast over the {CLOUD_LIMIT}% limit.</strong> If it holds at {d.plannedAt ? localTime(d.plannedAt) : 'the planned hour'}, the night is lost and {weekEnds ? 'the week ends without a photograph.' : `${d.name} is tried again the next night of the week, if it is up.`}
                 </p>
               )}
               {lastLost && (
@@ -173,7 +179,7 @@ export default async function TonightPage() {
         <section className="sd-container sd-chapter-block">
           <Chapter
             n="02"
-            title="Tonight’s sky"
+            title={`The sky on ${nightLabel(view.voting.night)}`}
             aside={`${localTime(view.voting.window.dusk)} – ${localTime(view.voting.window.dawn)}`}
           />
           <TonightSkyChart

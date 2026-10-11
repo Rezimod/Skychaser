@@ -20,7 +20,7 @@ function respond(post: () => Promise<Response>) {
   const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
     init?.method === 'POST'
       ? post()
-      : new Response(JSON.stringify({ night: '2026-09-20', designation: 'SATURN', cast: 2, weight: 2 })),
+      : new Response(JSON.stringify({ week: '2026-09-14', designation: 'SATURN', cast: 2, weight: 2 })),
   );
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -36,7 +36,7 @@ const status = () => host.querySelector('[role="status"]')!.textContent;
 async function mount() {
   host = document.body.appendChild(document.createElement('div'));
   root = createRoot(host);
-  await act(async () => root.render(createElement(SkychaserBallot, { night: '2026-09-20', candidates })));
+  await act(async () => root.render(createElement(SkychaserBallot, { week: '2026-09-14', candidates })));
 }
 
 beforeEach(() => {

@@ -60,7 +60,10 @@ const nextConfig: NextConfig = {
   // orders, wallet/fund, award-stars, redeem-code, stars, club, admin) is reachable from here.
   // The set's page moved from /set/001 to /genesis; old links and search results follow it.
   async redirects() {
-    return [{ source: '/set/001', destination: '/genesis', permanent: true }];
+    return [
+      { source: '/set/001', destination: '/genesis', permanent: true },
+      { source: '/tonight', destination: '/vote', permanent: true },
+    ];
   },
   async rewrites() {
     return {

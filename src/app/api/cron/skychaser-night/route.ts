@@ -7,8 +7,9 @@ import { runNight } from '@/lib/skychaser/night';
 export const runtime = 'nodejs';
 
 /**
- * Closes last night and decides tonight's card. Runs at 13:00 UTC — 17:00 in
- * Tbilisi, before dusk in every season, so the night is known before it starts.
+ * Closes last night and plans tonight for the week's card; on the first night
+ * of a week it decides that card from the holders' votes. Runs at 13:00 UTC —
+ * 17:00 in Tbilisi, before dusk in every season, so the night is known before it starts.
  */
 export async function GET(req: NextRequest) {
   if (!verifyCronSecret(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

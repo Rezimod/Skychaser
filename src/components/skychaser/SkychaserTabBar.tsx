@@ -6,7 +6,7 @@ import { Layers, Moon, Telescope, Wallet } from 'lucide-react';
 
 const TABS = [
   { href: '/genesis', label: 'Genesis', icon: Layers, match: ['/genesis', '/card', '/capsule'] },
-  { href: '/tonight', label: 'Tonight', icon: Moon, match: ['/tonight'] },
+  { href: '/vote', label: 'Vote', icon: Moon, match: ['/vote'] },
   { href: '/node', label: 'Observatory', icon: Telescope, match: ['/node'] },
   { href: '/collection', label: 'Collection', icon: Wallet, match: ['/collection'] },
 ];

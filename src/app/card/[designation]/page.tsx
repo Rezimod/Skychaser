@@ -154,8 +154,8 @@ export default async function CardPage({ params }: { params: Promise<{ designati
             <div className="sd-cardhero__obs">
               <ObservationStatusMark status={seed.observationStatus as ObservationStatus} />
               <span className="sd-data">{card.observability.reason}</span>
-              <Link href="/tonight" className="sd-link sd-data">
-                See tonight’s vote
+              <Link href="/vote" className="sd-link sd-data">
+                See this week’s vote
               </Link>
             </div>
             <div className="sd-cardhero__share">

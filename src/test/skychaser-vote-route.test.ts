@@ -20,7 +20,7 @@ vi.mock('@/lib/skychaser/night', () => ({
   allCards: vi.fn(async () => []),
   castVote: mocks.cast,
   voteWeight: mocks.weight,
-  votingNight: vi.fn(async () => '2026-09-20'),
+  votingWeek: vi.fn(async () => ({ week: '2026-09-14', night: '2026-09-20' })),
 }));
 vi.mock('@/lib/skychaser/target', () => ({ observableTonight: mocks.observable }));
 import { GET, POST } from '@/app/api/skychaser/votes/route';
@@ -51,19 +51,19 @@ it('refuses someone who holds no card', async () => {
   expect(mocks.cast).not.toHaveBeenCalled();
 });
 
-it('refuses a card Live Telescope V1 cannot photograph that night', async () => {
+it('refuses a card Live Telescope V1 cannot photograph that week', async () => {
   mocks.weight.mockResolvedValue(3);
   const res = await vote('M31');
   expect(res.status).toBe(400);
-  expect((await res.json()).error).toBe('M31 cannot be photographed on the night of 2026-09-20.');
+  expect((await res.json()).error).toBe('M31 cannot be photographed in the week of 2026-09-14.');
   expect(mocks.cast).not.toHaveBeenCalled();
 });
 
-it('records a holder’s weighted vote for the voting night', async () => {
+it('records a holder’s weighted vote for the voting week', async () => {
   mocks.weight.mockResolvedValue(7);
   const res = await vote('SATURN');
   expect(res.status).toBe(200);
-  expect(mocks.cast).toHaveBeenCalledWith({}, { wallet: WALLET, cardId: 'c-saturn', night: '2026-09-20', weight: 7 });
+  expect(mocks.cast).toHaveBeenCalledWith({}, { wallet: WALLET, cardId: 'c-saturn', week: '2026-09-14', weight: 7 });
 });
 
 it('refuses a session with no Solana wallet linked', async () => {
@@ -77,5 +77,5 @@ it('tells the holder where their vote is, and what it weighs', async () => {
   mocks.db.mockReturnValue({ select: () => chain });
   const res = await GET(new NextRequest(`http://localhost/api/skychaser/votes?wallet=${WALLET}`));
   expect(res.status).toBe(200);
-  expect(await res.json()).toEqual({ night: '2026-09-20', designation: 'SATURN', cast: 3, weight: 5 });
+  expect(await res.json()).toEqual({ week: '2026-09-14', designation: 'SATURN', cast: 3, weight: 5 });
 });

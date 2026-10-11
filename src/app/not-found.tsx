@@ -14,7 +14,7 @@ export default function NotFound() {
           <div className="sd-links" style={{ justifyContent: 'center' }}>
             <Link href="/genesis" className="sd-chip">Genesis</Link>
             <Link href="/capsules" className="sd-chip">Capsules</Link>
-            <Link href="/tonight" className="sd-chip">Tonight</Link>
+            <Link href="/vote" className="sd-chip">Vote</Link>
           </div>
         </div>
       </section>

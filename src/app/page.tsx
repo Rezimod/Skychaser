@@ -44,7 +44,7 @@ const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
 const PLAN: FlightStep[] = [
   { title: 'Open', text: `${CARDS_PER_TIER === 1 ? 'One sealed card' : `${CARDS_PER_TIER} sealed cards`} in every capsule.`, tag: `Open now · from $${FROM_USD}`, live: true, href: '/genesis' },
-  { title: 'Vote', text: 'Holders choose what the telescope looks at each night.', live: false },
+  { title: 'Vote', text: 'Holders choose what the telescope observes each week.', live: false },
   { title: 'Watch', text: 'Holders of the chosen card watch the telescope live.', live: false },
   { title: 'Claim', text: 'Legendary cards come with a real meteorite you can hold.', live: false },
 ];

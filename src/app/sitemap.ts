@@ -11,7 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/genesis', changeFrequency: 'weekly', priority: 0.9 },
     ...SET_001_CARDS.map((c) => ({ path: `/card/${c.seed.designation}`, changeFrequency: 'weekly' as const, priority: 0.8 })),
     { path: '/capsules', changeFrequency: 'daily', priority: 0.8 },
-    { path: '/tonight', changeFrequency: 'daily', priority: 0.8 },
+    { path: '/vote', changeFrequency: 'daily', priority: 0.8 },
     { path: '/node', changeFrequency: 'weekly', priority: 0.6 },
     { path: '/capsules/log', changeFrequency: 'daily', priority: 0.5 },
     { path: '/contact', changeFrequency: 'monthly', priority: 0.4 },

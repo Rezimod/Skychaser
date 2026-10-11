@@ -106,7 +106,7 @@ export function MissionPanel({ missions, crew, extras, achievements }: MissionPa
               <span>{t(`missions.records.${slug(a.id)}`)}</span>
               <time dateTime={fmtDay(a.at)}>{fmtDay(a.at)}</time>
               {a.detail && (
-                <a href="/tonight" target="_blank" rel="noreferrer">
+                <a href="/vote" target="_blank" rel="noreferrer">
                   {t('missions.records.tonight', { target: t(`missions.observed.names.${a.detail}`) })}
                   <ArrowUpRight size={12} aria-hidden />
                 </a>

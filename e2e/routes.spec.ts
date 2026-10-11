@@ -13,7 +13,7 @@ const ROUTES = [
   '/capsules',
   '/capsules/log',
   '/collection',
-  '/tonight',
+  '/vote',
   '/contact',
   '/terms',
   '/privacy',

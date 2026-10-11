@@ -1,15 +1,17 @@
 /**
- * The night, run once a day before dusk.
+ * The week's observation, run once a day before dusk.
  *
- * First last night is closed: if it ended without a photograph and the sky
- * over the site was above the cloud limit at the hour the card was planned,
- * the night is recorded as lost, with the figure. Then tonight is decided,
- * once: a card carried from a night lost to cloud takes it if its object is
- * still up, for at most MAX_CARRIED_NIGHTS nights in a row; otherwise the holders' weighted votes among the cards Live Telescope V1 can
- * photograph tonight; with no votes, the object standing highest.
+ * Holders vote for a week, Monday to Sunday. First last night is closed: if it
+ * ended without a photograph and the sky over the site was above the cloud
+ * limit at the hour the card was planned, the night is recorded as lost, with
+ * the figure. Then tonight is planned, once. The first night of a week decides
+ * the week's card: the holders' weighted votes among the cards Live Telescope V1
+ * can photograph that night; with no votes, the object standing highest. Every
+ * later night of the week goes to the same card until it is photographed, then
+ * the week is done.
  */
 
-import { and, desc, eq, isNull, lt, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, isNull, lt, lte, sql } from 'drizzle-orm'
 import { card, cardVote, edition, nightlyTarget, observatoryCapture } from '@/lib/schema'
 import { fetchOpenMeteo } from '@/lib/open-meteo'
 import { CLOUD_LIMIT } from '@/lib/observatory/adapter'
@@ -24,9 +26,6 @@ import { observableTonight, siteDarkWindow, siteNightDate, standing, type Observ
 
 type CardRow = typeof card.$inferSelect
 type NightRow = typeof nightlyTarget.$inferSelect
-
-/** How many nights in a row a card lost to cloud keeps the night before the vote decides again. PROVISIONAL (Gate 4). */
-export const MAX_CARRIED_NIGHTS = 3
 
 /** Cloud cover at the site for the hour containing `at`, percent, or null when not known. */
 export type CloudAt = (node: ObservatoryNode, at: Date) => Promise<number | null>
@@ -56,6 +55,11 @@ export function addDays(night: string, days: number): string {
   return new Date(Date.parse(`${night}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
 }
 
+/** The Monday that starts the week `night` falls in. */
+export function weekOf(night: string): string {
+  return addDays(night, -((new Date(`${night}T00:00:00Z`).getUTCDay() + 6) % 7))
+}
+
 export async function allCards(db: Db): Promise<CardRow[]> {
   return db.select().from(card)
 }
@@ -65,10 +69,25 @@ export async function nightRow(db: Db, night: string): Promise<NightRow | null> 
   return row ?? null
 }
 
-/** The night a vote cast now counts for: tonight, or tomorrow once tonight is decided. */
-export async function votingNight(db: Db, node: ObservatoryNode, now: Date): Promise<string> {
+/** The planned nights of the week starting `week`, up to and including `last`, earliest first. */
+async function weekNights(db: Db, week: string, last: string): Promise<NightRow[]> {
+  return db
+    .select()
+    .from(nightlyTarget)
+    .where(and(gte(nightlyTarget.nightDate, week), lte(nightlyTarget.nightDate, last)))
+    .orderBy(asc(nightlyTarget.nightDate))
+}
+
+/**
+ * The week a vote cast now counts for — this week until its card is decided,
+ * then next week — and the first night that vote can still decide, which is
+ * the night candidates are judged on.
+ */
+export async function votingWeek(db: Db, node: ObservatoryNode, now: Date): Promise<{ week: string; night: string }> {
   const tonight = siteNightDate(node.timezone, now)
-  return (await nightRow(db, tonight)) ? addDays(tonight, 1) : tonight
+  const week = weekOf(tonight)
+  const decided = (await weekNights(db, week, addDays(week, 6))).length > 0
+  return decided ? { week: addDays(week, 7), night: addDays(week, 7) } : { week, night: tonight }
 }
 
 /** A holder's vote weight: the vote power of every edition they hold, summed (perks.ts). */
@@ -82,19 +101,19 @@ export async function voteWeight(db: Db, wallet: string): Promise<number> {
   return rows.reduce((sum, r) => sum + (isRarity(r.rarity) ? votePower(r.designation, r.rarity) * Number(r.n) : 0), 0)
 }
 
-/** Weighted votes per card id for a night. */
-export async function tallies(db: Db, night: string): Promise<Map<string, number>> {
+/** Weighted votes per card id for a week. Votes are kept under the week's Monday. */
+export async function tallies(db: Db, week: string): Promise<Map<string, number>> {
   const rows = await db
     .select({ cardId: cardVote.cardId, total: sql<number>`sum(${cardVote.weight})::int` })
     .from(cardVote)
-    .where(eq(cardVote.nightDate, night))
+    .where(eq(cardVote.nightDate, week))
     .groupBy(cardVote.cardId)
   return new Map(rows.map((r) => [r.cardId, Number(r.total)]))
 }
 
-/** Cast, or change, a holder's vote for a night. */
-export async function castVote(db: Db, input: { wallet: string; cardId: string; night: string; weight: number }) {
-  const values = { wallet: input.wallet, cardId: input.cardId, nightDate: input.night, weight: input.weight }
+/** Cast, or change, a holder's vote for a week. */
+export async function castVote(db: Db, input: { wallet: string; cardId: string; week: string; weight: number }) {
+  const values = { wallet: input.wallet, cardId: input.cardId, nightDate: input.week, weight: input.weight }
   await db
     .insert(cardVote)
     .values(values)
@@ -105,28 +124,16 @@ export async function castVote(db: Db, input: { wallet: string; cardId: string; 
 }
 
 /**
- * The card a night goes to, and why, in words.
- *
- * `carried` is the card of a night lost to cloud; it takes this night if its
- * object is up. Otherwise the most weighted votes; a tie, or no votes at all,
- * goes to the object standing highest.
+ * The card a week goes to, and why, in words: the most weighted votes; a tie,
+ * or no votes at all, goes to the object standing highest.
  */
-export function chooseNight<C extends CardRow>(
+export function chooseWeek<C extends CardRow>(
   observable: Observable<C>[],
   votes: Map<string, number>,
   node: ObservatoryNode,
-  night: string,
-  carried: { cardId: string; night: string } | null,
+  week: string,
 ): { chosen: Observable<C>; basis: string } | null {
   if (observable.length === 0) return null
-
-  const rolled = carried && observable.find((o) => o.card.id === carried.cardId)
-  if (rolled) {
-    return {
-      chosen: rolled,
-      basis: `${rolled.card.designation}: carried from the night of ${carried.night}, which was lost to cloud. ${standing(rolled, node)}.`,
-    }
-  }
 
   const cast = observable.reduce((sum, o) => sum + (votes.get(o.card.id) ?? 0), 0)
   // `observable` is highest first, so the first of the most-voted is also the highest of them.
@@ -134,8 +141,8 @@ export function chooseNight<C extends CardRow>(
   const own = votes.get(chosen.card.id) ?? 0
   const basis =
     cast === 0
-      ? `${chosen.card.designation}: no holder voted for the night of ${night}. ${standing(chosen, node)}, the highest of ${observable.length} observable ${observable.length === 1 ? 'card' : 'cards'}.`
-      : `${chosen.card.designation}: ${own} of ${cast} weighted votes cast by holders for the night of ${night}. ${standing(chosen, node)}.`
+      ? `${chosen.card.designation}: no holder voted for the week of ${week}. ${standing(chosen, node)}, the highest of ${observable.length} observable ${observable.length === 1 ? 'card' : 'cards'}.`
+      : `${chosen.card.designation}: ${own} of ${cast} weighted votes cast by holders for the week of ${week}. ${standing(chosen, node)}.`
   return { chosen, basis }
 }
 
@@ -161,32 +168,10 @@ export async function closeNight(db: Db, node: ObservatoryNode, night: string, n
 }
 
 /**
- * The card carried into the night after `nights[0]`, or null. `nights` runs
- * most recent first. The card of a night lost to cloud is carried while it has
- * been lost no more than MAX_CARRIED_NIGHTS nights in a row.
+ * Close last night, then plan tonight. Safe to run twice. Tonight goes to the
+ * week's card while the week has no photograph and its object is up; the first
+ * night of a week decides that card from the votes.
  */
-export function carryFrom(nights: NightRow[]): { cardId: string; night: string } | null {
-  const last = nights[0]
-  if (!last?.lostAt) return null
-  let streak = 0
-  for (const n of nights) {
-    if (!n.lostAt || n.cardId !== last.cardId || n.nightDate !== addDays(last.nightDate, -streak)) break
-    streak++
-  }
-  return streak <= MAX_CARRIED_NIGHTS ? { cardId: last.cardId, night: last.nightDate } : null
-}
-
-/** The nights ending with `night`, most recent first, enough to count a carry. */
-async function nightsTo(db: Db, night: string): Promise<NightRow[]> {
-  return db
-    .select()
-    .from(nightlyTarget)
-    .where(lte(nightlyTarget.nightDate, night))
-    .orderBy(desc(nightlyTarget.nightDate))
-    .limit(MAX_CARRIED_NIGHTS + 1)
-}
-
-/** Close last night, then decide tonight. Safe to run twice. */
 export async function runNight(db: Db, node: ObservatoryNode, now: Date, cloudAt: CloudAt = openMeteoCloudAt) {
   const tonight = siteNightDate(node.timezone, now)
   const last = await closeNight(db, node, addDays(tonight, -1), now, cloudAt)
@@ -194,9 +179,23 @@ export async function runNight(db: Db, node: ObservatoryNode, now: Date, cloudAt
   const existing = await nightRow(db, tonight)
   if (existing) return { night: tonight, last, decided: existing, fresh: false }
 
+  const week = weekOf(tonight)
+  const earlier = await weekNights(db, week, addDays(tonight, -1))
+  if (earlier.some((n) => n.captureId)) return { night: tonight, last, decided: null, fresh: false }
+
   const observable = observableTonight(await allCards(db), node, tonight)
-  const carried = last?.lostAt ? carryFrom(await nightsTo(db, last.nightDate)) : null
-  const choice = chooseNight(observable, await tallies(db, tonight), node, tonight, carried)
+  let choice: { chosen: (typeof observable)[number]; basis: string } | null
+  if (earlier.length) {
+    const kept = observable.find((o) => o.card.id === earlier[0].cardId)
+    choice = kept
+      ? {
+          chosen: kept,
+          basis: `${kept.card.designation}: the week's card, chosen on the night of ${earlier[0].nightDate} and not photographed yet. ${standing(kept, node)}.`,
+        }
+      : null
+  } else {
+    choice = chooseWeek(observable, await tallies(db, week), node, week)
+  }
   if (!choice) return { night: tonight, last, decided: null, fresh: false }
 
   const cloudForecast = await cloudAt(node, choice.chosen.at)
@@ -212,7 +211,9 @@ export async function runNight(db: Db, node: ObservatoryNode, now: Date, cloudAt
 
 export type TonightView = {
   night: string
+  /** This week's card: the night it is planned or was photographed on. */
   decided: {
+    night: string
     designation: string
     name: string
     rarity: string
@@ -223,9 +224,10 @@ export type TonightView = {
     capture: { capturedAt: string; nodeId: string; provenance: string; exposureSec: number; subs: number; opticalTrain: string } | null
   } | null
   voting: {
+    /** The Monday of the week the vote is for. */
+    week: string
+    /** The first night that vote can still decide: candidates are the objects up that night. */
     night: string
-    /** The card that takes the night regardless of votes, carried from a night lost to cloud. */
-    carried: string | null
     /** The dark window of that night — the span the sky chart draws. */
     window: { dusk: string; dawn: string } | null
     candidates: Array<{
@@ -255,13 +257,15 @@ function trackOf(targetId: string, node: ObservatoryNode, dusk: Date | null, daw
   return out
 }
 
-/** Everything /tonight prints, in one read. */
+/** Everything /vote prints, in one read. */
 export async function tonightView(db: Db, node: ObservatoryNode, now: Date): Promise<TonightView> {
   const night = siteNightDate(node.timezone, now)
   const cards = await allCards(db)
   const byId = new Map(cards.map((c) => [c.id, c]))
 
-  const row = await nightRow(db, night)
+  // The week's card: the night it was photographed, else its latest planned night.
+  const planned = await weekNights(db, weekOf(night), night)
+  const row = planned.find((n) => n.captureId) ?? planned.at(-1) ?? null
   let decided: TonightView['decided'] = null
   if (row) {
     const c = byId.get(row.cardId)
@@ -269,6 +273,7 @@ export async function tonightView(db: Db, node: ObservatoryNode, now: Date): Pro
       ? await db.select().from(observatoryCapture).where(eq(observatoryCapture.id, row.captureId))
       : []
     decided = {
+      night: row.nightDate,
       designation: c?.designation ?? '—',
       name: c?.name ?? '—',
       rarity: c?.rarity ?? 'common',
@@ -289,11 +294,10 @@ export async function tonightView(db: Db, node: ObservatoryNode, now: Date): Pro
     }
   }
 
-  const vNight = row ? addDays(night, 1) : night
-  const before = carryFrom(await nightsTo(db, addDays(vNight, -1)))
-  const votes = await tallies(db, vNight)
+  const vote = await votingWeek(db, node, now)
+  const votes = await tallies(db, vote.week)
+  const vNight = vote.night
   const observable = observableTonight(cards, node, vNight)
-  const carriedCard = before ? observable.find((o) => o.card.id === before.cardId) : undefined
 
   const recent = await recentNights(db, night)
   const dark = siteDarkWindow(node, vNight)
@@ -301,8 +305,8 @@ export async function tonightView(db: Db, node: ObservatoryNode, now: Date): Pro
     night,
     decided,
     voting: {
+      week: vote.week,
       night: vNight,
-      carried: carriedCard?.card.designation ?? null,
       window: dark.duskStart && dark.dawnEnd ? { dusk: dark.duskStart.toISOString(), dawn: dark.dawnEnd.toISOString() } : null,
       candidates: observable.map((o) => ({
         designation: o.card.designation,
@@ -324,7 +328,7 @@ export async function tonightView(db: Db, node: ObservatoryNode, now: Date): Pro
   }
 }
 
-/** The nights before `night`, most recent first — the record /tonight prints beneath the night. */
+/** The nights before `night`, most recent first — the record /vote prints beneath the vote. */
 export async function recentNights(db: Db, night: string, limit = 7) {
   const rows = await db
     .select({ night: nightlyTarget, designation: card.designation, name: card.name })

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const LINKS = [
   { href: '/genesis', label: 'Genesis', match: ['/genesis', '/card', '/capsule'] },
-  { href: '/tonight', label: 'Tonight', match: ['/tonight'] },
+  { href: '/vote', label: 'Vote', match: ['/vote'] },
   { href: '/node', label: 'Observatory', match: ['/node'] },
 ];
 

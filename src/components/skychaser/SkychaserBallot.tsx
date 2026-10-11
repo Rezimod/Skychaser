@@ -12,11 +12,11 @@ export type BallotCandidate = { designation: string; name: string; rarity: strin
 type Mine = { designation: string | null; weight: number };
 
 /**
- * The night's ballot. A holder's vote shows at once — their row selected, the
+ * The week's ballot. A holder's vote shows at once — their row selected, the
  * counts and bars moved by their weight — and is put back if the vote is not
  * recorded. Casting again for another card moves the vote.
  */
-export default function SkychaserBallot({ night, candidates }: { night: string; candidates: BallotCandidate[] }) {
+export default function SkychaserBallot({ week, candidates }: { week: string; candidates: BallotCandidate[] }) {
   const { getAccessToken, login } = usePrivy();
   const { authenticated, ready, address } = useSkychaserHolder();
   const [tally, setTally] = useState<Record<string, number>>(() => Object.fromEntries(candidates.map((c) => [c.designation, c.votes])));
@@ -47,16 +47,16 @@ export default function SkychaserBallot({ night, candidates }: { night: string; 
           headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
         });
         if (!res.ok || !live) return;
-        const data = (await res.json()) as { night: string; designation: string | null; cast: number; weight: number };
+        const data = (await res.json()) as { week: string; designation: string | null; cast: number; weight: number };
         if (!live || voted.current) return;
         setPower(data.weight);
-        if (data.night === night && data.designation) setMine({ designation: data.designation, weight: data.cast });
+        if (data.week === week && data.designation) setMine({ designation: data.designation, weight: data.cast });
       } catch {}
     })();
     return () => {
       live = false;
     };
-  }, [signedIn, address, night]);
+  }, [signedIn, address, week]);
 
   const moved = (base: Record<string, number>, from: Mine | null, to: string, weight: number) => {
     const next = { ...base };

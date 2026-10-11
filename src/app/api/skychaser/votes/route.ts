@@ -6,17 +6,17 @@ import { paused } from '@/lib/kill-switch';
 import { getNode } from '@/lib/observatory/nodes';
 import { card, cardVote } from '@/lib/schema';
 import { skychaserVoteRateLimit } from '@/lib/rate-limit';
-import { allCards, castVote, voteWeight, votingNight } from '@/lib/skychaser/night';
+import { allCards, castVote, voteWeight, votingWeek } from '@/lib/skychaser/night';
 import { holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-guards';
 import { observableTonight } from '@/lib/skychaser/target';
 
 export const runtime = 'nodejs';
 
 /**
- * A holder's vote for the night's card. It counts for tonight until tonight is
- * decided, then for tomorrow; casting again changes it. Only a card Live Telescope V1
- * can photograph that night can be voted for, and the weight is fixed now,
- * from the editions the holder holds.
+ * A holder's vote for the week's card. It counts for this week until the
+ * week's card is decided, then for next week; casting again changes it. Only a
+ * card Live Telescope V1 can photograph on the first night the vote decides can
+ * be voted for, and the weight is fixed now, from the editions the holder holds.
  */
 export async function POST(req: NextRequest) {
   const p = await paused();
@@ -42,17 +42,17 @@ export async function POST(req: NextRequest) {
   const weight = await voteWeight(db, walletAddress);
   if (weight === 0) return NextResponse.json({ error: 'Only a holder of at least one card can vote.' }, { status: 403 });
 
-  const night = await votingNight(db, node, new Date());
+  const { week, night } = await votingWeek(db, node, new Date());
   const target = observableTonight(await allCards(db), node, night).find((o) => o.card.designation === designation);
   if (!target) {
-    return NextResponse.json({ error: `${designation} cannot be photographed on the night of ${night}.` }, { status: 400 });
+    return NextResponse.json({ error: `${designation} cannot be photographed in the week of ${week}.` }, { status: 400 });
   }
 
-  await castVote(db, { wallet: walletAddress, cardId: target.card.id, night, weight });
-  return NextResponse.json({ ok: true, night, designation, weight });
+  await castVote(db, { wallet: walletAddress, cardId: target.card.id, week, weight });
+  return NextResponse.json({ ok: true, week, designation, weight });
 }
 
-/** The holder's vote for the voting night, if any, with the weight it was cast at, and the weight a vote of theirs carries now. */
+/** The holder's vote for the voting week, if any, with the weight it was cast at, and the weight a vote of theirs carries now. */
 export async function GET(req: NextRequest) {
   const privyId = await verifyPrivy(req);
   if (!privyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -61,13 +61,13 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
 
-  const night = await votingNight(db, getNode('tbilisi-01')!, new Date());
+  const { week } = await votingWeek(db, getNode('tbilisi-01')!, new Date());
   const [mine] = await db
     .select({ designation: card.designation, weight: cardVote.weight })
     .from(cardVote)
     .innerJoin(card, eq(card.id, cardVote.cardId))
-    .where(and(eq(cardVote.wallet, walletAddress), eq(cardVote.nightDate, night)))
+    .where(and(eq(cardVote.wallet, walletAddress), eq(cardVote.nightDate, week)))
     .limit(1);
   const weight = await voteWeight(db, walletAddress);
-  return NextResponse.json({ night, designation: mine?.designation ?? null, cast: mine?.weight ?? 0, weight });
+  return NextResponse.json({ week, designation: mine?.designation ?? null, cast: mine?.weight ?? 0, weight });
 }
