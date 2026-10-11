@@ -13,6 +13,7 @@ import { makeLightPool, type LightPool } from '@/lib/solar-system/moon-lights';
 import { compileFor, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
 import { projectSunDirection, type SunScreen } from '@/lib/solar-system/post-flare';
 import { getSettings } from '@/game/settings';
+import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { currentQuality, onQualityChange, pixelRatioFor, stepQualityDown, type QualityProfile } from '@/game/quality';
 
 export interface SurfaceHostOptions {
@@ -307,6 +308,11 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         for (const l of lightPool.lights) l.dispose();
         post.dispose();
         scene.environment?.dispose();
+        // The soft sprite is one texture for the whole page: each renderer
+        // that uploads it hangs a dispose listener on it, and that listener
+        // keeps this whole renderer reachable after the surface is gone. Its
+        // dispose frees only this context's copy; the next scene re-uploads.
+        softSpriteTexture().dispose();
         renderer.dispose();
         // Give the context back now rather than when the canvas is collected:
         // the next surface and the orrery each want one of their own.
