@@ -81,7 +81,8 @@
 .sdo-head .sd-bar__links { grid-area: auto; display: flex; gap: 26px; margin: 0; border: 0; }
 .sdo-head .sd-navlink { font: 500 15px/1 var(--o-cond); letter-spacing: .12em; text-transform: uppercase; padding: 8px 0; color: var(--o-ink-3); border-bottom: 2px solid transparent; }
 .sdo-head .sd-navlink:hover { color: var(--o-ink); }
-.sdo-head .sd-navlink[aria-current='page'] { color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, .35); border-bottom-color: var(--o-hal); }
+.sdo-head .sd-navlink[aria-current='page'] { color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, .35); }
+.sdo-head .sd-navlink::after { display: none; }
 .sdo-head__right { display: flex; align-items: center; gap: 16px; }
 .sdo-clocks { display: flex; gap: 16px; padding: 6px 14px; border-radius: 8px; background: var(--o-ticks), rgba(0, 0, 0, .45); border: 1px solid var(--o-line); }
 .sdo-clocks > span { display: flex; flex-direction: column; gap: 4px; }
@@ -204,14 +205,11 @@
 
 /* view */
 .sdo-view { position: relative; flex-grow: 1; min-height: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--o-line-hi); background: #040404; }
-.sdo-view { box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), 0 0 80px -30px rgba(227, 72, 44, .55), 0 40px 90px -40px rgba(0,0,0,.95); transition: box-shadow 400ms ease-out; }
+.sdo-view { box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), 0 40px 90px -40px rgba(0,0,0,.95); transition: box-shadow 400ms ease-out; }
 .sdo-view::after { content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: 3;
-  background: var(--o-ticks), conic-gradient(from var(--sdo-a, 0deg), transparent 0 60%, rgba(227, 72, 44, .8) 74%, rgba(255, 255, 255, .6) 82%, transparent 92%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
-  animation: sdo-orbit 8s linear infinite; }
-@property --sdo-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
-@keyframes sdo-orbit { to { --sdo-a: 360deg; } }
-.sdo-view.is-go { box-shadow: 0 0 0 1px rgba(226, 184, 90, .6), 0 0 90px -10px rgba(226, 184, 90, .6), 0 40px 90px -40px rgba(0,0,0,.95); }
+  background: var(--o-ticks);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.sdo-view.is-go { box-shadow: 0 0 0 1px rgba(226, 184, 90, .35), 0 40px 90px -40px rgba(0,0,0,.95); }
 .sdo-view.is-full { position: fixed; inset: 0; z-index: 40; border-radius: 0; }
 .sdo-view__feed { position: absolute; inset: 0; }
 .sdo-view__feed { overflow: hidden; }
@@ -353,7 +351,7 @@
 @keyframes sdo-spin { to { transform: rotate(360deg); } }
 @keyframes sdo-blink { 50% { opacity: .3; } }
 .sdo-blink { animation: sdo-blink 1.1s steps(2) infinite; }
-@media (prefers-reduced-motion: reduce) { .sdo-fs.is-now .sdo-fs__dot, .sdo-spin, .sdo-blink, .sdo-atmo__aurora, .sdo-view::after { animation: none; } .sdo-art { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .sdo-fs.is-now .sdo-fs__dot, .sdo-spin, .sdo-blink, .sdo-atmo__aurora { animation: none; } .sdo-art { transition: none; } }
 
 /* ── narrower desks ─────────────────────────────────────────── */
 @media (max-width: 1440px) {
@@ -467,6 +465,9 @@
 /* A photograph on black, screened onto the live star field, a little smaller than the field, with the air moving over it. */
 .sdo-art--photo { display: grid; place-items: center; mix-blend-mode: screen; }
 .sdo-art--photo img { width: auto; height: auto; max-width: 92%; max-height: 96%; object-fit: contain; filter: contrast(1.08) saturate(.92); }
+.sdo-art--photo.is-scope img { width: 22%; max-width: none; max-height: none; filter: none; }
+/* Sky glow: a real camera never records pure black; the darkest sky lifts to a dim blue-grey. */
+.sdo-skyglow { position: absolute; inset: 0; background: #1b1a24; mix-blend-mode: lighten; pointer-events: none; }
 .sdo-art.is-pan { transition: none; }
 .sdo-view__feed { transition: filter .6s; }
 /* The field streaming past while the mount slews; it covers the live feed until the axes stop. */

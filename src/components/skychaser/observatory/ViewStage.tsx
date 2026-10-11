@@ -9,6 +9,8 @@ export type Train = 'reducer' | 'native' | 'barlow2';
 export const TRAIN_K: Record<Train, number> = { reducer: 0.7, native: 1, barlow2: 1.9 };
 /** On target the camera runs planetary exposures: the sky goes black and only the stars stay. */
 export const LOCKED_FEED_FILTER = 'contrast(1.35) brightness(.9)';
+/** What a backyard telescope actually shows: small, soft and warm, not the space-telescope photo on the card. */
+export const SCOPE_VIEW: Record<string, string> = { SATURN: '/cards/scope/saturn.webp?v=1' };
 const TRAIN_LABEL: Record<Train, [string, string]> = { reducer: ['0.63×', 'Focal reducer'], native: ['1×', 'Native'], barlow2: ['2×', 'Barlow'] };
 
 const RULER = (() => {
@@ -28,14 +30,7 @@ function Reticle() {
   return (
     <svg className="sdo-overlay" viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       <g fill="none">
-        <circle cx="450" cy="300" r="238" stroke="rgba(244, 244, 242, .22)" strokeDasharray="1 5" />
-        <g className="sdo-spin">
-          <circle cx="450" cy="300" r="258" stroke="rgba(227, 72, 44, .35)" strokeDasharray="40 14 4 14" />
-        </g>
-        <circle cx="450" cy="300" r="112" stroke="rgba(226, 184, 90, .55)" />
-        <path d="M450 40v90M450 470v90M140 300h150M610 300h150" stroke="rgba(244, 244, 242, .3)" />
-        <path d="M338 188h-22v22M562 188h22v22M338 412h-22v-22M562 412h22v-22" stroke="#b8321f" strokeWidth="1.8" />
-        <path d="M444 300h12M450 294v12" stroke="#e2b85a" strokeWidth="1.4" />
+        <path d="M450 40v160M450 400v160M120 300h200M580 300h200" stroke="rgba(244, 244, 242, .22)" vectorEffect="non-scaling-stroke" />
       </g>
     </svg>
   );
@@ -68,6 +63,8 @@ export type ViewStageProps = {
   idle: { title: string; text: string } | null;
   /** The object in the eyepiece: its photograph, or the drawn plate where there is none. */
   objectSrc: string | null;
+  /** objectSrc is a true-scale telescope view, drawn small in the field. */
+  scope: boolean;
 };
 
 function ViewStage(p: ViewStageProps) {
@@ -110,11 +107,12 @@ function ViewStage(p: ViewStageProps) {
       <div className="sdo-view__feed" ref={p.viewRef} style={feedStyle}>{p.feed}</div>
       {p.pan && p.art === 'pan' && <SlewField pan={p.pan} artRef={artRef} />}
       {p.objectSrc && p.art !== 'none' && (
-        <div ref={artRef} className={`sdo-art sdo-art--photo${p.art === 'pan' ? ' is-pan' : ''}`} style={artStyle}>
+        <div ref={artRef} className={`sdo-art sdo-art--photo${p.scope ? ' is-scope' : ''}${p.art === 'pan' ? ' is-pan' : ''}`} style={artStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={p.objectSrc} alt="" />
         </div>
       )}
+      {p.art !== 'none' && <div className="sdo-skyglow" />}
       {p.reticle && p.art !== 'none' && <Reticle />}
       <svg className="sdo-overlay" viewBox="0 0 900 600" preserveAspectRatio="none" aria-hidden="true">
         <path d={RULER} stroke="rgba(244, 244, 242, .35)" strokeWidth="1" vectorEffect="non-scaling-stroke" />

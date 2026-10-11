@@ -21,7 +21,7 @@ import { Camera, FrameThumbs, Frames, HandControl, Pointing, QuickStart, Session
 import { photoFor } from '@/lib/skychaser/photos';
 import { altitudePath, bestOf, cardForTarget, clock, nightSpan, plateArt, settleSkyClock, skyNow } from './sky';
 import type { SlewPan } from './SlewField';
-import ViewStage, { LOCKED_FEED_FILTER, TRAIN_K, type Train } from './ViewStage';
+import ViewStage, { LOCKED_FEED_FILTER, SCOPE_VIEW, TRAIN_K, type Train } from './ViewStage';
 import './console.css';
 
 export type TonightCard = { designation: string; name: string; targetId: string; rarity: Rarity } | null;
@@ -428,7 +428,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       let composed = false;
       if (plate) {
         try {
-          const real = photoFor(plate)?.file;
+          const real = SCOPE_VIEW[plate] ?? photoFor(plate)?.file;
           const img = await loadImage(real ?? plateArt(plate, 'object'));
           if (real) {
             // A photograph on black, screened onto the stars exactly where and as large as the eyepiece shows it.
@@ -450,6 +450,10 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
           /* the plate would not draw; the frame keeps the sky alone */
         }
       }
+      ctx.globalCompositeOperation = 'lighten';
+      ctx.fillStyle = '#1b1a24';
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.globalCompositeOperation = 'source-over';
       const toBlob = (c: HTMLCanvasElement) => new Promise<Blob | null>((r) => c.toBlob(r, 'image/png'));
       let source = out;
       let blob: Blob | null = null;
@@ -814,7 +818,8 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
             onFull={() => setFullView(!full)}
             status={{ text: statusText, go: onTarget || stacking, blink: inGoto || connecting || park === 'running' || cal === 'running' }}
             hudLive={[cameraOn ? 'Live' : 'Standby', stationName, opticsLine]}
-            objectSrc={plate ? photoFor(plate)?.file ?? plateArt(plate, 'object') : null}
+            objectSrc={plate ? SCOPE_VIEW[plate] ?? photoFor(plate)?.file ?? plateArt(plate, 'object') : null}
+            scope={!!plate && plate in SCOPE_VIEW}
             hudTarget={target && targetNow ? [shortName(target), `RA ${raShort(targetNow.raHours)} · DEC ${decShort(targetNow.decDeg)}`] : null}
             hudField={[fovText, scaleText]}
             idle={idle}
