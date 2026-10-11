@@ -7,6 +7,9 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const buildId = (process.env.VERCEL_GIT_COMMIT_SHA ?? '').slice(0, 12) || String(Date.now());
 
 const nextConfig: NextConfig = {
+  // Several dev servers on one checkout (parallel test harnesses) must not
+  // share a build folder: each names its own. Unset, it is the usual .next.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   compress: true,
   generateBuildId: () => buildId,
   env: { NEXT_PUBLIC_BUILD_ID: buildId },

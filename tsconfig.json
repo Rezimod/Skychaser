@@ -41,6 +41,6 @@
     "drizzle.config.ts",
     "apps/**",
     "scripts/**",
-    "anchor/**"
+    "anchor/**", ".next-*/**"
   ]
 }
