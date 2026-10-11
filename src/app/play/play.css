@@ -17,6 +17,7 @@
   position: fixed;
   inset: 0;
   overflow: hidden;
+  touch-action: none;
   background: #050812;
 }
 .game-shell__loader { z-index: 180; }
@@ -451,6 +452,7 @@
   padding-bottom: max(16px, env(safe-area-inset-bottom));
   overflow-y: auto;
   overscroll-behavior: contain;
+  touch-action: pan-y;
   display: grid;
   gap: 16px;
   -webkit-user-select: text;
@@ -544,3 +546,22 @@
 .game-controls__binds .moon-hud__bind { font: 500 13px/1.45 var(--font-body, system-ui), sans-serif; color: rgba(186, 214, 240, 0.9); margin: 0; }
 .game-controls__binds .moon-hud__bind kbd { font: 600 12px/1 var(--font-mono, ui-monospace), monospace; padding: 4px 7px; border-radius: 5px; border: 1px solid rgba(140, 180, 220, 0.3); background: rgba(6, 10, 20, 0.6); color: #f4f8ff; }
 .game-controls__binds .moon-hud__bind .moon-hud__pad { color: rgba(186, 206, 232, 0.62); }
+
+/* A phone on its side: the title and the menus fit the short screen, and
+   scroll if a language runs long, instead of losing their last key. */
+@media (max-height: 520px) {
+  .game-menu { overflow-y: auto; place-items: safe center; touch-action: pan-y; }
+  .game-menu .game-menu__orrery { display: none; }
+  .game-title__mark { margin-top: 0; }
+  .game-menu__panel { gap: 14px; }
+  .game-menu__item { min-height: 44px; padding-block: 6px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-title .game-menu__panel { width: min(100%, 720px); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 28px; }
+  .game-title__mark { text-align: left; justify-self: start; }
+  .game-title__name { font-size: clamp(24px, 4.2vw, 34px); }
+  .game-menu__list { gap: 6px; }
+}
+@media (pointer: coarse) {
+  .game-pause { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(5, 8, 18, 0.82); }
+}

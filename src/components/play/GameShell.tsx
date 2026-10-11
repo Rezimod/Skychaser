@@ -134,11 +134,11 @@ export default function GameShell() {
   }, [state]);
 
   const start = (to: GameScene) => {
-    void enterFullscreen(rootRef.current ?? undefined);
+    void enterFullscreen();
     game.start(to);
   };
   const resume = () => {
-    void enterFullscreen(rootRef.current ?? undefined);
+    void enterFullscreen();
     game.resume();
   };
   const inWorld = state !== 'boot' && state !== 'title' && state !== 'exiting';

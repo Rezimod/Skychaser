@@ -203,22 +203,45 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const zoomRef = useRef(1);
   const landscapeRef = useRef(landscape);
   landscapeRef.current = landscape;
+  const onLandscapeRef = useRef(onLandscape);
+  onLandscapeRef.current = onLandscape;
   const landedRef = useRef(landed);
   landedRef.current = landed;
 
+  // A phone that already lies on its side needs no turned deck: the toggle
+  // is only offered upright, and a real turn clears it.
+  const [upright, setUpright] = useState(true);
   useEffect(() => {
-    setTouch(window.matchMedia('(pointer: coarse)').matches);
+    const coarse = window.matchMedia('(pointer: coarse)');
+    setTouch(coarse.matches);
     setLayout(loadLayout());
+    const portrait = window.matchMedia('(orientation: portrait)');
+    const onTurn = () => {
+      setUpright(portrait.matches);
+      if (!portrait.matches && landscapeRef.current) onLandscapeRef.current(false);
+    };
+    onTurn();
+    // A tablet with a trackpad reports a fine pointer; the first finger on
+    // the glass still brings the touch deck up.
+    const onFinger = (e: PointerEvent) => { if (e.pointerType === 'touch') setTouch(true); };
+    portrait.addEventListener('change', onTurn);
+    window.addEventListener('pointerdown', onFinger, { passive: true });
+    return () => {
+      portrait.removeEventListener('change', onTurn);
+      window.removeEventListener('pointerdown', onFinger);
+    };
   }, []);
   // The deck's own guards, on the document: while the ship is flown nothing
   // may be selected, no callout may open, and a touch that is not on a key
   // starts no browser gesture of its own — so two thumbs are two thumbs.
+  // Only while the deck is actually flown: on a surface or behind a pause
+  // menu, panels, sliders and inputs need their own gestures back.
   useEffect(() => {
-    if (!active) return;
+    if (!active || landed || shellPaused) return;
     const noSelect = (e: Event) => e.preventDefault();
     const noGesture = (e: TouchEvent) => {
       const el = eventElement(e);
-      if (el && el.closest('button, [role="menu"], .flight-hud__help, .flight-hud__editor-bar')) return;
+      if (el && el.closest('button, input, select, textarea, label, a, [role="menu"], [role="dialog"], .flight-hud__help, .flight-hud__editor-bar, .room-panel, .room-badge')) return;
       if (e.cancelable) e.preventDefault();
     };
     document.addEventListener('selectstart', noSelect);
@@ -231,7 +254,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       document.removeEventListener('touchstart', noGesture);
       document.removeEventListener('touchmove', noGesture);
     };
-  }, [active]);
+  }, [active, landed, shellPaused]);
   // Each placed control wears its offset and scale as custom properties;
   // the stylesheet turns them into a transform in deck units.
   useEffect(() => {
@@ -457,6 +480,13 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     const pop = (value: string, tone: string, now: number) => { popText = value; popTone = tone; popUntil = now + POPUP_MS; };
     const name = (id: string) => SOLAR_IDS.has(id) ? tb(`${id}.name`) : t.has(`bodies.${id}`) ? t(`bodies.${id}`) : id.toUpperCase();
     const text = (el: HTMLElement | null, value: string) => { if (el && el.textContent !== value) el.textContent = value; };
+    // A custom property on the HUD root restyles the whole deck: written only when it changes.
+    const props = new Map<string, string>();
+    const prop = (el: HTMLElement | null, name: string, value: string) => {
+      if (!el || props.get(name) === value) return;
+      props.set(name, value);
+      el.style.setProperty(name, value);
+    };
     let raf = 0;
     let lastPaint = 0;
     const paint = (now: number) => {
@@ -483,15 +513,15 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       // distance flown when there is not.
       text(rangeLabelRef.current, tel.navId ? t('distance') : t('odometer'));
       text(rangeRef.current, `${fmt(tel.navId ? tel.navKm : tel.odometerKm)} km`);
-      root?.style.setProperty('--speed', String(Math.min(1, tel.speedFrac)));
-      root?.style.setProperty('--flash', tel.jumpFlash.toFixed(3));
-      root?.style.setProperty('--warp', (tel.jumpPhase === 'charge' ? tel.jumpT * 0.6
+      prop(root, '--speed', Math.min(1, tel.speedFrac).toFixed(3));
+      prop(root, '--flash', tel.jumpFlash.toFixed(3));
+      prop(root, '--warp', (tel.jumpPhase === 'charge' ? tel.jumpT * 0.6
         : tel.jumpPhase === 'travel' ? 0.6 + 0.4 * Math.sin(Math.min(1, tel.jumpT) * Math.PI) : 0).toFixed(3));
       // The air on the hull, at the edges of the glass: the entry, or any
       // dive into an atmosphere. The glide's haze comes up under it.
-      root?.style.setProperty('--heat', Math.min(1, tel.heat).toFixed(3));
-      root?.style.setProperty('--glide', (tel.approachPhase === 'glide' ? tel.approachLegT : 0).toFixed(3));
-      if (root) root.dataset.view = tel.view;
+      prop(root, '--heat', Math.min(1, tel.heat).toFixed(3));
+      prop(root, '--glide', (tel.approachPhase === 'glide' ? tel.approachLegT : 0).toFixed(3));
+      if (root && root.dataset.view !== tel.view) root.dataset.view = tel.view;
       let status = '';
       if (tel.crashed) status = t('respawn', { n: Math.ceil(tel.respawnIn) });
       else if (tel.docked) status = t('dockedAt', { body: name(tel.dockedTo) });
@@ -927,7 +957,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
                   <button type="button" role="menuitem" disabled={paused} onClick={() => zoomFlightCamera(session.input, 1)} aria-label={t('camOut')} title={t('camOut')}><Minus size={16} aria-hidden /></button>
                   <button type="button" role="menuitem" disabled={paused} className="flight-hud__view" onClick={() => { session.input.viewToggle = true; setMenu(false); }} aria-label={t('view')} title={t('view')}>3D</button>
                 </div>
-                {touch && (
+                {touch && (upright || landscape) && (
                   <button type="button" role="menuitem" className="flight-hud__turn" data-on={landscape} onClick={() => { onLandscape(!landscape); setMenu(false); }}>
                     <Smartphone size={16} aria-hidden /><span>{t(landscape ? 'portrait' : 'landscape')}</span>
                   </button>

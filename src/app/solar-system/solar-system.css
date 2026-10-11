@@ -62,8 +62,6 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  min-height: 100vh;
   background: #02040a;
   color: var(--text, #e8ecf4);
   overscroll-behavior: none;
@@ -493,11 +491,7 @@
 /* ── The immersive view: only the eye is drawn; the stick and the look pad
    stay live but unseen, so the view is the whole screen and the ship still
    answers. ── */
-.flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); }
-/* `.flight-hud button` sets display: flex and outranks a lone class, so the
-   hidden state needs the HUD in its selector too — otherwise this key sat
-   over the top-right session key and took its taps. */
-.flight-hud .flight-hud__unhide { display: none; }
+.flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
 .flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
@@ -1102,7 +1096,7 @@
    bar. Everything is sized off --stick and --key so the whole band fits a
    320px screen without a single overflow. ── */
 @container viewport (max-width: 599px) {
-  .flight-hud { --gutter: 10px; --hud-round: 42px; }
+  .flight-hud { --gutter: 10px; --hud-round: 44px; }
   .flight-hud__title { font-size: 19px; }
   .flight-hud__head { max-width: calc(100% - 120px); }
   /* Under the heading block, clear of the cards on the other side. */
@@ -1143,7 +1137,7 @@
   .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__dot { top: 5px; right: 5px; }
   .flight-hud[data-touch='true'] .flight-hud__comms { top: calc(var(--edge-top) + 110px); }
   .flight-hud[data-touch='true'] .flight-hud__console { width: auto; justify-self: center; gap: 10px; padding: 4px 12px 4px 5px; border-radius: 999px; }
-  .flight-hud[data-touch='true'] .flight-hud__radar { width: 34px; height: 34px; }
+  .flight-hud[data-touch='true'] .flight-hud__radar { width: 44px; height: 44px; }
   .flight-hud[data-touch='true'] .flight-hud__range { gap: 1px; }
   .flight-hud[data-touch='true'] .flight-hud__console-value { font-size: 13px; }
   .flight-hud[data-touch='true'] .flight-hud__speed { width: 54px; height: 54px; margin: -2px 0; }
@@ -1208,7 +1202,7 @@
 @container viewport (max-height: 700px) {
 }
 @container viewport (max-height: 500px) {
-  .flight-hud { --stick: 92px; --key: 42px; --hud-round: 42px; --gutter: 12px; --card: 196px; }
+  .flight-hud { --stick: 104px; --key: 44px; --hud-round: 44px; --gutter: 12px; --card: 196px; }
   .flight-hud__top-keys { grid-auto-flow: column; }
   .flight-hud__side { top: calc(var(--edge-top) + var(--hud-round) + 12px); gap: 8px; }
   .flight-hud .flight-hud__card { padding: 5px 8px; }
@@ -3049,3 +3043,82 @@
 .flight-hud .flight-hud__speed small,
 .flight-hud .flight-hud__sys-name,
 .flight-hud .flight-drive__gear kbd { font-size: 10px; }
+/* ── Phones: the glass stays light, every key is a thumb, nothing hides ── */
+/* The stick's four marks on every deck, not only the flight deck's. */
+.game-stick__pad { position: absolute; inset: 0; color: var(--hud-dim, rgba(186, 212, 240, 0.7)); pointer-events: none; }
+.game-stick__pad svg { position: absolute; }
+.game-stick__pad svg:nth-child(1) { top: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(2) { right: 7%; top: 50%; transform: translateY(-50%); }
+.game-stick__pad svg:nth-child(3) { bottom: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(4) { left: 7%; top: 50%; transform: translateY(-50%); }
+.moon-hud .game-stick__axis { display: none; }
+.game-stick { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
+.game-stick[data-active='true'] { box-shadow: 0 0 0 1px var(--seafoam), 0 0 22px rgba(94, 234, 212, 0.28); }
+.game-stick__thumb { will-change: transform; }
+
+/* The controls card scrolls inside the deck instead of running under it. */
+.flight-hud__help {
+  gap: 4px;
+  top: var(--edge-top);
+  max-height: calc(100cqh - var(--edge-top) - var(--edge-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.flight-hud__help button, .flight-hud__menu button, .flight-drive__menu button { touch-action: pan-y; }
+
+/* Words in a key stay inside the key. */
+.moon-hud .moon-hud__key { width: auto; min-width: 54px; padding: 0 9px; white-space: nowrap; }
+.moon-hud .moon-hud__objective { min-width: 0; padding: 8px 12px; overflow-wrap: anywhere; }
+.moon-hud__objective-text { overflow-wrap: anywhere; }
+
+/* Panels that scroll keep the scroll; nothing else may be pinched. */
+.moon-hud__log, .moon-hud__help, .room-panel { touch-action: pan-y; overscroll-behavior: contain; }
+.moon-hud__log button, .moon-hud__help button { touch-action: pan-y; }
+.moon-hud__help, .moon-hud__log { max-height: min(70dvh, 560px); }
+
+@media (pointer: coarse) {
+  .solar-system__dockbtn { width: 44px; height: 44px; }
+  .solar-system__ratebtn { min-height: 44px; }
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+  .flight-hud .flight-hud__editor-bar button { min-height: 44px; }
+  /* Every blurred layer resamples the live canvas each frame; on a phone
+     GPU that is time the scene needs. A deeper glass reads the same. */
+  .flight-hud button, .flight-hud .flight-hud__card, .flight-hud__console, .flight-hud .game-stick,
+  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .flight-hud { --hud-glass: rgba(6, 10, 20, 0.72); }
+  .moon-hud { --hud-glass: rgba(6, 10, 20, 0.66); }
+  .moon-surface--mars .moon-hud { --hud-glass: rgba(28, 10, 4, 0.66); }
+  .moon-surface--proximaB .moon-hud { --hud-glass: rgba(14, 6, 24, 0.68); }
+}
+
+/* A short landscape phone: the loader keeps its words. */
+@media (max-height: 440px) {
+  .cosmic-loader__stage { min-height: 0; transform: scale(0.66); margin: -36px 0; }
+  .cosmic-loader__tip { display: none; }
+}
+
+/* A key answers the thumb the instant it lands: no hover on glass, so the
+   press itself is the feedback. Colour only — the flight deck's keys carry
+   their placement in their transform. */
+.moon-hud button:active:not(:disabled),
+.flight-hud button:active:not(:disabled) {
+  border-color: var(--hud-accent);
+  background-color: rgba(94, 234, 212, 0.2);
+  transition: none;
+}
+/* On a phone the card keeps clear of the key column down the right edge. */
+@container viewport (max-width: 599px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    transform: none;
+    width: calc(100% - var(--edge-left) - var(--edge-right) - var(--hud-round) - 10px);
+    padding: 12px 12px 14px;
+  }
+}
+/* The open menu lies over the dock: the keys' placement transform makes the
+   top keys their own stacking context, so the menu's own z-index stays inside it. */
+.flight-hud__top-keys:has(.flight-hud__menu) { z-index: 8; }

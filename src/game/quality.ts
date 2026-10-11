@@ -95,11 +95,16 @@ export interface DeviceSignals {
 const WEAK_GPU = /swiftshader|llvmpipe|software|mali|adreno|powervr|videocore|intel\(r\) hd graphics [2-5]\d{3}/i;
 const INTEGRATED_GPU = /intel|iris|uhd|radeon\s*(vega|graphics)|apple gpu|apple a\d/i;
 const STRONG_GPU = /apple m\d|nvidia|geforce|rtx|radeon (rx|pro)|arc/i;
+/** A recent flagship phone: an Apple GPU, Adreno 640 and up, the Mali-G7x and
+ *  Gx10 lines, Immortalis, Xclipse. These hold bloom and the grade; the
+ *  surfaces' governor still takes a level off one that cannot. */
+const FLAGSHIP_MOBILE_GPU = /apple gpu|adreno[^\d]*(6[4-9]\d|[78]\d\d)|mali-g(7[1-9]|[67]\d0)|immortalis|xclipse/i;
 
 /** Which preset a device should start on. Pure, so it is tested. `ultra`
  *  is never detected: a strong GPU starts on `high`, and the desktop player
  *  who wants the 4K shadow map and the 8 samples names it in Settings. */
 export function detectQuality(s: DeviceSignals): QualityLevel {
+  if (s.touch && FLAGSHIP_MOBILE_GPU.test(s.gpu) && s.cores >= 6 && (s.memoryGB === 0 || s.memoryGB >= 6)) return 'balanced';
   if (s.touch || s.width <= 768 || s.cores <= 2 || (s.memoryGB > 0 && s.memoryGB <= 2)) return 'performance';
   if (WEAK_GPU.test(s.gpu)) return 'performance';
   if (STRONG_GPU.test(s.gpu) && s.cores >= 6) return 'high';

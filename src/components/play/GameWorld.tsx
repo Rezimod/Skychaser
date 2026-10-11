@@ -164,7 +164,7 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         {orbitVisited && <>
           {landed === null && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
             onSelect={setSelectedId} onZoomToSun={zoomToSun} zoomTo={zoomTo} onZoomToConsumed={consumeZoom} flight={session}
-            room={roomLinkRef.current} onReady={onSceneReady} />}
+            room={roomLinkRef.current} onReady={onSceneReady} paused={paused} />}
           <PlayerShip session={session} onActiveChange={setFlightActive} onLand={(site) => { setLandscape(false); game.travel(site); }} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
             landscape={landscape} onLandscape={setLandscape} shellPaused={paused} onPauseRequest={game.pause} />
         </>}

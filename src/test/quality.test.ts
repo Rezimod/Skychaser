@@ -20,6 +20,16 @@ describe('quality presets', () => {
     expect(detectQuality({ ...desktop, memoryGB: 2 })).toBe('performance');
     expect(detectQuality({ ...desktop, gpu: 'Google SwiftShader' })).toBe('performance');
   });
+  it('a flagship phone starts balanced; a mid-range or small-memory one stays on performance', () => {
+    const phone = { gpu: 'Adreno (TM) 740', cores: 8, touch: true, width: 412, memoryGB: 8 };
+    expect(detectQuality(phone)).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Apple GPU', cores: 6, memoryGB: 0 })).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Mali-G710' })).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Adreno (TM) 610' })).toBe('performance');
+    expect(detectQuality({ ...phone, gpu: 'Mali-G57' })).toBe('performance');
+    expect(detectQuality({ ...phone, memoryGB: 4 })).toBe('performance');
+    expect(detectQuality({ ...phone, cores: 4 })).toBe('performance');
+  });
   it('a strong GPU with enough cores starts high; unknown hardware stays balanced', () => {
     expect(detectQuality({ ...desktop, gpu: 'ANGLE (Apple, Apple M2, OpenGL 4.1)', cores: 8 })).toBe('high');
     expect(detectQuality({ ...desktop, gpu: 'NVIDIA GeForce RTX 3060', cores: 12 })).toBe('high');
