@@ -74,6 +74,9 @@ function fakePostgres(state: State) {
         rows: s.cards.filter((c) => c.set_id === params[0]).map((c) => ({ ...c, allocated: maxNumber(s, c.id) })),
       };
     }
+    if (sql.includes('SELECT k.designation, k.edition_size')) {
+      return { rows: s.cards.filter((c) => c.set_id === params[0]).map((c) => ({ ...c, allocated: maxNumber(s, c.id) })) };
+    }
     if (sql.includes('SELECT p.draw_index')) {
       const rows = s.pulls
         .filter((p) => p.capsule_id === params[0])
@@ -94,6 +97,18 @@ function fakePostgres(state: State) {
 
   /** Applies one write to the transaction's working copy; returns its rows. */
   function write(sql: string, p: unknown[], tx: State): { rows: unknown[] } {
+    if (sql.includes('pg_advisory_xact_lock')) return { rows: [] };
+    if (sql.includes('SELECT 1 / (CASE WHEN')) {
+      // The listing guard: spare editions of the set, less retired ones, must cover the draws.
+      const setId = p[0] as string;
+      const retired = p[3] as number;
+      const need = p[4] as number;
+      const size = tx.cards.filter((c) => c.set_id === setId).reduce((n, c) => n + c.edition_size, 0);
+      const allocated = tx.editions.filter((e) => tx.cards.some((c) => c.id === e.card_id && c.set_id === setId)).length;
+      const owed = tx.capsules.filter((c) => c.set_id === setId && (c.state === 'listed' || c.state === 'purchased')).reduce((n, c) => n + c.cards_per_capsule, 0);
+      if (size - allocated - owed - retired < need) throw pgError('22012');
+      return { rows: [{ ok: 1 }] };
+    }
     if (/INSERT INTO capsule \(id, set_id, sequence/.test(sql)) {
       const [id, setId, commitment, sealed, price, perCapsule, , tier, odds, outcome] = p as [string, string, string, string, number, number, boolean, string | null, string | null, string | null];
       const sequence = Math.max(0, ...tx.capsules.map((c) => c.sequence)) + 1;
@@ -412,6 +427,35 @@ describe('listing capsules at the same moment', () => {
     const { db } = fakePostgres(state);
     await expect(listCapsules(db, { setId: SET, count: Math.floor(4 / CARDS_PER_CAPSULE) + 1 })).rejects.toThrow(/Not enough editions/);
     await expect(listCapsules(db, { setId: SET, count: 1 })).resolves.toHaveLength(1);
+  });
+
+  it('refuses, writing nothing, when a sale takes the last spare editions while it lists', async () => {
+    // Ten editions, none owed: one capsule fits when the listing starts.
+    const state: State = { capsules: [], cards: [card('C1', 'common', 10)], editions: [], pulls: [], log: [] };
+    const { db } = fakePostgres(state);
+    // Inside the batch, behind the lock, direct sales have already taken all ten.
+    state.midBatch = (tx) => {
+      for (let n = 1; n <= 10; n++) tx.editions.push({ id: randomUUID(), card_id: state.cards[0].id, edition_number: n, capsule_id: null });
+    };
+    await expect(listCapsules(db, { setId: SET, count: 1 })).rejects.toThrow(/Not enough editions/);
+    expect(state.capsules).toEqual([]);
+    expect(state.log).toEqual([]);
+  });
+});
+
+describe('a rarity its odds promise, sold out', () => {
+  it('takes the capsule off sale', async () => {
+    const { goneRarities } = await import('@/lib/skychaser/capsule');
+    const odds = { common: 6000, rare: 3000, epic: 900, legendary: 100 };
+    const supply = [
+      { designation: 'C1', rarity: 'common' as const, remaining: 10 },
+      { designation: 'R1', rarity: 'rare' as const, remaining: 3 },
+      { designation: 'E1', rarity: 'epic' as const, remaining: 1 },
+      { designation: 'L1', rarity: 'legendary' as const, remaining: 0 },
+    ];
+    expect(goneRarities(odds, supply)).toEqual(['legendary']);
+    // A tier that does not promise the rarity is unaffected.
+    expect(goneRarities({ ...odds, common: 6100, legendary: 0 }, supply)).toEqual([]);
   });
 });
 

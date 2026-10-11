@@ -29,7 +29,7 @@ process.env.UPSTASH_REDIS_REST_URL = 'https://redis.test';
 process.env.UPSTASH_REDIS_REST_TOKEN = 'test';
 vi.mock('@/lib/db', () => ({ getDb: mocks.db }));
 vi.mock('@/lib/rate-limit', () => ({
-  checkRateLimit: mocks.rate, skychaserOpenRateLimit: {}, skychaserBuyRateLimit: {}, skychaserConfirmRateLimit: {}, skychaserLogRateLimit: {},
+  checkRateLimit: mocks.rate, skychaserOpenRateLimit: {}, skychaserBuyRateLimit: {}, skychaserBuyIpRateLimit: {}, skychaserConfirmRateLimit: {}, skychaserLogRateLimit: {},
 }));
 vi.mock('@/lib/skychaser/capsule', () => ({
   readCapsule: mocks.readCapsule,
@@ -165,6 +165,13 @@ describe('buying a capsule', () => {
       delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
       mocks.paymentsLive.mockResolvedValue(false);
     }
+  });
+
+  it('says a capsule is off sale once a rarity its odds promise is gone', async () => {
+    mocks.purchaseCapsule.mockResolvedValue({ ok: false, reason: 'rarity_gone', gone: ['legendary'] });
+    const res = await buy(post('/api/skychaser/capsules/buy', body));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/every legendary edition/);
   });
 
   it('holds no more than two unpaid capsules for one account', async () => {

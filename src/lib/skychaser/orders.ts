@@ -441,6 +441,21 @@ export function orderHash(orderId: string): string {
 type Rows<T> = { rows: T[] };
 
 /**
+ * Editions of a set that can never be drawn or sold: the unsold editions of
+ * every Almanac card whose event has ended. Sealed cards neither sell nor
+ * draw, so this number does not move between reading it and using it.
+ */
+export async function retiredEditions(db: Db, setId: string, now: Date = new Date()): Promise<number> {
+  const { rows } = (await db.execute(sql`
+    SELECT k.designation, k.edition_size, (SELECT COUNT(*) FROM edition e WHERE e.card_id = k.id) AS allocated
+    FROM card k WHERE k.set_id = ${setId}::uuid
+  `)) as Rows<{ designation: string; edition_size: number; allocated: number | string }>;
+  return rows
+    .filter((r) => isSealed(r.designation, now))
+    .reduce((n, r) => n + Math.max(0, Number(r.edition_size) - Number(r.allocated)), 0);
+}
+
+/**
  * A card's edition count, and whether the set can spare one for a direct
  * sale: the set's unallocated editions, less every draw owed to capsules
  * listed or bought and not yet opened, must leave at least one. A capsule's
@@ -449,18 +464,19 @@ type Rows<T> = { rows: T[] };
  */
 export async function cardAvailability(db: Db, designation: string) {
   const { rows } = (await db.execute(sql`
-    SELECT k.id, k.name, k.rarity, k.edition_size, cs.status AS set_status,
+    SELECT k.id, k.set_id, k.name, k.rarity, k.edition_size, cs.status AS set_status,
       (SELECT COUNT(*) FROM edition e WHERE e.card_id = k.id) AS allocated,
       (SELECT SUM(s.edition_size) FROM card s WHERE s.set_id = k.set_id)
         - (SELECT COUNT(*) FROM edition e JOIN card s ON s.id = e.card_id WHERE s.set_id = k.set_id)
         - (SELECT COALESCE(SUM(cards_per_capsule), 0) FROM capsule WHERE set_id = k.set_id AND state IN ('listed', 'purchased'))
         AS spare
     FROM card k JOIN card_set cs ON cs.id = k.set_id WHERE k.designation = ${designation}
-  `)) as Rows<{ id: string; name: string; rarity: string; edition_size: number; set_status: string; allocated: number | string; spare: number | string }>;
+  `)) as Rows<{ id: string; set_id: string; name: string; rarity: string; edition_size: number; set_status: string; allocated: number | string; spare: number | string }>;
   const r = rows[0];
   if (!r) return null;
   const released = r.set_status === 'released';
   const sealed = isSealed(designation);
+  const spare = Number(r.spare) - (await retiredEditions(db, r.set_id));
   return {
     cardId: r.id,
     name: r.name,
@@ -471,7 +487,7 @@ export async function cardAvailability(db: Db, designation: string) {
     released,
     /** An Almanac card whose event has ended. Its unsold editions are retired. */
     sealed,
-    available: released && !sealed && Number(r.allocated) < Number(r.edition_size) && Number(r.spare) >= 1,
+    available: released && !sealed && Number(r.allocated) < Number(r.edition_size) && spare >= 1,
   };
 }
 
@@ -485,8 +501,10 @@ export async function cardAvailability(db: Db, designation: string) {
  */
 async function allocateCardSale(
   db: Db,
-  input: { cardId: string; wallet: string; orderId: string },
+  input: { cardId: string; setId: string; wallet: string; orderId: string },
 ): Promise<{ editionNumber: number } | null> {
+  // Retired editions can never be drawn, so they cannot stand in for one owed to a capsule.
+  const retired = await retiredEditions(db, input.setId);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       // One sale per set at a time: two sales of different cards would each see
@@ -508,6 +526,7 @@ async function allocateCardSale(
                  WHERE s.set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid))
               - (SELECT COALESCE(SUM(cards_per_capsule), 0) FROM capsule
                  WHERE set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid) AND state IN ('listed', 'purchased'))
+              - ${retired}::int
               >= 1
           RETURNING id, card_id, edition_number
         ),
@@ -545,7 +564,7 @@ export type CardFulfilment =
 export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulfilment> {
   const designation = order.productId.slice(CARD_PRODUCT_PREFIX.length);
   const [c] = await db
-    .select({ id: card.id, editionSize: card.editionSize })
+    .select({ id: card.id, setId: card.setId, editionSize: card.editionSize })
     .from(card)
     .where(eq(card.designation, designation))
     .limit(1);
@@ -559,7 +578,7 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
   if (existing) return { ok: true, editionNumber: existing.editionNumber, editionSize: c.editionSize, designation };
 
   try {
-    const allocated = await allocateCardSale(db, { cardId: c.id, wallet: order.walletAddress, orderId: order.id });
+    const allocated = await allocateCardSale(db, { cardId: c.id, setId: c.setId, wallet: order.walletAddress, orderId: order.id });
     if (!allocated) {
       const changed = await db
         .update(orders)

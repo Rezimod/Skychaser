@@ -53,7 +53,10 @@ export const clubActivateRateLimit = { limit: (id: string) => makeLimit('3600 s'
 // nonce, so it is capped per wallet; opening and confirming are cheap to retry
 // but each one reads the chain or writes a batch; the public log is read-only.
 export const skychaserBuyRateLimit = { limit: (id: string) => makeLimit('3600 s', 20, 'rl:stellar:buy').limit(id) };
-export const skychaserConfirmRateLimit = { limit: (id: string) => makeLimit('60 s', 30, 'rl:stellar:confirm').limit(id) };
+// Per IP as well as per wallet: free accounts are cheap, so one person cannot hold the shelf with many.
+export const skychaserBuyIpRateLimit = { limit: (id: string) => makeLimit('3600 s', 30, 'rl:stellar:buy:ip').limit(id) };
+// Each confirmation can make up to ~26 RPC calls; ten a minute is plenty for a page that polls.
+export const skychaserConfirmRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:confirm').limit(id) };
 export const skychaserOpenRateLimit = { limit: (id: string) => makeLimit('60 s', 20, 'rl:stellar:open').limit(id) };
 export const skychaserLogRateLimit = { limit: (id: string) => makeLimit('60 s', 60, 'rl:stellar:log').limit(id) };
 export const skychaserVoteRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:vote').limit(id) };

@@ -2,11 +2,11 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyPrivy } from '@/lib/api-auth';
 import { paused } from '@/lib/kill-switch';
-import { skychaserBuyRateLimit } from '@/lib/rate-limit';
+import { skychaserBuyIpRateLimit, skychaserBuyRateLimit } from '@/lib/rate-limit';
 import { purchaseCapsule, readCapsule, releaseLapsed } from '@/lib/skychaser/capsule';
 import { usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
 import { isHex32, verifyPurchaseSignature } from '@/lib/skychaser/randomness';
-import { isUuid, holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { clientIp, isUuid, holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
 export const runtime = 'nodejs';
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   // The wallet is the one Privy lists for this session; the page's choice is only a preference.
   const walletAddress = await holderWallet(privyId, named);
   if (!walletAddress) return NextResponse.json({ error: NO_LINKED_WALLET }, { status: 403 });
-  const l = await limited(skychaserBuyRateLimit, walletAddress);
+  const l = (await limited(skychaserBuyRateLimit, walletAddress)) ?? (await limited(skychaserBuyIpRateLimit, clientIp(req)));
   if (l) return l;
 
   const recipient = merchantWallet();
@@ -92,12 +92,14 @@ export async function POST(req: NextRequest) {
     });
     if (!result.ok) {
       const status = result.reason === 'not_found' ? 404 : result.reason === 'too_many_unpaid' ? 429 : 409;
-      const error = {
-        too_many_unpaid: 'Pay for the capsule you are holding, or let its quote lapse, before taking another.',
-        not_found: 'Capsule not found',
-        commitment_mismatch: 'That commitment is not this capsule’s',
-        not_listed: 'This capsule is no longer on sale',
-      }[result.reason];
+      const error = result.reason === 'rarity_gone'
+        ? `This capsule is off sale: every ${result.gone.join(' and ')} edition its odds promise has gone.`
+        : {
+            too_many_unpaid: 'Pay for the capsule you are holding, or let its quote lapse, before taking another.',
+            not_found: 'Capsule not found',
+            commitment_mismatch: 'That commitment is not this capsule’s',
+            not_listed: 'This capsule is no longer on sale',
+          }[result.reason];
       return NextResponse.json({ error }, { status });
     }
     return NextResponse.json({

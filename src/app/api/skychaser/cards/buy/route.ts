@@ -2,11 +2,11 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { getDb } from '@/lib/db';
 import { verifyPrivy } from '@/lib/api-auth';
 import { paused } from '@/lib/kill-switch';
-import { skychaserBuyRateLimit } from '@/lib/rate-limit';
+import { skychaserBuyIpRateLimit, skychaserBuyRateLimit } from '@/lib/rate-limit';
 import { isRarity } from '@/lib/rarity';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { cardAvailability, createCardOrder, settleCardOrders, usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
-import { holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { clientIp, holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
 export const runtime = 'nodejs';
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   // The wallet is the one Privy lists for this session; the page's choice is only a preference.
   const walletAddress = await holderWallet(privyId, named);
   if (!walletAddress) return NextResponse.json({ error: NO_LINKED_WALLET }, { status: 403 });
-  const l = await limited(skychaserBuyRateLimit, walletAddress);
+  const l = (await limited(skychaserBuyRateLimit, walletAddress)) ?? (await limited(skychaserBuyIpRateLimit, clientIp(req)));
   if (l) return l;
 
   const recipient = merchantWallet();

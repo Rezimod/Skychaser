@@ -7,10 +7,10 @@ import Chapter from '@/components/skychaser/ui/Chapter';
 import DataRow from '@/components/skychaser/ui/DataRow';
 import RarityMark from '@/components/skychaser/ui/RarityMark';
 import { getDb } from '@/lib/db';
-import { RARITIES } from '@/lib/rarity';
-import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES, RARITY_ODDS_BPS } from '@/lib/skychaser/economics';
+import { RARITIES, type Rarity } from '@/lib/rarity';
+import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES } from '@/lib/skychaser/economics';
 import { TIERS, formatOdds, tierByKey } from '@/lib/skychaser/tiers';
-import { capsulesOnSale } from '@/lib/skychaser/capsule';
+import { capsulesOnSale, goneRarities, readSupply, type SupplyRow } from '@/lib/skychaser/capsule';
 import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 
 export const dynamic = 'force-dynamic';
@@ -24,15 +24,30 @@ export const metadata: Metadata = {
 export default async function CapsulesPage() {
   const db = getDb();
   let onSale: Awaited<ReturnType<typeof capsulesOnSale>> | null = null;
+  let supply: SupplyRow[] | null = null;
   if (db) {
     try {
       onSale = await capsulesOnSale(db, { limit: 1000 });
+      if (onSale[0]) supply = await readSupply(db, onSale[0].setId);
     } catch (err) {
       console.error('[skychaser] cannot read capsules on sale', err);
     }
   }
 
   const sealed = onSale?.[0];
+  // The odds each capsule on the shelf was listed under — what it opens under — one row per distinct set.
+  const oddsRows = new Map<string, { key: string; label: string; odds: Record<Rarity, number> }>();
+  for (const c of onSale ?? []) {
+    const tier = tierByKey(c.tier);
+    const key = `${c.tier ?? 'standard'}:${RARITIES.map((r) => c.oddsBps[r]).join('/')}`;
+    if (!oddsRows.has(key)) oddsRows.set(key, { key, label: tier ? `${tier.name} · $${c.priceUsd}` : `Capsule · $${c.priceUsd}`, odds: c.oddsBps });
+  }
+  const odds = oddsRows.size
+    ? [...oddsRows.values()]
+    : TIERS.map((t) => ({ key: t.key, label: `${t.name} · $${t.priceUsd}`, odds: t.oddsBps }));
+  const left = supply
+    ? RARITIES.map((r) => ({ r, n: supply!.filter((s) => s.rarity === r).reduce((n, s) => n + Math.max(0, s.remaining), 0) }))
+    : null;
 
   return (
     <SkychaserShell title="Capsules">
@@ -73,10 +88,7 @@ export default async function CapsulesPage() {
 
       <section className="sd-container sd-chapter-block">
         <Chapter n="01" title="Odds per card" aside="Provisional" />
-        {[
-          ...TIERS.map((t) => ({ key: t.key, label: `${t.name} · $${t.priceUsd}`, odds: t.oddsBps })),
-          ...(onSale?.some((c) => !c.tier) ? [{ key: 'standard', label: 'Listed before the tiers', odds: RARITY_ODDS_BPS }] : []),
-        ].map((row) => (
+        {odds.map((row) => (
           <div key={row.key} className="sd-section">
             <p className="sd-label">{row.label}</p>
             <ul className="sd-oddsboard">
@@ -90,6 +102,12 @@ export default async function CapsulesPage() {
           </div>
         ))}
         <p className="sd-strip-note">Fixed when a capsule is listed, and logged with it</p>
+        {left && (
+          <p className="sd-strip-note">
+            Editions left to draw: {left.map(({ r, n }) => `${r} ${n.toLocaleString('en-US')}`).join(' · ')}. A capsule goes
+            off sale once a rarity its odds promise has none left.
+          </p>
+        )}
       </section>
 
       <section className="sd-container sd-chapter-block">
@@ -97,7 +115,9 @@ export default async function CapsulesPage() {
         {onSale === null && <p className="sd-note">The sale cannot be read at the moment.</p>}
         {onSale?.length === 0 && <p className="sd-note">Nothing is listed right now.</p>}
         <div className="sd-capsules">
-          {onSale?.map((c) => (
+          {onSale?.map((c) => {
+            const gone = supply ? goneRarities(c.oddsBps, supply) : [];
+            return (
             <article key={c.id} className="sd-capsule">
               <div className="sd-capsule__head">
                 <span className="sd-capsule__n">
@@ -112,15 +132,20 @@ export default async function CapsulesPage() {
                   { label: 'Commitment', value: `${c.commitment.slice(0, 18)}…` },
                 ]}
               />
-              <SkychaserBuyCapsule
-                capsuleId={c.id}
-                sequence={c.sequence}
-                commitment={c.commitment}
-                priceUsd={c.priceUsd}
-                cardsPerCapsule={c.cardsPerCapsule}
-              />
+              {gone.length ? (
+                <p className="sd-note">Off sale: every {gone.join(' and ')} edition its odds promise has gone.</p>
+              ) : (
+                <SkychaserBuyCapsule
+                  capsuleId={c.id}
+                  sequence={c.sequence}
+                  commitment={c.commitment}
+                  priceUsd={c.priceUsd}
+                  cardsPerCapsule={c.cardsPerCapsule}
+                />
+              )}
             </article>
-          ))}
+            );
+          })}
         </div>
       </section>
 

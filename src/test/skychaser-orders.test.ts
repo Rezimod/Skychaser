@@ -262,10 +262,12 @@ describe('a direct card sale', () => {
     const o = order({ productId: 'stellar-card:TYCHO', walletAddress: 'holder-wallet', status: 'paid' });
 
     expect(await fulfilCardOrder(db, o)).toEqual({ ok: true, editionNumber: 6, editionSize: 300, designation: 'TYCHO' });
+    // Retired (sealed Almanac) editions are read first; they can never stand in for an edition owed to a capsule.
+    expect(new PgDialect().sqlToQuery(execute.mock.calls[0][0]).sql).toMatch(/SELECT k\.designation, k\.edition_size/);
     // The set is locked first, in the same transaction as the sale.
-    expect(new PgDialect().sqlToQuery(execute.mock.calls[0][0]).sql).toMatch(/pg_advisory_xact_lock/);
-    const { sql, params } = new PgDialect().sqlToQuery(execute.mock.calls[1][0]);
-    expect(sql).toMatch(/state IN \('listed', 'purchased'\)\)\s*>= 1/);
+    expect(new PgDialect().sqlToQuery(execute.mock.calls[1][0]).sql).toMatch(/pg_advisory_xact_lock/);
+    const { sql, params } = new PgDialect().sqlToQuery(execute.mock.calls[2][0]);
+    expect(sql).toMatch(/state IN \('listed', 'purchased'\)\)\s*- \$\d+::int\s*>= 1/);
     expect(sql).toMatch(/INSERT INTO capsule_log \(event, outcome\)\s*SELECT 'card_sold'/);
     expect(params).toContain(orderHash(o.id));
     const logged = sql.slice(sql.indexOf('INSERT INTO capsule_log'));

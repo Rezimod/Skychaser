@@ -35,6 +35,7 @@ import {
   reportExtraTransfers,
   reportSharedTransfers,
   paymentLedger,
+  retiredEditions,
   simulatedPayments,
   type Beacon,
   type OrderRow,
@@ -200,6 +201,24 @@ export async function listCapsules(
     throw new Error(`Not enough editions left: ${remaining} remain, ${owed} are owed to capsules already listed.`);
   }
 
+  // The check above, again inside the batch and behind the lock direct card
+  // sales take, so a sale committing meanwhile cannot leave the shelf holding
+  // a capsule the set can no longer fill. Short, it divides by zero: the batch
+  // rolls back whole.
+  const retired = await retiredEditions(db, input.setId);
+  const need = input.count * CARDS_PER_CAPSULE;
+  const guard = [
+    db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('card-set:' || ${input.setId}::text))`),
+    db.execute(sql`
+      SELECT 1 / (CASE WHEN
+        (SELECT COALESCE(SUM(k.edition_size), 0) FROM card k WHERE k.set_id = ${input.setId}::uuid)
+        - (SELECT COUNT(*) FROM edition e JOIN card k ON k.id = e.card_id WHERE k.set_id = ${input.setId}::uuid)
+        - (SELECT COALESCE(SUM(cards_per_capsule), 0) FROM capsule WHERE set_id = ${input.setId}::uuid AND state IN ('listed', 'purchased'))
+        - ${retired}::int
+        >= ${need}::int THEN 1 ELSE 0 END) AS ok
+    `),
+  ];
+
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const capsules = Array.from({ length: input.count }, () => {
       const id = randomUUID();
@@ -221,13 +240,14 @@ export async function listCapsules(
       `),
     );
     try {
-      const results = await runBatch(db, statements);
+      const results = (await runBatch(db, [...guard, ...statements])).slice(guard.length);
       return results.map((r, i) => ({
         id: capsules[i].id,
         sequence: Number(r.rows[0].capsule_sequence),
         commitment: capsules[i].commitment,
       }));
     } catch (err) {
+      if (pgCode(err) === '22012') throw new Error('Not enough editions left: a sale took the last spare editions while listing.');
       if (!lostRace(err)) throw err;
       await backoff(attempt);
     }
@@ -242,9 +262,9 @@ export async function listCapsules(
 export async function capsulesOnSale(db: Db, opts: { limit?: number; tier?: string } = {}) {
   const only = opts.tier ? sql`AND tier = ${opts.tier}` : sql``;
   const { rows } = (await db.execute(sql`
-    SELECT id, set_id, sequence, commitment, price_usd, cards_per_capsule, listed_at, tier
+    SELECT id, set_id, sequence, commitment, price_usd, cards_per_capsule, listed_at, tier, odds_bps
     FROM capsule WHERE state = 'listed' AND NOT demo ${only} ORDER BY sequence LIMIT ${opts.limit ?? 50}
-  `)) as Rows<{ id: string; set_id: string; sequence: number | string; commitment: string; price_usd: number; cards_per_capsule: number; listed_at: string; tier: string | null }>;
+  `)) as Rows<{ id: string; set_id: string; sequence: number | string; commitment: string; price_usd: number; cards_per_capsule: number; listed_at: string; tier: string | null; odds_bps: unknown }>;
   return rows.map((r) => ({
     id: r.id,
     setId: r.set_id,
@@ -254,7 +274,18 @@ export async function capsulesOnSale(db: Db, opts: { limit?: number; tier?: stri
     priceUsd: Number(r.price_usd),
     cardsPerCapsule: Number(r.cards_per_capsule),
     listedAt: r.listed_at,
+    /** The odds logged when this capsule was listed: what it opens under. */
+    oddsBps: oddsOf(r),
   }));
+}
+
+/**
+ * The rarities a capsule's odds promise that have no edition left to draw.
+ * A capsule is not sold while any is gone: its listed odds could no longer be
+ * honoured, and its share would pass to the other rarities instead.
+ */
+export function goneRarities(oddsBps: Record<Rarity, number>, supply: SupplyEntry[]): Rarity[] {
+  return RARITIES.filter((r) => oddsBps[r] > 0 && !supply.some((s) => s.rarity === r && s.remaining > 0));
 }
 
 // ─── Purchase ───────────────────────────────────────────────────────────────
@@ -306,7 +337,8 @@ async function readOrder(db: Db, orderId: string): Promise<OrderRow | null> {
 
 export type PurchaseResult =
   | { ok: true; orderId: string; sequence: number; message: string; purchaseHash: string; priceUsd: number; expiresAt: string }
-  | { ok: false; reason: 'not_found' | 'not_listed' | 'commitment_mismatch' | 'too_many_unpaid' };
+  | { ok: false; reason: 'not_found' | 'not_listed' | 'commitment_mismatch' | 'too_many_unpaid' }
+  | { ok: false; reason: 'rarity_gone'; gone: Rarity[] };
 
 /**
  * Takes a listed capsule for a buyer, with their nonce, and opens its order.
@@ -340,6 +372,8 @@ export async function purchaseCapsule(
   if (!capsuleRow) return { ok: false, reason: 'not_found' };
   if (capsuleRow.commitment !== input.commitment) return { ok: false, reason: 'commitment_mismatch' };
   if (capsuleRow.state !== 'listed') return { ok: false, reason: 'not_listed' };
+  const gone = goneRarities(oddsOf(capsuleRow), await readSupply(db, capsuleRow.set_id));
+  if (gone.length) return { ok: false, reason: 'rarity_gone', gone };
 
   const capsuleId = capsuleRow.id;
   const sequence = Number(capsuleRow.sequence);
