@@ -115,12 +115,19 @@ vec3 aerial(vec3 col, float L, float hp, vec3 viewDir, vec3 up, vec3 sun) {
   // would fill with exp(depth / 250 m) of it).
   float hc = max(uCamAlt, -9.0);
   vec3 tau = uAirBeta * layerDepth(hc, max(hp, -9.0), L, uAirH) + uHazeBeta * layerDepth(max(uCamAgl, 0.0), 0.0, L, uHazeH);
+  // From high up the column is looked down through, not along: the low
+  // haze's light is mostly scattered forward and away from an eye above it,
+  // so it veils far less than a horizontal look from the ground suggests.
+  // On the ground (and so where the globe meets the surface scene) nothing
+  // changes; from orbit the map's own contrast comes through.
+  float above = smoothstep(2.0, 25.0, uCamAgl);
+  tau *= mix(1.0, 0.72, above);
   vec3 T = exp(-tau);
   float mu = dot(up, sun);
   float day = smoothstep(-0.14, 0.22, mu);
   float glow = pow(max(dot(viewDir, sun), 0.0), 8.0);
   vec3 tint = mix(uTwilight, vec3(1.0), smoothstep(0.0, 0.3, mu));
-  vec3 inscatter = mix(uHazeColor, uHazeSun, glow) * tint * day;
+  vec3 inscatter = mix(uHazeColor, uHazeSun, glow) * tint * day * mix(1.0, 0.6, above);
   return col * T + inscatter * (1.0 - T);
 }
 `;

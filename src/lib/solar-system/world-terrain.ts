@@ -408,7 +408,11 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
     const x = hp.getX(i); const z = hp.getZ(i);
     hp.setY(i, ringHeightAt(x, z));
     colorAt(x, z, rgb);
-    hc[i * 3] = rgb[0]; hc[i * 3 + 1] = rgb[1]; hc[i * 3 + 2] = rgb[2];
+    // Toward the plain's own colour at the outer edge: the globe past it
+    // takes that colour on round the patch (siteColor), so the seam is one tone.
+    const e = ringEdge(Math.hypot(x, z));
+    const plain = profile.ground.plain;
+    hc[i * 3] = rgb[0] + (plain[0] - rgb[0]) * e; hc[i * 3 + 1] = rgb[1] + (plain[1] - rgb[1]) * e; hc[i * 3 + 2] = rgb[2] + (plain[2] - rgb[2]) * e;
   }
   hGeom.setAttribute('color', new THREE.BufferAttribute(hc, 3));
   hGeom.computeVertexNormals();
