@@ -248,7 +248,7 @@ export function makeEntryFx(size: number, lite: boolean, palette: PlasmaPalette 
   const capMat = new THREE.ShaderMaterial({
     name: 'entry-shock', vertexShader: CAP_VERT, fragmentShader: CAP_FRAG,
     uniforms: {
-      uFlow: { value: new THREE.Vector3(0, 0, 1) }, uHeat: { value: 0 }, uTime: { value: 0 }, uGain: { value: 1.6 },
+      uFlow: { value: new THREE.Vector3(0, 0, 1) }, uHeat: { value: 0 }, uTime: { value: 0 }, uGain: { value: 2.1 },
       uCore: { value: c3(palette.core) }, uHot: { value: c3(palette.hot) },
     },
     ...additive, side: THREE.DoubleSide,

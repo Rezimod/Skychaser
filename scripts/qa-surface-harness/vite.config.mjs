@@ -11,8 +11,8 @@ const repo = path.resolve(here, '../..');
 export default defineConfig({
   root: here,
   publicDir: path.join(repo, 'public'),
-  cacheDir: path.join(repo, 'node_modules/.vite-qa-surfaces'),
-  resolve: { alias: { '@': path.join(repo, 'src') } },
+  cacheDir: path.join(repo, process.env.QA_SRC ? 'node_modules/.vite-qa-surfaces-before' : 'node_modules/.vite-qa-surfaces'),
+  resolve: { alias: { '@': process.env.QA_SRC ?? path.join(repo, 'src') } },
   define: {
     'process.env.NODE_ENV': JSON.stringify('development'),
     'process.env.NEXT_PUBLIC_BUILD_ID': JSON.stringify('qa'),

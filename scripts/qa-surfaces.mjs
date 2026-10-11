@@ -647,11 +647,18 @@ async function plasma(browser, world) {
     let shots = 0;
     const t0 = Date.now();
     let peak = 0;
-    while (Date.now() - t0 < 600_000 && shots < 6) {
+    // A frame as the heat passes each mark on the way up, at the peak, and on the way down.
+    const marks = [0.35, 0.65, 0.9, 0.99];
+    let falling = false;
+    while (Date.now() - t0 < 900_000 && shots < 7) {
       const s = await page.evaluate((h) => { const o = window[h].telemetry.orbital; return o ? { heat: o.heat, alt: Math.round(o.altitude), leg: o.phase, mach: o.mach } : null; }, h);
       if (!s) break;
       peak = Math.max(peak, s.heat);
-      if (s.heat > 0.3 || (peak > 0.3 && s.heat < peak * 0.6)) {
+      let take = false;
+      if (marks.length && s.heat >= marks[0]) { while (marks.length && s.heat >= marks[0]) marks.shift(); take = true; }
+      if (peak > 0.5 && !falling && s.heat < peak * 0.8) { falling = true; take = true; }
+      if (falling === true && s.heat < 0.3) { take = true; falling = 'done'; }
+      if (take) {
         await shot(page, `${world}-plasma-h${s.heat.toFixed(2)}-${s.alt}`);
         say(`${world} plasma: heat ${s.heat.toFixed(2)} at ${s.alt} m, mach ${s.mach.toFixed(1)}`);
         shots++;
