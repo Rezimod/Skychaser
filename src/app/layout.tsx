@@ -1,21 +1,21 @@
 import type { Metadata } from 'next';
 import type { Viewport } from 'next';
 import { Anton, Orbitron, Geist, JetBrains_Mono, Oswald } from 'next/font/google';
-import './stellar-base.css';
-import '../styles/stellar-theme.css';
-import '../styles/stellar-motion.css';
-import '../styles/stellar-pages.css';
-import '../styles/stellar-reveal.css';
-import '../styles/stellar-supernova.css';
-import '../styles/stellar-type.css';
-import '../styles/stellar-home.css';
-import '../styles/stellar-odyssey.css';
-import '../styles/stellar-mobile.css';
+import './skychaser-base.css';
+import '../styles/skychaser-theme.css';
+import '../styles/skychaser-motion.css';
+import '../styles/skychaser-pages.css';
+import '../styles/skychaser-reveal.css';
+import '../styles/skychaser-supernova.css';
+import '../styles/skychaser-type.css';
+import '../styles/skychaser-home.css';
+import '../styles/skychaser-odyssey.css';
+import '../styles/skychaser-mobile.css';
 import { AnalyticsBoot } from '@/components/providers/AnalyticsBoot';
 import JsonLd from '@/components/shared/JsonLd';
 
 // Skychaser's faces: Orbitron for the wordmark and display, Geist for
-// text, JetBrains Mono for figures. The legacy pages add their own in app/(stellar).
+// text, JetBrains Mono for figures. The legacy pages add their own in app/(skychaser).
 const orbitron = Orbitron({
   subsets: ['latin'],
   variable: '--font-orbitron',
@@ -72,9 +72,9 @@ export const metadata: Metadata = {
 };
 
 /**
- * The root every page shares, kept to what a Stellar page needs: fonts, the
- * Stellar stylesheet, analytics. Wallets and sign-in load on demand
- * (StellarAuth); the legacy Stellar providers and chrome live in app/(stellar).
+ * The root every page shares, kept to what a Skychaser page needs: fonts, the
+ * Skychaser stylesheet, analytics. Wallets and sign-in load on demand
+ * (SkychaserAuth); the legacy Skychaser providers and chrome live in app/(skychaser).
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

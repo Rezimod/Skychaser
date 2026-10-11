@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import StellarShell from '@/components/stellar/StellarShell';
-import DataRow from '@/components/stellar/ui/DataRow';
-import Chapter from '@/components/stellar/ui/Chapter';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import DataRow from '@/components/skychaser/ui/DataRow';
+import Chapter from '@/components/skychaser/ui/Chapter';
 import { getDb } from '@/lib/db';
-import { auditLog, type AuditFlag, type LogRow } from '@/lib/stellar/audit';
-import { readFullLog } from '@/lib/stellar/capsule';
+import { auditLog, type AuditFlag, type LogRow } from '@/lib/skychaser/audit';
+import { readFullLog } from '@/lib/skychaser/capsule';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,14 +71,14 @@ export default async function LogPage() {
     try {
       entries = await readFullLog(db);
     } catch (err) {
-      console.error('[stellar] cannot read the log', err);
+      console.error('[skychaser] cannot read the log', err);
     }
   }
   const audit = entries ? auditLog(entries) : null;
   const newestFirst = entries ? [...entries].sort((a, b) => b.seq - a.seq) : [];
 
   return (
-    <StellarShell title="Public log">
+    <SkychaserShell title="Public log">
       <section className="sd-container sd-top">
         {audit && (
           <DataRow
@@ -151,6 +151,6 @@ export default async function LogPage() {
           </div>
         )}
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

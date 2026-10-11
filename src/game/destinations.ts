@@ -2,7 +2,7 @@
 // is held and every destination stays visible and locked. React and the
 // flight code both read this one store.
 
-import type { VoyageDestination } from '@/lib/stellar/voyage';
+import type { VoyageDestination } from '@/lib/skychaser/voyage';
 
 export type Holdings = {
   status: 'signedOut' | 'loading' | 'ready' | 'unavailable';

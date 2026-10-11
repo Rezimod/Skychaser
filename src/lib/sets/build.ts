@@ -10,8 +10,8 @@
 import type { card } from '@/lib/schema';
 import type { Rarity } from '@/lib/rarity';
 import { getNode } from '@/lib/observatory/nodes';
-import { EDITION_SIZE } from '@/lib/stellar/economics';
-import { observability, type Observability, type ObservabilitySubject } from '@/lib/stellar/observability';
+import { EDITION_SIZE } from '@/lib/skychaser/economics';
+import { observability, type Observability, type ObservabilitySubject } from '@/lib/skychaser/observability';
 
 /** A card row as a set declares it, before it is filed under a set. */
 export type CardSeed = Omit<typeof card.$inferInsert, 'id' | 'setId' | 'createdAt'>;

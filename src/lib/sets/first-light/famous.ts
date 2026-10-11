@@ -6,7 +6,7 @@
  * the family it belongs to on the shelf.
  */
 
-import { arcsecFromKm, arcsecFromKmAtAu, MOON_DISTANCE_KM } from '@/lib/stellar/observability';
+import { arcsecFromKm, arcsecFromKmAtAu, MOON_DISTANCE_KM } from '@/lib/skychaser/observability';
 import { authorCard, authorKept, authorSight, type AuthoredCard } from '../build';
 import { NO_POSITION, OFF_MOON, body, fixed } from './shared';
 

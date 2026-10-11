@@ -1,4 +1,4 @@
-// The sky over Stellar Base as it is on the day. The base stands in the
+// The sky over Skychaser Base as it is on the day. The base stands in the
 // Moon's south polar region, so Earth hangs low in the north: where, and how big, comes
 // from the Moon's libration (astronomy-engine), and it drifts through the
 // month as the real one does. The bright stars and the Milky Way are at their

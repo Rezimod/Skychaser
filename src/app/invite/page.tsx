@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import StellarShell from '@/components/stellar/StellarShell';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
 
 export const metadata: Metadata = {
   title: 'Skychaser — closed beta',
@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 
 export default function InvitePage() {
   return (
-    <StellarShell title="Closed beta">
+    <SkychaserShell title="Closed beta">
       <section className="sd-container sd-top">
         <div className="sd-gate">
           <p className="sd-eyebrow">Closed beta</p>
           <p className="sd-lede">Skychaser opens through an invitation link. If you hold one, open it on this device.</p>
         </div>
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

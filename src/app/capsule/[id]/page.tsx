@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import CardPlate from '@/components/stellar/CardPlate';
-import StellarOpen from '@/components/stellar/StellarOpen';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
-import StellarVerify from '@/components/stellar/StellarVerify';
-import DataRow from '@/components/stellar/ui/DataRow';
-import Chapter from '@/components/stellar/ui/Chapter';
+import CardPlate from '@/components/skychaser/CardPlate';
+import SkychaserOpen from '@/components/skychaser/SkychaserOpen';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
+import SkychaserVerify from '@/components/skychaser/SkychaserVerify';
+import DataRow from '@/components/skychaser/ui/DataRow';
+import Chapter from '@/components/skychaser/ui/Chapter';
 import { getDb } from '@/lib/db';
-import type { OpenedOutcome } from '@/lib/stellar/audit';
-import { readFullLog } from '@/lib/stellar/capsule';
-import { verifyCapsule } from '@/lib/stellar/randomness';
-import { isUuid } from '@/lib/stellar/route-guards';
+import type { OpenedOutcome } from '@/lib/skychaser/audit';
+import { readFullLog } from '@/lib/skychaser/capsule';
+import { verifyCapsule } from '@/lib/skychaser/randomness';
+import { isUuid } from '@/lib/skychaser/route-guards';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,11 +29,11 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
   const db = getDb();
   if (!db) {
     return (
-      <StellarShell title="Capsule">
+      <SkychaserShell title="Capsule">
         <section className="sd-container sd-top">
           <p className="sd-note">The record cannot be read at the moment.</p>
         </section>
-      </StellarShell>
+      </SkychaserShell>
     );
   }
 
@@ -63,8 +63,8 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
       : null;
 
   return (
-    <StellarShell title={sequence !== null ? `Capsule ${String(sequence).padStart(3, '0')}` : 'Capsule'}>
-      <StellarView step="capsule" />
+    <SkychaserShell title={sequence !== null ? `Capsule ${String(sequence).padStart(3, '0')}` : 'Capsule'}>
+      <SkychaserView step="capsule" />
       <section className="sd-container sd-top">
         <nav aria-label="Breadcrumb" className="sd-crumb sd-data">
           <Link href="/capsules/log">Log</Link>
@@ -109,7 +109,7 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
           </p>
         )}
 
-        {purchased && !opened && !closed && <StellarOpen capsuleId={id} />}
+        {purchased && !opened && !closed && <SkychaserOpen capsuleId={id} />}
 
         {outcome && (
           <div className="sd-chapter-block">
@@ -134,10 +134,10 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
               <Chapter n="03" title="Recompute it" />
             </div>
             <p className="sd-note">Secret committed before the sale, nonce set by the buyer after. Together they reproduce every draw.</p>
-            <StellarVerify capsuleId={id} />
+            <SkychaserVerify capsuleId={id} />
           </>
         )}
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

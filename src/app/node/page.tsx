@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarTabBar from '@/components/stellar/StellarTabBar';
-import ObservatoryConsole from '@/components/stellar/observatory/ObservatoryConsole';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserTabBar from '@/components/skychaser/SkychaserTabBar';
+import ObservatoryConsole from '@/components/skychaser/observatory/ObservatoryConsole';
 import { observatoryTonight } from '@/lib/observatory/tonight-card';
 
 export const dynamic = 'force-dynamic';
@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 export default async function ObservatoryPage() {
   const { tonight, nodeCloud } = await observatoryTonight();
   return (
-    <StellarShell bare>
+    <SkychaserShell bare>
       <ObservatoryConsole tonight={tonight} nodeCloud={nodeCloud} />
-      <StellarTabBar />
-    </StellarShell>
+      <SkychaserTabBar />
+    </SkychaserShell>
   );
 }

@@ -1,21 +1,21 @@
 import type { Metadata } from 'next';
 import { eq } from 'drizzle-orm';
-import AlmanacDate from '@/components/stellar/AlmanacDate';
-import CapsuleCounter from '@/components/stellar/CapsuleCounter';
-import ShelfFilter from '@/components/stellar/ShelfFilter';
-import ShopCard from '@/components/stellar/ShopCard';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
+import AlmanacDate from '@/components/skychaser/AlmanacDate';
+import CapsuleCounter from '@/components/skychaser/CapsuleCounter';
+import ShelfFilter from '@/components/skychaser/ShelfFilter';
+import ShopCard from '@/components/skychaser/ShopCard';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
 import { getDb } from '@/lib/db';
 import { getNode } from '@/lib/observatory/nodes';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { card } from '@/lib/schema';
 import { SET_001, SET_001_CARDS } from '@/lib/sets/set-001';
-import { cardStatus } from '@/lib/stellar/almanac';
-import { capsulesOnSale, readSetSupply } from '@/lib/stellar/capsule';
-import { cardPriceUsd } from '@/lib/stellar/economics';
-import { nightRow } from '@/lib/stellar/night';
-import { siteNightDate } from '@/lib/stellar/target';
+import { cardStatus } from '@/lib/skychaser/almanac';
+import { capsulesOnSale, readSetSupply } from '@/lib/skychaser/capsule';
+import { cardPriceUsd } from '@/lib/skychaser/economics';
+import { nightRow } from '@/lib/skychaser/night';
+import { siteNightDate } from '@/lib/skychaser/target';
 
 export const revalidate = 60;
 
@@ -39,7 +39,7 @@ export default async function FirstLightPage() {
         readSetSupply(db, SET_001.code),
         nightRow(db, siteNightDate(node.timezone, new Date())),
         capsulesOnSale(db, { limit: 1000 }).catch((err) => {
-          console.error('[stellar] cannot read capsules on sale', err);
+          console.error('[skychaser] cannot read capsules on sale', err);
           return null;
         }),
       ]);
@@ -56,7 +56,7 @@ export default async function FirstLightPage() {
         tonight = row?.designation ?? null;
       }
     } catch (err) {
-      console.error('[stellar] cannot read the set', err);
+      console.error('[skychaser] cannot read the set', err);
     }
   }
 
@@ -67,8 +67,8 @@ export default async function FirstLightPage() {
   );
 
   return (
-    <StellarShell>
-      <StellarView step="set" />
+    <SkychaserShell>
+      <SkychaserView step="set" />
       <div className="sd-fl">
         <CapsuleCounter onSale={onSale} />
 
@@ -115,6 +115,6 @@ export default async function FirstLightPage() {
           </ul>
         </section>
       </div>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

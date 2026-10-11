@@ -1,7 +1,7 @@
 /**
- * The boundary between Stellar and a telescope.
+ * The boundary between Skychaser and a telescope.
  *
- * Stellar never talks to hardware — it talks to an adapter. One implementation
+ * Skychaser never talks to hardware — it talks to an adapter. One implementation
  * exists per node kind: the simulator here, and a network adapter per partner
  * platform. See docs/observatory-network.md §4, including the rule that no
  * node platform's source may enter this repository.

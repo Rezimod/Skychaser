@@ -1,8 +1,8 @@
 /**
- * Stellar Observatory — domain types for the telescope-time network.
+ * Skychaser Observatory — domain types for the telescope-time network.
  *
  * Design: docs/observatory-network.md. These types describe nodes and sessions
- * as Stellar sees them; they are deliberately independent of any one node's
+ * as Skychaser sees them; they are deliberately independent of any one node's
  * hardware API, which lives behind `ObservatoryAdapter`.
  */
 
@@ -16,7 +16,7 @@ export type NodeStatus =
 /** How a node joined the network. See docs/observatory-network.md §3. */
 export type NodeTier =
   | 'first_party' // ours
-  | 'kitted'      // Astroman customer running a Stellar Node Kit
+  | 'kitted'      // Astroman customer running a Skychaser Node Kit
   | 'byo';        // owner's existing ASCOM/Alpaca or INDI rig
 
 /** Live operational state, refreshed from the node. */
@@ -76,11 +76,11 @@ export type ObservatoryNode = {
   availability?: { fromHourLocal: number; toHourLocal: number };
   /**
    * The account that owns the instrument and is paid for it. Absent on a
-   * first-party node: Stellar operates it, and nobody is owed a share.
+   * first-party node: Skychaser operates it, and nobody is owed a share.
    */
   operatorPrivyId?: string;
   /**
-   * The node platform Stellar talks to, and the environment variable holding
+   * The node platform Skychaser talks to, and the environment variable holding
    * its address. Absent means there is no hardware link and the simulator
    * speaks for this node.
    *

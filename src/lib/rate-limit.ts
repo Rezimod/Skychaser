@@ -49,14 +49,14 @@ export const firstLightPosterRateLimit = { limit: (id: string) => makeLimit('60 
 export const subscribeRateLimit = { limit: (id: string) => makeLimit('3600 s', 10, 'rl:subscribe').limit(id) };
 export const clubActivateRateLimit = { limit: (id: string) => makeLimit('3600 s', 5, 'rl:club').limit(id) };
 
-// Stellar capsules and cards. Buying opens an order and fixes a capsule's
+// Skychaser capsules and cards. Buying opens an order and fixes a capsule's
 // nonce, so it is capped per wallet; opening and confirming are cheap to retry
 // but each one reads the chain or writes a batch; the public log is read-only.
-export const stellarBuyRateLimit = { limit: (id: string) => makeLimit('3600 s', 20, 'rl:stellar:buy').limit(id) };
-export const stellarConfirmRateLimit = { limit: (id: string) => makeLimit('60 s', 30, 'rl:stellar:confirm').limit(id) };
-export const stellarOpenRateLimit = { limit: (id: string) => makeLimit('60 s', 20, 'rl:stellar:open').limit(id) };
-export const stellarLogRateLimit = { limit: (id: string) => makeLimit('60 s', 60, 'rl:stellar:log').limit(id) };
-export const stellarVoteRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:vote').limit(id) };
+export const skychaserBuyRateLimit = { limit: (id: string) => makeLimit('3600 s', 20, 'rl:stellar:buy').limit(id) };
+export const skychaserConfirmRateLimit = { limit: (id: string) => makeLimit('60 s', 30, 'rl:stellar:confirm').limit(id) };
+export const skychaserOpenRateLimit = { limit: (id: string) => makeLimit('60 s', 20, 'rl:stellar:open').limit(id) };
+export const skychaserLogRateLimit = { limit: (id: string) => makeLimit('60 s', 60, 'rl:stellar:log').limit(id) };
+export const skychaserVoteRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:vote').limit(id) };
 
 // Daily ceilings (24h sliding) — bound the worst-case AI cost / token
 // issuance per user even if the per-minute / per-hour limits are saturated.

@@ -1,12 +1,12 @@
 /**
- * Stellar's client for a Darkview observatory.
+ * Skychaser's client for a Darkview observatory.
  *
  * Darkview is a separate, grant-funded project with its own repository and an
- * audited statement that it shares no code with Stellar — see
+ * audited statement that it shares no code with Skychaser — see
  * docs/observatory-network.md §4.1. Nothing here is copied from it. This file
  * speaks its published contract (`contracts/openapi.yaml`, operation
  * `getObservatoryStatus`) the way any third-party client would, and the shape
- * below is only the subset Stellar reads.
+ * below is only the subset Skychaser reads.
  *
  * The single most important thing in this file is that Darkview has two modes.
  * Its contract says, in as many words, that SIMULATED is the default always and
@@ -30,7 +30,7 @@ import type { NodeReadiness, ObservatoryNode } from './types';
 /** A status poll that has not answered in this long is a node that is not there. */
 const TIMEOUT_MS = 4_000;
 
-/** The slice of PublicObservatoryStatus Stellar reads. */
+/** The slice of PublicObservatoryStatus Skychaser reads. */
 type DarkviewStatus = {
   mode: 'SIMULATED' | 'REAL';
   link: 'ONLINE' | 'DEGRADED' | 'OFFLINE';
@@ -67,7 +67,7 @@ export class DarkviewAdapter implements ObservatoryAdapter {
    * Darkview's contract carries mission and capture operations, but they are
    * its own customer-facing flows behind a user session — there is no
    * machine-to-machine operation for "take this photograph unattended on
-   * Stellar's behalf". That contract is explicit that a task needing a field
+   * Skychaser's behalf". That contract is explicit that a task needing a field
    * which does not exist must stop and raise a contract issue rather than
    * invent a private endpoint, and it is the source of truth for both sides.
    *
@@ -109,7 +109,7 @@ export class DarkviewAdapter implements ObservatoryAdapter {
       };
     }
 
-    // The Sun is Stellar's own arithmetic, not something to ask a telescope.
+    // The Sun is Skychaser's own arithmetic, not something to ask a telescope.
     const sunAltitude = getSunAltitude(node.lat, node.lon, now);
     if (sunAltitude > SUN_LIMIT_DEG) {
       return {
@@ -123,7 +123,7 @@ export class DarkviewAdapter implements ObservatoryAdapter {
       };
     }
 
-    // Darkview reports a verdict; Stellar has the number. Neither overrides the
+    // Darkview reports a verdict; Skychaser has the number. Neither overrides the
     // other — an operator hold stands whatever the forecast says.
     const cloudCover = await currentCloudCover(node, now);
     if (status.weatherHold || status.weatherStatus === 'UNSAFE') {
@@ -184,7 +184,7 @@ export class DarkviewAdapter implements ObservatoryAdapter {
  * Validated at the boundary, because this is another service's output.
  *
  * Anything unrecognised in `mode` or `link` fails the whole parse rather than
- * defaulting: a future enum member Stellar has never heard of must not be
+ * defaulting: a future enum member Skychaser has never heard of must not be
  * guessed at when the guess decides whether something can be minted.
  */
 function parse(body: unknown): DarkviewStatus | null {

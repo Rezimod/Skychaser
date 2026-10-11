@@ -1,5 +1,5 @@
 {
-  "name": "stellar",
+  "name": "skychaser",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -11,10 +11,10 @@
     "start": "next start",
     "test": "vitest run",
     "test:smoke": "playwright test",
-    "stellar:lifecycle": "npx tsx scripts/stellar-lifecycle.ts",
-    "stellar:seed": "npx tsx scripts/stellar-seed-set.ts",
-    "stellar:capsules": "npx tsx scripts/stellar-capsule-demo.ts",
-    "stellar:funnel": "npx tsx scripts/stellar-funnel.ts",
+    "skychaser:lifecycle": "npx tsx scripts/skychaser-lifecycle.ts",
+    "skychaser:seed": "npx tsx scripts/skychaser-seed-set.ts",
+    "skychaser:capsules": "npx tsx scripts/skychaser-capsule-demo.ts",
+    "skychaser:funnel": "npx tsx scripts/skychaser-funnel.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },

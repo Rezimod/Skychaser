@@ -1,6 +1,6 @@
-// Stellar deep-sky catalog.
+// Skychaser deep-sky catalog.
 //
-// Source of truth for every fixed celestial target Stellar can guide a user
+// Source of truth for every fixed celestial target Skychaser can guide a user
 // to. Planets, Sun, and Moon are computed live by astronomy-engine in the
 // finder API and aren't listed here — but their type/difficulty/instrument
 // metadata IS, in `PLANET_META`, so the UI can treat them uniformly.

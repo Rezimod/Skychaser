@@ -10,7 +10,7 @@ test('nothing animates under reduced motion', async ({ page }) => {
     const r = await page.evaluate(() => ({
       matches: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       running: document.getAnimations().filter((a) => a.playState === 'running').length,
-      hidden: [...document.querySelectorAll('.stellar section, .stellar .sd-plate, .stellar h1, .stellar h2')].filter(
+      hidden: [...document.querySelectorAll('.skychaser section, .skychaser .sd-plate, .skychaser h1, .skychaser h2')].filter(
         (el) => Number(getComputedStyle(el).opacity) < 0.99,
       ).length,
     }));

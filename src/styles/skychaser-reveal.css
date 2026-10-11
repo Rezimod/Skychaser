@@ -1,0 +1,801 @@
+/* SKYCHASER — the capsule reveal. Loaded after skychaser-theme.css and skychaser-motion.css.
+
+   A stone coming home, on a stage over the whole screen. Every beat is a CSS
+   keyframe timed off variables SkychaserReveal sets from what the capsule holds:
+
+     --sd-fall     the descent, first glint to strike
+     --sd-open     strike to burst: cooling, cracking, shuddering
+     --sd-burst    = fall + open, the instant it breaks
+     --sd-wait     the lesser cards are placed; the field dims and waits
+     --sd-hold     how long it waits on the best card
+     --sd-best-at  the best card starts
+     --sd-best-d   the best card's turn
+     --sd-end      everything is placed
+     --sd-heat     the colour of the scarcest card, which the whole sky burns in
+
+   and per card --sd-at (its start), --sd-d (its turn), --sd-side (its place)
+   and --sd-tone (its rarity's colour).
+
+   Transform and opacity only, so it composites; a handful of blurs on single
+   large soft shapes; no layout moves. Particle counts are fixed in
+   reveal/Meteorite.tsx (removed 2026-10-01; the reveal is now the supernova in
+   skychaser-supernova.css). The typed provenance line below is still used. */
+
+.sd-reveal {
+  --sd-cw: clamp(150px, min(23vw, calc((100dvh - 380px) / 1.66)), 300px);
+  --sd-gap: clamp(14px, 2.4vw, 44px);
+  --sd-best: 1.08;
+  --sd-present: 1.22;
+  --sd-stone: 124px;
+  --sd-from-x: min(760px, 62vw); --sd-from-y: -68vh;
+  /* The line of the fall: the angle pointing back up the track, and forward down it. */
+  --sd-run: atan2(var(--sd-from-y), var(--sd-from-x));
+  --sd-ahead: calc(var(--sd-run) + 180deg);
+  position: relative;
+}
+.sd-reveal__stage { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 48px 0 8px; }
+
+.sd-reveal--staged {
+  position: fixed; inset: 0; z-index: 80; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  display: grid; place-items: start center; padding: 16px var(--sd-gutter) 32px;
+  background: #070707;
+  animation: sd-stage-in 500ms var(--sd-ease) both;
+}
+.sd-reveal--staged .sd-reveal__stage { width: min(1040px, 100%); min-height: 100%; justify-content: center; padding-top: 56px; }
+
+/* ── The sky ──────────────────────────────────────────────────── */
+/* Three slow nebulae, two depths of stars, two depths of star streaks that
+   run while the stone is in the air, the rim of the atmosphere it comes
+   through, and the glow of its entry at the top of the sky. */
+.sd-reveal__sky { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__sky,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__fx,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__stone,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__dim,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__spot,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__pulse,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__negative,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__inhale,
+.sd-reveal:not(.sd-reveal--staged) .sd-reveal__burst { display: none; }
+.sd-reveal__nebula { position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0; animation: sd-fade 2400ms ease-out both, sd-drift 38s ease-in-out infinite alternate; }
+.sd-reveal__nebula--a { left: -10%; top: -15%; width: 70vw; height: 60vh; background: radial-gradient(closest-side, rgba(146, 69, 36, 0.42), transparent); }
+.sd-reveal__nebula--b { right: -15%; top: 10%; width: 60vw; height: 70vh; background: radial-gradient(closest-side, rgba(181, 101, 45, 0.26), transparent); animation-duration: 2400ms, 46s; animation-direction: normal, alternate-reverse; }
+.sd-reveal__nebula--c { left: 20%; bottom: -25%; width: 70vw; height: 55vh; background: radial-gradient(closest-side, color-mix(in srgb, var(--sd-heat) 24%, transparent), transparent); animation-duration: 2400ms, 30s; }
+.sd-reveal__stars { position: absolute; inset: -20%; opacity: 0; }
+.sd-reveal__stars--far { background: var(--sd-stars) 0 0 / 260px 230px; animation: sd-fade 1200ms ease-out both, sd-parallax 90s linear infinite; }
+.sd-reveal__stars--near { background: var(--sd-stars) 60px 90px / 480px 420px; animation: sd-fade 1600ms ease-out both, sd-parallax 45s linear infinite; }
+/* Star streaks: dashes along the line of the fall, running back up it, the
+   near layer faster and brighter than the far. */
+.sd-reveal__streaks {
+  position: absolute; left: 50%; top: 50%; width: 260vmax; height: 260vmax; margin: -130vmax 0 0 -130vmax; opacity: 0;
+  mask-image: radial-gradient(ellipse 40% 45% at 50% 50%, #000, transparent), repeating-linear-gradient(180deg, #000 0 180px, transparent 180px 420px);
+  mask-composite: intersect; -webkit-mask-composite: source-in;
+}
+.sd-reveal__streaks--far {
+  background: repeating-linear-gradient(90deg, transparent 0 52px, rgba(255, 210, 190, 0.28) 52px 53px, transparent 53px 137px);
+  animation: sd-streak-far var(--sd-fall) ease-in both;
+}
+.sd-reveal__streaks--near {
+  background: repeating-linear-gradient(90deg, transparent 0 87px, rgba(255, 235, 220, 0.5) 87px 88.5px, transparent 88.5px 219px);
+  mask-image: radial-gradient(ellipse 34% 40% at 50% 50%, #000, transparent), repeating-linear-gradient(180deg, #000 0 240px, transparent 240px 560px);
+  animation: sd-streak-near var(--sd-fall) ease-in both;
+}
+.sd-reveal__limb {
+  position: absolute; left: 50%; top: 78%; width: 240%; aspect-ratio: 1; transform: translateX(-50%);
+  border-radius: 50%; border-top: 1px solid rgba(255, 195, 150, 0.36);
+  box-shadow: 0 -12px 70px rgba(181, 101, 45, 0.2), inset 0 24px 90px rgba(164, 85, 40, 0.14);
+  opacity: 0; animation: sd-fade 1400ms var(--sd-ease) 150ms both;
+}
+/* The entry: the top of the sky lights where the stone comes in, white-hot, then in its colour. */
+.sd-reveal__entry {
+  position: absolute; inset: 0; opacity: 0;
+  background: radial-gradient(55% 50% at 76% 6%, color-mix(in srgb, var(--sd-heat) 55%, #fff), color-mix(in srgb, var(--sd-heat) 25%, transparent) 40%, transparent 70%);
+  animation: sd-entry var(--sd-fall) ease-in-out both;
+}
+
+.sd-reveal__caption { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0; text-align: center; animation: sd-draw 700ms var(--sd-ease) calc(var(--sd-fall) + 300ms) both; }
+
+/* ── The field ────────────────────────────────────────────────── */
+/* Where the stone lands and the cards come to rest. The camera leans in as
+   the stone comes down and is knocked at the strike. Its children stack:
+   fx 1, the lesser cards 2, the stone 3, the dim 4, spot and pulse 5, the
+   best card 6, the light sweep 7. */
+.sd-reveal__field {
+  position: relative; width: 100%;
+  height: calc(var(--sd-cw) * 1.4 * var(--sd-present) + 44px);
+  margin: 8px 0 12px;
+  animation: sd-dolly var(--sd-fall) ease-in both, sd-shake 760ms linear var(--sd-fall) forwards;
+}
+.sd-reveal__fx { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.sd-reveal__fx > *, .sd-reveal__stone, .sd-reveal__pulse, .sd-reveal__spot { position: absolute; left: 50%; top: 50%; }
+
+/* ── The fall ─────────────────────────────────────────────────── */
+/* The meteor's head, scaled up from a glint: it brings its sheaths, its bow
+   shock, tail, embers and fragments with it, so they grow as it nears. */
+.sd-reveal__meteor {
+  width: 0; height: 0; z-index: 2;
+  animation: sd-enter var(--sd-fall) cubic-bezier(0.55, 0, 0.85, 0.42) both, sd-out 200ms linear var(--sd-fall) forwards;
+}
+.sd-reveal__sheath { position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; filter: blur(9px); }
+.sd-reveal__sheath--hot { background: radial-gradient(circle, #fff 0%, rgba(255, 255, 255, 0.85) 30%, transparent 70%); animation: sd-sheath-hot var(--sd-fall) ease-in both; }
+.sd-reveal__sheath--cool { background: radial-gradient(circle, color-mix(in srgb, var(--sd-heat) 70%, #fff) 0%, color-mix(in srgb, var(--sd-heat) 80%, transparent) 30%, transparent 70%); opacity: 0; animation: sd-sheath-cool var(--sd-fall) ease-in both; }
+/* The bow shock: a chevron of compressed air standing ahead of the stone. */
+.sd-reveal__cone {
+  position: absolute; left: 0; top: -56px; width: 120px; height: 112px; transform-origin: 0 50%;
+  transform: rotate(var(--sd-ahead));
+  clip-path: polygon(100% 50%, 0 0, 30% 50%, 0 100%);
+  background: radial-gradient(ellipse at 100% 50%, #fff, color-mix(in srgb, var(--sd-heat) 70%, #fff) 25%, color-mix(in srgb, var(--sd-heat) 40%, transparent) 60%, transparent 85%);
+  filter: blur(7px); opacity: 0; animation: sd-cone var(--sd-fall) ease-in both;
+}
+.sd-reveal__tail {
+  position: absolute; left: 0; top: -4px; width: 980px; height: 8px; border-radius: 8px; transform-origin: 0 50%;
+  transform: rotate(var(--sd-run));
+  background: linear-gradient(90deg, #fff 0%, var(--sd-heat) 6%, color-mix(in srgb, var(--sd-heat) 35%, transparent) 40%, transparent 100%);
+}
+.sd-reveal__ember {
+  position: absolute; left: 0; top: 0; width: 4px; height: 4px; border-radius: 50%; background: #fff; transform-origin: 0 50%;
+  box-shadow: 0 0 6px 2px var(--sd-heat);
+  transform: rotate(calc(var(--sd-run) + (var(--k) - 5.5) * 4deg));
+  animation: sd-ember 700ms ease-out calc(var(--k) * -60ms) infinite;
+}
+.sd-reveal__fragment {
+  position: absolute; left: 0; top: 0; width: 6px; height: 3px; border-radius: 40%; background: color-mix(in srgb, var(--sd-gold) 45%, #fff); transform-origin: 0 50%;
+  box-shadow: 0 0 5px 1px var(--sd-heat);
+  transform: rotate(calc(var(--sd-run) + (var(--k) - 2) * 9deg));
+  opacity: 0; animation: sd-fragment 1100ms ease-out calc(var(--sd-fall) * 0.55 + var(--k) * 140ms) both;
+}
+/* The train: the ionised track it came down, hanging in the sky after it. */
+.sd-reveal__train {
+  width: 1500px; height: 3px; margin-top: -1.5px; border-radius: 3px; transform-origin: 0 50%;
+  transform: rotate(var(--sd-run));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--sd-heat) 70%, #fff) 0%, color-mix(in srgb, var(--sd-heat) 45%, transparent) 30%, transparent 75%);
+  filter: blur(1.2px); opacity: 0;
+  animation: sd-train calc(var(--sd-fall) + 2400ms) ease-out both;
+}
+
+/* ── The strike ───────────────────────────────────────────────── */
+.sd-reveal__crater {
+  width: 300px; height: 110px; margin: -30px 0 0 -150px; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, color-mix(in srgb, var(--sd-heat) 75%, #fff), color-mix(in srgb, var(--sd-heat) 45%, transparent) 35%, transparent 70%);
+  filter: blur(14px); opacity: 0; transform: scale(0.3);
+  animation: sd-crater var(--sd-open) ease-out var(--sd-fall) both;
+}
+.sd-reveal__flash {
+  width: 460px; height: 460px; margin: -230px 0 0 -230px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff 10%, color-mix(in srgb, var(--sd-heat) 70%, transparent) 26%, transparent 62%);
+  opacity: 0; animation: sd-flash 1100ms ease-out var(--sd-fall) both;
+}
+/* Three shock rings a breath apart, red, blue and white, so the edge splits into colour as it goes. */
+.sd-reveal__shock {
+  --sd-shock-at: var(--sd-fall); --sd-off: 0ms;
+  width: 140px; height: 140px; margin: -70px 0 0 -70px; border-radius: 50%; mix-blend-mode: screen;
+  border: 1px solid var(--sd-ring, #fff); opacity: 0;
+  animation: sd-shock 1700ms cubic-bezier(0.1, 0.7, 0.3, 1) calc(var(--sd-shock-at) + var(--sd-off)) both;
+}
+.sd-reveal__shock--r { --sd-ring: rgba(244, 177, 19, 0.9); }
+.sd-reveal__shock--b { --sd-ring: rgba(181, 101, 45, 0.9); --sd-off: 70ms; }
+.sd-reveal__shock--w { --sd-ring: color-mix(in srgb, var(--sd-heat) 60%, #fff); --sd-off: 35ms; }
+.sd-reveal__shock--burst { --sd-shock-at: var(--sd-burst); animation-duration: 2100ms; }
+.sd-reveal__spark {
+  width: calc(26px + mod(var(--k) * 17, 40) * 1px); height: 2px; margin: -1px 0 0 0; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--sd-heat) 70%, #fff), transparent);
+  transform-origin: 0 50%; transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 23, 30) * 1deg));
+  opacity: 0; animation: sd-spark 1300ms cubic-bezier(0.1, 0.8, 0.3, 1) var(--sd-fall) both;
+}
+.sd-reveal__dust {
+  width: 560px; height: 320px; margin: -160px 0 0 -280px; border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 60%, rgba(120, 100, 80, 0.5), rgba(80, 70, 60, 0.18) 45%, transparent 70%);
+  filter: blur(18px); opacity: 0; transform: scale(0.3);
+  animation: sd-dust 2800ms cubic-bezier(0.1, 0.6, 0.3, 1) var(--sd-fall) both;
+}
+/* Embers thrown up at the strike, arcing over and raining back down. */
+.sd-reveal__rain {
+  --sd-dx: calc((var(--k) - 4.5) * 38px); --sd-h: calc(-70px - mod(var(--k) * 37, 70) * 1px);
+  width: 3px; height: 3px; margin: -1px 0 0 -1px; border-radius: 50%; background: color-mix(in srgb, var(--sd-heat) 60%, #fff);
+  box-shadow: 0 0 5px 1px var(--sd-heat); opacity: 0;
+  animation: sd-rain calc(1300ms + var(--k) * 40ms) linear calc(var(--sd-fall) + 40ms) both;
+}
+/* Dust hanging in the air around the stone while it waits, drifting up and going out. */
+.sd-reveal__mote {
+  width: 3px; height: 3px; margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: color-mix(in srgb, var(--sd-heat) 70%, #fff);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--sd-heat) 50%, transparent);
+  transform: rotate(calc(var(--k) / var(--n) * 360deg)) translateX(calc(70px + mod(var(--k) * 37, 90) * 1px));
+  opacity: 0; animation: sd-mote 2600ms ease-out calc(var(--sd-fall) + 600ms + mod(var(--k) * 190, 1400) * 1ms) both;
+}
+
+/* ── The stone ────────────────────────────────────────────────── */
+/* In on the meteor's line, tumbling, white-hot; it jolts on landing and
+   cools; a crack draws along its seam, veins open off it, and the light
+   inside builds and beats faster and faster as the stone shudders. */
+.sd-reveal__stone {
+  z-index: 3; width: var(--sd-stone); height: var(--sd-stone); margin: calc(var(--sd-stone) / -2) 0 0 calc(var(--sd-stone) / -2);
+  color: var(--sd-heat);
+  animation:
+    sd-enter var(--sd-fall) cubic-bezier(0.55, 0, 0.85, 0.42) both,
+    sd-tumble var(--sd-fall) linear both,
+    sd-jolt 600ms cubic-bezier(0.3, 1.6, 0.5, 1) var(--sd-fall) both,
+    sd-cool 1500ms ease-out var(--sd-fall) both;
+}
+.sd-reveal__core {
+  position: absolute; inset: -60%; border-radius: 50%; z-index: -1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--sd-heat) 80%, #fff) 0%, color-mix(in srgb, var(--sd-heat) 60%, transparent) 25%, transparent 65%);
+  filter: blur(6px); opacity: 0;
+  animation: sd-core calc(var(--sd-open) - 700ms) linear calc(var(--sd-fall) + 700ms) both, sd-out 320ms ease-out var(--sd-burst) forwards;
+}
+.sd-reveal__body { position: absolute; inset: 0; animation: sd-quake calc(var(--sd-open) - 800ms) linear calc(var(--sd-fall) + 800ms) both; }
+.sd-reveal__half { position: absolute; inset: 0; }
+.sd-reveal__half svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.sd-reveal__half--l { animation: sd-part-l 900ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--sd-burst) - 160ms) both; }
+.sd-reveal__half--r { animation: sd-part-r 900ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--sd-burst) - 160ms) both; }
+.sd-reveal__rim { opacity: 0.9; }
+.sd-reveal__crack { opacity: 0; animation: sd-crack 800ms ease-out calc(var(--sd-fall) + 500ms) both, sd-throb calc(var(--sd-open) - 1300ms) linear calc(var(--sd-fall) + 1300ms) forwards; }
+.sd-reveal__veins { animation: sd-throb calc(var(--sd-open) - 1300ms) linear calc(var(--sd-fall) + 1300ms) both; }
+.sd-reveal__veins path { stroke-dasharray: 40; stroke-dashoffset: 40; animation: sd-vein 700ms ease-out calc(var(--sd-fall) + 1200ms + var(--k) * 240ms) both; }
+
+/* ── The burst ────────────────────────────────────────────────── */
+/* The field draws a breath; a legendary goes to negative for an instant;
+   the screen goes white; the halves part; shards fly, stretched by their
+   own speed; a column of light stands up out of the break; rings; rays. */
+.sd-reveal__inhale {
+  position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 18%, rgba(0, 0, 0, 0.9) 75%);
+  animation: sd-inhale 460ms ease-in calc(var(--sd-burst) - 460ms) both;
+}
+.sd-reveal__negative { position: fixed; inset: 0; z-index: 7; pointer-events: none; background: #fff; mix-blend-mode: difference; opacity: 0; display: none; }
+.sd-reveal--legendary .sd-reveal__negative { display: block; animation: sd-negative 260ms steps(2, jump-none) calc(var(--sd-burst) - 60ms) both; }
+.sd-reveal__burst {
+  position: fixed; inset: 0; z-index: 6; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, #fff 22%, color-mix(in srgb, var(--sd-heat) 60%, #fff) 45%, color-mix(in srgb, var(--sd-heat) 30%, transparent) 75%, transparent 100%);
+  animation: sd-burst 1500ms cubic-bezier(0.1, 0.8, 0.2, 1) calc(var(--sd-burst) - 60ms) both;
+}
+.sd-reveal--legendary .sd-reveal__burst { animation-duration: 2000ms; }
+.sd-reveal__breach {
+  position: absolute; left: 50%; top: -60%; width: 34px; height: 220%; margin-left: -17px; border-radius: 50%;
+  background: radial-gradient(closest-side, #fff, color-mix(in srgb, var(--sd-heat) 75%, transparent) 40%, transparent);
+  filter: blur(5px); opacity: 0; transform: scaleX(0.2);
+  animation: sd-breach 1400ms cubic-bezier(0.2, 0.7, 0.3, 1) calc(var(--sd-burst) - 500ms) both;
+}
+.sd-reveal__column {
+  width: 180px; height: 110vh; margin: -110vh 0 0 -90px; transform-origin: 50% 100%; opacity: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--sd-heat) 40%, transparent) 30%, color-mix(in srgb, var(--sd-heat) 55%, #fff) 50%, color-mix(in srgb, var(--sd-heat) 40%, transparent) 70%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 70%, #000);
+  mix-blend-mode: screen;
+  animation: sd-column 1700ms cubic-bezier(0.1, 0.7, 0.2, 1) calc(var(--sd-burst) - 120ms) both;
+}
+.sd-reveal__shard {
+  width: 14px; height: 6px; margin: -3px 0 0 0; border-radius: 40% 60%; transform-origin: 0 50%;
+  background: linear-gradient(90deg, #262626, #a89c8c 60%, color-mix(in srgb, var(--sd-heat) 70%, #fff));
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--sd-heat) 60%, transparent);
+  transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 29, 24) * 1deg));
+  opacity: 0; animation: sd-shard calc(900ms + mod(var(--k) * 53, 300) * 1ms) cubic-bezier(0.1, 0.8, 0.3, 1) calc(var(--sd-burst) - 100ms) both;
+}
+.sd-reveal__rays {
+  width: 900px; height: 900px; margin: -450px 0 0 -450px; border-radius: 50%; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--sd-heat) 45%, transparent) 0deg 4deg, transparent 4deg 18deg);
+  mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+  animation: sd-rays 3200ms ease-out calc(var(--sd-burst) - 200ms) both;
+}
+
+/* ── The wait on the best card ────────────────────────────────── */
+/* The field dims once the lesser cards are placed, a spotlight comes on
+   from above, and a slow pulse goes out: the best card is coming. */
+.sd-reveal__dim {
+  position: absolute; inset: -120vh -120vw; z-index: 10; pointer-events: none; background: #000; opacity: 0;
+  animation: sd-dim calc(var(--sd-hold) + var(--sd-best-d) * 0.84) ease-in-out var(--sd-wait) both;
+}
+.sd-reveal__spot {
+  z-index: 11; width: 1000px; height: 1500px; margin: -1180px 0 0 -500px; pointer-events: none; opacity: 0;
+  background: conic-gradient(from 0deg at 50% 0, transparent 0deg 166deg, color-mix(in srgb, var(--sd-heat) 40%, #fff) 178deg 182deg, transparent 194deg 360deg);
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), #000 40%, rgba(0, 0, 0, 0.6) 80%, transparent 96%);
+  animation: sd-spot calc(var(--sd-hold) + var(--sd-best-d) * 0.84) ease-in-out var(--sd-wait) both;
+}
+.sd-reveal__pulse {
+  z-index: 12; width: 200px; height: 200px; margin: -100px 0 0 -100px; border-radius: 50%; pointer-events: none; opacity: 0;
+  border: 2px solid color-mix(in srgb, var(--sd-heat) 70%, #fff); box-shadow: 0 0 30px color-mix(in srgb, var(--sd-heat) 50%, transparent), inset 0 0 30px color-mix(in srgb, var(--sd-heat) 40%, transparent);
+  animation: sd-pulse 1700ms cubic-bezier(0.1, 0.7, 0.2, 1) calc(var(--sd-wait) + 200ms) both;
+}
+.sd-reveal__pulse--2 { animation-delay: calc(var(--sd-wait) + 700ms); }
+.sd-reveal--common .sd-reveal__pulse--2, .sd-reveal--rare .sd-reveal__pulse--2 { display: none; }
+
+/* ── The cards ────────────────────────────────────────────────── */
+/* Each is placed on the field at its rest: --sd-side is its place, --sd-rest
+   the transform it ends on. Its animation starts it in the break, lifts it to
+   the middle face down, hangs, and walks it to rest. Inside, the lift floats
+   it while it hangs and settles it on a bounce; the flip turns it over. */
+.sd-reveal__cards { position: absolute; inset: 0; list-style: none; margin: 0; padding: 0; }
+.sd-reveal__card {
+  --sd-s: 1; --sd-rot: 0deg; --sd-y: 0px;
+  --sd-x: calc(var(--sd-side) * (var(--sd-cw) * (1 + var(--sd-best)) / 2 + var(--sd-gap)));
+  --sd-rest: translate(var(--sd-x), var(--sd-y)) rotate(var(--sd-rot)) scale(var(--sd-s));
+  --sd-flip-at: 0.26; --sd-flip-d: 0.36; --sd-sheen-at: 0.47;
+  position: absolute; left: 50%; top: 50%; width: var(--sd-cw); z-index: 2;
+  margin: calc(var(--sd-cw) * -0.7 - 18px) 0 0 calc(var(--sd-cw) / -2);
+  perspective: 1600px;
+  transform: var(--sd-rest);
+  animation:
+    sd-deal var(--sd-d) linear var(--sd-at) both,
+    sd-breathe 6s ease-in-out calc(var(--sd-at) + var(--sd-d)) infinite alternate;
+}
+.sd-reveal__card--best {
+  --sd-s: var(--sd-best); --sd-y: -16px; --sd-flip-at: 0.24; --sd-flip-d: 0.32; --sd-sheen-at: 0.45;
+  z-index: 6;
+  animation-name: sd-deal-best, sd-breathe; animation-delay: var(--sd-at), calc(var(--sd-at) + var(--sd-d) + 3s);
+}
+.sd-reveal__card:focus-visible { outline: 2px solid var(--sd-focus); outline-offset: 6px; border-radius: var(--sd-radius); }
+.sd-reveal__card .sd-cardplate { max-width: none; }
+.sd-reveal__lift { position: relative; animation: sd-hang var(--sd-d) ease-in-out var(--sd-at) both; }
+.sd-reveal__card--best .sd-reveal__lift { animation-name: sd-hang-best; }
+/* Scarce cards sit on their own light once they have turned. */
+.sd-reveal__card:not([data-rarity='common'])::after {
+  content: ''; position: absolute; left: -14%; right: -14%; bottom: 2%; height: 30%; z-index: -1; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--sd-tone) 50%, transparent), transparent);
+  filter: blur(10px); opacity: 0; animation: sd-fade 900ms ease-out calc(var(--sd-at) + var(--sd-d) * 0.5) both;
+}
+.sd-reveal__card[data-rarity='rare']::after { animation-name: sd-fade-half; }
+
+.sd-flip { position: relative; transform-style: preserve-3d; animation: sd-turn calc(var(--sd-d) * var(--sd-flip-d)) linear calc(var(--sd-at) + var(--sd-d) * var(--sd-flip-at)) both; }
+.sd-flip__front { position: relative; backface-visibility: hidden; border-radius: 4.76% / 3.41%; overflow: hidden; }
+/* The foil: one pass of light across the face as it comes round. */
+.sd-flip__front::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 2; mix-blend-mode: screen;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.55) 45%, color-mix(in srgb, var(--sd-tone) 60%, #fff) 50%, rgba(181, 101, 45, 0.35) 55%, transparent 70%);
+  background-size: 260% 100%; background-position: 130% 0; opacity: 0;
+  animation: sd-sheen calc(var(--sd-d) * 0.26) ease-in-out calc(var(--sd-at) + var(--sd-d) * var(--sd-sheen-at)) both;
+}
+.sd-flip__back {
+  position: absolute; inset: 0; z-index: 1; transform: rotateY(180deg); backface-visibility: hidden;
+  border-radius: 4.76% / 3.41%;
+  box-shadow: 0 0 34px color-mix(in srgb, var(--sd-heat) 35%, transparent);
+}
+
+/* What it is, under it: rarity in its own colour, and the edition, printed. */
+.sd-reveal__tag {
+  display: flex; justify-content: center; gap: 12px; margin: 14px 0 0; white-space: nowrap;
+  font-family: var(--sd-mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-variant-numeric: tabular-nums;
+  color: var(--sd-ink-3);
+}
+/* Text that prints itself: a clip stepping open once per character. */
+.sd-typed { display: inline-block; clip-path: inset(-2px 100% -2px 0); animation: sd-type calc(var(--sd-n) * 18ms) steps(var(--sd-n), end) var(--sd-type-at) both; }
+
+/* The best card is lit by what it came out of; an epic or a legendary
+   throws a halo of particles as it turns; a legendary keeps a ring of gold. */
+.sd-reveal__aura {
+  position: absolute; inset: -26% -46% -10%; z-index: -1; border-radius: 50%; pointer-events: none;
+  background:
+    radial-gradient(closest-side, color-mix(in srgb, var(--sd-heat) 42%, transparent), transparent 70%),
+    repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--sd-heat) 18%, transparent) 0deg 4deg, transparent 4deg 20deg);
+  mask-image: radial-gradient(closest-side, #000 30%, transparent);
+  opacity: 0; animation: sd-fade 1100ms ease-out calc(var(--sd-at) + var(--sd-d) * 0.5) both, sd-spin 40s linear calc(var(--sd-at) + var(--sd-d) * 0.5) infinite;
+}
+.sd-reveal--common .sd-reveal__aura { display: none; }
+.sd-reveal--rare .sd-reveal__aura { background: radial-gradient(closest-side, color-mix(in srgb, var(--sd-heat) 30%, transparent), transparent 70%); }
+.sd-reveal__halo { position: absolute; left: 50%; top: 45%; width: 0; height: 0; z-index: 3; pointer-events: none; }
+.sd-reveal__halo > span {
+  position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%;
+  background: #fff6d8; box-shadow: 0 0 10px 3px var(--sd-rarity-epic);
+  transform: rotate(calc(var(--k) * 360deg / 14)) translateX(0); opacity: 0;
+  animation: sd-halo 1700ms cubic-bezier(0.15, 0.8, 0.3, 1) calc(var(--sd-at) + var(--sd-d) * 0.5 + mod(var(--k) * 7, 4) * 60ms) both;
+}
+.sd-reveal__card[data-rarity='legendary'] .sd-reveal__halo > span { background: #fff6d8; box-shadow: 0 0 10px 3px var(--sd-rarity-legendary); }
+.sd-reveal__ring {
+  position: absolute; inset: -4.5%; z-index: -1; border-radius: 6% / 4.3%; pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--sd-rarity-legendary) 80%, #fff);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--sd-rarity-legendary) 55%, transparent), inset 0 0 22px color-mix(in srgb, var(--sd-rarity-legendary) 35%, transparent);
+  opacity: 0; animation: sd-ring 1200ms var(--sd-ease-out) calc(var(--sd-at) + var(--sd-d) * 0.58) both, sd-ring-breathe 5s ease-in-out calc(var(--sd-at) + var(--sd-d) * 0.58 + 1200ms) infinite alternate;
+}
+
+/* ── The rest ─────────────────────────────────────────────────── */
+/* A light passes across the placed cards, the provenance prints, the buttons arrive. */
+.sd-reveal__sweep {
+  position: absolute; inset: -6% 0; z-index: 7; overflow: hidden; pointer-events: none;
+  mask-image: linear-gradient(90deg, transparent 10%, #000 28%, #000 72%, transparent 90%);
+}
+.sd-reveal__sweep::before {
+  content: ''; position: absolute; top: -20%; left: 0; width: 22%; height: 140%; mix-blend-mode: screen;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.13) 50%, transparent);
+  transform: translateX(-140%) rotate(14deg); opacity: 0;
+  animation: sd-sweep 8s cubic-bezier(0.4, 0, 0.2, 1) calc(var(--sd-end) + 600ms) infinite;
+}
+.sd-skip {
+  position: absolute; top: 8px; right: 0; z-index: 5;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--sd-rule-strong); border-radius: 999px;
+  padding: 8px 16px; min-height: 40px; cursor: pointer; backdrop-filter: blur(6px);
+  font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--sd-ink-2);
+  transition: color var(--sd-dur-fast) var(--sd-ease), border-color var(--sd-dur-fast) var(--sd-ease);
+}
+.sd-skip:hover { color: var(--sd-ink); border-color: var(--sd-ink-4); }
+
+.sd-reveal__after {
+  position: relative; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 20px;
+  animation: sd-draw 700ms var(--sd-ease) calc(var(--sd-end) - 100ms) both;
+}
+.sd-reveal__provenance {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 0;
+  padding: 12px 20px; border: 1px solid var(--sd-rule); border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(8px); color: var(--sd-ink-3);
+}
+.sd-reveal__provenance a { color: var(--sd-accent-ink); }
+.sd-reveal__after .sd-pay__actions { justify-content: center; animation: sd-fade-in 500ms ease-out calc(var(--sd-end) + 250ms) both; }
+
+/* ── Keyframes ────────────────────────────────────────────────── */
+@keyframes sd-stage-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sd-fade { to { opacity: 1; } }
+@keyframes sd-fade-half { to { opacity: 0.6; } }
+@keyframes sd-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sd-drift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(6vw, 4vh) scale(1.15); }
+}
+@keyframes sd-parallax { to { transform: translate(-120px, 80px); } }
+@keyframes sd-streak-far {
+  0% { opacity: 0; transform: rotate(var(--sd-ahead)) translateX(60px); }
+  35% { opacity: 0.32; }
+  92% { opacity: 0.25; }
+  100% { opacity: 0; transform: rotate(var(--sd-ahead)) translateX(-140px); }
+}
+@keyframes sd-streak-near {
+  0% { opacity: 0; transform: rotate(var(--sd-ahead)) translateX(120px); }
+  40% { opacity: 0.7; }
+  92% { opacity: 0.5; }
+  100% { opacity: 0; transform: rotate(var(--sd-ahead)) translateX(-420px); }
+}
+@keyframes sd-entry {
+  0% { opacity: 0; }
+  25% { opacity: 0.55; }
+  100% { opacity: 0.12; }
+}
+@keyframes sd-dolly { from { transform: scale(1); } to { transform: scale(1.04); } }
+@keyframes sd-shake {
+  0% { transform: scale(1.04) translate(0, 0); }
+  8% { transform: scale(1.02) translate(-9px, 6px); }
+  20% { transform: scale(1.01) translate(8px, -6px); }
+  34% { transform: scale(1.005) translate(-6px, 4px); }
+  50% { transform: translate(4px, -3px); }
+  66% { transform: translate(-2px, 2px); }
+  82% { transform: translate(1px, -1px); }
+  100% { transform: none; }
+}
+@keyframes sd-enter {
+  from { transform: translate(var(--sd-from-x), var(--sd-from-y)) scale(0.16); opacity: 0; }
+  8% { opacity: 1; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes sd-tumble { from { rotate: -260deg; } to { rotate: 0deg; } }
+@keyframes sd-out { to { opacity: 0; } }
+@keyframes sd-sheath-hot {
+  0% { opacity: 0.6; transform: scale(0.6); }
+  45% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0.15; transform: scale(1.25); }
+}
+@keyframes sd-sheath-cool {
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; transform: scale(1.4); }
+}
+@keyframes sd-cone {
+  0% { opacity: 0; transform: rotate(var(--sd-ahead)) scale(0.4); }
+  40% { opacity: 0.4; }
+  100% { opacity: 0.7; transform: rotate(var(--sd-ahead)) scale(1.15); }
+}
+@keyframes sd-train {
+  0% { opacity: 0; }
+  35% { opacity: 0.55; }
+  60% { opacity: 0.4; }
+  100% { opacity: 0; }
+}
+@keyframes sd-ember {
+  from { opacity: 1; }
+  to { opacity: 0; transform: rotate(calc(var(--sd-run) + (var(--k) - 5.5) * 4deg)) translateX(120px) scale(0.3); }
+}
+@keyframes sd-fragment {
+  0% { opacity: 0; transform: rotate(calc(var(--sd-run) + (var(--k) - 2) * 9deg)) translateX(0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(calc(var(--sd-run) + (var(--k) - 2) * 9deg)) translateX(260px) scale(0.2); }
+}
+@keyframes sd-crater {
+  0% { opacity: 0; transform: scale(0.3); }
+  8% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.55; }
+  85% { opacity: 0.7; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes sd-flash {
+  0% { opacity: 0; transform: scale(0.2); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+@keyframes sd-shock {
+  0% { opacity: 0; transform: scale(0.3); }
+  6% { opacity: 0.7; }
+  100% { opacity: 0; transform: scale(6); }
+}
+@keyframes sd-spark {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 23, 30) * 1deg)) translateX(calc(120px + mod(var(--k) * 31, 90) * 1px)) scaleX(0.3); }
+}
+@keyframes sd-dust {
+  0% { opacity: 0; transform: scale(0.3); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.6) translateY(-30px); }
+}
+@keyframes sd-rain {
+  0% { opacity: 0; translate: 0 0; animation-timing-function: cubic-bezier(0.1, 0.6, 0.4, 1); }
+  6% { opacity: 1; }
+  42% { translate: calc(var(--sd-dx) * 0.55) var(--sd-h); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5); }
+  100% { opacity: 0; translate: var(--sd-dx) 90px; }
+}
+@keyframes sd-mote {
+  0% { opacity: 0; translate: 0 10px; }
+  20% { opacity: 0.9; }
+  100% { opacity: 0; translate: 0 -80px; }
+}
+@keyframes sd-jolt { 0% { scale: 1.18; } 100% { scale: 1; } }
+@keyframes sd-cool {
+  from { filter: brightness(2.8) drop-shadow(0 0 40px var(--sd-heat)); }
+  40% { filter: brightness(1.6) drop-shadow(0 0 22px var(--sd-heat)); }
+  to { filter: brightness(1) drop-shadow(0 0 10px color-mix(in srgb, var(--sd-heat) 45%, transparent)); }
+}
+/* The light inside: it beats, and the beats come faster and stronger. */
+@keyframes sd-core {
+  0% { opacity: 0; transform: scale(0.5); }
+  18% { opacity: 0.18; transform: scale(0.7); }
+  30% { opacity: 0.08; }
+  42% { opacity: 0.32; transform: scale(0.8); }
+  50% { opacity: 0.14; }
+  60% { opacity: 0.46; transform: scale(0.9); }
+  66% { opacity: 0.22; }
+  74% { opacity: 0.6; transform: scale(1); }
+  79% { opacity: 0.32; }
+  85% { opacity: 0.74; transform: scale(1.1); }
+  89% { opacity: 0.44; }
+  93% { opacity: 0.88; transform: scale(1.2); }
+  96% { opacity: 0.6; }
+  100% { opacity: 1; transform: scale(1.35); }
+}
+@keyframes sd-throb {
+  0% { opacity: 1; }
+  18% { opacity: 0.55; }
+  30% { opacity: 1; }
+  42% { opacity: 0.55; }
+  50% { opacity: 1; }
+  60% { opacity: 0.5; }
+  66% { opacity: 1; }
+  74% { opacity: 0.5; }
+  79% { opacity: 1; }
+  85% { opacity: 0.5; }
+  89% { opacity: 1; }
+  93% { opacity: 0.55; }
+  96% { opacity: 1; }
+  100% { opacity: 1; }
+}
+@keyframes sd-quake {
+  0.0% { transform: translate(-0.4px, -0.4px) rotate(-0.05deg); }
+  2.5% { transform: translate(0.3px, -0.2px) rotate(-0.02deg); }
+  5.0% { transform: translate(-0.4px, -0.1px) rotate(0deg); }
+  7.5% { transform: translate(0px, -0.4px) rotate(-0.02deg); }
+  10.0% { transform: translate(0.4px, 0.3px) rotate(0.03deg); }
+  12.5% { transform: translate(-0.2px, 0.4px) rotate(-0.05deg); }
+  15.0% { transform: translate(0.5px, -0.3px) rotate(0.06deg); }
+  17.5% { transform: translate(-0.5px, -0.5px) rotate(-0.08deg); }
+  20.0% { transform: translate(0.6px, 0.4px) rotate(0.09deg); }
+  22.5% { transform: translate(-0.7px, 0.6px) rotate(-0.1deg); }
+  25.0% { transform: translate(0.7px, -0.7px) rotate(0.13deg); }
+  27.5% { transform: translate(-0.9px, -0.6px) rotate(-0.15deg); }
+  30.0% { transform: translate(1px, 0.8px) rotate(0.18deg); }
+  32.5% { transform: translate(-1.1px, 0.9px) rotate(-0.22deg); }
+  35.0% { transform: translate(1.3px, -1.1px) rotate(0.26deg); }
+  37.5% { transform: translate(-1.5px, -1.2px) rotate(-0.3deg); }
+  40.0% { transform: translate(1.6px, 1.4px) rotate(0.35deg); }
+  42.5% { transform: translate(-1.9px, 1.5px) rotate(-0.4deg); }
+  45.0% { transform: translate(2.1px, -1.8px) rotate(0.46deg); }
+  47.5% { transform: translate(-2.3px, -1.9px) rotate(-0.52deg); }
+  50.0% { transform: translate(2.6px, 2.2px) rotate(0.6deg); }
+  52.5% { transform: translate(-2.9px, 2.4px) rotate(-0.68deg); }
+  55.0% { transform: translate(3.2px, -2.7px) rotate(0.76deg); }
+  57.5% { transform: translate(-3.5px, -2.9px) rotate(-0.85deg); }
+  60.0% { transform: translate(3.8px, 3.3px) rotate(0.95deg); }
+  62.5% { transform: translate(-4.2px, 3.5px) rotate(-1.05deg); }
+  65.0% { transform: translate(4.6px, -3.9px) rotate(1.16deg); }
+  67.5% { transform: translate(-5px, -4.2px) rotate(-1.28deg); }
+  70.0% { transform: translate(5.4px, 4.6px) rotate(1.4deg); }
+  72.5% { transform: translate(-5.8px, 4.9px) rotate(-1.53deg); }
+  75.0% { transform: translate(6.2px, -5.3px) rotate(1.67deg); }
+  77.5% { transform: translate(-6.7px, -5.6px) rotate(-1.82deg); }
+  80.0% { transform: translate(7.1px, 6.1px) rotate(1.97deg); }
+  82.5% { transform: translate(-7.6px, 6.4px) rotate(-2.13deg); }
+  85.0% { transform: translate(8.1px, -6.9px) rotate(2.3deg); }
+  87.5% { transform: translate(-8.6px, -7.2px) rotate(-2.48deg); }
+  90.0% { transform: translate(9.1px, 7.7px) rotate(2.66deg); }
+  92.5% { transform: translate(-9.6px, 8.1px) rotate(-2.85deg); }
+  95.0% { transform: translate(10.2px, -8.6px) rotate(3.05deg); }
+  97.5% { transform: translate(-10.8px, -9px) rotate(-3.25deg); }
+  100.0% { transform: translate(4px, 9.6px) rotate(1.4deg); }
+}
+@keyframes sd-crack {
+  0% { opacity: 0; stroke-dasharray: 130; stroke-dashoffset: 130; }
+  20% { opacity: 1; }
+  100% { opacity: 1; stroke-dasharray: 130; stroke-dashoffset: 0; }
+}
+@keyframes sd-vein { to { stroke-dashoffset: 0; } }
+@keyframes sd-inhale {
+  0% { opacity: 0; }
+  70% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+@keyframes sd-negative {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes sd-burst {
+  0% { opacity: 0; transform: scale(0.6); }
+  8% { opacity: 1; transform: scale(1); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.4); }
+}
+@keyframes sd-part-l {
+  0% { transform: none; opacity: 1; }
+  100% { transform: translate(-70px, 26px) rotate(-28deg) scale(0.9); opacity: 0; }
+}
+@keyframes sd-part-r {
+  0% { transform: none; opacity: 1; }
+  100% { transform: translate(72px, 30px) rotate(26deg) scale(0.9); opacity: 0; }
+}
+@keyframes sd-breach {
+  0% { opacity: 0; transform: scaleX(0.2); }
+  30% { opacity: 1; transform: scaleX(1.6); }
+  100% { opacity: 0; transform: scaleX(4) scaleY(0.6); }
+}
+@keyframes sd-column {
+  0% { opacity: 0; transform: scale(0.1, 0.05); }
+  18% { opacity: 1; transform: scale(1, 1); }
+  55% { opacity: 0.7; transform: scale(1.1, 1.02); }
+  100% { opacity: 0; transform: scale(2.2, 1.05); }
+}
+@keyframes sd-shard {
+  0% { opacity: 0; transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 29, 24) * 1deg)) translateX(0) scaleX(1); }
+  8% { opacity: 1; }
+  32% { transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 29, 24) * 1deg)) translateX(120px) scaleX(3.4); }
+  100% { opacity: 0; transform: rotate(calc(var(--k) / var(--n) * 360deg + mod(var(--k) * 29, 24) * 1deg)) translateX(calc(240px + mod(var(--k) * 41, 80) * 1px)) scaleX(0.6); }
+}
+@keyframes sd-rays {
+  0% { opacity: 0; rotate: 0deg; scale: 0.6; }
+  12% { opacity: 0.9; }
+  100% { opacity: 0; rotate: 40deg; scale: 1.3; }
+}
+@keyframes sd-dim {
+  0% { opacity: 0; }
+  20% { opacity: 0.5; }
+  85% { opacity: 0.42; }
+  100% { opacity: 0; }
+}
+@keyframes sd-spot {
+  0% { opacity: 0; }
+  30% { opacity: 0.42; }
+  85% { opacity: 0.32; }
+  100% { opacity: 0; }
+}
+@keyframes sd-pulse {
+  0% { opacity: 0; transform: scale(0.2); }
+  10% { opacity: 0.75; }
+  100% { opacity: 0; transform: scale(4.8); }
+}
+/* A lesser card: up out of the break, hang while it turns, step to its place. */
+@keyframes sd-deal {
+  0% { opacity: 0; transform: translate(0, 60px) scale(0.16); animation-timing-function: var(--sd-ease-out); }
+  20% { opacity: 1; transform: translate(0, -3%) scale(var(--sd-present)); animation-timing-function: linear; }
+  72% { opacity: 1; transform: translate(0, -3%) scale(var(--sd-present)); animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1); }
+  100% { opacity: 1; transform: var(--sd-rest); }
+}
+/* The best: a slower rise, a longer hang, and its place at the end. */
+@keyframes sd-deal-best {
+  0% { opacity: 0; transform: translate(0, 60px) scale(0.16); animation-timing-function: var(--sd-ease-out); }
+  16% { opacity: 1; transform: translate(0, -3%) scale(var(--sd-present)); animation-timing-function: linear; }
+  80% { opacity: 1; transform: translate(0, -3%) scale(var(--sd-present)); animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1); }
+  100% { opacity: 1; transform: var(--sd-rest); }
+}
+@keyframes sd-hang {
+  0%, 20% { transform: none; }
+  46% { transform: translateY(-6px) rotate(-0.6deg); }
+  72%, 100% { transform: none; }
+}
+/* The best hangs, and settles on a bounce as its face comes round. */
+@keyframes sd-hang-best {
+  0%, 16% { transform: none; }
+  38% { transform: translateY(-7px) rotate(-0.6deg); }
+  54% { transform: translateY(0) scale(1); animation-timing-function: var(--sd-ease-out); }
+  59% { transform: scale(1.07); animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+  66% { transform: scale(0.985); }
+  72% { transform: scale(1.005); }
+  78%, 100% { transform: none; }
+}
+/* The turn: a small pull back the other way, then over, with a little overshoot. */
+@keyframes sd-turn {
+  0% { transform: rotateY(180deg); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  20% { transform: rotateY(196deg); animation-timing-function: cubic-bezier(0.55, 0, 0.25, 1); }
+  82% { transform: rotateY(-7deg); animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+  100% { transform: rotateY(0deg); }
+}
+@keyframes sd-sheen {
+  0% { opacity: 0; background-position: 130% 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { opacity: 0; background-position: -30% 0; }
+}
+@keyframes sd-type { from { clip-path: inset(-2px 100% -2px 0); } to { clip-path: inset(-2px 0 -2px 0); } }
+@keyframes sd-halo {
+  0% { opacity: 0; transform: rotate(calc(var(--k) * 360deg / 14)) translateX(0) scale(0.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(calc(var(--k) * 360deg / 14 + 50deg)) translateX(220px) scale(1); }
+}
+@keyframes sd-ring {
+  0% { opacity: 0; transform: scale(1.18); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+@keyframes sd-ring-breathe { from { opacity: 0.85; } to { opacity: 0.5; } }
+@keyframes sd-breathe { from { translate: 0 0; } to { translate: 0 -7px; } }
+@keyframes sd-sweep {
+  0% { transform: translateX(-140%) rotate(14deg); opacity: 0; }
+  5% { opacity: 1; }
+  30% { opacity: 1; }
+  36%, 100% { transform: translateX(560%) rotate(14deg); opacity: 0; }
+}
+
+/* ── Skipped, closed, or never animated: everything is simply there ── */
+.sd-reveal.is-done .sd-reveal__fx,
+.sd-reveal.is-done .sd-reveal__stone,
+.sd-reveal.is-done .sd-reveal__streaks,
+.sd-reveal.is-done .sd-reveal__entry,
+.sd-reveal.is-done .sd-reveal__negative,
+.sd-reveal.is-done .sd-reveal__burst,
+.sd-reveal.is-done .sd-reveal__inhale,
+.sd-reveal.is-done .sd-reveal__dim,
+.sd-reveal.is-done .sd-reveal__spot,
+.sd-reveal.is-done .sd-reveal__pulse,
+.sd-reveal.is-done .sd-reveal__halo { display: none; }
+.sd-reveal.is-done .sd-reveal__limb,
+.sd-reveal.is-done .sd-reveal__caption,
+.sd-reveal.is-done .sd-reveal__after,
+.sd-reveal.is-done .sd-reveal__after .sd-pay__actions,
+.sd-reveal.is-done .sd-reveal__field,
+.sd-reveal.is-done .sd-reveal__lift,
+.sd-reveal.is-done .sd-flip { animation: none; opacity: 1; transform: none; }
+.sd-reveal.is-done .sd-typed { animation: none; clip-path: none; }
+.sd-reveal.is-done .sd-reveal__aura { opacity: 1; animation: sd-spin 40s linear infinite; }
+.sd-reveal.is-done .sd-reveal__ring { animation: sd-ring-breathe 5s ease-in-out infinite alternate; }
+.sd-reveal.is-done .sd-reveal__card::after { animation: none; opacity: 1; }
+.sd-reveal.is-done .sd-reveal__card[data-rarity='rare']::after { opacity: 0.6; }
+.sd-reveal.is-done .sd-flip__front::after { animation: none; opacity: 0; }
+.sd-reveal.is-done .sd-reveal__card { animation: sd-breathe 6s ease-in-out infinite alternate; opacity: 1; transform: var(--sd-rest); }
+.sd-reveal.is-done .sd-reveal__card--best { animation-delay: 3s; }
+.sd-reveal.is-done .sd-reveal__sweep::before { animation-delay: 900ms; }
+@media (prefers-reduced-motion: reduce) {
+  .sd-reveal--staged, .sd-reveal__limb, .sd-reveal__caption, .sd-reveal__nebula, .sd-reveal__stars, .sd-reveal__field, .sd-reveal__lift,
+  .sd-reveal__card, .sd-reveal__card::after, .sd-flip, .sd-reveal__aura, .sd-reveal__ring, .sd-reveal__after, .sd-reveal__after .sd-pay__actions { animation: none; opacity: 1; }
+  .sd-reveal__card { transform: var(--sd-rest); }
+  .sd-reveal__ring { opacity: 0.7; }
+  .sd-flip, .sd-reveal__lift { transform: none; }
+  .sd-typed { animation: none; clip-path: none; }
+  .sd-reveal__fx, .sd-reveal__stone, .sd-reveal__streaks, .sd-reveal__entry, .sd-reveal__negative, .sd-reveal__burst, .sd-reveal__inhale,
+  .sd-reveal__dim, .sd-reveal__spot, .sd-reveal__pulse, .sd-reveal__halo, .sd-reveal__sweep::before, .sd-flip__front::after { display: none; }
+}
+
+/* ── Three or more, and phones ────────────────────────────────── */
+.sd-reveal--many { --sd-cw: clamp(130px, min(18vw, calc((100dvh - 380px) / 1.66)), 240px); }
+/* A phone: the pair sits side by side, scaled to the width. Three or more
+   fan out, the best in front and the others tilted behind it. */
+@media (max-width: 639px) {
+  .sd-reveal {
+    --sd-cw: min(calc((100vw - 2 * var(--sd-gutter) - 12px) / (1 + var(--sd-best))), 200px, calc((100dvh - 430px) / 1.45));
+    --sd-gap: 12px; --sd-present: 1.14; --sd-stone: 92px; --sd-from-x: 44vw; --sd-from-y: -70vh;
+  }
+  .sd-reveal--staged .sd-reveal__stage { padding-top: 64px; }
+  .sd-reveal--many .sd-reveal__card:not(.sd-reveal__card--best) { --sd-x: calc(var(--sd-side) * 21vw); --sd-y: 20px; --sd-rot: calc(var(--sd-side) * 7deg); --sd-s: 0.8; }
+  .sd-reveal--many .sd-reveal__card:not(.sd-reveal__card--best) .sd-reveal__tag { visibility: hidden; }
+  .sd-reveal__tag { font-size: 10px; gap: 8px; }
+  .sd-reveal__flash { width: 300px; height: 300px; margin: -150px 0 0 -150px; }
+  .sd-reveal__column { width: 120px; margin-left: -60px; }
+  .sd-reveal__provenance { border-radius: 14px; }
+}

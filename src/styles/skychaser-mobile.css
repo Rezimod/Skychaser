@@ -1,0 +1,95 @@
+/* Skychaser on a phone: one slim bar on top, the destinations along the bottom under the thumb,
+   every target a fingertip wide, and nothing iOS zooms into. Loaded last, so it has the final word below 768px. */
+
+/* The card page's buy bar: the price and the way to buy, kept in reach while the card is studied. */
+.sd-buybar { display: none; }
+@media (max-width: 767px) { .sd-cardhero__plate .sd-cardplate { --sd-card-cap: 300px; } }
+@media (max-width: 1023px) {
+  .sd-buybar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 44;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px var(--sd-gutter, 16px);
+    background: var(--sd-bar-bg, rgba(13, 13, 13, 0.97)); border-top: 1px solid var(--sd-rule);
+    transform: translateY(0); transition: transform 220ms var(--sd-ease, ease), opacity 220ms;
+  }
+  .sd-buybar[data-hidden="true"] { transform: translateY(110%); opacity: 0; pointer-events: none; }
+  .sd-buybar__what { display: grid; gap: 3px; min-width: 0; flex: 1; }
+  .sd-buybar__name { font: 600 15px/1.15 var(--sd-sans); color: var(--sd-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sd-buybar__meta { font: 500 12px/1 var(--sd-mono); color: var(--sd-ink-3); letter-spacing: 0.04em; }
+  .sd-buybar .sd-btn { flex: none; padding-inline: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { .sd-buybar { transition: none; } }
+
+.sd-tabs { display: none; }
+
+@media (max-width: 767px) {
+  .skychaser { --sd-bar-h: 56px; --sd-tabs-h: calc(62px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--sd-tabs-h); }
+
+  /* The top bar: the mark and the account, nothing else. */
+  .sd-bar__inner { grid-template-columns: 1fr auto; grid-template-areas: "mark account"; padding-top: 0; min-height: var(--sd-bar-h); }
+  .sd-bar .sd-bar__links { display: none; }
+  .sd-bar .sd-chip { height: 40px; }
+  .sd-bar .sd-chip--cta { padding: 0 16px; font-size: 14px; }
+  .sd-bar .sd-acct { height: 36px; }
+  .sd-bar .sd-avatar { width: 36px; height: 36px; }
+
+  /* The bottom bar. */
+  .sd-tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    height: var(--sd-tabs-h); padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--sd-bar-bg, rgba(13, 13, 13, 0.97)); border-top: 1px solid var(--sd-rule);
+  }
+  .sd-tab {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    min-width: 0; color: var(--sd-ink-3); text-decoration: none;
+    font: 600 11px/1 var(--sd-sans); letter-spacing: 0.01em;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--sd-dur-fast) var(--sd-ease);
+  }
+  .sd-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-tab[aria-current="page"] { color: var(--sd-ink); background: linear-gradient(180deg, color-mix(in srgb, var(--sd-accent) 14%, transparent), transparent 85%); }
+  .sd-tab[aria-current="page"] svg { color: var(--sd-accent); }
+  .sd-tab[aria-current="page"]::before {
+    content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--sd-accent);
+  }
+  .sd-tab:active { color: var(--sd-ink); }
+
+  /* The footer repeats the bottom bar's job; it can be shorter. */
+  .sd-foot { margin-top: 56px; padding-block: 28px 24px; }
+
+  /* iOS zooms into any field under 16px. */
+  .skychaser input, .skychaser select, .skychaser textarea { font-size: 16px; }
+}
+
+@media (max-width: 767px) {
+  /* Anything pinned to the foot of the screen sits above the bottom bar. */
+  .sd-buybar { bottom: var(--sd-tabs-h); }
+  .skychaser:has(.sd-buybar) { padding-bottom: calc(var(--sd-tabs-h) + 68px); }
+}
+@media (min-width: 768px) and (max-width: 1023px) { .skychaser:has(.sd-buybar) { padding-bottom: 68px; } }
+
+/* Small type and small targets the audit found, at phone width. */
+@media (max-width: 767px) {
+  .sd-tab { font-size: 12px; }
+  .sd-hero2__stats dt { font-size: 12px; letter-spacing: 0.12em; }
+
+  .sd-filter__search { min-height: 48px; }
+  .sd-filter__search input { min-height: 44px; }
+  .sd-counter__fair { min-height: 44px; display: inline-flex; align-items: center; }
+  .sd-log a { min-height: 44px; min-width: 32px; }
+  .sd-legal__ledger a { display: inline-block; padding-block: 10px; }
+}
+/* A full-screen telescope view owns the whole screen. */
+.skychaser:has(.sdo-view.is-full) .sd-tabs { display: none; }
+
+/* Every filled button: one flat colour that holds under the pointer, its text bright on a dark fill and
+   dark on a light one. On a card (zoom, card page, reveal) the fill is the card's colour. */
+html body .skychaser :is(.sd-btn.sd-btn--primary, .sd-btn.sd-btn--light, .sd-chip.sd-chip--cta, .sn-go.sn-go),
+html body .skychaser :is(.sd-btn.sd-btn--primary, .sd-btn.sd-btn--light, .sd-chip.sd-chip--cta, .sn-go.sn-go):is(:hover, :focus-visible, :active):not(:disabled) {
+  background: var(--btn, #e3482c); color: var(--btn-ink, #ffffff); border: 1px solid transparent;
+  text-shadow: none; filter: none; box-shadow: 0 10px 26px -14px var(--btn, #e3482c);
+}
+html body .skychaser :is(.sd-btn.sd-btn--primary, .sd-btn.sd-btn--light, .sd-chip.sd-chip--cta):disabled { background: var(--sd-plate); color: var(--sd-ink-3); box-shadow: none; }
+body .skychaser :is(.sd-zoom, .sd-cardhero) { --btn: var(--accent); --btn-ink: var(--accent-ink); }
+body .skychaser .sn { --btn: var(--sn-accent); --btn-ink: var(--accent-ink, #ffffff); }

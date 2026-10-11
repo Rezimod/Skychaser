@@ -5,7 +5,7 @@
  * distance from Earth.
  */
 
-import { arcsecFromKmAtAu } from '@/lib/stellar/observability';
+import { arcsecFromKmAtAu } from '@/lib/skychaser/observability';
 import { authorCard, authorKept, type AuthoredCard } from '../build';
 import { NO_POSITION, body } from './shared';
 

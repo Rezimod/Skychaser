@@ -1,4 +1,4 @@
-// Player spacecraft for Explore Mode — Stellar's own survey ship and
+// Player spacecraft for Explore Mode — Skychaser's own survey ship and
 // interceptor flying the real solar system, with four speed regimes,
 // gravity wells, solid planets you can crash into, a shield-then-hull
 // damage model, a navigation target, an expedition log, and a hyperdrive

@@ -138,7 +138,7 @@ export interface WorldSurfaceHandle {
 
 declare global {
   interface Window {
-    __stellarWorld?: WorldSurfaceHandle;
+    __skychaserWorld?: WorldSurfaceHandle;
   }
 }
 
@@ -658,7 +658,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       cam.snap();
     },
     dispose() {
-      if (window.__stellarWorld === handle) delete window.__stellarWorld;
+      if (window.__skychaserWorld === handle) delete window.__skychaserWorld;
       unsubSettings();
       unsubQuality();
       audio.dispose();
@@ -666,6 +666,6 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     },
   };
   if (opts.startOnSurface) handle.skipDescent();
-  if (process.env.NODE_ENV !== 'production') window.__stellarWorld = handle;
+  if (process.env.NODE_ENV !== 'production') window.__skychaserWorld = handle;
   return handle;
 }

@@ -1,0 +1,185 @@
+/* SKYCHASER — motion. Loaded after skychaser-theme.css.
+
+   Controls answer a hand: hover, press, focus. Cards are alive: they lean
+   toward the pointer (toward their place on the screen, on a phone), are
+   dealt onto the table as they come into view, and lift off the shelf to be
+   held (SkychaserLiving.tsx). Sections rise as they arrive and the home fan
+   opens as it leaves, on the scroll timeline where the browser has one.
+   Transform and opacity only, and only on cards in view (li.is-view), so a
+   long shelf scrolls on the compositor with nothing running off screen. */
+
+/* ── Controls ─────────────────────────────────────────────────── */
+/* Lift on hover, give on press, a pass of light across the hot ones. Focus
+   rings are the tokens' own and stay as they are. */
+.sd-btn--primary, .sd-chip--cta { position: relative; overflow: hidden; isolation: isolate; }
+.sd-btn--primary::after, .sd-chip--cta::after {
+  content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.5) 50%, transparent 70%);
+  translate: -110% 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sd-btn, .sd-chip, .sd-menu a, .sd-menu > button {
+    transition-property: color, background, background-color, border-color, box-shadow, transform, translate;
+    transition-duration: 220ms; transition-timing-function: var(--sd-ease);
+  }
+  @media (hover: hover) {
+    .sd-btn:hover:not(:disabled), .sd-chip:hover { translate: 0 -1px; }
+    .sd-btn--primary:hover:not(:disabled)::after, .sd-chip--cta:hover::after {
+      translate: 110% 0; transition: translate 800ms cubic-bezier(0.3, 0.6, 0.2, 1);
+    }
+    .sd-menu a:hover, .sd-menu > button:hover { translate: 2px 0; }
+  }
+  .sd-btn:active:not(:disabled), .sd-chip:active {
+    translate: 0 0; scale: 0.97; transition-duration: 70ms;
+  }
+  /* While the chain is thought about, the pass of light keeps crossing. */
+  .sd-btn--primary.is-loading::after {
+    animation: sd-btn-sweep 1.2s var(--sd-ease-inout) infinite; transition: none;
+  }
+}
+@keyframes sd-btn-sweep {
+  from { translate: -110% 0; }
+  to { translate: 110% 0; }
+}
+
+/* ── Capsules: the sealed fan opens a little when pointed at ──── */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .sd-sealed__card { transition: translate 700ms var(--sd-ease-spring), rotate 700ms var(--sd-ease-spring); }
+  .sd-sealed:hover .sd-sealed__card:nth-child(1) { translate: -22px 4px; rotate: -4deg; }
+  .sd-sealed:hover .sd-sealed__card:nth-child(2) { translate: 22px 2px; rotate: 4deg; }
+}
+
+/* The page you are on keeps a quiet line under its name. */
+.sd-navlink[aria-current='page']::after { transform: scaleX(1); opacity: 0.55; }
+.sd-navlink::after { transition: transform 320ms var(--sd-ease), opacity var(--sd-dur-fast) var(--sd-ease); transform-origin: center; }
+.sd-navlink:hover::after { opacity: 1; }
+.sd-wordmark img { transition: transform 600ms var(--sd-ease-spring); }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .sd-wordmark:hover img { transform: rotate(-14deg) translate(-1px, -1px); }
+}
+
+/* ── Cards on the shelf: the lift, the lean and the glare that follows it ── */
+/* This is the one place a shelf card's motion is set: lift, lean and scale ride in a single
+   transform, quick to follow the pointer and slower to settle. Only the card under the pointer,
+   or in view on a phone, is given depth: a hundred cards each on a 3D layer would cost more than
+   the lean is worth. No filters or blend modes here, so a tilt never repaints the picture. */
+[data-zoom] .sd-thumb { --lift: -6px; transition: transform 420ms var(--sd-ease-out), box-shadow 240ms var(--sd-ease); }
+.sd-herofan__card .sd-thumb { --lift: 0px; }
+[data-zoom] .sd-thumb.is-tilt {
+  transform: perspective(800px) translateY(var(--lift)) rotateX(calc(var(--ty, 0) * -10deg)) rotateY(calc(var(--tx, 0) * 12deg)) scale(1.02);
+  transition-duration: 110ms, 240ms; transition-timing-function: ease-out, var(--sd-ease);
+  will-change: transform;
+}
+:is(.is-view [data-zoom], .is-view[data-zoom]) .sd-thumb.is-scroll { transform: perspective(800px) rotateX(calc(var(--ty, 0) * -10deg)); will-change: transform; }
+[data-zoom] .sd-thumb.is-scroll { transition: transform 160ms linear; }
+[data-zoom] .sd-thumb.is-tilt::before {
+  content: ''; position: absolute; z-index: 1; left: -50%; top: -50%; width: 200%; height: 200%; pointer-events: none;
+  background: radial-gradient(circle, rgba(255, 240, 214, 0.14), rgba(255, 220, 170, 0.04) 20%, transparent 42%);
+  translate: calc(var(--tx, 0) * 50%) calc(var(--ty, 0) * 50%);
+  animation: sd-lv-fade 200ms var(--sd-ease) both;
+}
+
+/* ── The deal: cards land on the table as they come into view ── */
+@media (prefers-reduced-motion: no-preference) {
+  .sd-live :is(.sd-fl__grid, .sd-showcase2__cards) > li:not(.is-in) > * { opacity: 0; }
+  .sd-live :is(.sd-fl__grid, .sd-showcase2__cards) > li.is-in > * { animation: sd-lv-deal 520ms var(--sd-ease-out) var(--d, 0ms) backwards; }
+}
+@keyframes sd-lv-deal {
+  from { opacity: 0; transform: perspective(900px) translateY(28px) rotateX(14deg) scale(0.96); }
+  50% { opacity: 1; }
+}
+
+/* ── Scrolling: sections rise, the fan opens as it leaves, the shelf on the home page drifts ── */
+@property --sd-spread { syntax: '<number>'; inherits: true; initial-value: 0; }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sd-home-sec > :not(.sd-showcase2__cards, .sd-orbit__stage), .sd-fl__head {
+      animation: sd-lv-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 60%;
+    }
+    .sd-showcase2__cards > li { --par: 18px; animation: sd-lv-par linear both; animation-timeline: view(); animation-range: cover; }
+    .sd-showcase2__cards > li:nth-child(3n + 2) { --par: 46px; }
+    .sd-showcase2__cards > li:nth-child(3n) { --par: 30px; }
+  }
+}
+@keyframes sd-lv-rise { from { opacity: 0; transform: translateY(44px); } }
+@keyframes sd-lv-par { from { transform: translateY(var(--par)); } to { transform: translateY(calc(var(--par) * -1)); } }
+
+/* Without a scroll timeline, the same rise on arrival. */
+@media (prefers-reduced-motion: no-preference) {
+  .sd-io :is(.sd-home-sec > :not(.sd-showcase2__cards, .sd-orbit__stage), .sd-fl__head) { transition: opacity 800ms var(--sd-ease), transform 900ms var(--sd-ease-out); }
+  .sd-io :is(.sd-home-sec > :not(.sd-showcase2__cards, .sd-orbit__stage), .sd-fl__head):not(.is-in) { opacity: 0; transform: translateY(44px); }
+}
+
+
+.sd-zoom { --sd-focus: var(--rarity); position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 28px; overflow-y: auto; overscroll-behavior: contain; }
+.sd-zoom__veil { position: fixed; inset: 0; background: #070707f7; }
+.sd-zoom__panel { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 60px; width: min(920px, 100%); padding: 92px 48px 36px; }
+.sd-zoom__panel::before { content: ''; position: absolute; z-index: -1; pointer-events: none; inset: 8% 35% 12% -10%; background: radial-gradient(ellipse, color-mix(in srgb, var(--rarity) 15%, transparent), transparent 65%); }
+.sd-zoom__toolbar { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.sd-zoom__crumb { font-size: 11px; color: #aaa; }
+.sd-zoom__crumb span { margin-inline: 7px; color: #666; }
+.sd-zoom__navigation { display: flex; align-items: center; gap: 8px; }
+.sd-zoom__navigation > span { min-width: 60px; text-align: center; font: 10px var(--sd-mono); color: #aaa; }
+.sd-zoom__navigation button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid #ffffff30; border-radius: 50%; background: #ffffff04; color: #ccc; cursor: pointer; }
+.sd-zoom__navigation button:hover:not(:disabled) { background: #ffffff10; border-color: #ffffff70; color: #fff; }
+.sd-zoom__navigation button:disabled { opacity: .3; cursor: default; }
+.sd-zoom__navigation .sd-zoom__dismiss { margin-left: 16px; }
+.sd-zoom__card { position: relative; width: min(100%, 340px); justify-self: center; }
+.sd-zoom__info { min-width: 0; padding-bottom: 54px; }
+.sd-zoom__rarity { display: inline-flex; align-items: center; gap: 6px; margin: 0 0 14px; padding: 6px 10px; border: 1px solid color-mix(in srgb, var(--rarity) 55%, transparent); border-radius: 99px; background: color-mix(in srgb, var(--rarity) 12%, transparent); color: color-mix(in srgb, var(--rarity) 80%, #fff); font: 600 10px var(--sd-mono); letter-spacing: .08em; text-transform: uppercase; }
+.skychaser .sd-zoom__name { margin: 0; font: 400 clamp(36px, 4.3vw, 58px)/1.03 var(--sd-display); text-transform: uppercase; overflow-wrap: anywhere; }
+.sd-zoom__line { margin: 9px 0 24px; font-size: 13px; line-height: 1.5; color: #b1b1ac; }
+.sd-zoom__facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 22px; padding: 12px 0; border: 1px solid color-mix(in srgb, var(--accent, #fff) 26%, #ffffff10); border-radius: 9px; background: color-mix(in srgb, var(--accent, #000) 5%, transparent); }
+.sd-zoom__facts > div { padding: 0 12px; }
+.sd-zoom__facts > div + div { border-left: 1px solid #ffffff14; }
+.sd-zoom__facts dt { color: color-mix(in srgb, var(--accent, #aaa) 45%, #d8d7d2); font: 500 10px var(--sd-mono); text-transform: uppercase; letter-spacing: .09em; }
+.sd-zoom__facts dd { margin: 6px 0 0; color: #eee; font: 500 13px var(--sd-mono); }
+.sd-zoom__perk { display: flex; align-items: center; gap: 12px; padding: 14px; border: 1px solid color-mix(in srgb, var(--accent, var(--rarity)) 32%, transparent); border-radius: 9px; background: linear-gradient(110deg, color-mix(in srgb, var(--accent, var(--rarity)) 16%, transparent), transparent 75%); }
+.sd-zoom__gem { display: grid; place-items: center; width: 34px; height: 40px; flex: none; border-radius: 6px; background: color-mix(in srgb, var(--accent, var(--rarity)) 18%, transparent); color: var(--accent, var(--rarity)); }
+.sd-zoom__label { display: block; margin-bottom: 5px; font: 600 10px var(--sd-mono); letter-spacing: .09em; text-transform: uppercase; color: color-mix(in srgb, var(--accent, var(--rarity)) 75%, #fff); }
+.sd-zoom__perk strong { display: block; font-size: 13px; font-weight: 500; }
+.sd-zoom__perk p { margin: 5px 0 0; font-size: 11px; line-height: 1.5; color: #aaa9a4; }
+.sd-zoom__pricing { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 24px 0 14px; }
+.sd-zoom__price { margin: 0; font: 600 28px/1 var(--sd-sans); letter-spacing: -.03em; }
+.sd-zoom__pricing > span { display: flex; align-items: center; gap: 7px; color: #aaa9a4; font-size: 10px; }
+.sd-zoom__pricing i { width: 35px; height: 3px; border-radius: 2px; background: var(--accent, var(--rarity)); box-shadow: 0 0 10px var(--accent, var(--rarity)); }
+.sd-zoom__cta { display: flex; gap: 8px; }
+.sd-zoom__cta .sd-btn:first-child { flex: 1; }
+.skychaser .sd-zoom__cta .sd-btn { min-height: 46px; padding: 10px 16px; border-radius: 8px; font: 500 12px var(--sd-sans); letter-spacing: 0; text-transform: none; }
+.sd-zoom__trust { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; color: #969692; font-size: 9px; }
+.sd-zoom__trust a { color: color-mix(in srgb, var(--accent, #b3b3af) 65%, #fff); text-underline-offset: 3px; }
+@media (prefers-reduced-motion: no-preference) {
+  .sd-zoom__veil { animation: sd-lv-fade 160ms ease-out both; }
+  .sd-zoom__card { animation: sd-zoom-arrive 260ms var(--sd-ease-out) both; }
+  .sd-zoom__info { animation: sd-zoom-arrive 260ms var(--sd-ease-out) 40ms both; }
+}
+@keyframes sd-lv-fade { from { opacity: 0; } }
+@keyframes sd-zoom-arrive { from { opacity: 0; translate: 0 8px; scale: .97; } }
+@media (max-width: 719px) {
+  .sd-zoom { display: block; padding: 12px 20px calc(28px + env(safe-area-inset-bottom)); }
+  .sd-zoom__panel { grid-template-columns: minmax(0, 1fr); gap: 26px; padding: 76px 0 0; margin: auto; max-width: 420px; }
+  .sd-zoom__toolbar { gap: 8px; }
+  .sd-zoom__crumb { font-size: 10px; }
+  .sd-zoom__navigation { gap: 3px; }
+  .sd-zoom__navigation > span { min-width: 48px; font-size: 9px; }
+  .sd-zoom__navigation .sd-zoom__dismiss { margin-left: 3px; }
+  .sd-zoom__card { width: min(250px, 65vw); }
+  .sd-zoom__info { padding-bottom: 0; }
+  .skychaser .sd-zoom__name { font-size: 42px; }
+  .sd-zoom__panel::before { inset: 50px -20px 45%; }
+}
+
+/* The zoom speaks in the card's own colour: the buy button, the frames, the price and the light behind the card. */
+.skychaser .sd-zoom .sd-zoom__cta .sd-btn:not(.sd-btn--light) { border-color: color-mix(in srgb, var(--accent) 45%, #ffffff20); color: color-mix(in srgb, var(--accent) 35%, #fff); }
+.skychaser .sd-zoom .sd-zoom__cta .sd-btn:not(.sd-btn--light):hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.sd-zoom .sd-zoom__price { text-shadow: 0 0 24px color-mix(in srgb, var(--accent) 55%, transparent); }
+.sd-zoom .sd-zoom__pricing > span { color: #dcdbd6; font-size: 11px; }
+.skychaser .sd-zoom .sd-zoom__card::before { background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 34%, transparent), transparent 80%); }
+.sd-zoom .sd-zoom__panel::before { background: radial-gradient(ellipse, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); }
+
+/* The card page speaks in the card's colour too: the eyebrow, the perk, the figures, buy and share. */
+.skychaser .sd-cardhero .sd-perk { border-color: color-mix(in srgb, var(--accent) 32%, transparent); background: linear-gradient(110deg, color-mix(in srgb, var(--accent) 14%, transparent), transparent 75%); }
+.skychaser .sd-cardhero .sd-perk__tier { color: var(--rarity); }
+.skychaser .sd-cardhero .sd-facts { border-color: color-mix(in srgb, var(--accent) 26%, #ffffff10); }
+.skychaser .sd-cardhero__share .sd-btn { border-color: color-mix(in srgb, var(--accent) 40%, #ffffff22); }
+.skychaser .sd-cardhero__share .sd-btn:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }

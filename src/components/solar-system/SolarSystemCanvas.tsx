@@ -88,8 +88,8 @@ import {
 declare global {
   interface Window {
     /** Development only: lets a headless capture teleport the ship and read the session. */
-    __stellarFlight?: { session: FlightSession; ship: PlayerShipHandle; world: FlightWorld; aliens: AlienHandle };
-    __stellarOrrery?: { probe: (within?: string) => Record<string, number> };
+    __skychaserFlight?: { session: FlightSession; ship: PlayerShipHandle; world: FlightWorld; aliens: AlienHandle };
+    __skychaserOrrery?: { probe: (within?: string) => Record<string, number> };
   }
 }
 
@@ -1138,7 +1138,7 @@ export function SolarSystemCanvas({
       scene.remove(ship.fxGroup);
       ship.dispose();
       ship = null;
-      delete window.__stellarFlight;
+      delete window.__skychaserFlight;
       alphaCen.group.visible = false;
       gargantua.group.visible = false;
       // The follow camera rolls its up vector, widens the lens and pulls the
@@ -1389,7 +1389,7 @@ export function SolarSystemCanvas({
           ship.spawn(fromHome || !parkedRef.current ? world.home : parkedRef.current);
           const live = ship;
           aliens.setHostile({ group: live.group, onHit: (dmg) => live.takeDamage(dmg) });
-          if (process.env.NODE_ENV !== 'production') window.__stellarFlight = { session, ship: live, world, aliens };
+          if (process.env.NODE_ENV !== 'production') window.__skychaserFlight = { session, ship: live, world, aliens };
         }
       } else if (ship) {
         teardownShip();
@@ -1537,11 +1537,11 @@ export function SolarSystemCanvas({
     let warmed = false;
     let settledFrames = 0;
     startLoop();
-    if (process.env.NODE_ENV !== 'production') window.__stellarOrrery = { probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within) };
+    if (process.env.NODE_ENV !== 'production') window.__skychaserOrrery = { probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within) };
 
     return () => {
       stopLoop();
-      delete window.__stellarOrrery;
+      delete window.__skychaserOrrery;
       window.clearTimeout(rebuildTimer);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       document.removeEventListener('visibilitychange', onVis);

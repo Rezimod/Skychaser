@@ -1,4 +1,4 @@
-// The outpost's core, built to Stellar's own concept sheets
+// The outpost's core, built to Skychaser's own concept sheets
 // (~/Desktop/stellar-explore/refs/base/): three rigid habitat modules — a faceted
 // drum on a skirt, battened down every seam, a shoulder up to a glazed
 // penthouse ring and a shallow cap, the five-cross flag and the wordmark on

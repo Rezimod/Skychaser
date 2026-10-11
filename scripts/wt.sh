@@ -21,7 +21,7 @@ set -euo pipefail
 
 MAIN="$(git rev-parse --show-toplevel)"
 PARENT="$(dirname "$MAIN")"
-PREFIX="Stellar-"   # sibling folder prefix: Stellar-<task>
+PREFIX="Skychaser-"   # sibling folder prefix: Skychaser-<task>
 PORTDIR="$MAIN/.git/wt-ports"   # port map lives in .git, never in the worktree
 
 die() { echo "error: $*" >&2; exit 1; }

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { game, STAGE_PROGRESS } from '@/game/state';
 import { isGameScene, type GameScene } from '@/game/save';
 import { attachConsoleGuards, enterFullscreen, exitFullscreen, unlockPointer } from '@/game/console';
-import { exitToStellar } from '@/game/platform';
+import { exitToSkychaser } from '@/game/platform';
 import { currentQuality, governedQuality, onQualityChange, setDetectedQuality, stepQualityDown } from '@/game/quality';
 import { CosmicLoader } from '@/components/solar-system/CosmicLoader';
 import { useLoadingTips } from '@/components/solar-system/useLoadingTips';
@@ -32,9 +32,9 @@ function sceneFromQuery(): GameScene | undefined {
 declare global {
   interface Window {
     /** Development only: lets a headless run drive the game's states. */
-    __stellarGame?: typeof game;
+    __skychaserGame?: typeof game;
     /** Development only: what the quality governor has decided, and a way to make it decide. */
-    __stellarQuality?: {
+    __skychaserQuality?: {
       level: () => string;
       governed: () => string | null;
       step: () => boolean;
@@ -69,8 +69,8 @@ export default function GameShell() {
     document.body.setAttribute('data-solar-immersive', '1');
     game.boot(sceneFromQuery());
     if (process.env.NODE_ENV !== 'production') {
-      window.__stellarGame = game;
-      window.__stellarQuality = {
+      window.__skychaserGame = game;
+      window.__skychaserQuality = {
         level: () => currentQuality().level,
         governed: governedQuality,
         step: stepQualityDown,
@@ -117,7 +117,7 @@ export default function GameShell() {
   }, []);
   useEffect(() => {
     if (state === 'paused') unlockPointer();
-    if (state === 'exiting') void exitFullscreen().finally(exitToStellar);
+    if (state === 'exiting') void exitFullscreen().finally(exitToSkychaser);
   }, [state]);
 
   const start = (to: GameScene) => {

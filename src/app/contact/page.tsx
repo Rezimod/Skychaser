@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import StellarShell from '@/components/stellar/StellarShell';
-import DataRow from '@/components/stellar/ui/DataRow';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import DataRow from '@/components/skychaser/ui/DataRow';
 
 export const metadata: Metadata = {
   title: 'Contact — Skychaser',
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <StellarShell title="Contact">
+    <SkychaserShell title="Contact">
       <article className="sd-container sd-top sd-legal">
         <p className="sd-lede">
           Skychaser is run by Astroman. Email is the fastest way to reach us; a reply can take a day or two. For a
@@ -26,6 +26,6 @@ export default function ContactPage() {
           ]}
         />
       </article>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

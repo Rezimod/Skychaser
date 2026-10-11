@@ -1,4 +1,4 @@
-// What is actually up over Stellar Base right now.
+// What is actually up over Skychaser Base right now.
 //
 // The base is on the near side, so Earth hangs almost fixed overhead: that
 // direction is the local vertical. Everything else — the planets from

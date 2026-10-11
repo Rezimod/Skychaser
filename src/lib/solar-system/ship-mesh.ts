@@ -547,7 +547,7 @@ function modelEngine(parts: ShipParts, add: (o: THREE.Object3D) => THREE.Object3
   parts.glowSprites.push(sprite);
 }
 
-/** The STELLAR exploration craft (ShipKind `kestrel`): the survey ship. */
+/** The SKYCHASER exploration craft (ShipKind `kestrel`): the survey ship. */
 export function buildKestrel(H: number): ShipParts {
   return buildModelShip(H, { url: '/explore/models/ship-stellar.glb', metres: 18.4, length: 8, drive: 0xff9448 });
 }

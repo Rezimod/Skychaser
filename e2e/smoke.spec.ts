@@ -11,14 +11,14 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('smoke — golden routes', () => {
-  test('home page renders the landing + Stellar nav', async ({ page }) => {
+  test('home page renders the landing + Skychaser nav', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (err) => errors.push(err.message));
 
     const response = await page.goto('/');
     expect(response?.ok()).toBeTruthy();
 
-    const nav = page.getByRole('navigation', { name: 'Stellar' });
+    const nav = page.getByRole('navigation', { name: 'Skychaser' });
     await expect(nav.getByRole('link', { name: 'Genesis', exact: true })).toBeVisible();
     await expect(nav.getByRole('link', { name: 'Tonight', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Hold a piece of the cosmos');

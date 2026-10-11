@@ -1,17 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import StellarBuyCapsule from '@/components/stellar/StellarBuyCapsule';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
-import Chapter from '@/components/stellar/ui/Chapter';
-import DataRow from '@/components/stellar/ui/DataRow';
-import RarityMark from '@/components/stellar/ui/RarityMark';
+import SkychaserBuyCapsule from '@/components/skychaser/SkychaserBuyCapsule';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
+import Chapter from '@/components/skychaser/ui/Chapter';
+import DataRow from '@/components/skychaser/ui/DataRow';
+import RarityMark from '@/components/skychaser/ui/RarityMark';
 import { getDb } from '@/lib/db';
 import { RARITIES } from '@/lib/rarity';
-import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES, RARITY_ODDS_BPS } from '@/lib/stellar/economics';
-import { TIERS, formatOdds, tierByKey } from '@/lib/stellar/tiers';
-import { capsulesOnSale } from '@/lib/stellar/capsule';
-import { simulatedPayments } from '@/lib/stellar/rehearsal';
+import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES, RARITY_ODDS_BPS } from '@/lib/skychaser/economics';
+import { TIERS, formatOdds, tierByKey } from '@/lib/skychaser/tiers';
+import { capsulesOnSale } from '@/lib/skychaser/capsule';
+import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,15 +28,15 @@ export default async function CapsulesPage() {
     try {
       onSale = await capsulesOnSale(db, { limit: 1000 });
     } catch (err) {
-      console.error('[stellar] cannot read capsules on sale', err);
+      console.error('[skychaser] cannot read capsules on sale', err);
     }
   }
 
   const sealed = onSale?.[0];
 
   return (
-    <StellarShell title="Capsules">
-      <StellarView step="capsules" />
+    <SkychaserShell title="Capsules">
+      <SkychaserView step="capsules" />
       <section className="sd-container sd-top">
         <div className="sd-capsule-top">
           <div className="sd-sealed" aria-hidden="true">
@@ -112,7 +112,7 @@ export default async function CapsulesPage() {
                   { label: 'Commitment', value: `${c.commitment.slice(0, 18)}…` },
                 ]}
               />
-              <StellarBuyCapsule
+              <SkychaserBuyCapsule
                 capsuleId={c.id}
                 sequence={c.sequence}
                 commitment={c.commitment}
@@ -134,6 +134,6 @@ export default async function CapsulesPage() {
           </Link>
         </div>
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

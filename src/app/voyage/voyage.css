@@ -2,7 +2,7 @@
    No scroll, no site chrome; every screen sits in the fixed shell. The game
    marks the body while it is up. Colours are the HUD's own set in
    solar-system.css, and the few site tokens it reads, set here: this route
-   does not load the legacy Stellar stylesheet they came from. */
+   does not load the legacy Skychaser stylesheet they came from. */
 body[data-solar-immersive] {
   margin: 0;
   height: 100dvh;
@@ -15,7 +15,7 @@ body[data-solar-immersive] {
   user-select: none;
   -webkit-touch-callout: none;
 }
-/* The Stellar sky behind the page would only be painted under the game. */
+/* The Skychaser sky behind the page would only be painted under the game. */
 body[data-solar-immersive] .sd-backdrop { display: none; }
 .game-shell {
   --canvas: #1d1d1d;

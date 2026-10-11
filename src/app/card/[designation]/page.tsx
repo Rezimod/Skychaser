@@ -1,29 +1,29 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
-import { accentFor, accentInkFor } from '@/components/stellar/card/CardFront';
+import { accentFor, accentInkFor } from '@/components/skychaser/card/CardFront';
 import { notFound } from 'next/navigation';
-import AlmanacDate from '@/components/stellar/AlmanacDate';
-import CardPlate from '@/components/stellar/CardPlate';
-import StellarBuyCard from '@/components/stellar/StellarBuyCard';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
-import DataRow, { type Datum } from '@/components/stellar/ui/DataRow';
-import ObservationStatusMark from '@/components/stellar/ui/ObservationStatusMark';
-import Chapter from '@/components/stellar/ui/Chapter';
+import AlmanacDate from '@/components/skychaser/AlmanacDate';
+import CardPlate from '@/components/skychaser/CardPlate';
+import SkychaserBuyCard from '@/components/skychaser/SkychaserBuyCard';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
+import DataRow, { type Datum } from '@/components/skychaser/ui/DataRow';
+import ObservationStatusMark from '@/components/skychaser/ui/ObservationStatusMark';
+import Chapter from '@/components/skychaser/ui/Chapter';
 import { getDb } from '@/lib/db';
 import { formatDec, formatRa } from '@/lib/observatory/telescope-targets';
 import { rarityInfo, type Rarity } from '@/lib/rarity';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
-import { cardStatus } from '@/lib/stellar/almanac';
-import { cardPriceUsd } from '@/lib/stellar/economics';
-import { perkFor } from '@/lib/stellar/perks';
-import type { ObservationStatus } from '@/lib/stellar/observability';
-import { cardAvailability } from '@/lib/stellar/orders';
-import { photoFor } from '@/lib/stellar/photos';
-import { posterFor } from '@/lib/stellar/poster';
-import CardBuyBar from '@/components/stellar/CardBuyBar';
-import ShareCard from '@/components/stellar/ShareCard';
+import { cardStatus } from '@/lib/skychaser/almanac';
+import { cardPriceUsd } from '@/lib/skychaser/economics';
+import { perkFor } from '@/lib/skychaser/perks';
+import type { ObservationStatus } from '@/lib/skychaser/observability';
+import { cardAvailability } from '@/lib/skychaser/orders';
+import { photoFor } from '@/lib/skychaser/photos';
+import { posterFor } from '@/lib/skychaser/poster';
+import CardBuyBar from '@/components/skychaser/CardBuyBar';
+import ShareCard from '@/components/skychaser/ShareCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +69,7 @@ export default async function CardPage({ params }: { params: Promise<{ designati
         released = a.released;
       }
     } catch (err) {
-      console.error('[stellar] cannot read card availability', err);
+      console.error('[skychaser] cannot read card availability', err);
     }
   }
 
@@ -90,8 +90,8 @@ export default async function CardPage({ params }: { params: Promise<{ designati
           : [{ label: 'Position', value: 'Moves — computed for the night' }];
 
   return (
-    <StellarShell title={seed.name}>
-      <StellarView step="card" />
+    <SkychaserShell title={seed.name}>
+      <SkychaserView step="card" />
       <section className="sd-container sd-top">
         <nav aria-label="Breadcrumb" className="sd-crumb sd-data">
           <Link href="/genesis">Genesis</Link>
@@ -132,7 +132,7 @@ export default async function CardPage({ params }: { params: Promise<{ designati
               <p className="sd-note">Sealed. The event has passed; the editions that were held are the editions there are.</p>
             ) : (
               <div className="sd-buy" id="buy">
-                <StellarBuyCard
+                <SkychaserBuyCard
                   designation={seed.designation}
                   name={seed.name}
                   rarity={rarity}
@@ -194,6 +194,6 @@ export default async function CardPage({ params }: { params: Promise<{ designati
       {!sealed && available && (
         <CardBuyBar name={seed.name} priceUsd={priceUsd} left={`${seed.editionSize - (allocated ?? 0)} of ${seed.editionSize} left`} target="buy" />
       )}
-    </StellarShell>
+    </SkychaserShell>
   );
 }

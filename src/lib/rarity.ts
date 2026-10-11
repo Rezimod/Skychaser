@@ -6,7 +6,7 @@
  * photograph it: Europa is common and cannot be resolved; Saturn is epic
  * and can.
  *
- * The tiers minted into old Stellar observation metadata (`Stellar`,
+ * The tiers minted into old Skychaser observation metadata (`Skychaser`,
  * `Celestial`, `Astral`) are a different vocabulary and stay in nft-rarity.ts.
  */
 

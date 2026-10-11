@@ -1,5 +1,5 @@
 // The Tbilisi expedition, in five acts, and what it brings back down to the
-// ground: the thing Stellar is for, a telescope under a real evening sky.
+// ground: the thing Skychaser is for, a telescope under a real evening sky.
 //
 //   1. Cross the Bridge of Peace into the Old Town.
 //   2. Ride the cable car from Rike up to Narikala.

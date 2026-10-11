@@ -114,7 +114,7 @@ export function makeLander(
     return o;
   };
 
-  // ── The vehicle: lander.glb, built in Blender to Stellar's own concept
+  // ── The vehicle: lander.glb, built in Blender to Skychaser's own concept
   // sheet (assets-src/blender/lander.py) — a tapered octagonal crew module
   // over a dark equipment deck, gold tanks at its corners, four legs on
   // dished pads, the hatch and its ladder, four bells under the deck. The

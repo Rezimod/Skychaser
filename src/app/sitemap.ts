@@ -3,7 +3,7 @@ import { SET_001_CARDS } from '@/lib/sets/set-001';
 
 const BASE = 'https://stellarr.club';
 
-/** Stellar's public pages: the shop, the set, every card, and the pages around them. */
+/** Skychaser's public pages: the shop, the set, every card, and the pages around them. */
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const routes: Array<{ path: string; changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']; priority: number }> = [

@@ -1,0 +1,186 @@
+/* SKYCHASER — the home page, printed like a mid-century space poster.
+   Loaded after skychaser-type.css. One rule for colour: cream for words, one flat
+   orange for the accent line, gold for small labels and rays, vermilion only on
+   the button you press. Display lines sit on a hard printed shadow, never a glow
+   or a gradient. The hero is the black sky and one star. */
+
+.skychaser {
+  --sd-orange: var(--sd-accent);   /* the accent line — the poster's flat vermilion */
+  --sd-ray: #e2b86a;      /* sunburst and orbit lines */
+}
+
+/* ── Display type: cream with a soft depth, the accent in flat orange ── */
+.skychaser :is(.sd-hero2__title, .sd-home-sec__title, .sd-closer2__title) {
+  color: var(--sd-ink); text-shadow: 0 2px 28px rgba(0, 0, 0, 0.55);
+}
+.skychaser :is(.sd-hero2__title, .sd-closer2__title) em {
+  color: var(--sd-orange); background: none; -webkit-background-clip: border-box; background-clip: border-box;
+  font-size: 1em; line-height: inherit;
+}
+.skychaser :is(.sd-hero2__title span:has(em), .sd-closer2__title:has(em)) { filter: none; }
+
+/* Small labels: gold, tracked, led in by a rule and a sparkle. */
+.skychaser .sd-kicker { display: inline-flex; align-items: center; gap: 10px; color: var(--sd-gold); }
+.skychaser .sd-kicker::before {
+  content: '\2726'; padding-left: 32px; font-size: 10px; letter-spacing: 0; line-height: 1;
+  background: linear-gradient(90deg, transparent, currentColor) 0 50% / 24px 1px no-repeat;
+}
+.skychaser .sd-home-sec__lede { color: rgba(244, 232, 204, 0.82); }
+
+/* ── Hero ─────────────────────────────────────────────────────── */
+.skychaser .sd-hero2 { isolation: isolate; border-bottom: 0; padding-bottom: clamp(40px, 6vw, 80px); }
+.skychaser .sd-hero2__grid { position: relative; z-index: 1; }
+.skychaser .sd-hero2__title { font-size: clamp(32px, 4.05vw, 60px); }
+.skychaser .sd-hero2__sub { margin-top: 22px; max-width: 44ch; color: rgba(244, 232, 204, 0.84); font-size: 18px; }
+.skychaser .sd-hero2__cta { align-items: center; gap: 14px 26px; }
+.skychaser .sd-hero2__stats { margin-top: 40px; border-top-color: rgba(244, 232, 204, 0.16); }
+.skychaser .sd-hero2__stats dd { color: var(--sd-ink); }
+.skychaser .sd-hero2__stats dt { color: rgba(244, 232, 204, 0.6); }
+
+/* ── Partners and recognition, in the footer: one quiet band, every mark in the same cream ink ── */
+.skychaser .sd-foot__trust { display: grid; gap: 18px; justify-items: center; }
+@media (min-width: 860px) { .skychaser .sd-foot__trust { justify-items: end; } }
+.skychaser .sd-foot .sd-partners { margin: 0; max-width: 680px; width: 100%; }
+.skychaser .sd-foot .sd-partners li { height: 56px; padding: 0 14px; }
+.skychaser .sd-foot .sd-recog { margin: 0; max-width: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 28px; }
+.skychaser .sd-foot .sd-recog__item { padding: 6px 0; }
+.skychaser .sd-partners img { filter: brightness(0) invert(0.93) sepia(0.28); opacity: 0.55; height: 24px; max-height: none; width: auto; object-fit: contain; }
+.skychaser .sd-partners li:hover img { opacity: 0.85; }
+.skychaser .sd-recog__item { flex-direction: row; gap: 14px; justify-content: center; }
+.skychaser .sd-recog__item img, .skychaser .sd-recog__item:hover img { filter: brightness(0) invert(0.93) sepia(0.28); }
+.skychaser .sd-recog__item img { opacity: 0.55; height: 24px; }
+/* Superteam's mark is a picture on a tile: the cream filter would flatten it to a block, so it keeps a grey one at the same height. */
+.skychaser .sd-recog__item img[src$='.webp'], .skychaser .sd-recog__item:hover img[src$='.webp'] { height: 24px; filter: grayscale(1) sepia(0.3) brightness(1.5); }
+.skychaser .sd-recog__item:hover img { opacity: 0.85; }
+.skychaser .sd-recog__cap { font: 500 12px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(244, 232, 204, 0.62); }
+.skychaser .sd-recog__cap b { color: var(--sd-gold); font-weight: 500; }
+
+/* ── What a card opens: four plain steps; the live one in red, the rest coming soon ── */
+.skychaser .sd-flight { margin: 36px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
+.skychaser .sd-flight > li { min-width: 0; border-top: 1px solid var(--sd-line-hi, rgba(255, 255, 255, 0.18)); }
+.skychaser .sd-flight > li.is-live { border-top: 2px solid var(--sd-hal, #e3482c); }
+.skychaser .sd-flight__step { display: grid; align-content: start; gap: 8px; padding-top: 18px; color: inherit; text-decoration: none; }
+.skychaser .sd-flight__step:focus-visible { outline: 2px solid var(--sd-focus); outline-offset: 4px; }
+.skychaser .sd-flight__title { font: 400 24px/1 var(--sd-display); letter-spacing: 0.02em; text-transform: uppercase; color: var(--sd-ink); }
+.skychaser .sd-flight__text { color: var(--sd-ink-2, rgba(244, 244, 242, 0.75)); font-size: 14.5px; line-height: 1.5; }
+.skychaser .sd-flight__tag { margin-top: 4px; font: 600 11px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-3, rgba(244, 244, 242, 0.55)); }
+.skychaser .sd-flight > li.is-live .sd-flight__tag { color: var(--sd-hal, #e3482c); }
+.skychaser .sd-flight > li:not(.is-live) :is(.sd-flight__title, .sd-flight__text) { opacity: 0.6; }
+.skychaser a.sd-flight__step:hover .sd-flight__title { color: var(--sd-hal, #e3482c); }
+@media (max-width: 859px) { .skychaser .sd-flight { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; } }
+@media (max-width: 479px) { .skychaser .sd-flight { grid-template-columns: 1fr; gap: 0; } .skychaser .sd-flight__step { padding: 16px 0 18px; } }
+
+/* ── The odds: a cream-ruled panel ── */
+.skychaser .sd-pub__panel {
+  background:
+    linear-gradient(180deg, #141210, #0a0908) padding-box,
+    linear-gradient(180deg, rgba(244, 232, 204, 0.32), rgba(244, 232, 204, 0.08)) border-box;
+  box-shadow: 0 34px 60px -34px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(244, 232, 204, 0.08);
+}
+.skychaser .sd-pub__tabs { background: rgba(0, 0, 0, 0.5); }
+.skychaser .sd-pub__tile { background: rgba(244, 232, 204, 0.035); }
+.skychaser .sd-pub__icon { color: var(--sd-gold); background: rgba(226, 184, 106, 0.1); box-shadow: inset 0 0 0 1px rgba(226, 184, 106, 0.36); }
+.skychaser .sd-pub__d { color: rgba(244, 232, 204, 0.68); }
+
+/* ── First Light and the orbit ────────────────────────────────── */
+.skychaser .sd-families li { color: rgba(244, 232, 204, 0.84); }
+.skychaser .sd-families__n { color: var(--sd-gold); }
+.skychaser .sd-orbit__path { border-color: rgba(226, 184, 106, 0.22); box-shadow: none; }
+
+/* ── The closing line, on its own sunburst ────────────────────── */
+.skychaser .sd-closer2 { isolation: isolate; padding-bottom: 24px; overflow-x: clip; }
+.skychaser .sd-closer2::before { display: none; }
+.skychaser .sd-closer2__burst {
+  position: absolute; z-index: -1; left: 50%; top: 42%; width: min(1100px, 170%); translate: -50% -50%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 26%, transparent 90%); mask-image: radial-gradient(closest-side, #000 26%, transparent 90%);
+  opacity: 0.55;
+}
+.skychaser .sd-closer2 .sd-home-sec__lede { color: rgba(244, 232, 204, 0.82); }
+
+/* ── Hero: the hidden sky ─────────────────────────────────────────
+   The words sit centred in the black. Twelve real objects hide in the sky
+   round them and the pointer reveals the one beneath it (SkyReveal). A phone
+   has no sky: only the words and a Launch button, centred in the black. */
+.skychaser .sd-hero3 {
+  position: relative; isolation: isolate; overflow: clip; display: grid; place-items: center; background: var(--sd-canvas);
+  min-height: clamp(560px, calc(100svh - var(--sd-bar-h)), 900px);
+}
+.skychaser .sd-hero3 .sd-sky { position: absolute; inset: 0; z-index: 0; contain: strict; pointer-events: auto; }
+.skychaser .sd-hero3 .sd-sky canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.skychaser .sd-hero3 .sd-sky canvas + canvas { will-change: transform; }
+.skychaser .sd-sky__vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(90% 80% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.5) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25), transparent 18%, transparent 80%, rgba(0, 0, 0, 0.5));
+}
+.skychaser .sd-sky__grain {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.07;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.95 0 0 0 0 0.85 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.skychaser .sd-sky__hint {
+  position: absolute; right: clamp(16px, 4vw, 48px); bottom: 26px; margin: 0; pointer-events: none;
+  display: inline-flex; align-items: center; gap: 12px; color: var(--sd-gold);
+  font: 400 11px/1 var(--sd-spaced); letter-spacing: 0.22em; text-transform: uppercase;
+}
+.skychaser .sd-sky__hint::before { content: ''; width: 28px; height: 1px; background: linear-gradient(90deg, transparent, var(--sd-gold)); }
+.skychaser .sd-sky__hint b { font-weight: 500; color: var(--sd-ink); font-variant-numeric: tabular-nums; }
+.skychaser .sd-hero3__copy { position: relative; z-index: 2; width: 100%; padding-block: 48px; text-align: center; pointer-events: none; }
+.skychaser .sd-hero3__copy a { pointer-events: auto; }
+.skychaser .sd-hero3__title {
+  margin: 0; font-family: var(--font-anton), Impact, sans-serif; font-weight: 400; font-size: clamp(27px, 5vw, 76px); line-height: 1;
+  letter-spacing: 0.01em; text-transform: uppercase; white-space: nowrap; color: var(--sd-ink);
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.6);
+}
+.skychaser .sd-hero3__title em { font-style: normal; color: var(--sd-accent); }
+.skychaser .sd-hero3__sub { margin: 24px auto 0; max-width: 44ch; color: rgba(244, 232, 204, 0.84); font-size: clamp(16px, 1.3vw, 19px); font-weight: 500; line-height: 1.5; }
+.skychaser .sd-hero3__cta { display: flex; justify-content: center; margin-top: 34px; }
+.skychaser .sd-hero3__cta-phone { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .skychaser .sd-hero3__copy > * { animation: sd-arrive 700ms var(--sd-ease) both; }
+  .skychaser .sd-hero3__copy > :nth-child(2) { animation-delay: 90ms; }
+  .skychaser .sd-hero3__copy > :nth-child(3) { animation-delay: 180ms; }
+}
+@media (max-width: 559px) {
+  .skychaser .sd-hero3 { min-height: clamp(460px, calc(100svh - var(--sd-bar-h)), 760px); }
+  .skychaser .sd-hero3 .sd-sky { display: none; }
+  .skychaser .sd-hero3__cta .sd-btn { min-width: 220px; }
+  .skychaser .sd-hero3__cta-wide { display: none; }
+  .skychaser .sd-hero3__cta-phone { display: inline; }
+}
+
+/* ── Phones ───────────────────────────────────────────────────── */
+@media (max-width: 559px) {
+  .skychaser .sd-hero2 { padding-bottom: 40px; }
+  .skychaser .sd-hero2__title { font-size: min(9.4vw, 42px); }
+  .skychaser .sd-hero2__sub { font-size: 16px; }
+  .skychaser .sd-hero2__cta { justify-content: center; }
+  .skychaser .sd-foot .sd-partners li { height: 48px; }
+  .skychaser .sd-recog__item { flex-direction: column; gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+}
+
+/* ── The waiting star: the supernova's own star before it is lit ──
+   The engine draws it on the canvas; until then, or without WebGL, a still
+   CSS star stands in, so the print is never empty. */
+.sd-starpulse { position: absolute; inset: 0; overflow: hidden; background: #050505; }
+.sd-starpulse__sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.sd-starpulse:not([data-nogl='0'])::before {
+  content: ''; position: absolute; left: 50%; top: var(--sp-cy, 48%); width: 36%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%;
+  background: radial-gradient(closest-side, #fff8e6 0 18%, #ffd27a 30%, rgba(232, 120, 50, 0.55) 52%, rgba(200, 60, 30, 0.18) 72%, transparent 100%);
+}
+.sd-starpulse[data-nogl='0']::before { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .sd-starpulse:not([data-nogl='0'])::before { animation: sd-star-wait 3.4s ease-in-out infinite; }
+}
+@keyframes sd-star-wait { 0%, 100% { scale: 1; opacity: 0.88; } 10% { scale: 1.16; opacity: 1; } 20% { scale: 1.02; } 28% { scale: 1.09; } 40% { scale: 1; } }
+
+/* The set page: the stage holds the same star, the tier's name over its foot. */
+.sd-counter__star { --sp-cy: 40%; border-radius: inherit; }
+
+/* The home star breathing: without WebGL the still CSS star grows and shrinks on the same slow breath. */
+@media (prefers-reduced-motion: no-preference) {
+  .sd-starpulse--breathe:not([data-nogl='0'])::before { animation: sd-star-breathe 6s ease-in-out infinite; }
+}
+@keyframes sd-star-breathe { 0%, 100% { scale: 0.94; opacity: 0.86; } 50% { scale: 1.1; opacity: 1; } }

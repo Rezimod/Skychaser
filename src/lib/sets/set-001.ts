@@ -18,7 +18,7 @@
  * typical distance.
  */
 
-import { arcsecFromKm, arcsecFromKmAtAu, MOON_DISTANCE_KM } from '@/lib/stellar/observability';
+import { arcsecFromKm, arcsecFromKmAtAu, MOON_DISTANCE_KM } from '@/lib/skychaser/observability';
 import { authorAlmanac, authorCard, authorKept, type AuthoredCard } from './build';
 import { DEEP_CARDS } from './first-light/deep';
 import { EXTREME_CARDS } from './first-light/extremes';

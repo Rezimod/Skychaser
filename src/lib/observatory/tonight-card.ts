@@ -1,9 +1,9 @@
-import type { TonightCard } from '@/components/stellar/observatory/ObservatoryConsole';
+import type { TonightCard } from '@/components/skychaser/observatory/ObservatoryConsole';
 import { getDb } from '@/lib/db';
 import { getNode } from '@/lib/observatory/nodes';
 import { isRarity } from '@/lib/rarity';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
-import { tonightView } from '@/lib/stellar/night';
+import { tonightView } from '@/lib/skychaser/night';
 
 /** What the observatory points at first: the decided card, else the one leading the vote, else the highest; and the node's cloud. */
 export async function observatoryTonight(): Promise<{ tonight: TonightCard; nodeCloud: number | null }> {
@@ -22,7 +22,7 @@ export async function observatoryTonight(): Promise<{ tonight: TonightCard; node
     if (card?.seed.targetId && isRarity(card.seed.rarity))
       tonight = { designation: card.seed.designation, name: card.seed.name, targetId: card.seed.targetId, rarity: card.seed.rarity };
   } catch (err) {
-    console.error('[stellar] cannot read tonight for the observatory', err);
+    console.error('[skychaser] cannot read tonight for the observatory', err);
   }
   return { tonight, nodeCloud };
 }

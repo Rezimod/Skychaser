@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import StellarShell from '@/components/stellar/StellarShell';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
 
 export const metadata: Metadata = { title: 'Not found — Skychaser', robots: { index: false } };
 
 export default function NotFound() {
   return (
-    <StellarShell title="Not found">
+    <SkychaserShell title="Not found">
       <section className="sd-container sd-top">
         <div className="sd-gate">
           <p className="sd-label">Not found</p>
@@ -18,6 +18,6 @@ export default function NotFound() {
           </div>
         </div>
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

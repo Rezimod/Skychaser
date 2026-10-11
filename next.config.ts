@@ -3,7 +3,7 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
-/** The legacy Stellar project's production alias — independent of which project holds the custom domains. */
+/** The legacy Skychaser project's production alias — independent of which project holds the custom domains. */
 const LEGACY_ORIGIN = 'https://stellarsky.vercel.app';
 
 const nextConfig: NextConfig = {
@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        { source: '/api/:path((?!stellar/|cron/|track|health).*)', destination: `${LEGACY_ORIGIN}/api/:path` },
+        { source: '/api/:path((?!skychaser/|cron/|track|health).*)', destination: `${LEGACY_ORIGIN}/api/:path` },
         { source: '/m/:path*', destination: `${LEGACY_ORIGIN}/m/:path*` },
       ],
       afterFiles: [],

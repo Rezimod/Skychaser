@@ -12,7 +12,7 @@ const star = (id: string, frame: ReturnType<typeof skyFrame>) => {
   return frame.fromEcliptic(x, y * Math.cos(e) + z * Math.sin(e), -y * Math.sin(e) + z * Math.cos(e), new THREE.Vector3());
 };
 
-describe('the sky over Stellar Base', () => {
+describe('the sky over Skychaser Base', () => {
   it('keeps Earth low in the north all year, drifting with the libration', () => {
     let lo = 90; let hi = -90;
     for (let day = 0; day < 365; day += 3) {

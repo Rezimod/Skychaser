@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
-import CollectionWallet from '@/components/stellar/CollectionWallet'
-import CollectionHead from '@/components/stellar/CollectionHead'
-import HolderCollection from '@/components/stellar/HolderCollection'
-import StellarShell from '@/components/stellar/StellarShell'
-import StellarView from '@/components/stellar/StellarView'
-import DataRow from '@/components/stellar/ui/DataRow'
+import CollectionWallet from '@/components/skychaser/CollectionWallet'
+import CollectionHead from '@/components/skychaser/CollectionHead'
+import HolderCollection from '@/components/skychaser/HolderCollection'
+import SkychaserShell from '@/components/skychaser/SkychaserShell'
+import SkychaserView from '@/components/skychaser/SkychaserView'
+import DataRow from '@/components/skychaser/ui/DataRow'
 import { getDb } from '@/lib/db'
-import { holderView, type HolderEdition } from '@/lib/stellar/repo'
+import { holderView, type HolderEdition } from '@/lib/skychaser/repo'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +41,7 @@ export default async function CollectionPage({
       try {
         editions = await holderView(db, wallet)
       } catch (err) {
-        console.error('[stellar] cannot read collection', err)
+        console.error('[skychaser] cannot read collection', err)
       }
     }
     if (editions) {
@@ -63,8 +63,8 @@ export default async function CollectionPage({
   }
 
   return (
-    <StellarShell title="Collection">
-      <StellarView step="collection" />
+    <SkychaserShell title="Collection">
+      <SkychaserView step="collection" />
       <section className="sd-container sd-top">
         {wallet && <CollectionHead wallet={wallet} cards={held} />}
         {summary}
@@ -72,6 +72,6 @@ export default async function CollectionPage({
           {body}
         </div>
       </section>
-    </StellarShell>
+    </SkychaserShell>
   )
 }

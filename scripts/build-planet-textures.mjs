@@ -12,7 +12,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const OUT = path.resolve('public/solar-system/planets');
-const CACHE = path.resolve(process.env.TMPDIR ?? '/tmp', 'stellar-planet-src');
+const CACHE = path.resolve(process.env.TMPDIR ?? '/tmp', 'skychaser-planet-src');
 const COMMONS = 'https://upload.wikimedia.org/wikipedia/commons';
 
 /** file → [commons path, ships a 4K detail map] */
@@ -41,7 +41,7 @@ async function fetchSource(id, rel) {
   let res;
   for (let attempt = 0; ; attempt++) {
     res = await fetch(`${COMMONS}/${rel}`, {
-      headers: { 'User-Agent': 'stellar-texture-build/1.0 (stellarr.club)' },
+      headers: { 'User-Agent': 'skychaser-texture-build/1.0 (stellarr.club)' },
     });
     if (res.ok) break;
     if (res.status !== 429 || attempt === 5) throw new Error(`${id}: HTTP ${res.status}`);

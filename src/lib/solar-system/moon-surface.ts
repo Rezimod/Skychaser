@@ -206,7 +206,7 @@ export interface MoonSurfaceHandle {
 
 declare global {
   interface Window {
-    __stellarMoon?: MoonSurfaceHandle;
+    __skychaserMoon?: MoonSurfaceHandle;
   }
 }
 
@@ -1047,7 +1047,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     setPaused: host.setPaused,
     roverAt: () => ({ x: base.roverCollider.x, z: base.roverCollider.z }),
     dispose() {
-      if (window.__stellarMoon === handle) delete window.__stellarMoon;
+      if (window.__skychaserMoon === handle) delete window.__skychaserMoon;
       unsubSettings();
       unsubQuality();
       audio.dispose();
@@ -1055,6 +1055,6 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     },
   };
   if (opts.startOnSurface) handle.skipDescent();
-  if (process.env.NODE_ENV !== 'production') window.__stellarMoon = handle;
+  if (process.env.NODE_ENV !== 'production') window.__skychaserMoon = handle;
   return handle;
 }

@@ -1,4 +1,4 @@
-// The five missions at Stellar Base, as data.
+// The five missions at Skychaser Base, as data.
 //
 // First Steps teaches the controls by using them; Restore Power puts the
 // lights back on; Telescope Calibration points the platform at something

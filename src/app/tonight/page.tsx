@@ -1,18 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import CardPlate from '@/components/stellar/CardPlate';
-import ObjectArt from '@/components/stellar/ObjectArt';
-import StellarBallot from '@/components/stellar/StellarBallot';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
-import TonightSkyChart from '@/components/stellar/TonightSkyChart';
-import Chapter from '@/components/stellar/ui/Chapter';
-import DataRow, { type Datum } from '@/components/stellar/ui/DataRow';
+import CardPlate from '@/components/skychaser/CardPlate';
+import ObjectArt from '@/components/skychaser/ObjectArt';
+import SkychaserBallot from '@/components/skychaser/SkychaserBallot';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
+import TonightSkyChart from '@/components/skychaser/TonightSkyChart';
+import Chapter from '@/components/skychaser/ui/Chapter';
+import DataRow, { type Datum } from '@/components/skychaser/ui/DataRow';
 import { getDb } from '@/lib/db';
 import { CLOUD_LIMIT } from '@/lib/observatory/adapter';
 import { getNode } from '@/lib/observatory/nodes';
 import { isRarity, type Rarity } from '@/lib/rarity';
-import { addDays, tonightView, type TonightView } from '@/lib/stellar/night';
+import { addDays, tonightView, type TonightView } from '@/lib/skychaser/night';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +38,7 @@ export default async function TonightPage() {
     try {
       view = await tonightView(db, node, now);
     } catch (err) {
-      console.error('[stellar] cannot read tonight', err);
+      console.error('[skychaser] cannot read tonight', err);
     }
   }
 
@@ -75,8 +75,8 @@ export default async function TonightPage() {
       : [];
 
   return (
-    <StellarShell>
-      <StellarView step="tonight" />
+    <SkychaserShell>
+      <SkychaserView step="tonight" />
 
 
       {view && (
@@ -95,7 +95,7 @@ export default async function TonightPage() {
           ) : (
             <>
               <p className="sd-strip-note">One vote per holder · every card held adds to it: commons ×1 to ×3, rares ×4, epics and legendaries ×5</p>
-              <StellarBallot
+              <SkychaserBallot
                 night={view.voting.night}
                 candidates={candidates.map((c) => ({
                   designation: c.designation,
@@ -206,6 +206,6 @@ export default async function TonightPage() {
           <p className="sd-note">The night’s record cannot be read right now.</p>
         </section>
       )}
-    </StellarShell>
+    </SkychaserShell>
   );
 }

@@ -1,146 +1,146 @@
-/* Live Telescope V1 — the telescope page and its simulator. Scoped to .stellar, like
-   every Stellar rule; the legacy /observatory routes never load this file. */
+/* Live Telescope V1 — the telescope page and its simulator. Scoped to .skychaser, like
+   every Skychaser rule; the legacy /observatory routes never load this file. */
 
 /* ── Head ─────────────────────────────────────────────────────── */
-.stellar .sd-node-head { padding-bottom: 8px; }
+.skychaser .sd-node-head { padding-bottom: 8px; }
 /* Orbits: hairline ellipses turning slowly behind the title, one body on each. */
-.stellar .sd-node-orbit { position: absolute; right: -12%; top: -8%; width: min(78vw, 820px); aspect-ratio: 1; pointer-events: none; z-index: 0; opacity: 0.9; }
-.stellar .sd-node-orbit span { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.06); animation: sd-orbit 140s linear infinite; }
-.stellar .sd-node-orbit span:nth-child(2) { inset: 14%; border-color: rgba(255, 255, 255, 0.075); animation-duration: 96s; animation-direction: reverse; }
-.stellar .sd-node-orbit span:nth-child(3) { inset: 30%; border-color: rgba(181, 101, 45, 0.12); border-style: dashed; animation-duration: 70s; }
-.stellar .sd-node-orbit span::after { content: ''; position: absolute; top: 50%; left: -3px; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: rgba(255, 255, 255, 0.7); }
-.stellar .sd-node-orbit span:nth-child(3)::after { background: var(--sd-accent); }
+.skychaser .sd-node-orbit { position: absolute; right: -12%; top: -8%; width: min(78vw, 820px); aspect-ratio: 1; pointer-events: none; z-index: 0; opacity: 0.9; }
+.skychaser .sd-node-orbit span { position: absolute; inset: 0; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.06); animation: sd-orbit 140s linear infinite; }
+.skychaser .sd-node-orbit span:nth-child(2) { inset: 14%; border-color: rgba(255, 255, 255, 0.075); animation-duration: 96s; animation-direction: reverse; }
+.skychaser .sd-node-orbit span:nth-child(3) { inset: 30%; border-color: rgba(181, 101, 45, 0.12); border-style: dashed; animation-duration: 70s; }
+.skychaser .sd-node-orbit span::after { content: ''; position: absolute; top: 50%; left: -3px; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: rgba(255, 255, 255, 0.7); }
+.skychaser .sd-node-orbit span:nth-child(3)::after { background: var(--sd-accent); }
 @keyframes sd-orbit { to { transform: rotate(360deg); } }
 
 /* ── The scope ────────────────────────────────────────────────── */
-.stellar .sd-scope { position: relative; z-index: 2; margin-top: 40px; }
-@media (min-width: 900px) { .stellar .sd-scope { margin-top: 56px; } }
-.stellar .sd-scope__stage { position: relative; }
-.stellar .sd-scope__frame {
+.skychaser .sd-scope { position: relative; z-index: 2; margin-top: 40px; }
+@media (min-width: 900px) { .skychaser .sd-scope { margin-top: 56px; } }
+.skychaser .sd-scope__stage { position: relative; }
+.skychaser .sd-scope__frame {
   position: relative; aspect-ratio: 16 / 9; overflow: hidden; isolation: isolate;
   border-radius: calc(var(--sd-radius) + 8px);
   border: 1px solid var(--sd-rule-strong);
   background: #080808;
   box-shadow: 0 60px 120px -48px rgba(0, 0, 0, 0.85);
 }
-.stellar .sd-scope__sky { position: absolute; inset: 0; }
-.stellar .sd-scope__sky canvas { width: 100% !important; height: 100% !important; border-radius: 0 !important; }
-.stellar .sd-scope__vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(75% 95% at 50% 50%, transparent 58%, rgba(6, 6, 6, 0.72) 100%); }
+.skychaser .sd-scope__sky { position: absolute; inset: 0; }
+.skychaser .sd-scope__sky canvas { width: 100% !important; height: 100% !important; border-radius: 0 !important; }
+.skychaser .sd-scope__vignette { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(75% 95% at 50% 50%, transparent 58%, rgba(6, 6, 6, 0.72) 100%); }
 
-.stellar .sd-scope__reticle { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: none; }
-.stellar .sd-scope__reticle line, .stellar .sd-scope__reticle circle, .stellar .sd-scope__reticle path { vector-effect: non-scaling-stroke; stroke-width: 1px; }
-.stellar .sd-scope__ring { transform-box: fill-box; transform-origin: center; animation: sd-orbit 360s linear infinite; }
-.stellar .sd-scope__ring circle { stroke: rgba(255, 255, 255, 0.14); }
-.stellar .sd-scope__ring line { stroke: rgba(255, 255, 255, 0.22); }
-.stellar .sd-scope__ring line.is-long { stroke: rgba(255, 255, 255, 0.5); }
-.stellar .sd-scope__cross line { stroke: rgba(255, 255, 255, 0.42); }
-.stellar .sd-scope__brackets path { stroke: rgba(255, 255, 255, 0.55); }
-.stellar .sd-scope__scale line { stroke: rgba(255, 255, 255, 0.7); }
+.skychaser .sd-scope__reticle { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; fill: none; }
+.skychaser .sd-scope__reticle line, .skychaser .sd-scope__reticle circle, .skychaser .sd-scope__reticle path { vector-effect: non-scaling-stroke; stroke-width: 1px; }
+.skychaser .sd-scope__ring { transform-box: fill-box; transform-origin: center; animation: sd-orbit 360s linear infinite; }
+.skychaser .sd-scope__ring circle { stroke: rgba(255, 255, 255, 0.14); }
+.skychaser .sd-scope__ring line { stroke: rgba(255, 255, 255, 0.22); }
+.skychaser .sd-scope__ring line.is-long { stroke: rgba(255, 255, 255, 0.5); }
+.skychaser .sd-scope__cross line { stroke: rgba(255, 255, 255, 0.42); }
+.skychaser .sd-scope__brackets path { stroke: rgba(255, 255, 255, 0.55); }
+.skychaser .sd-scope__scale line { stroke: rgba(255, 255, 255, 0.7); }
 
-.stellar .sd-scope__hud { position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 4px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
-.stellar .sd-scope__hud--tl { top: 7.5%; left: 5.2%; align-items: flex-start; }
-.stellar .sd-scope__hud--tr { top: 7.5%; right: 5.2%; align-items: flex-end; }
-.stellar .sd-scope__hud--bl { bottom: 8%; left: 5.2%; }
-.stellar .sd-scope__small { font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-2); }
-.stellar .sd-scope__tag {
+.skychaser .sd-scope__hud { position: absolute; z-index: 2; display: flex; flex-direction: column; gap: 4px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+.skychaser .sd-scope__hud--tl { top: 7.5%; left: 5.2%; align-items: flex-start; }
+.skychaser .sd-scope__hud--tr { top: 7.5%; right: 5.2%; align-items: flex-end; }
+.skychaser .sd-scope__hud--bl { bottom: 8%; left: 5.2%; }
+.skychaser .sd-scope__small { font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-2); }
+.skychaser .sd-scope__tag {
   display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 10px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--sd-accent) 45%, transparent);
   background: rgba(8, 8, 8, 0.55); backdrop-filter: blur(8px);
   font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-accent-ink);
 }
-.stellar .sd-scope__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sd-accent); animation: sd-blink 2.4s ease-in-out infinite; }
+.skychaser .sd-scope__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--sd-accent); animation: sd-blink 2.4s ease-in-out infinite; }
 @keyframes sd-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-.stellar .sd-scope__clock { font-family: var(--sd-mono); font-size: clamp(16px, 2.2vw, 26px); font-weight: 500; letter-spacing: 0.02em; color: var(--sd-ink); font-variant-numeric: tabular-nums; line-height: 1; }
-.stellar .sd-scope__name { font-family: var(--sd-sans); font-weight: 600; font-size: clamp(18px, 3.2vw, 40px); letter-spacing: -0.035em; line-height: 1; color: var(--sd-ink); }
-.stellar .sd-scope__scale-label { position: absolute; z-index: 2; left: 50%; bottom: 9%; transform: translateX(-50%); font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.1em; color: var(--sd-ink-2); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+.skychaser .sd-scope__clock { font-family: var(--sd-mono); font-size: clamp(16px, 2.2vw, 26px); font-weight: 500; letter-spacing: 0.02em; color: var(--sd-ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.skychaser .sd-scope__name { font-family: var(--sd-sans); font-weight: 600; font-size: clamp(18px, 3.2vw, 40px); letter-spacing: -0.035em; line-height: 1; color: var(--sd-ink); }
+.skychaser .sd-scope__scale-label { position: absolute; z-index: 2; left: 50%; bottom: 9%; transform: translateX(-50%); font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.1em; color: var(--sd-ink-2); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
 
-.stellar .sd-scope__exposure { position: absolute; z-index: 2; left: 0; bottom: 0; height: 2px; width: 100%; transform-origin: left; background: linear-gradient(90deg, transparent, var(--sd-accent)); animation: sd-sub var(--sub, 4s) linear infinite; }
+.skychaser .sd-scope__exposure { position: absolute; z-index: 2; left: 0; bottom: 0; height: 2px; width: 100%; transform-origin: left; background: linear-gradient(90deg, transparent, var(--sd-accent)); animation: sd-sub var(--sub, 4s) linear infinite; }
 @keyframes sd-sub { from { transform: scaleX(0); opacity: 0.9; } 92% { opacity: 0.9; } to { transform: scaleX(1); opacity: 0; } }
 
-.stellar .sd-scope__empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 24px; text-align: center; color: var(--sd-ink-2); font-family: var(--sd-mono); font-size: 13px; }
+.skychaser .sd-scope__empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 24px; text-align: center; color: var(--sd-ink-2); font-family: var(--sd-mono); font-size: 13px; }
 
-.stellar .sd-scope__coords { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; }
-.stellar .sd-scope__coords div { min-width: 0; }
-.stellar .sd-scope__coords dt { font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
-.stellar .sd-scope__coords dd { margin: 3px 0 0; font-family: var(--sd-mono); font-size: 12px; color: var(--sd-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.skychaser .sd-scope__coords { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 0; }
+.skychaser .sd-scope__coords div { min-width: 0; }
+.skychaser .sd-scope__coords dt { font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-scope__coords dd { margin: 3px 0 0; font-family: var(--sd-mono); font-size: 12px; color: var(--sd-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (min-width: 900px) {
-  .stellar .sd-scope__coords {
+  .skychaser .sd-scope__coords {
     position: absolute; z-index: 3; right: 5.2%; bottom: 8%; margin: 0;
     grid-template-columns: repeat(2, auto); gap: 8px 22px; text-align: right;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
   }
-  .stellar .sd-scope__coords dd { font-size: 13px; }
+  .skychaser .sd-scope__coords dd { font-size: 13px; }
 }
 @media (max-width: 639px) {
-  .stellar .sd-scope__hud--bl, .stellar .sd-scope__scale-label, .stellar .sd-scope__scale { display: none; }
-  .stellar .sd-scope__small { font-size: 12px; }
-  .stellar .sd-scope__tag { padding: 3px 9px 3px 8px; font-size: 12px; }
-  .stellar .sd-scope__frame { border-radius: var(--sd-radius); }
+  .skychaser .sd-scope__hud--bl, .skychaser .sd-scope__scale-label, .skychaser .sd-scope__scale { display: none; }
+  .skychaser .sd-scope__small { font-size: 12px; }
+  .skychaser .sd-scope__tag { padding: 3px 9px 3px 8px; font-size: 12px; }
+  .skychaser .sd-scope__frame { border-radius: var(--sd-radius); }
 }
 
-.stellar .sd-scope__caption { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 16px; color: var(--sd-ink-3); }
-.stellar .sd-scope__caption span:not(:last-child)::after { content: '·'; margin-inline: 12px; color: var(--sd-ink-4); }
-.stellar .sd-scope__caption span:first-child { color: var(--sd-ink-2); }
+.skychaser .sd-scope__caption { display: flex; flex-wrap: wrap; gap: 6px 0; margin-top: 16px; color: var(--sd-ink-3); }
+.skychaser .sd-scope__caption span:not(:last-child)::after { content: '·'; margin-inline: 12px; color: var(--sd-ink-4); }
+.skychaser .sd-scope__caption span:first-child { color: var(--sd-ink-2); }
 
-.stellar .sd-scope__rail { display: flex; gap: 10px; margin-top: 22px; padding-bottom: 6px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
-.stellar .sd-scope__pick {
+.skychaser .sd-scope__rail { display: flex; gap: 10px; margin-top: 22px; padding-bottom: 6px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
+.skychaser .sd-scope__pick {
   position: relative; flex: 0 0 auto; scroll-snap-align: start;
   display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 18px 8px 8px;
   border-radius: var(--sd-radius); border: 1px solid var(--sd-rule); background: var(--sd-plate);
   color: var(--sd-ink); cursor: pointer; text-align: left; font: inherit;
   transition: border-color var(--sd-dur-fast) var(--sd-ease), background var(--sd-dur-fast) var(--sd-ease), transform var(--sd-dur-fast) var(--sd-ease);
 }
-.stellar .sd-scope__pick:hover { background: var(--sd-plate-hover); border-color: var(--sd-rule-strong); }
-.stellar .sd-scope__pick[aria-pressed='true'] { border-color: color-mix(in srgb, var(--sd-accent) 70%, transparent); background: linear-gradient(180deg, rgba(181, 101, 45, 0.1), rgba(181, 101, 45, 0.03)); }
-.stellar .sd-scope__thumb { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; flex: none; background: #080808; }
-.stellar .sd-scope__thumb > * { width: 100%; height: 100%; }
-.stellar .sd-scope__thumb img, .stellar .sd-scope__thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
-.stellar .sd-scope__pick-text { display: flex; flex-direction: column; gap: 2px; }
-.stellar .sd-scope__pick-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap; }
-.stellar .sd-scope__pick-data { font-family: var(--sd-mono); font-size: 12px; color: var(--sd-ink-3); white-space: nowrap; }
-.stellar .sd-scope__pick-flag { position: absolute; top: -8px; right: 10px; padding: 1px 8px; border-radius: 999px; background: var(--sd-accent); color: #111111; font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.skychaser .sd-scope__pick:hover { background: var(--sd-plate-hover); border-color: var(--sd-rule-strong); }
+.skychaser .sd-scope__pick[aria-pressed='true'] { border-color: color-mix(in srgb, var(--sd-accent) 70%, transparent); background: linear-gradient(180deg, rgba(181, 101, 45, 0.1), rgba(181, 101, 45, 0.03)); }
+.skychaser .sd-scope__thumb { width: 44px; height: 44px; border-radius: 10px; overflow: hidden; flex: none; background: #080808; }
+.skychaser .sd-scope__thumb > * { width: 100%; height: 100%; }
+.skychaser .sd-scope__thumb img, .skychaser .sd-scope__thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.skychaser .sd-scope__pick-text { display: flex; flex-direction: column; gap: 2px; }
+.skychaser .sd-scope__pick-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; white-space: nowrap; }
+.skychaser .sd-scope__pick-data { font-family: var(--sd-mono); font-size: 12px; color: var(--sd-ink-3); white-space: nowrap; }
+.skychaser .sd-scope__pick-flag { position: absolute; top: -8px; right: 10px; padding: 1px 8px; border-radius: 999px; background: var(--sd-accent); color: #111111; font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
 
 /* ── The instrument ───────────────────────────────────────────── */
-.stellar .sd-node-instrument { display: grid; gap: 36px; }
-@media (min-width: 960px) { .stellar .sd-node-instrument { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 56px; align-items: start; } }
-.stellar .sd-optic { margin: 0; border: 1px solid var(--sd-rule); border-radius: calc(var(--sd-radius) + 6px); padding: 20px 12px; background: linear-gradient(180deg, rgba(29, 29, 29, 0.45), rgba(15, 15, 15, 0.85)); overflow-x: auto; }
-.stellar .sd-optic svg { display: block; width: 100%; min-width: 560px; height: auto; }
-.stellar .sd-optic__tube { stroke: var(--sd-rule-strong); stroke-width: 1; }
-.stellar .sd-optic__axis { stroke: var(--sd-ink-4); stroke-width: 1; stroke-dasharray: 3 7; }
-.stellar .sd-optic__ray { fill: none; stroke: rgba(244, 177, 19, 0.22); stroke-width: 1.2; }
-.stellar .sd-optic__photon { fill: none; stroke: var(--sd-accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 3 97; animation: sd-photon 4.8s linear infinite; }
-.stellar .sd-optic g:nth-of-type(3) .sd-optic__photon { animation-delay: -1.2s; }
-.stellar .sd-optic g:nth-of-type(4) .sd-optic__photon { animation-delay: -2.4s; }
-.stellar .sd-optic g:nth-of-type(5) .sd-optic__photon { animation-delay: -3.6s; }
+.skychaser .sd-node-instrument { display: grid; gap: 36px; }
+@media (min-width: 960px) { .skychaser .sd-node-instrument { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 56px; align-items: start; } }
+.skychaser .sd-optic { margin: 0; border: 1px solid var(--sd-rule); border-radius: calc(var(--sd-radius) + 6px); padding: 20px 12px; background: linear-gradient(180deg, rgba(29, 29, 29, 0.45), rgba(15, 15, 15, 0.85)); overflow-x: auto; }
+.skychaser .sd-optic svg { display: block; width: 100%; min-width: 560px; height: auto; }
+.skychaser .sd-optic__tube { stroke: var(--sd-rule-strong); stroke-width: 1; }
+.skychaser .sd-optic__axis { stroke: var(--sd-ink-4); stroke-width: 1; stroke-dasharray: 3 7; }
+.skychaser .sd-optic__ray { fill: none; stroke: rgba(244, 177, 19, 0.22); stroke-width: 1.2; }
+.skychaser .sd-optic__photon { fill: none; stroke: var(--sd-accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 3 97; animation: sd-photon 4.8s linear infinite; }
+.skychaser .sd-optic g:nth-of-type(3) .sd-optic__photon { animation-delay: -1.2s; }
+.skychaser .sd-optic g:nth-of-type(4) .sd-optic__photon { animation-delay: -2.4s; }
+.skychaser .sd-optic g:nth-of-type(5) .sd-optic__photon { animation-delay: -3.6s; }
 @keyframes sd-photon { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
-.stellar .sd-optic__glass { stroke: var(--sd-teal); stroke-width: 2.5; opacity: 0.7; }
-.stellar .sd-optic__secondary { fill: var(--sd-ink-2); }
-.stellar .sd-optic__mirror { fill: none; stroke: var(--sd-ink); stroke-width: 3; stroke-linecap: round; }
-.stellar .sd-optic__hole { stroke: #080808; stroke-width: 5; }
-.stellar .sd-optic__camera { fill: rgba(255, 255, 255, 0.06); stroke: var(--sd-rule-strong); }
-.stellar .sd-optic__focus { fill: var(--sd-accent); }
-.stellar .sd-optic__labels text { fill: var(--sd-ink-3); font-family: var(--sd-mono); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+.skychaser .sd-optic__glass { stroke: var(--sd-teal); stroke-width: 2.5; opacity: 0.7; }
+.skychaser .sd-optic__secondary { fill: var(--sd-ink-2); }
+.skychaser .sd-optic__mirror { fill: none; stroke: var(--sd-ink); stroke-width: 3; stroke-linecap: round; }
+.skychaser .sd-optic__hole { stroke: #080808; stroke-width: 5; }
+.skychaser .sd-optic__camera { fill: rgba(255, 255, 255, 0.06); stroke: var(--sd-rule-strong); }
+.skychaser .sd-optic__focus { fill: var(--sd-accent); }
+.skychaser .sd-optic__labels text { fill: var(--sd-ink-3); font-family: var(--sd-mono); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
 
 /* ── The night ────────────────────────────────────────────────── */
-.stellar .sd-nightband { margin: 0; border: 1px solid var(--sd-rule); border-radius: calc(var(--sd-radius) + 6px); padding: 16px 12px 10px; background: linear-gradient(180deg, rgba(29, 29, 29, 0.4), rgba(15, 15, 15, 0.85)); overflow-x: auto; }
-.stellar .sd-nightband svg { display: block; width: 100%; min-width: 680px; height: auto; font-family: var(--sd-mono); }
-.stellar .sd-nightband text { fill: var(--sd-ink-3); font-size: 12px; letter-spacing: 0.06em; }
-.stellar .sd-nightband__dark { fill: rgba(244, 177, 19, 0.035); }
-.stellar .sd-nightband__horizon { stroke: var(--sd-ink-4); stroke-dasharray: 2 6; }
-.stellar .sd-nightband__sun { fill: none; stroke: var(--sd-accent); stroke-width: 1.6; stroke-linecap: round; }
-.stellar .sd-nightband__edge line { stroke: var(--sd-rule-strong); }
-.stellar .sd-nightband__edge text { fill: var(--sd-ink-2); }
-.stellar .sd-nightband__hours rect { fill: rgba(244, 177, 19, 0.55); }
-.stellar .sd-nightband__pin line { stroke: rgba(244, 177, 19, 0.5); stroke-dasharray: 2 4; }
-.stellar .sd-nightband__pin path { fill: var(--sd-teal); }
-.stellar .sd-nightband__pin text { fill: var(--sd-teal); }
-.stellar .sd-nightband__now line { stroke: var(--sd-ink); stroke-width: 1; }
-.stellar .sd-nightband__now circle { fill: var(--sd-ink); }
-.stellar .sd-nightband__now text { fill: var(--sd-ink); }
-.stellar .sd-nightband__ticks text { fill: var(--sd-ink-3); }
+.skychaser .sd-nightband { margin: 0; border: 1px solid var(--sd-rule); border-radius: calc(var(--sd-radius) + 6px); padding: 16px 12px 10px; background: linear-gradient(180deg, rgba(29, 29, 29, 0.4), rgba(15, 15, 15, 0.85)); overflow-x: auto; }
+.skychaser .sd-nightband svg { display: block; width: 100%; min-width: 680px; height: auto; font-family: var(--sd-mono); }
+.skychaser .sd-nightband text { fill: var(--sd-ink-3); font-size: 12px; letter-spacing: 0.06em; }
+.skychaser .sd-nightband__dark { fill: rgba(244, 177, 19, 0.035); }
+.skychaser .sd-nightband__horizon { stroke: var(--sd-ink-4); stroke-dasharray: 2 6; }
+.skychaser .sd-nightband__sun { fill: none; stroke: var(--sd-accent); stroke-width: 1.6; stroke-linecap: round; }
+.skychaser .sd-nightband__edge line { stroke: var(--sd-rule-strong); }
+.skychaser .sd-nightband__edge text { fill: var(--sd-ink-2); }
+.skychaser .sd-nightband__hours rect { fill: rgba(244, 177, 19, 0.55); }
+.skychaser .sd-nightband__pin line { stroke: rgba(244, 177, 19, 0.5); stroke-dasharray: 2 4; }
+.skychaser .sd-nightband__pin path { fill: var(--sd-teal); }
+.skychaser .sd-nightband__pin text { fill: var(--sd-teal); }
+.skychaser .sd-nightband__now line { stroke: var(--sd-ink); stroke-width: 1; }
+.skychaser .sd-nightband__now circle { fill: var(--sd-ink); }
+.skychaser .sd-nightband__now text { fill: var(--sd-ink); }
+.skychaser .sd-nightband__ticks text { fill: var(--sd-ink-3); }
 
 /* ── Take the controls ────────────────────────────────────────── */
-.stellar .sd-node-cta {
+.skychaser .sd-node-cta {
   position: relative; display: grid; gap: 32px; align-items: center; overflow: hidden;
   padding: 32px 24px; border-radius: calc(var(--sd-radius) + 8px); border: 1px solid var(--sd-rule-strong);
   background:
@@ -148,31 +148,31 @@
     radial-gradient(80% 120% at 85% 50%, rgba(90, 39, 19, 0.9), transparent 70%),
     var(--sd-deep);
 }
-@media (min-width: 860px) { .stellar .sd-node-cta { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); padding: 48px 56px; } }
-.stellar .sd-node-cta__lead { margin: 0; font-size: clamp(19px, 2.4vw, 24px); line-height: 1.45; letter-spacing: -0.015em; color: var(--sd-ink); max-width: 36ch; }
-.stellar .sd-node-cta__list { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 10px; }
-@media (min-width: 560px) { .stellar .sd-node-cta__list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.stellar .sd-node-cta__list li { display: flex; align-items: center; gap: 10px; color: var(--sd-ink-2); }
-.stellar .sd-node-cta__list li::before { content: ''; width: 5px; height: 5px; flex: none; transform: rotate(45deg); border: 1px solid var(--sd-accent); }
-.stellar .sd-node-cta__btn { margin-top: 32px; display: inline-flex; }
-.stellar .sd-node-cta .sd-links { margin-top: 32px; }
-.stellar .sd-node-cta .sd-links .sd-node-cta__btn { margin-top: 0; }
-.stellar .sd-node-cta__paddle { justify-self: center; width: min(100%, 260px); }
-.stellar .sd-node-cta__paddle svg { display: block; width: 100%; height: auto; overflow: visible; }
-.stellar .sd-paddle__ring { fill: none; stroke: var(--sd-rule-strong); }
-.stellar .sd-paddle__ring--dim { stroke: rgba(181, 101, 45, 0.3); stroke-dasharray: 2 5; transform-origin: 100px 100px; animation: sd-orbit 60s linear infinite; }
-.stellar .sd-paddle__key { fill: var(--sd-ink-2); }
-.stellar .sd-paddle__trk { fill: rgba(255, 255, 255, 0.04); stroke: var(--sd-rule-strong); }
-.stellar .sd-node-cta__paddle text { fill: var(--sd-ink-3); font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.16em; }
+@media (min-width: 860px) { .skychaser .sd-node-cta { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); padding: 48px 56px; } }
+.skychaser .sd-node-cta__lead { margin: 0; font-size: clamp(19px, 2.4vw, 24px); line-height: 1.45; letter-spacing: -0.015em; color: var(--sd-ink); max-width: 36ch; }
+.skychaser .sd-node-cta__list { list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 10px; }
+@media (min-width: 560px) { .skychaser .sd-node-cta__list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.skychaser .sd-node-cta__list li { display: flex; align-items: center; gap: 10px; color: var(--sd-ink-2); }
+.skychaser .sd-node-cta__list li::before { content: ''; width: 5px; height: 5px; flex: none; transform: rotate(45deg); border: 1px solid var(--sd-accent); }
+.skychaser .sd-node-cta__btn { margin-top: 32px; display: inline-flex; }
+.skychaser .sd-node-cta .sd-links { margin-top: 32px; }
+.skychaser .sd-node-cta .sd-links .sd-node-cta__btn { margin-top: 0; }
+.skychaser .sd-node-cta__paddle { justify-self: center; width: min(100%, 260px); }
+.skychaser .sd-node-cta__paddle svg { display: block; width: 100%; height: auto; overflow: visible; }
+.skychaser .sd-paddle__ring { fill: none; stroke: var(--sd-rule-strong); }
+.skychaser .sd-paddle__ring--dim { stroke: rgba(181, 101, 45, 0.3); stroke-dasharray: 2 5; transform-origin: 100px 100px; animation: sd-orbit 60s linear infinite; }
+.skychaser .sd-paddle__key { fill: var(--sd-ink-2); }
+.skychaser .sd-paddle__trk { fill: rgba(255, 255, 255, 0.04); stroke: var(--sd-rule-strong); }
+.skychaser .sd-node-cta__paddle text { fill: var(--sd-ink-3); font-family: var(--sd-mono); font-size: 12px; letter-spacing: 0.16em; }
 
-.stellar .sd-node-last { margin-bottom: 96px; }
+.skychaser .sd-node-last { margin-bottom: 96px; }
 
-/* ── The simulator, in Stellar's colours ───────────────────────── */
-.stellar .sd-sim-rail { border-bottom: 1px solid var(--sd-rule); background: rgba(15, 15, 15, 0.6); }
-.stellar .sd-sim-rail__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; min-height: 48px; }
-.stellar .sd-sim-rail .sd-crumb { margin: 0; }
+/* ── The simulator, in Skychaser's colours ───────────────────────── */
+.skychaser .sd-sim-rail { border-bottom: 1px solid var(--sd-rule); background: rgba(15, 15, 15, 0.6); }
+.skychaser .sd-sim-rail__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; min-height: 48px; }
+.skychaser .sd-sim-rail .sd-crumb { margin: 0; }
 
-.stellar .obs.sd-sim.sd-sim {
+.skychaser .obs.sd-sim.sd-sim {
   --text: #ffffff;
   --text-primary: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.74);
@@ -195,42 +195,42 @@
   --obs-radius-sm: var(--sd-radius-sm);
   color: var(--sd-ink);
 }
-.stellar .sd-sim .obs-live { min-height: calc(100dvh - var(--sd-bar-h) - 49px); }
-.stellar .sd-sim .obs-live__sky::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(80% 90% at 50% 50%, transparent 60%, rgba(6, 6, 6, 0.6) 100%); }
+.skychaser .sd-sim .obs-live { min-height: calc(100dvh - var(--sd-bar-h) - 49px); }
+.skychaser .sd-sim .obs-live__sky::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(80% 90% at 50% 50%, transparent 60%, rgba(6, 6, 6, 0.6) 100%); }
 
-.stellar .sd-sim-how { display: grid; gap: 20px; max-width: 72ch; }
-@media (min-width: 960px) { .stellar .sd-sim-how { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; gap: 48px; } }
-.stellar .sd-sim-how p { margin: 0; color: var(--sd-ink-2); font-size: 16px; line-height: 1.7; }
+.skychaser .sd-sim-how { display: grid; gap: 20px; max-width: 72ch; }
+@media (min-width: 960px) { .skychaser .sd-sim-how { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: none; gap: 48px; } }
+.skychaser .sd-sim-how p { margin: 0; color: var(--sd-ink-2); font-size: 16px; line-height: 1.7; }
 
 @media (prefers-reduced-motion: reduce) {
-  .stellar .sd-node-orbit span, .stellar .sd-scope__ring, .stellar .sd-scope__dot, .stellar .sd-scope__exposure,
-  .stellar .sd-optic__photon, .stellar .sd-paddle__ring--dim { animation: none; }
-  .stellar .sd-scope__exposure { display: none; }
+  .skychaser .sd-node-orbit span, .skychaser .sd-scope__ring, .skychaser .sd-scope__dot, .skychaser .sd-scope__exposure,
+  .skychaser .sd-optic__photon, .skychaser .sd-paddle__ring--dim { animation: none; }
+  .skychaser .sd-scope__exposure { display: none; }
 }
 
-.stellar .sd-node-instrument > * { min-width: 0; }
+.skychaser .sd-node-instrument > * { min-width: 0; }
 @media (max-width: 639px) {
-  .stellar .sd-scope__hud--tl .sd-scope__small, .stellar .sd-scope__hud--tr .sd-scope__small { display: none; }
+  .skychaser .sd-scope__hud--tl .sd-scope__small, .skychaser .sd-scope__hud--tr .sd-scope__small { display: none; }
 }
 /* The clock owns the top-right corner; the panels start clear of it. */
-@media (min-width: 900px) { .stellar .sd-sim .obs-live__body { padding-top: 7.75rem; } }
-@media (min-width: 1280px) { .stellar .sd-sim .obs-live__body { padding-top: 8.5rem; } }
+@media (min-width: 900px) { .skychaser .sd-sim .obs-live__body { padding-top: 7.75rem; } }
+@media (min-width: 1280px) { .skychaser .sd-sim .obs-live__body { padding-top: 8.5rem; } }
 
-.stellar .obs-live__tag { font-size: 11px; }
+.skychaser .obs-live__tag { font-size: 11px; }
 
 /* The dock never scrolls the shutter out of reach: it wraps up to tablet width, one control per row on a phone. */
 @media (max-width: 1099px) {
-  .stellar .obs-dock { flex-wrap: wrap; overflow: visible; gap: 0.75rem 0; padding: 1rem 0.75rem; }
-  .stellar .obs-dock__seg { flex: 1 1 50%; min-width: 0; padding: 0 0.75rem; border-right: 0; }
-  .stellar .obs-dock__seg--end, .stellar .obs-dock__seg--grow { flex-basis: 100%; margin-left: 0; padding-top: 0.75rem; border-top: 1px solid var(--obs-float-border); }
-  .stellar .obs-dock__seg--end .obs-dock__control { justify-content: stretch; }
-  .stellar .obs-dock__seg--end .obs-capture { flex: 1; justify-content: center; }
-  .stellar .obs-select { width: 100%; }
+  .skychaser .obs-dock { flex-wrap: wrap; overflow: visible; gap: 0.75rem 0; padding: 1rem 0.75rem; }
+  .skychaser .obs-dock__seg { flex: 1 1 50%; min-width: 0; padding: 0 0.75rem; border-right: 0; }
+  .skychaser .obs-dock__seg--end, .skychaser .obs-dock__seg--grow { flex-basis: 100%; margin-left: 0; padding-top: 0.75rem; border-top: 1px solid var(--obs-float-border); }
+  .skychaser .obs-dock__seg--end .obs-dock__control { justify-content: stretch; }
+  .skychaser .obs-dock__seg--end .obs-capture { flex: 1; justify-content: center; }
+  .skychaser .obs-select { width: 100%; }
 }
 @media (max-width: 519px) {
-  .stellar .obs-dock__seg { flex-basis: 100%; }
-  .stellar .obs-seg { display: flex; flex: 1; min-width: 0; }
-  .stellar .obs-seg__btn { flex: 1; }
+  .skychaser .obs-dock__seg { flex-basis: 100%; }
+  .skychaser .obs-seg { display: flex; flex: 1; min-width: 0; }
+  .skychaser .obs-seg__btn { flex: 1; }
 }
-.stellar .sd-sim-rail__inner { padding-block: 10px; }
-@media (max-width: 899px) { .stellar .sd-sim .obs-live .obs-corner { margin: 12px 16px 0; } }
+.skychaser .sd-sim-rail__inner { padding-block: 10px; }
+@media (max-width: 899px) { .skychaser .sd-sim .obs-live .obs-corner { margin: 12px 16px 0; } }

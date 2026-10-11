@@ -1,23 +1,23 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
-import CardThumb from '@/components/stellar/CardThumb';
-import FlightPlan, { type FlightStep } from '@/components/stellar/FlightPlan';
-import OddsBoard from '@/components/stellar/OddsBoard';
-import OrbitRing from '@/components/stellar/OrbitRing';
-import SkyReveal from '@/components/stellar/SkyReveal';
-import Sunburst from '@/components/stellar/Sunburst';
-import StellarShell from '@/components/stellar/StellarShell';
-import StellarView from '@/components/stellar/StellarView';
+import CardThumb from '@/components/skychaser/CardThumb';
+import FlightPlan, { type FlightStep } from '@/components/skychaser/FlightPlan';
+import OddsBoard from '@/components/skychaser/OddsBoard';
+import OrbitRing from '@/components/skychaser/OrbitRing';
+import SkyReveal from '@/components/skychaser/SkyReveal';
+import Sunburst from '@/components/skychaser/Sunburst';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
 import { getDb } from '@/lib/db';
 import { getNode } from '@/lib/observatory/nodes';
 import { RARITIES } from '@/lib/rarity';
 import { card } from '@/lib/schema';
 import { SET_GROUPS } from '@/lib/sets/groups';
 import { SET_001_CARDS, SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
-import { CARDS_PER_TIER, TIERS } from '@/lib/stellar/tiers';
-import { nightRow } from '@/lib/stellar/night';
-import { siteNightDate } from '@/lib/stellar/target';
+import { CARDS_PER_TIER, TIERS } from '@/lib/skychaser/tiers';
+import { nightRow } from '@/lib/skychaser/night';
+import { siteNightDate } from '@/lib/skychaser/target';
 
 export const revalidate = 60;
 
@@ -80,14 +80,14 @@ export default async function HomePage() {
         tonight = row?.designation ?? null;
       }
     } catch (err) {
-      console.error('[stellar] cannot read tonight', err);
+      console.error('[skychaser] cannot read tonight', err);
     }
   }
   const tonightCard = tonight ? SET_001_CARD_BY_DESIGNATION.get(tonight) : undefined;
 
   return (
-    <StellarShell>
-      <StellarView step="landing" />
+    <SkychaserShell>
+      <SkychaserView step="landing" />
 
       <section className="sd-hero3">
         <SkyReveal />
@@ -198,6 +198,6 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

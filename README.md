@@ -1,6 +1,6 @@
-# Stellar — the cosmos, issued in editions
+# Skychaser — the cosmos, issued in editions
 
-Stellar is a collectible card universe built on real astronomy. Every card is a
+Skychaser is a collectible card universe built on real astronomy. Every card is a
 real object — Jupiter, Betelgeuse, M42, Voyager 1 — held as a numbered edition.
 Cards arrive sealed in capsules; the reveal is a supernova. Every clear night
 the observatory photographs one object, the collection decides which, and every
@@ -22,8 +22,8 @@ Live: [stellarr.club](https://stellarr.club) · Solana devnet · built by [Astro
 | `/voyage` | fly the solar system and land on its worlds |
 | `/invite` | the closed beta's gate |
 
-APIs live under `/api/stellar/*`; the nightly loop is `/api/cron/stellar-night`
-and `/api/stellar/capsules/release` (see `vercel.json`). Every other `/api/*`
+APIs live under `/api/skychaser/*`; the nightly loop is `/api/cron/skychaser-night`
+and `/api/skychaser/capsules/release` (see `vercel.json`). Every other `/api/*`
 and `/m/*` path is proxied to the legacy app, because minted metadata and old
 links point at this domain.
 
@@ -43,17 +43,17 @@ npm test                     # unit
 npm run build && npm run test:smoke   # browser tests against a production build
 ```
 
-Card data scripts are `npm run stellar:*`; every one refuses to touch a
-database that is not the `stellar-cards` Neon branch (`scripts/stellar-guard.ts`).
+Card data scripts are `npm run skychaser:*`; every one refuses to touch a
+database that is not the `stellar-cards` Neon branch (`scripts/skychaser-guard.ts`).
 
 ## Rules
 
-Read `docs/stellar/RULES.md` before changing anything. Tone, vocabulary and the
+Read `docs/skychaser/RULES.md` before changing anything. Tone, vocabulary and the
 things that must never change (on-chain names, storage keys) are there.
 
 ## The legacy app
 
 The astronomy companion this grew out of — sky forecast, photo-verified
-observations, ASTRA, marketplace, Stellar Field (Tether Frontier Hackathon
+observations, ASTRA, marketplace, Skychaser Field (Tether Frontier Hackathon
 winner, May 2026), explore mode, observatory network — lives on branch `legacy`
 and runs at [app.stellarr.club](https://app.stellarr.club).

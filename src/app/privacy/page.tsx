@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import StellarShell from '@/components/stellar/StellarShell';
-import Chapter from '@/components/stellar/ui/Chapter';
+import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import Chapter from '@/components/skychaser/ui/Chapter';
 
 export const metadata: Metadata = {
   title: 'Privacy — Skychaser',
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <StellarShell title="Privacy">
+    <SkychaserShell title="Privacy">
       <article className="sd-container sd-top sd-legal">
         <p className="sd-label">Last updated 23 September 2026</p>
 
@@ -51,6 +51,6 @@ export default function PrivacyPage() {
           </p>
         </section>
       </article>
-    </StellarShell>
+    </SkychaserShell>
   );
 }

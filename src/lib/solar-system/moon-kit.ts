@@ -74,7 +74,7 @@ export interface Kit {
   mat: Materials;
   /** A plaque or marking: dark mono lettering on a board, cached by content. */
   label: (lines: string[], opts?: { w?: number; h?: number; bg?: string; fg?: string; px?: number; emissive?: number }) => THREE.MeshStandardMaterial;
-  /** Stellar's mark: a four-point star beside the wordmark. */
+  /** Skychaser's mark: a four-point star beside the wordmark. */
   logo: THREE.MeshStandardMaterial;
   mesh: <G extends THREE.BufferGeometry>(parent: THREE.Object3D, g: G, m: THREE.Material, x?: number, y?: number, z?: number) => THREE.Mesh<G, THREE.Material>;
   box: (parent: THREE.Object3D, w: number, h: number, d: number, m: THREE.Material, x?: number, y?: number, z?: number) => THREE.Mesh;
