@@ -76,15 +76,23 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
+    // Pages that sign payments: no eval outside development (Next's dev overlay needs it; the
+    // voyage's physics needs only WebAssembly compilation, 'wasm-unsafe-eval'), and
+    // a devnet RPC only on a devnet build.
+    const dev = process.env.NODE_ENV !== 'production';
+    const devnet = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://auth.privy.io https://*.privy.io https://challenges.cloudflare.com",
+      `script-src 'self' ${dev ? "'unsafe-eval'" : "'wasm-unsafe-eval'"} 'unsafe-inline' https://auth.privy.io https://*.privy.io https://challenges.cloudflare.com`,
       "style-src 'self' 'unsafe-inline' https://auth.privy.io",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://auth.privy.io",
-      "connect-src 'self' https://api.mainnet-beta.solana.com https://api.devnet.solana.com wss://api.devnet.solana.com https://api.open-meteo.com https://api.coingecko.com https://mainnet.helius-rpc.com https://*.helius-rpc.com wss://*.helius-rpc.com wss://mainnet.helius-rpc.com https://auth.privy.io https://api.privy.io https://*.privy.io https://*.rpc.privy.systems https://challenges.cloudflare.com wss://relay.walletconnect.com wss://relay.walletconnect.org https://pulse.walletconnect.com https://verify.walletconnect.com https://verify.walletconnect.org https://explorer-api.walletconnect.com https://nominatim.openstreetmap.org https://*.supabase.co wss://*.supabase.co",
+      `connect-src 'self' https://api.mainnet-beta.solana.com${devnet ? ' https://api.devnet.solana.com wss://api.devnet.solana.com' : ''} https://api.open-meteo.com https://api.coingecko.com https://mainnet.helius-rpc.com https://*.helius-rpc.com wss://*.helius-rpc.com wss://mainnet.helius-rpc.com https://auth.privy.io https://api.privy.io https://*.privy.io https://*.rpc.privy.systems https://challenges.cloudflare.com wss://relay.walletconnect.com wss://relay.walletconnect.org https://pulse.walletconnect.com https://verify.walletconnect.com https://verify.walletconnect.org https://explorer-api.walletconnect.com https://nominatim.openstreetmap.org`,
       "frame-src https://auth.privy.io https://challenges.cloudflare.com https://verify.walletconnect.com https://verify.walletconnect.org",
       "worker-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
       "frame-ancestors 'none'",
     ].join('; ');
 
