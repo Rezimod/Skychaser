@@ -10,7 +10,7 @@ import { getDb } from '@/lib/db';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES } from '@/lib/skychaser/economics';
 import { TIERS, formatOdds, tierByKey } from '@/lib/skychaser/tiers';
-import { capsulesOnSale, goneRarities, readSupply, type SupplyRow } from '@/lib/skychaser/capsule';
+import { capsulesOnSale, goneRarities, heldDraws, readSupply, type SupplyRow } from '@/lib/skychaser/capsule';
 import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 
 export const dynamic = 'force-dynamic';
@@ -25,10 +25,11 @@ export default async function CapsulesPage() {
   const db = getDb();
   let onSale: Awaited<ReturnType<typeof capsulesOnSale>> | null = null;
   let supply: SupplyRow[] | null = null;
+  let held: Partial<Record<Rarity, number>> = {};
   if (db) {
     try {
       onSale = await capsulesOnSale(db, { limit: 1000 });
-      if (onSale[0]) supply = await readSupply(db, onSale[0].setId);
+      if (onSale[0]) [supply, held] = await Promise.all([readSupply(db, onSale[0].setId), heldDraws(db, onSale[0].setId)]);
     } catch (err) {
       console.error('[skychaser] cannot read capsules on sale', err);
     }
@@ -116,7 +117,7 @@ export default async function CapsulesPage() {
         {onSale?.length === 0 && <p className="sd-note">Nothing is listed right now.</p>}
         <div className="sd-capsules">
           {onSale?.map((c) => {
-            const gone = supply ? goneRarities(c.oddsBps, supply) : [];
+            const gone = supply ? goneRarities(c.oddsBps, supply, held) : [];
             return (
             <article key={c.id} className="sd-capsule">
               <div className="sd-capsule__head">

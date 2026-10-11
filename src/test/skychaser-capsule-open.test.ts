@@ -456,6 +456,9 @@ describe('a rarity its odds promise, sold out', () => {
     expect(goneRarities(odds, supply)).toEqual(['legendary']);
     // A tier that does not promise the rarity is unaffected.
     expect(goneRarities({ ...odds, common: 6100, legendary: 0 }, supply)).toEqual([]);
+    // One epic left, but a capsule already bought and not yet opened could take it.
+    expect(goneRarities(odds, supply, { epic: 1, legendary: 1 })).toEqual(['epic', 'legendary']);
+    expect(goneRarities(odds, supply, { rare: 2 })).toEqual(['legendary']);
   });
 });
 

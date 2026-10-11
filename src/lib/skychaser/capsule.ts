@@ -280,12 +280,35 @@ export async function capsulesOnSale(db: Db, opts: { limit?: number; tier?: stri
 }
 
 /**
- * The rarities a capsule's odds promise that have no edition left to draw.
- * A capsule is not sold while any is gone: its listed odds could no longer be
- * honoured, and its share would pass to the other rarities instead.
+ * The rarities a capsule's odds promise that have no edition left to draw:
+ * none remain beyond the draws that capsules already bought, and not yet
+ * opened, could take from them (`held`, per rarity). A capsule is not sold
+ * while any is gone: its listed odds could no longer be honoured, and its
+ * share would pass to the other rarities instead.
  */
-export function goneRarities(oddsBps: Record<Rarity, number>, supply: SupplyEntry[]): Rarity[] {
-  return RARITIES.filter((r) => oddsBps[r] > 0 && !supply.some((s) => s.rarity === r && s.remaining > 0));
+export function goneRarities(
+  oddsBps: Record<Rarity, number>,
+  supply: SupplyEntry[],
+  held: Partial<Record<Rarity, number>> = {},
+): Rarity[] {
+  return RARITIES.filter((r) => {
+    if (!(oddsBps[r] > 0)) return false;
+    const left = supply.filter((s) => s.rarity === r).reduce((n, s) => n + Math.max(0, s.remaining), 0);
+    return left <= (held[r] ?? 0);
+  });
+}
+
+/** Draws owed to a set's capsules bought and not yet opened, per rarity their odds can land on. */
+export async function heldDraws(db: Db, setId: string): Promise<Partial<Record<Rarity, number>>> {
+  const { rows } = (await db.execute(sql`
+    SELECT cards_per_capsule, odds_bps FROM capsule WHERE set_id = ${setId}::uuid AND state = 'purchased'
+  `)) as Rows<{ cards_per_capsule: number; odds_bps: unknown }>;
+  const held: Partial<Record<Rarity, number>> = {};
+  for (const c of rows) {
+    const odds = oddsOf(c);
+    for (const r of RARITIES) if (odds[r] > 0) held[r] = (held[r] ?? 0) + Number(c.cards_per_capsule);
+  }
+  return held;
 }
 
 // ─── Purchase ───────────────────────────────────────────────────────────────
@@ -372,7 +395,7 @@ export async function purchaseCapsule(
   if (!capsuleRow) return { ok: false, reason: 'not_found' };
   if (capsuleRow.commitment !== input.commitment) return { ok: false, reason: 'commitment_mismatch' };
   if (capsuleRow.state !== 'listed') return { ok: false, reason: 'not_listed' };
-  const gone = goneRarities(oddsOf(capsuleRow), await readSupply(db, capsuleRow.set_id));
+  const gone = goneRarities(oddsOf(capsuleRow), await readSupply(db, capsuleRow.set_id), await heldDraws(db, capsuleRow.set_id));
   if (gone.length) return { ok: false, reason: 'rarity_gone', gone };
 
   const capsuleId = capsuleRow.id;
@@ -871,12 +894,15 @@ export async function releaseLapsed(db: Db, limit = 25): Promise<Array<{ capsule
  * logged against its capsule. Run by the daily cron.
  */
 export async function recheckClosedCapsuleOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+  // A rehearsal finds every order "paid"; asking again would turn each closed one into a refund owed.
+  if (simulatedPayments()) return [];
   const closed = await db
     .select()
     .from(orders)
     .where(sql`${orders.status} = 'cancelled' AND ${orders.productId} = ${CAPSULE_PRODUCT_ID}
       AND ${orders.expiresAt} > now() - make_interval(days => ${RECHECK_CLOSED_DAYS})`)
-    .orderBy(orders.createdAt)
+    // Newest first: orders found unpaid stay cancelled, so oldest first would ask about the same ones every day.
+    .orderBy(sql`${orders.createdAt} DESC`)
     .limit(limit);
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {

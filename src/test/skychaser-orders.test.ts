@@ -416,6 +416,16 @@ describe('the sweeps', () => {
     expect(await settleCardOrders(db)).toEqual([{ orderId: 'broken', status: 'error' }, { orderId: 'unpaid', status: 'cancelled' }]);
   });
 
+  it('never re-check closed orders in a rehearsal, which would find every one "paid"', async () => {
+    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
+    try {
+      const db = { select: () => { throw new Error('should not read'); } } as unknown as Db;
+      expect(await recheckClosedCardOrders(db)).toEqual([]);
+    } finally {
+      delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
+    }
+  });
+
   it('owe back a payment found on an order already closed', async () => {
     const closed = order({ id: 'closed', productId: 'stellar-card:TYCHO', status: 'cancelled' });
     const chain: Record<string, unknown> = {};

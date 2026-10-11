@@ -17,7 +17,7 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { encodeURL } from '@solana/pay';
 import { sendTelegram } from '@/lib/telegram';
 import BigNumber from 'bignumber.js';
-import { and, eq, gt, inArray, like, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, like, lt, sql } from 'drizzle-orm';
 import { card, edition, orders } from '@/lib/schema';
 import { priceToSol } from '@/lib/dealers';
 import { fetchSolPriceRates } from '@/lib/sol-price';
@@ -673,6 +673,8 @@ async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
  * found now is owed back. Run by the daily cron.
  */
 export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+  // A rehearsal finds every order "paid"; asking again would turn each closed one into a refund owed.
+  if (simulatedPayments()) return [];
   const closed = await db
     .select()
     .from(orders)
@@ -681,7 +683,8 @@ export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array
       like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
       gt(orders.expiresAt, new Date(Date.now() - RECHECK_CLOSED_DAYS * 86_400_000)),
     ))
-    .orderBy(orders.createdAt)
+    // Newest first: orders found unpaid stay cancelled, so oldest first would ask about the same ones every day.
+    .orderBy(desc(orders.createdAt))
     .limit(limit);
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {

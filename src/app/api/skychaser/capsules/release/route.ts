@@ -7,6 +7,8 @@ import { sendTelegram } from '@/lib/telegram';
 import { isSkychaserAdmin, isUuid, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
+// The daily sweep asks the chain about up to 150 orders; the most important steps run first.
+export const maxDuration = 60;
 
 /**
  * Releases capsules bought and left unpaid past their payment window. Cron
