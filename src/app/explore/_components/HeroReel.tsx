@@ -9,7 +9,7 @@ import { HERO_FIRST, type ShotName } from '../shots';
  *  the HUD showed when it was captured. It opens on the entry (the most
  *  light on screen) and loops back up through orbit. */
 const REEL: ReadonlyArray<{ shot: ShotName; phase: 'orbit' | 'entry' | 'descent' | 'jetpack' | 'eva'; body: 'moon' | 'earth' | 'mars'; alt: number }> = [
-  { shot: HERO_FIRST, phase: 'entry', body: 'earth', alt: 56_000 },
+  { shot: HERO_FIRST, phase: 'entry', body: 'mars', alt: 61_800 },
   { shot: 'mars-descent', phase: 'descent', body: 'mars', alt: 133 },
   { shot: 'moon-jetpack', phase: 'jetpack', body: 'moon', alt: 8.8 },
   { shot: 'mars-suit', phase: 'eva', body: 'mars', alt: 0 },

@@ -241,7 +241,7 @@ describe('platform page assets', () => {
         }
       }
     }
-    for (const name of ['earth-entry', 'mars-descent', 'moon-jetpack', 'mars-suit', 'mars-orbit'] as const) {
+    for (const name of ['mars-entry', 'earth-entry', 'mars-descent', 'moon-jetpack', 'mars-suit', 'mars-orbit'] as const) {
       expect(fs.existsSync(publicFile(shotPortraitSrc(name, 'avif')))).toBe(true);
       expect(fs.existsSync(publicFile(shotPortraitSrc(name, 'webp')))).toBe(true);
     }

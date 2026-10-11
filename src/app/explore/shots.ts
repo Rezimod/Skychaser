@@ -36,4 +36,4 @@ export const PORTRAIT_MEDIA = '(max-aspect-ratio: 4/5)';
 export const shotPortraitSrc = (name: ShotName, ext: 'avif' | 'webp') => `${SHOT_DIR}/${name}-portrait.${ext}`;
 
 /** The hero reel opens on this frame; the page preloads it. */
-export const HERO_FIRST: ShotName = 'earth-entry';
+export const HERO_FIRST: ShotName = 'mars-entry';
