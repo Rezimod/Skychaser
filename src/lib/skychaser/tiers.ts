@@ -8,10 +8,11 @@
  * row here changes only capsules listed after. Odds are parts per ten
  * thousand and each row sums to exactly 10,000.
  *
- * Checked against First Light's supply (12,600 / 3,400 / 480 / 40 editions)
- * at a shelf of 40 / 25 / 10 / 5: the 40 legendaries last about 1,700
- * capsules, the epics about 3,000. That was at two cards a capsule; at one,
- * each lasts about twice as many capsules.
+ * Genesis holds 21,600 common / 1,800 rare / 240 epic / 35 legendary editions
+ * (checked 2026-10-11). The Legend capsule's 7% legendary alone would use the
+ * 35 legendaries up in about 500 capsules at one card each. A capsule is not
+ * sold once a rarity its odds promise has no edition left (goneRarities in
+ * capsule.ts), so the published odds are never quietly redistributed at sale.
  */
 
 import type { Rarity } from '@/lib/rarity';

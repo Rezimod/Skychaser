@@ -240,3 +240,17 @@ describe('the paying block', () => {
     expect(check.problems).toContain('the beacon is not a 32-byte block hash');
   });
 });
+
+describe("the buyer's receipt check", () => {
+  it('accepts the receipt the server builds, and nothing with another nonce or hash', async () => {
+    const { receiptHolds } = await import('@/lib/skychaser/receipt');
+    const terms = { capsuleId: capsuleIdOf(9), sequence: 9, commitment: hex('c'), wallet: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU', nonce: hex('n') };
+    const receipt = { nonce: terms.nonce, purchaseMessage: purchaseMessage(terms), purchaseHash: purchaseHash(terms) };
+    expect(await receiptHolds(receipt, terms.capsuleId, terms.commitment)).toBe(true);
+    expect(await receiptHolds({ ...receipt, nonce: hex('other') }, terms.capsuleId, terms.commitment)).toBe(false);
+    expect(await receiptHolds({ ...receipt, purchaseHash: hex('x') }, terms.capsuleId, terms.commitment)).toBe(false);
+    const swapped = purchaseMessage({ ...terms, nonce: hex('swapped') });
+    expect(await receiptHolds({ ...receipt, purchaseMessage: swapped, purchaseHash: purchaseHash({ ...terms, nonce: hex('swapped') }) }, terms.capsuleId, terms.commitment)).toBe(false);
+    expect(await receiptHolds(receipt, capsuleIdOf(10), terms.commitment)).toBe(false);
+  });
+});

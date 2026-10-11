@@ -9,13 +9,21 @@ import dynamic from 'next/dynamic';
 import type { SkychaserOrder } from './SkychaserPay';
 import type { Draw } from './SkychaserReveal';
 import DataRow from './ui/DataRow';
-
-type Receipt = { nonce: string; purchaseHash: string; purchaseMessage: string };
+import { receiptHolds, type Receipt } from '@/lib/skychaser/receipt';
 
 function freshNonce(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Kept in this browser, so the receipt outlives the tab. Losing it loses nothing on record. */
+function keepReceipt(capsuleId: string, r: Receipt) {
+  try {
+    localStorage.setItem(`skychaser:receipt:${capsuleId}`, JSON.stringify({ ...r, at: new Date().toISOString() }));
+  } catch {
+    // Private mode or storage off: the receipt is still shown on the page.
+  }
 }
 
 const SkychaserPay = dynamic(() => import('./SkychaserPay'), { ssr: false });
@@ -115,7 +123,13 @@ export default function SkychaserBuyCapsule({
         setError(data.error ?? 'The capsule could not be reserved.');
         return;
       }
-      setReceipt({ nonce, purchaseHash: data.purchaseHash, purchaseMessage: data.purchaseMessage });
+      const got: Receipt = { nonce, purchaseHash: String(data.purchaseHash ?? ''), purchaseMessage: String(data.purchaseMessage ?? '') };
+      if (!(await receiptHolds(got, capsuleId, commitment))) {
+        setError('The receipt for this capsule does not match the nonce drawn here. Do not pay; the capsule will go back on sale.');
+        return;
+      }
+      setReceipt(got);
+      keepReceipt(capsuleId, got);
       const next = data as SkychaserOrder;
       if (!REHEARSAL) {
         setOrder(next);
