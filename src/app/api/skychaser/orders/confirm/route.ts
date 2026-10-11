@@ -14,6 +14,8 @@ import {
   markPaid,
   markRefundDue,
   reportExtraTransfers,
+  reportSharedTransfers,
+  sharedReferences,
   unpaidRehearsal,
   type OrderRow,
   paymentNetworkMisconfig,
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
 
   let order: OrderRow = found;
   if (order.status === 'pending' || order.status === 'cancelled') {
-    const payment = await findPayment(order);
+    const payment = await findPayment(order, sharedReferences(db));
     if (!payment.paid) {
       if (order.status === 'cancelled' && !payment.error) {
         return NextResponse.json({ confirmed: false, status: order.status, error: 'This order is closed' }, { status: 409 });
@@ -64,11 +66,14 @@ export async function POST(req: NextRequest) {
     if (order.productId === CAPSULE_PRODUCT_ID) {
       order = await settleCapsulePayment(db, order, payment);
     } else if (payment.late || order.status === 'cancelled') {
-      order = await markRefundDue(db, order.id, payment.signature, payment.paidAt);
+      order = await markRefundDue(db, order.id, payment.signature, payment.paidAt, payment.late ? 'paid after its payment window closed' : 'paid after the order was closed');
     } else {
       order = await markPaid(db, order.id, payment.signature, payment.paidAt);
     }
-    if (found.status === 'pending' && order.status === 'paid') await reportExtraTransfers(order.id, payment.extra);
+    if (found.status === 'pending' && order.status === 'paid') {
+      await reportExtraTransfers(order.id, payment.extra);
+      await reportSharedTransfers(order.id, payment.shared);
+    }
   }
   if (order.status === 'refund_due') {
     return NextResponse.json(

@@ -22,7 +22,21 @@ import type { Db } from './attach';
 import type { LogRow } from './audit';
 import { CAPSULE_PRICE_USD, CARDS_PER_CAPSULE, RARITY_ODDS_BPS } from './economics';
 import { tierByKey, type Tier } from './tiers';
-import { CAPSULE_PRODUCT_ID, findPayment, markPaid, orderExpiry, reportExtraTransfers, simulatedPayments, type OrderRow, type PaymentCheck } from './orders';
+import {
+  CAPSULE_PRODUCT_ID,
+  FINALITY_GRACE_MS,
+  RECHECK_CLOSED_DAYS,
+  alertRefundDue,
+  findPayment,
+  markPaid,
+  orderExpiry,
+  reportExtraTransfers,
+  reportSharedTransfers,
+  sharedReferences,
+  simulatedPayments,
+  type OrderRow,
+  type PaymentCheck,
+} from './orders';
 import {
   SoldOutError,
   commitmentOf,
@@ -634,7 +648,10 @@ async function closeCapsule(
         ]
       : []),
   ];
-  const [changed] = await runBatch(db, statements);
+  const [changed, settled] = await runBatch(db, statements);
+  if (c.order_id && settled?.rows[0]?.status === 'refund_due') {
+    await alertRefundDue(c.order_id, `capsule ${Number(c.sequence)} ${input.event}: ${reason}`, [late?.signature]);
+  }
   return changed.rows.length > 0;
 }
 
@@ -643,18 +660,22 @@ async function paymentBeforeClosing(
   db: Db,
   order: OrderRow,
   known?: PaymentCheck,
-): Promise<{ late: LatePayment | null } | { refuse: 'paid' | 'payment_unknown' }> {
-  const payment = known ?? (await findPayment(order));
+): Promise<{ late: LatePayment | null; shared?: string[] } | { refuse: 'paid' | 'payment_unknown' }> {
+  const payment = known ?? (await findPayment(order, sharedReferences(db)));
   if (payment.paid && !payment.late) {
     const row = await markPaid(db, order.id, payment.signature, payment.paidAt);
-    if (order.status === 'pending' && row.status === 'paid') await reportExtraTransfers(order.id, payment.extra);
+    if (order.status === 'pending' && row.status === 'paid') {
+      await reportExtraTransfers(order.id, payment.extra);
+      await reportSharedTransfers(order.id, payment.shared);
+    }
     return { refuse: 'paid' };
   }
-  if (payment.paid) return { late: { signature: payment.signature, paidAt: payment.paidAt } };
+  const shared = payment.shared;
+  if (payment.paid) return { late: { signature: payment.signature, paidAt: payment.paidAt }, shared };
   // SOL that arrived short of the quote is owed back when the order closes.
-  if (payment.partial) return { late: { ...payment.partial, short: true } };
+  if (payment.partial) return { late: { ...payment.partial, short: true }, shared };
   if (payment.error) return { refuse: 'payment_unknown' };
-  return { late: null };
+  return { late: null, shared };
 }
 
 export type CloseResult = { ok: true } | { ok: false; reason: 'not_found' | 'not_voidable' | 'not_expired' | 'paid' | 'payment_unknown' };
@@ -678,6 +699,7 @@ export async function voidCapsule(db: Db, input: { capsuleId: string; reason: st
   if (c.state !== 'listed' && c.state !== 'purchased') return { ok: false, reason: 'not_voidable' };
 
   let late: LatePayment | null = null;
+  let shared: string[] | undefined;
   if (c.state === 'purchased' && c.order_id) {
     const order = await readOrder(db, c.order_id);
     if (order?.status === 'paid') return { ok: false, reason: 'paid' };
@@ -685,6 +707,7 @@ export async function voidCapsule(db: Db, input: { capsuleId: string; reason: st
       const checked = await paymentBeforeClosing(db, order);
       if ('refuse' in checked) return { ok: false, reason: checked.refuse };
       late = checked.late;
+      shared = checked.shared;
     }
   }
 
@@ -705,6 +728,7 @@ export async function voidCapsule(db: Db, input: { capsuleId: string; reason: st
     late,
   });
   if (!closed) return { ok: false, reason: c.order_id ? 'paid' : 'not_voidable' };
+  if (c.order_id) await reportSharedTransfers(c.order_id, shared);
   return { ok: true };
 }
 
@@ -728,7 +752,10 @@ export async function releaseCapsule(
   if (c.state !== 'purchased' || !c.order_id) return { ok: false, reason: 'not_voidable' };
   const order = await readOrder(db, c.order_id);
   if (!order || order.status !== 'pending') return { ok: false, reason: order?.status === 'paid' ? 'paid' : 'not_voidable' };
-  if (!order.expiresAt || order.expiresAt.getTime() >= now.getTime()) return { ok: false, reason: 'not_expired' };
+  // A payment already in hand settles it at once; otherwise the window's close
+  // waits out the finality grace, so a transfer sent at the last moment is seen.
+  const cutoff = opts.payment ? now.getTime() : now.getTime() - FINALITY_GRACE_MS;
+  if (!order.expiresAt || order.expiresAt.getTime() >= cutoff) return { ok: false, reason: 'not_expired' };
 
   const checked = await paymentBeforeClosing(db, order, opts.payment);
   if ('refuse' in checked) return { ok: false, reason: checked.refuse };
@@ -743,6 +770,7 @@ export async function releaseCapsule(
     late: checked.late,
   });
   if (!closed) return { ok: false, reason: 'not_voidable' };
+  await reportSharedTransfers(order.id, checked.shared);
   await relist(db, c);
   return { ok: true };
 }
@@ -764,15 +792,55 @@ async function relist(db: Db, c: CapsuleRow): Promise<void> {
   }
 }
 
-/** Releases every capsule whose payment window has closed unpaid, a bounded number at a time. */
-export async function releaseLapsed(db: Db, limit = 25): Promise<Array<{ capsuleId: string; result: CloseResult }>> {
+/**
+ * Releases every capsule whose payment window (and the finality grace after
+ * it) has closed unpaid, a bounded number at a time. One capsule that fails is
+ * logged and passed over; it never stops the sweep from reaching the rest.
+ */
+export async function releaseLapsed(db: Db, limit = 25): Promise<Array<{ capsuleId: string; result: CloseResult | { ok: false; reason: 'error' } }>> {
   const { rows } = (await db.execute(sql`
     SELECT c.id FROM capsule c JOIN orders o ON o.id = c.order_id
-    WHERE c.state = 'purchased' AND o.status = 'pending' AND o.expires_at < now()
+    WHERE c.state = 'purchased' AND o.status = 'pending'
+      AND o.expires_at < now() - make_interval(secs => ${FINALITY_GRACE_MS / 1000})
     ORDER BY c.sequence LIMIT ${limit}
   `)) as Rows<{ id: string }>;
-  const out: Array<{ capsuleId: string; result: CloseResult }> = [];
-  for (const r of rows) out.push({ capsuleId: r.id, result: await releaseCapsule(db, r.id) });
+  const out: Array<{ capsuleId: string; result: CloseResult | { ok: false; reason: 'error' } }> = [];
+  for (const r of rows) {
+    try {
+      out.push({ capsuleId: r.id, result: await releaseCapsule(db, r.id) });
+    } catch (err) {
+      console.error('[skychaser/capsules] release sweep', r.id, err instanceof Error ? err.message : err);
+      out.push({ capsuleId: r.id, result: { ok: false, reason: 'error' } });
+    }
+  }
+  return out;
+}
+
+/**
+ * Capsule orders closed unpaid in the last RECHECK_CLOSED_DAYS, asked again: a
+ * transfer final only after the release, or sent after it, is owed back and
+ * logged against its capsule. Run by the daily cron.
+ */
+export async function recheckClosedCapsuleOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+  const closed = await db
+    .select()
+    .from(orders)
+    .where(sql`${orders.status} = 'cancelled' AND ${orders.productId} = ${CAPSULE_PRODUCT_ID}
+      AND ${orders.expiresAt} > now() - make_interval(days => ${RECHECK_CLOSED_DAYS})`)
+    .orderBy(orders.createdAt)
+    .limit(limit);
+  const out: Array<{ orderId: string; status: string }> = [];
+  for (const order of closed) {
+    try {
+      const payment = await findPayment(order, sharedReferences(db));
+      const owed = payment.paid ? payment : payment.partial;
+      if (!owed) continue;
+      const row = await settleCapsulePayment(db, order, { paid: true, signature: owed.signature, paidAt: owed.paidAt, late: true });
+      out.push({ orderId: order.id, status: row.status });
+    } catch (err) {
+      console.error('[skychaser/capsules] closed order re-check', order.id, err instanceof Error ? err.message : err);
+    }
+  }
   return out;
 }
 
@@ -798,15 +866,17 @@ export async function settleCapsulePayment(
   if (c?.state === 'purchased') {
     await releaseCapsule(db, c.id, { payment: { ...payment, late: true } });
   } else if (c) {
-    await runBatch(db, [
+    const reason = payment.late ? 'paid after its payment window closed' : 'paid after the capsule was closed';
+    const [settled] = await runBatch(db, [
       db.execute(sql`
         UPDATE orders SET status = 'refund_due', signature = COALESCE(signature, ${payment.signature}),
           paid_at = COALESCE(paid_at, ${payment.paidAt.toISOString()}::timestamptz)
         WHERE id = ${order.id}::uuid AND status IN ('pending', 'cancelled')
         RETURNING status
       `),
-      refundLogStatement(db, c.id, ['void', 'released'], payment.late ? 'paid after its payment window closed' : 'paid after the capsule was closed'),
+      refundLogStatement(db, c.id, ['void', 'released'], reason),
     ]);
+    if (settled.rows[0]?.status === 'refund_due') await alertRefundDue(order.id, `capsule ${Number(c.sequence)}: ${reason}`, [payment.signature]);
   }
   return (await readOrder(db, order.id)) ?? order;
 }

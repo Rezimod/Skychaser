@@ -17,7 +17,7 @@ export async function sendTelegram(text: string, opts?: { parseMode?: 'Markdown'
     body: JSON.stringify({
       chat_id: creds.chatId,
       text,
-      parse_mode: opts?.parseMode ?? 'Markdown',
+      ...(opts?.parseMode ? { parse_mode: opts.parseMode } : {}),
       disable_web_page_preview: true,
     }),
   })

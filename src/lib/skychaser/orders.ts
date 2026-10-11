@@ -17,7 +17,7 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { encodeURL } from '@solana/pay';
 import { sendTelegram } from '@/lib/telegram';
 import BigNumber from 'bignumber.js';
-import { and, eq, inArray, like, lt, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, like, lt, sql } from 'drizzle-orm';
 import { card, edition, orders } from '@/lib/schema';
 import { priceToSol } from '@/lib/dealers';
 import { fetchSolPriceRates } from '@/lib/sol-price';
@@ -50,7 +50,8 @@ export function unpaidRehearsal(order: { signature: string | null }): boolean {
 }
 
 // An empty variable counts as unset: Vercel keeps a cleared value as "".
-const PAYMENT_RPC = () => process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const CONFIGURED_RPC = () => process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || '';
+const PAYMENT_RPC = () => CONFIGURED_RPC() || 'https://api.mainnet-beta.solana.com';
 const networkOf = (s: string) => (/devnet/i.test(s) ? 'devnet' : /testnet/i.test(s) ? 'testnet' : /mainnet/i.test(s) ? 'mainnet-beta' : 'unknown');
 
 /**
@@ -62,6 +63,8 @@ const networkOf = (s: string) => (/devnet/i.test(s) ? 'devnet' : /testnet/i.test
 export function paymentNetworkProblem(): string | null {
   if (simulatedPayments()) return null;
   const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || 'mainnet-beta';
+  // The public RPC is rate-limited too hard to confirm payments on; production names its own.
+  if (process.env.VERCEL_ENV === 'production' && !CONFIGURED_RPC()) return 'production needs SOLANA_RPC_URL';
   const rpc = networkOf(PAYMENT_RPC());
   if (process.env.VERCEL_ENV === 'production' && (cluster !== 'mainnet-beta' || rpc !== 'mainnet-beta')) return 'production must take payments on mainnet';
   if (rpc !== 'unknown' && rpc !== cluster) return `SOLANA_RPC_URL is ${rpc} but the wallets pay on ${cluster}`;
@@ -160,11 +163,37 @@ export type Transfer = { signature: string; paidAt: Date };
  * one that completed the order, owed back too.
  */
 export type PaymentCheck =
-  | { paid: true; signature: string; paidAt: Date; late: boolean; extra?: string[] }
-  | { paid: false; error?: string; status?: number; partial?: Transfer };
+  | { paid: true; signature: string; paidAt: Date; late: boolean; extra?: string[]; shared?: string[] }
+  | { paid: false; error?: string; status?: number; partial?: Transfer; shared?: string[] };
 
-/** At most this many transactions carrying a reference are read, so dust cannot slow a confirmation down. */
+/**
+ * At most this many transactions carrying a reference are read, oldest first,
+ * so dust cannot slow a confirmation down. Dust can only be sent once the
+ * reference is public — after the buyer's own transfer — so oldest first
+ * reaches the payment before any of it.
+ */
 const MAX_SCANNED = 25;
+/** Signatures are listed a page of 1000 at a time, newest first; this many pages at most. */
+const MAX_SIGNATURE_PAGES = 10;
+
+/**
+ * Whether any of these account keys is another order's payment reference. A
+ * transaction that names two orders could otherwise pay both with one
+ * amount, so it pays neither and is owed back.
+ */
+export type SharedReferenceCheck = (orderId: string, keys: string[]) => Promise<boolean>;
+
+export function sharedReferences(db: Db): SharedReferenceCheck {
+  return async (orderId, keys) => {
+    if (!keys.length) return false;
+    const [hit] = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(and(inArray(orders.paymentReference, keys), sql`${orders.id} <> ${orderId}::uuid`))
+      .limit(1);
+    return Boolean(hit);
+  };
+}
 
 const lamportsOf = (sol: number) => BigInt(new BigNumber(sol).shiftedBy(9).integerValue(BigNumber.ROUND_CEIL).toFixed(0));
 
@@ -181,11 +210,28 @@ async function received(connection: Connection, signature: string, recipient: Pu
   if (!keys.some((k) => k.equals(reference))) return null;
   const i = keys.findIndex((k) => k.equals(recipient));
   const lamports = i < 0 ? BigInt(0) : BigInt(tx.meta.postBalances[i] - tx.meta.preBalances[i]);
-  return { lamports, blockTime: tx.blockTime ?? null };
+  return { lamports, blockTime: tx.blockTime ?? null, keys: keys.map((k) => k.toBase58()) };
 }
 
-/** Looks for the order's payment on chain. Does not write. */
-export async function findPayment(order: OrderRow): Promise<PaymentCheck> {
+/** Every finalized signature that carried the reference, oldest first, up to MAX_SIGNATURE_PAGES pages. */
+async function signaturesFor(connection: Connection, reference: PublicKey) {
+  const all: Awaited<ReturnType<Connection['getSignaturesForAddress']>> = [];
+  let before: string | undefined;
+  for (let page = 0; page < MAX_SIGNATURE_PAGES; page++) {
+    const found = await connection.getSignaturesForAddress(reference, { limit: 1000, ...(before ? { before } : {}) }, 'finalized');
+    all.push(...found);
+    if (found.length < 1000) break;
+    before = found[found.length - 1].signature;
+  }
+  return all.reverse();
+}
+
+/**
+ * Looks for the order's payment on chain. Does not write. A transaction that
+ * also names another order's reference counts for neither: it comes back in
+ * `shared`, owed back.
+ */
+export async function findPayment(order: OrderRow, sharedWith: SharedReferenceCheck): Promise<PaymentCheck> {
   if (simulatedPayments()) {
     return { paid: true, signature: simulatedSignature(order.paymentReference), paidAt: new Date(), late: false };
   }
@@ -210,12 +256,18 @@ export async function findPayment(order: OrderRow): Promise<PaymentCheck> {
   let first: Transfer | null = null;
   let done: { signature: string; blockTime: number | null } | null = null;
   const extra: string[] = [];
+  const shared: string[] = [];
   try {
-    const found = (await connection.getSignaturesForAddress(reference, { limit: MAX_SCANNED }, 'finalized')).reverse();
-    for (const f of found) {
+    let scanned = 0;
+    for (const f of await signaturesFor(connection, reference)) {
       if (f.err) continue;
+      if (++scanned > MAX_SCANNED) break;
       const r = await received(connection, f.signature, recipient, reference);
       if (!r || r.lamports <= BigInt(0)) continue;
+      if (await sharedWith(order.id, r.keys.filter((k) => k !== reference.toBase58()))) {
+        shared.push(f.signature);
+        continue;
+      }
       const blockTime = r.blockTime ?? f.blockTime ?? null;
       if (done) {
         extra.push(f.signature);
@@ -228,13 +280,14 @@ export async function findPayment(order: OrderRow): Promise<PaymentCheck> {
   } catch {
     return { paid: false, error: 'The Solana network could not be reached', status: 503 };
   }
-  if (!done) return first ? { paid: false, error: 'Payment amount does not match order', status: 400, partial: first } : { paid: false };
+  const also = shared.length ? { shared } : {};
+  if (!done) return first ? { paid: false, error: 'Payment amount does not match order', status: 400, partial: first, ...also } : { paid: false, ...also };
 
   // A transfer with no block time cannot be shown to be inside the window; it
   // is treated as late, which refunds it rather than keeps it.
   const paidAt = done.blockTime ? new Date(done.blockTime * 1000) : new Date();
   const late = !done.blockTime || !order.expiresAt || paidAt.getTime() > order.expiresAt.getTime();
-  return { paid: true, signature: done.signature, paidAt, late, ...(extra.length ? { extra } : {}) };
+  return { paid: true, signature: done.signature, paidAt, late, ...(extra.length ? { extra } : {}), ...also };
 }
 
 /**
@@ -244,26 +297,80 @@ export async function findPayment(order: OrderRow): Promise<PaymentCheck> {
  */
 export async function reportExtraTransfers(orderId: string, extra: string[] | undefined): Promise<void> {
   if (!extra?.length) return;
-  console.error('[skychaser/payments] REFUND DUE: extra transfers for order', orderId, extra);
-  await sendTelegram(`Skychaser refund due: order ${orderId} received ${extra.length} extra transfer(s): ${extra.join(', ')}`).catch(() => {});
+  await alertRefundDue(orderId, `received ${extra.length} extra transfer(s) after the one that paid it`, extra);
 }
 
-/** pending → paid, once. Returns the row either way. */
+/**
+ * Transfers that named this order and another together: counted for neither,
+ * owed back. Said once, when the order closes without them.
+ */
+export async function reportSharedTransfers(orderId: string, shared: string[] | undefined): Promise<void> {
+  if (!shared?.length) return;
+  await alertRefundDue(orderId, `received ${shared.length} transfer(s) that also named another order, counted for neither`, shared);
+}
+
+/**
+ * Money owed back, said where an operator will see it: the server log and,
+ * when configured, Telegram. Plain text, so a signature or reason can never
+ * break the message. Never throws: an alert that fails must not undo the
+ * state change it reports.
+ */
+export async function alertRefundDue(orderId: string, reason: string, signatures: Array<string | null | undefined> = []): Promise<void> {
+  const sigs = signatures.filter((s): s is string => Boolean(s));
+  console.error('[skychaser/payments] REFUND DUE:', orderId, reason, sigs);
+  await sendTelegram(`Skychaser refund due\norder ${orderId}\n${reason}${sigs.length ? `\nsignatures: ${sigs.join(', ')}` : ''}`).catch((err) =>
+    console.error('[skychaser/payments] refund alert not sent', orderId, err instanceof Error ? err.message : err),
+  );
+}
+
+function pgCode(err: unknown): string | undefined {
+  const { code, cause } = err as { code?: string; cause?: { code?: string } };
+  return code ?? cause?.code;
+}
+
+/**
+ * pending → paid, once. Returns the row either way. A signature that already
+ * paid another order (the unique index refuses it) pays nothing here: the
+ * order is marked refund_due without it, and said.
+ */
 export async function markPaid(db: Db, orderId: string, signature: string, paidAt: Date = new Date()): Promise<OrderRow> {
-  await db
-    .update(orders)
-    .set({ status: 'paid', signature, paidAt })
-    .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')));
+  try {
+    await db
+      .update(orders)
+      .set({ status: 'paid', signature, paidAt })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')));
+  } catch (err) {
+    if (pgCode(err) !== '23505') throw err;
+    const changed = await db
+      .update(orders)
+      .set({ status: 'refund_due', paidAt })
+      .where(and(eq(orders.id, orderId), eq(orders.status, 'pending')))
+      .returning({ id: orders.id });
+    if (changed.length) await alertRefundDue(orderId, 'its paying transfer had already paid another order', [signature]);
+  }
   const [row] = await db.select().from(orders).where(eq(orders.id, orderId));
   return row;
 }
 
 /** A transfer the order cannot take — late, or for an order already closed — owed back. Returns the row. */
-export async function markRefundDue(db: Db, orderId: string, signature: string, paidAt: Date): Promise<OrderRow> {
-  await db
-    .update(orders)
-    .set({ status: 'refund_due', signature, paidAt })
-    .where(and(eq(orders.id, orderId), inArray(orders.status, ['pending', 'cancelled'])));
+export async function markRefundDue(db: Db, orderId: string, signature: string, paidAt: Date, reason = 'paid late, short, or after the order closed'): Promise<OrderRow> {
+  let changed: Array<{ id: string }> = [];
+  try {
+    changed = await db
+      .update(orders)
+      .set({ status: 'refund_due', signature, paidAt })
+      .where(and(eq(orders.id, orderId), inArray(orders.status, ['pending', 'cancelled'])))
+      .returning({ id: orders.id });
+  } catch (err) {
+    // The transfer is already on another order's record; this one is still owed back.
+    if (pgCode(err) !== '23505') throw err;
+    changed = await db
+      .update(orders)
+      .set({ status: 'refund_due', paidAt })
+      .where(and(eq(orders.id, orderId), inArray(orders.status, ['pending', 'cancelled'])))
+      .returning({ id: orders.id });
+  }
+  if (changed.length) await alertRefundDue(orderId, reason, [signature]);
   const [row] = await db.select().from(orders).where(eq(orders.id, orderId));
   return row;
 }
@@ -396,7 +503,12 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
   try {
     const allocated = await allocateCardSale(db, { cardId: c.id, wallet: order.walletAddress, orderId: order.id });
     if (!allocated) {
-      await db.update(orders).set({ status: 'refund_due' }).where(and(eq(orders.id, order.id), eq(orders.status, 'paid')));
+      const changed = await db
+        .update(orders)
+        .set({ status: 'refund_due' })
+        .where(and(eq(orders.id, order.id), eq(orders.status, 'paid')))
+        .returning({ id: orders.id });
+      if (changed.length) await alertRefundDue(order.id, `paid, but no edition of ${designation} could be spared`, [order.signature]);
       return { ok: false, reason: 'sold_out' };
     }
     return { ok: true, editionNumber: allocated.editionNumber, editionSize: c.editionSize, designation };
@@ -408,39 +520,112 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
 }
 
 /**
- * Single-card orders whose window has closed while still pending — the buyer
- * paid and left, or never paid. Each is settled from the chain as the confirm
- * route would: paid inside the window, its edition is allocated; paid late or
- * short, it is owed back; nothing paid, it is cancelled (a payment that lands
- * after that is still found and owed back). A chain that cannot be asked
- * leaves the order for the next sweep.
+ * How long past its window an order is left before a sweep closes it. A
+ * transfer sent in the window's last seconds is final about 13 s later; until
+ * then the chain shows nothing, and closing the order would turn a payment
+ * made in time into a refund.
+ */
+export const FINALITY_GRACE_MS = 2 * 60_000;
+
+/** How far back the daily re-check looks for a payment that reached an order after it closed. */
+export const RECHECK_CLOSED_DAYS = 3;
+
+/**
+ * Single-card orders whose window (and the finality grace after it) has
+ * closed while still pending — the buyer paid and left, or never paid. Each is
+ * settled from the chain as the confirm route would: paid inside the window,
+ * its edition is allocated; paid late or short, it is owed back; nothing paid,
+ * it is cancelled (a payment that lands after that is found by
+ * recheckClosedCardOrders and owed back). A chain that cannot be asked leaves
+ * the order for the next sweep. One order that fails is logged and passed
+ * over; it never stops the sweep from reaching the rest.
  */
 export async function settleCardOrders(db: Db, limit = 25): Promise<Array<{ orderId: string; status: string }>> {
   const lapsed = await db
     .select()
     .from(orders)
-    .where(and(eq(orders.status, 'pending'), like(orders.productId, `${CARD_PRODUCT_PREFIX}%`), lt(orders.expiresAt, new Date())))
+    .where(and(
+      eq(orders.status, 'pending'),
+      like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
+      lt(orders.expiresAt, new Date(Date.now() - FINALITY_GRACE_MS)),
+    ))
     .orderBy(orders.createdAt)
     .limit(limit);
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of lapsed) {
-    const payment = await findPayment(order);
-    let row: OrderRow = order;
-    if (payment.paid && !payment.late) {
-      row = await markPaid(db, order.id, payment.signature, payment.paidAt);
-      if (row.status === 'paid') {
-        await reportExtraTransfers(order.id, payment.extra);
-        await fulfilCardOrder(db, row);
-      }
-    } else if (payment.paid) {
-      row = await markRefundDue(db, order.id, payment.signature, payment.paidAt);
-    } else if (payment.partial) {
-      row = await markRefundDue(db, order.id, payment.partial.signature, payment.partial.paidAt);
-    } else if (!payment.error) {
-      await db.update(orders).set({ status: 'cancelled' }).where(and(eq(orders.id, order.id), eq(orders.status, 'pending')));
-      row = { ...order, status: 'cancelled' };
+    try {
+      out.push({ orderId: order.id, status: await settleCardOrder(db, order) });
+    } catch (err) {
+      console.error('[skychaser/payments] card order sweep', order.id, err instanceof Error ? err.message : err);
+      out.push({ orderId: order.id, status: 'error' });
     }
-    out.push({ orderId: order.id, status: row.status });
   }
   return out;
+}
+
+async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
+  const payment = await findPayment(order, sharedReferences(db));
+  let row: OrderRow = order;
+  if (payment.paid && !payment.late) {
+    row = await markPaid(db, order.id, payment.signature, payment.paidAt);
+    if (row.status === 'paid') {
+      await reportExtraTransfers(order.id, payment.extra);
+      await reportSharedTransfers(order.id, payment.shared);
+      await fulfilCardOrder(db, row);
+    }
+  } else if (payment.paid) {
+    row = await markRefundDue(db, order.id, payment.signature, payment.paidAt, 'paid after its payment window closed');
+  } else if (payment.partial) {
+    row = await markRefundDue(db, order.id, payment.partial.signature, payment.partial.paidAt, 'paid less than the quote');
+  } else if (!payment.error) {
+    const changed = await db
+      .update(orders)
+      .set({ status: 'cancelled' })
+      .where(and(eq(orders.id, order.id), eq(orders.status, 'pending')))
+      .returning({ id: orders.id });
+    if (changed.length) await reportSharedTransfers(order.id, payment.shared);
+    row = { ...order, status: 'cancelled' };
+  }
+  return row.status;
+}
+
+/**
+ * Single-card orders cancelled in the last RECHECK_CLOSED_DAYS, asked again:
+ * a buyer who paid by QR and closed the tab, or whose transfer was final only
+ * after the sweep, would otherwise have paid with nothing on record. Anything
+ * found now is owed back. Run by the daily cron.
+ */
+export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+  const closed = await db
+    .select()
+    .from(orders)
+    .where(and(
+      eq(orders.status, 'cancelled'),
+      like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
+      gt(orders.expiresAt, new Date(Date.now() - RECHECK_CLOSED_DAYS * 86_400_000)),
+    ))
+    .orderBy(orders.createdAt)
+    .limit(limit);
+  const out: Array<{ orderId: string; status: string }> = [];
+  for (const order of closed) {
+    try {
+      const payment = await findPayment(order, sharedReferences(db));
+      const owed = payment.paid ? payment : payment.partial;
+      if (!owed) continue;
+      const row = await markRefundDue(db, order.id, owed.signature, owed.paidAt, 'paid after the order was closed');
+      out.push({ orderId: order.id, status: row.status });
+    } catch (err) {
+      console.error('[skychaser/payments] closed order re-check', order.id, err instanceof Error ? err.message : err);
+    }
+  }
+  return out;
+}
+
+/** Orders owed back and not yet marked refunded: the daily cron says how many. */
+export async function refundsOwed(db: Db): Promise<number> {
+  const { rows } = (await db.execute(sql`
+    SELECT count(*)::int AS n FROM orders
+    WHERE status = 'refund_due' AND (product_id = ${CAPSULE_PRODUCT_ID} OR product_id LIKE ${CARD_PRODUCT_PREFIX + '%'})
+  `)) as Rows<{ n: number }>;
+  return Number(rows[0]?.n ?? 0);
 }

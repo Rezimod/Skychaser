@@ -50,6 +50,8 @@ vi.mock('@/lib/skychaser/orders', () => ({
   markPaid: mocks.markPaid,
   markRefundDue: mocks.markRefundDue,
   reportExtraTransfers: vi.fn(),
+  reportSharedTransfers: vi.fn(),
+  sharedReferences: () => async () => false,
   settleCardOrders: vi.fn(async () => []),
   fulfilCardOrder: vi.fn(),
   cardAvailability: mocks.cardAvailability,
@@ -276,7 +278,7 @@ describe('confirming a payment', () => {
     mocks.findPayment.mockResolvedValue({ paid: true, signature: 'sig', paidAt: new Date(), late: true });
     mocks.markRefundDue.mockResolvedValue(order({ productId: 'stellar-card:TYCHO', status: 'refund_due' }));
     const res = await confirm(post('/api/skychaser/orders/confirm', { orderId: ORDER }));
-    expect(mocks.markRefundDue).toHaveBeenCalledWith(expect.anything(), ORDER, 'sig', expect.any(Date));
+    expect(mocks.markRefundDue).toHaveBeenCalledWith(expect.anything(), ORDER, 'sig', expect.any(Date), 'paid after its payment window closed');
     expect(mocks.markPaid).not.toHaveBeenCalled();
     expect(res.status).toBe(409);
   });

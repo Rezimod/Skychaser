@@ -518,7 +518,7 @@ describe('closing a capsule without taking a payment silently', () => {
   });
 
   it('releases a capsule left unpaid past its window, as released and not voided', async () => {
-    const { db, state, c } = bought('pending', -60_000);
+    const { db, state, c } = bought('pending', -180_000);
     expect(await releaseCapsule(db, c.id)).toEqual({ ok: true });
     expect(state.capsules[0].state).toBe('released');
     expect(state.orders![0].status).toBe('cancelled');
@@ -540,7 +540,12 @@ describe('closing a capsule without taking a payment silently', () => {
     const early = bought('pending', 60_000);
     expect(await releaseCapsule(early.db, early.c.id)).toEqual({ ok: false, reason: 'not_expired' });
 
-    const paid = bought('pending', -60_000);
+    // Past the window but inside the finality grace: a transfer sent at the
+    // last moment may not be final yet, so the capsule is not released.
+    const grace = bought('pending', -60_000);
+    expect(await releaseCapsule(grace.db, grace.c.id)).toEqual({ ok: false, reason: 'not_expired' });
+
+    const paid = bought('pending', -180_000);
     payments.findPayment.mockResolvedValue({ paid: true, signature: 'sig', paidAt: new Date(Date.now() - 120_000), late: false });
     expect(await releaseCapsule(paid.db, paid.c.id)).toEqual({ ok: false, reason: 'paid' });
     expect(payments.markPaid).toHaveBeenCalled();
@@ -548,7 +553,7 @@ describe('closing a capsule without taking a payment silently', () => {
   });
 
   it('releases with a refund due when the payment landed after the window', async () => {
-    const { db, state, c } = bought('pending', -60_000);
+    const { db, state, c } = bought('pending', -180_000);
     const paidAt = new Date(Date.now() - 1_000);
     payments.findPayment.mockResolvedValue({ paid: true, signature: 'late-sig', paidAt, late: true });
     expect(await releaseCapsule(db, c.id)).toEqual({ ok: true });

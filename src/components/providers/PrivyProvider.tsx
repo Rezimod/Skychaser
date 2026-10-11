@@ -26,8 +26,9 @@ const PRIVY_CHAIN: `solana:${string}` = IS_MAINNET ? 'solana:mainnet' : 'solana:
 
 // The fallback follows the cluster, so a mainnet build never talks to devnet.
 const RPC_HTTP_URL =
-  process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
-  process.env.NEXT_PUBLIC_HELIUS_RPC_URL ??
+  // || not ??: Vercel keeps a cleared variable as "", which must count as unset.
+  process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+  process.env.NEXT_PUBLIC_HELIUS_RPC_URL ||
   (IS_MAINNET ? 'https://api.mainnet-beta.solana.com' : 'https://api.devnet.solana.com');
 const RPC_WS_URL = toWsUrl(RPC_HTTP_URL);
 const BLOCK_EXPLORER_URL = IS_MAINNET
