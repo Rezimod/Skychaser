@@ -315,8 +315,10 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         softSpriteTexture().dispose();
         renderer.dispose();
         // Give the context back now rather than when the canvas is collected:
-        // the next surface and the orrery each want one of their own.
-        renderer.forceContextLoss();
+        // the next surface and the orrery each want one of their own. A
+        // context the GPU already took has nothing to give back, and three
+        // warns that the extension is gone if asked.
+        if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
       };
       compiling.then(finish, finish);
     },
