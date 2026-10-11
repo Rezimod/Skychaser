@@ -5,10 +5,10 @@ import { orders } from '@/lib/schema';
 import { assertOwnsWallet, verifyPrivy } from '@/lib/api-auth';
 import { paused } from '@/lib/kill-switch';
 import { skychaserOpenRateLimit } from '@/lib/rate-limit';
-import { openCapsule, readCapsule } from '@/lib/skychaser/capsule';
-import { unpaidRehearsal } from '@/lib/skychaser/orders';
+import { openCapsule, readCapsule, settleCapsulePayment } from '@/lib/skychaser/capsule';
+import { findPayment, paymentLedger, paymentNetworkMisconfig, reportExtraTransfers, reportSharedTransfers, unpaidRehearsal } from '@/lib/skychaser/orders';
 import { SoldOutError } from '@/lib/skychaser/randomness';
-import { isUuid, limited } from '@/lib/skychaser/route-guards';
+import { isUuid, limited, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +16,10 @@ export const runtime = 'nodejs';
  * Opens a capsule: only its holder, and only once its order is paid. The
  * response reveals the secret committed to at listing, so the holder can
  * check the draws themselves. Opening twice returns the same cards.
+ *
+ * A capsule whose order is still pending is looked for on chain first, as the
+ * confirm route would: a buyer who paid and closed the tab before it confirmed
+ * opens it from the capsule's page without waiting for a sweep.
  */
 export async function POST(req: NextRequest) {
   const p = await paused();
@@ -40,12 +44,25 @@ export async function POST(req: NextRequest) {
   const l = await limited(skychaserOpenRateLimit, c.buyer_wallet);
   if (l) return l;
 
-  const [order] = await db
-    .select({ status: orders.status, signature: orders.signature })
+  const [found] = await db
+    .select()
     .from(orders)
     .where(and(eq(orders.id, c.order_id), eq(orders.privyId, privyId)))
     .limit(1);
-  if (!order) return NextResponse.json({ error: 'Capsule not found' }, { status: 404 });
+  if (!found) return NextResponse.json({ error: 'Capsule not found' }, { status: 404 });
+  let order = found;
+  if (order.status === 'pending') {
+    const guard = paymentNetworkMisconfig() ?? (await rehearsalOnLiveDatabase(db));
+    if (guard) return guard;
+    const payment = await findPayment(order, paymentLedger(db));
+    if (payment.paid) {
+      order = await settleCapsulePayment(db, order, payment);
+      if (order.status === 'paid') {
+        await reportExtraTransfers(order.id, payment.extra);
+        await reportSharedTransfers(order.id, payment.shared);
+      }
+    }
+  }
   if (order.status !== 'paid') return NextResponse.json({ error: 'The capsule’s payment is not confirmed yet' }, { status: 409 });
   if (unpaidRehearsal(order)) return NextResponse.json({ error: 'This capsule was bought in a rehearsal and was never paid' }, { status: 409 });
 

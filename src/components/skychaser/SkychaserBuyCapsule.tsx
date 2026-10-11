@@ -69,6 +69,8 @@ export default function SkychaserBuyCapsule({
   const [launchNow, setLaunchNow] = useState(false);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  /** The set could not fill the capsule: it is withdrawn and refunded, so there is nothing to retry. */
+  const [withdrawn, setWithdrawn] = useState(false);
 
   const post = async (path: string, body: unknown) => {
     const token = await getAccessToken();
@@ -86,6 +88,7 @@ export default function SkychaserBuyCapsule({
     try {
       const { res, data } = await post('/api/skychaser/capsules/open', { capsuleId });
       if (!res.ok) {
+        if (data.refundDue) setWithdrawn(true);
         setError(data.error ?? 'The capsule could not be opened.');
         return;
       }
@@ -190,7 +193,7 @@ export default function SkychaserBuyCapsule({
         ))}
       </ol>
 
-      {paid ? (
+      {withdrawn ? null : paid ? (
         <button
           type="button"
           className={`sd-btn sd-btn--primary sd-btn--block${busy ? ' is-loading' : ''}`}

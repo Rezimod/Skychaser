@@ -97,6 +97,10 @@ export default function SkychaserBuyCard({
     }
   };
 
+  // Paid, but no edition could be spared by then: say so, and that it is refunded.
+  if (done && !done.edition) {
+    return <p className="sd-data">{done.error ?? 'The payment arrived, but no edition could be allocated. It will be refunded.'}</p>;
+  }
   if (order) return <SkychaserPay order={order} onConfirmed={setDone} />;
 
   return (

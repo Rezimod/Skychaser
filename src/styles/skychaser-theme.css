@@ -991,3 +991,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-pay__note { grid-column: 1 / -1; margin: 0; font: 500 12px var(--sd-mono); color: var(--sd-ink-2); overflow-wrap: anywhere; }
 .sd-menu a.sd-menu__chain { min-height: 38px; margin-top: 2px; font-size: 13px; color: var(--sd-ink-3); }
 .sd-menu a.sd-menu__chain:hover { color: var(--sd-ink-2); }
+
+/* Where to send SOL when the wallet is short: the address wraps on a phone. */
+.sd-pay__fund code { word-break: break-all; font-size: 0.85em; }

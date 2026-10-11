@@ -5,8 +5,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useSkychaserSession } from './SkychaserAuth';
 import { usePrivySafe } from './usePrivySafe';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
-import { createTransfer, parseURL, type TransferRequestURL } from '@solana/pay';
 import bs58 from 'bs58';
+import { buildTransfer } from '@/lib/skychaser/transfer';
 import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 import Caption from './ui/Caption';
 import DataRow from './ui/DataRow';
@@ -38,6 +38,16 @@ const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 const RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_HELIUS_RPC_URL || (DEVNET ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com');
 const explorer = (sig: string) => `https://explorer.solana.com/tx/${sig}${DEVNET ? '?cluster=devnet' : ''}`;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** The network fee for one signature, and what a wallet must keep to stay open (rent-exempt minimum). */
+const FEE_LAMPORTS = 5_000;
+const KEEP_LAMPORTS = 890_880;
+/** Confirmations are limited to 10 a minute per account: one every 7 s, for about three minutes. */
+const POLL_EVERY_MS = 7_000;
+const POLL_TIMES = 26;
+
+const sol = (lamports: bigint | number) => (Number(lamports) / LAMPORTS_PER_SOL).toFixed(4);
+
+type CheckResult = 'confirmed' | 'pending' | 'closed' | 'limited' | 'failed';
 
 /**
  * One Solana Pay order, waiting to be paid: the request as a code and as a
@@ -65,6 +75,9 @@ export default function SkychaserPay({
   const [paying, setPaying] = useState(false);
   const [note, setNote] = useState('');
   const [sent, setSent] = useState<string | null>(null);
+  /** A send that failed in a way that may still have broadcast: no second payment until the chain has been asked. */
+  const [unsure, setUnsure] = useState(false);
+  const [shortOf, setShortOf] = useState<string | null>(null);
   const [left, setLeft] = useState<number | null>(minutesLeft(order.expiresAt));
 
   useEffect(() => {
@@ -73,7 +86,11 @@ export default function SkychaserPay({
     return () => clearInterval(t);
   }, [order.expiresAt]);
 
-  const check = async (quiet = false): Promise<boolean> => {
+  /**
+   * Asks the server whether the transfer arrived. Quiet while polling, except
+   * for what ends the wait: the order closed (late, refunded, sold out).
+   */
+  const check = async (quiet = false): Promise<CheckResult> => {
     setChecking(true);
     if (!quiet) setNote('');
     try {
@@ -83,18 +100,40 @@ export default function SkychaserPay({
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ orderId: order.orderId }),
       });
-      const data = (await res.json().catch(() => ({}))) as Confirmation;
+      const data = (await res.json().catch(() => ({}))) as Confirmation & { status?: string };
       if (data.confirmed) {
+        setUnsure(false);
         onConfirmed(data);
-        return true;
+        return 'confirmed';
+      }
+      if (res.status === 429) {
+        if (!quiet) setNote('Checked too often. Try again in a minute.');
+        return 'limited';
+      }
+      if (res.status === 409) {
+        setUnsure(false);
+        setNote(data.error ?? 'This order is closed.');
+        return 'closed';
       }
       if (!quiet) setNote(data.error ?? 'No transfer has arrived yet.');
+      return 'pending';
     } catch {
       if (!quiet) setNote('The check could not be made. Try again in a moment.');
+      return 'failed';
     } finally {
       setChecking(false);
     }
-    return false;
+  };
+
+  /** Waits for the server to see the transfer, within the confirmation limit; stops when the order closes. */
+  const awaitConfirmation = async () => {
+    for (let i = 0; i < POLL_TIMES; i++) {
+      await wait(POLL_EVERY_MS);
+      const r = await check(true);
+      if (r === 'confirmed' || r === 'closed') return;
+      if (r === 'limited') await wait(60_000);
+    }
+    setNote('Sent, but not confirmed yet. Press “I have paid” in a moment.');
   };
 
   const wallet = wallets[0];
@@ -107,32 +146,50 @@ export default function SkychaserPay({
     }
     setPaying(true);
     setNote('');
+    setShortOf(null);
+    let signing = false;
     try {
-      const req = parseURL(order.url) as TransferRequestURL;
+      const sender = new PublicKey(wallet.address);
       const connection = new Connection(RPC, 'confirmed');
-      const tx = await createTransfer(connection, new PublicKey(wallet.address), {
-        recipient: req.recipient,
-        amount: req.amount!,
-        reference: req.reference,
-        memo: req.memo,
-      });
+      const [{ blockhash }, balance] = await Promise.all([connection.getLatestBlockhash('confirmed'), connection.getBalance(sender, 'confirmed')]);
+      const { tx, lamports } = buildTransfer(order.url, sender, blockhash);
+      const need = lamports + BigInt(FEE_LAMPORTS + KEEP_LAMPORTS);
+      if (BigInt(balance) < need) {
+        setShortOf(sol(need));
+        setNote(`This wallet holds ${sol(balance)} SOL. The capsule, its fee and the wallet's reserve need ${sol(need)} SOL.`);
+        return;
+      }
+      signing = true;
       const { signature } = await wallet.signAndSendTransaction({
         transaction: tx.serialize({ requireAllSignatures: false, verifySignatures: false }),
         chain: DEVNET ? 'solana:devnet' : 'solana:mainnet',
       });
       setSent(bs58.encode(signature));
-      setNote('Sent. Waiting for the network to confirm it.');
-      for (let i = 0; i < 20; i++) {
-        await wait(2500);
-        if (await check(true)) return;
-      }
-      setNote('Sent, but not confirmed yet. Press “I have paid” in a moment.');
+      setNote('Sent. Waiting for the network to confirm it — this takes about half a minute.');
+      await awaitConfirmation();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
+      if (signing && !/reject|denied|cancel/i.test(msg)) {
+        // The wallet may have broadcast before it failed: never offer a second payment until the chain says.
+        setUnsure(true);
+        setNote('The wallet did not say whether the transfer went out. Checking before you try again.');
+        await wait(POLL_EVERY_MS);
+        const r = await check(true);
+        if (r === 'pending' || r === 'failed' || r === 'limited') {
+          setNote('Not seen on the network yet. If your wallet shows the transfer, press “I have paid” in a minute; otherwise try again.');
+        }
+        return;
+      }
       setNote(/insufficient|balance/i.test(msg) ? 'This wallet has too little SOL for the transfer and its fee.' : msg || 'The transfer was not sent.');
     } finally {
       setPaying(false);
     }
+  };
+
+  /** Lets a payment be tried again once a check has found nothing. */
+  const retryAfterUnsure = async () => {
+    const r = await check();
+    if (r !== 'confirmed' && r !== 'closed') setUnsure(false);
   };
 
   /** Devnet only: 1 test SOL from the network's faucet, which has no value. */
@@ -151,6 +208,9 @@ export default function SkychaserPay({
       setPaying(false);
     }
   };
+
+  const payLabel = paying ? 'Sending' : sent ? 'Sent' : left === 0 ? 'Quote expired' : `Pay ${order.amountSol.toFixed(4)} SOL`;
+  const paidPressed = () => (unsure ? retryAfterUnsure() : check());
 
   if (compact) {
     const quote = left === null ? null : left > 0 ? `quote ${left} min` : 'quote expired';
@@ -176,17 +236,17 @@ export default function SkychaserPay({
           ) : (
             <button
               type="button"
-              className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : sent ? ' is-success' : ''}`}
+              className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : ''}`}
               onClick={payFromWallet}
-              disabled={paying || !wallet || !!sent}
+              disabled={paying || !wallet || !!sent || unsure || left === 0}
             >
-              {paying ? 'Sending' : sent ? 'Sent' : `Pay ${order.amountSol.toFixed(4)} SOL`}
+              {payLabel}
             </button>
           )}
           {!REHEARSAL && (
             <div className="sd-pay__minor">
-              <a href={order.url}>Other wallet</a>
-              <button type="button" onClick={() => check()} disabled={checking}>
+              {!sent && left !== 0 && <a href={order.url}>Other wallet</a>}
+              <button type="button" onClick={paidPressed} disabled={checking}>
                 {checking ? 'Checking' : 'I have paid'}
               </button>
               {DEVNET && (
@@ -197,6 +257,7 @@ export default function SkychaserPay({
             </div>
           )}
         </div>
+        {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
         {(note || sent) && (
           <p className="sd-pay__note">
             {note}{' '}
@@ -244,16 +305,18 @@ export default function SkychaserPay({
             <>
               <button
                 type="button"
-                className={`sd-btn sd-btn--primary${paying ? ' is-loading' : sent ? ' is-success' : ''}`}
+                className={`sd-btn sd-btn--primary${paying ? ' is-loading' : ''}`}
                 onClick={payFromWallet}
-                disabled={paying || !wallet || !!sent}
+                disabled={paying || !wallet || !!sent || unsure || left === 0}
               >
-                {paying ? 'Sending' : sent ? 'Sent' : `Pay ${order.amountSol.toFixed(4)} SOL`}
+                {payLabel}
               </button>
-              <a className="sd-btn" href={order.url}>
-                Other wallet
-              </a>
-              <button type="button" className={`sd-btn${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
+              {!sent && left !== 0 && (
+                <a className="sd-btn" href={order.url}>
+                  Other wallet
+                </a>
+              )}
+              <button type="button" className={`sd-btn${checking ? ' is-loading' : ''}`} onClick={paidPressed} disabled={checking}>
                 {checking ? 'Checking the chain' : 'I have paid'}
               </button>
               {DEVNET && (
@@ -264,6 +327,7 @@ export default function SkychaserPay({
             </>
           )}
         </div>
+        {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
         {note && <p className="sd-data">{note}</p>}
         {sent && (
           <a className="sd-link sd-data" href={explorer(sent)} target="_blank" rel="noopener noreferrer">
@@ -273,6 +337,32 @@ export default function SkychaserPay({
         {DEVNET && wallet && <p className="sd-data">Wallet {wallet.address}</p>}
         <Caption as="p" parts={[REHEARSAL ? 'No payment taken' : DEVNET ? 'Solana devnet · test SOL' : 'Solana Pay', `Order ${order.orderId.slice(0, 8)}`]} />
       </div>
+    </div>
+  );
+}
+
+/** Where to send SOL when the wallet holds too little: its address, copyable, on any cluster. */
+function FundHint({ address, need }: { address: string; need: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div className="sd-pay__fund">
+      <p className="sd-data">
+        Send at least {need} SOL to this wallet from an exchange or another wallet, then press Pay again:
+      </p>
+      <p className="sd-data">
+        <code>{address}</code>{' '}
+        <button type="button" className="sd-link" onClick={copy}>
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </p>
     </div>
   );
 }

@@ -121,10 +121,21 @@ describe('opening a capsule', () => {
 
   it('waits for the payment, and for an order the session placed', async () => {
     mocks.orderRows = [{ status: 'pending' }];
+    mocks.findPayment.mockResolvedValue({ paid: false });
     expect((await open(post('/api/skychaser/capsules/open', { capsuleId: CAPSULE }))).status).toBe(409);
     mocks.orderRows = [];
     expect((await open(post('/api/skychaser/capsules/open', { capsuleId: CAPSULE }))).status).toBe(404);
     expect(mocks.openCapsule).not.toHaveBeenCalled();
+  });
+
+  it('opens a capsule paid and left unconfirmed, after asking the chain itself', async () => {
+    mocks.orderRows = [{ id: 'order-1', status: 'pending', signature: null }];
+    mocks.findPayment.mockResolvedValue({ paid: true, signature: 'sig', paidAt: new Date(), late: false });
+    mocks.settleCapsulePayment.mockResolvedValue({ id: 'order-1', status: 'paid', signature: 'sig' });
+    const res = await open(post('/api/skychaser/capsules/open', { capsuleId: CAPSULE }));
+    expect(res.status).toBe(200);
+    expect(mocks.settleCapsulePayment).toHaveBeenCalled();
+    expect(mocks.openCapsule).toHaveBeenCalled();
   });
 
   it('accepts only a strict lowercase UUID', async () => {
