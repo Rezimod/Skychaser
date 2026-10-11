@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import CardPlate from '@/components/skychaser/CardPlate';
-import ObjectArt from '@/components/skychaser/ObjectArt';
+import ObjectPhoto from '@/components/skychaser/ObjectPhoto';
 import SkychaserBallot from '@/components/skychaser/SkychaserBallot';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
@@ -13,6 +12,7 @@ import { CLOUD_LIMIT } from '@/lib/observatory/adapter';
 import { getNode } from '@/lib/observatory/nodes';
 import { isRarity, type Rarity } from '@/lib/rarity';
 import { addDays, tonightView, type TonightView } from '@/lib/skychaser/night';
+import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,6 +103,7 @@ export default async function TonightPage() {
                   rarity: rarityOf(c.rarity),
                   when: `${c.altitudeDeg.toFixed(0)}° at ${localTime(c.at)}`,
                   votes: c.votes,
+                  type: SET_001_CARD_BY_DESIGNATION.get(c.designation)?.seed.objectType,
                 }))}
               />
             </>
@@ -159,7 +160,9 @@ export default async function TonightPage() {
                 <span className="sd-poster__ghost" aria-hidden="true">
                   {lead.designation}
                 </span>
-                <CardPlate size="lg" designation={lead.designation} href={`/card/${lead.designation}`} />
+                <Link href={`/card/${lead.designation}`} className="sd-poster__photo" aria-label={`${lead.name}, card page`}>
+                  <ObjectPhoto designation={lead.designation} />
+                </Link>
               </div>
             )}
           </div>
@@ -190,7 +193,7 @@ export default async function TonightPage() {
             {view.recent.map((r) => (
               <li key={r.night} className="sd-nights__item" data-result={r.result}>
                 <Link href={`/card/${r.designation}`}>
-                  <ObjectArt designation={r.designation} className="sd-nights__art" />
+                  <ObjectPhoto designation={r.designation} className="sd-nights__art" />
                   <span className="sd-label">{r.night}</span>
                   <span className="sd-nights__name">{r.name}</span>
                   <span className="sd-nights__result">{RESULT[r.result]}</span>

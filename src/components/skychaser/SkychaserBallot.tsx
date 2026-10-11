@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import CardThumb from './CardThumb';
 import { accentFor, accentInkFor } from './card/CardFront';
+import ObjectPhoto from './ObjectPhoto';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
 
-export type BallotCandidate = { designation: string; name: string; rarity: string; when: string; votes: number };
+export type BallotCandidate = { designation: string; name: string; rarity: string; when: string; votes: number; type?: string };
 
 type Mine = { designation: string | null; weight: number };
 
@@ -111,6 +111,13 @@ export default function SkychaserBallot({ night, candidates }: { night: string; 
 
   return (
     <>
+      <p className="sd-ballot__power">
+        {signedIn
+          ? power
+            ? <>Your vote counts <b>×{power}</b>{mine?.designation ? ' · tap another object to move it' : ' · pick one object below'}</>
+            : 'Hold a card to vote. Every card you hold adds weight.'
+          : <>Log in to vote. Each card you hold adds weight.</>}
+      </p>
       <ol className="sd-ballot sd-votes">
         {candidates.map((c) => {
           const votes = tally[c.designation] ?? 0;
@@ -127,29 +134,38 @@ export default function SkychaserBallot({ night, candidates }: { night: string; 
               aria-busy={pending === c.designation || undefined}
               style={{ '--tile-glow': accentFor(c.designation), '--btn': accentFor(c.designation), '--btn-ink': accentInkFor(c.designation) } as CSSProperties}
             >
-              <Link href={`/card/${c.designation}`} className="sd-vote__card" aria-label={c.name}>
-                <CardThumb designation={c.designation} />
+              <Link href={`/card/${c.designation}`} className="sd-vote__photo" aria-label={`${c.name}, card page`}>
+                <ObjectPhoto designation={c.designation} />
                 {leading && <span className="sd-vote__lead">Leading</span>}
               </Link>
-              <div className="sd-vote__meta">
-                <span className="sd-vote__when">{c.when}</span>
-                <span className="sd-vote__count">
-                  <b>{votes}</b> {cast ? `${Math.round(share * 100)}%` : votes === 1 ? 'vote' : 'votes'}
+              <div className="sd-vote__body">
+                <div className="sd-vote__head">
+                  <h3 className="sd-vote__name">{c.name}</h3>
+                  <span className="sd-rtag" data-rarity={c.rarity}>{c.rarity}</span>
+                </div>
+                <p className="sd-vote__when">
+                  {c.type ? `${c.type} · ` : ''}highest {c.when}
+                </p>
+                <div className="sd-vote__meta">
+                  <span className="sd-vote__count">
+                    <b>{votes}</b> {votes === 1 ? 'vote' : 'votes'}
+                  </span>
+                  <span className="sd-vote__share">{cast ? `${Math.round(share * 100)}%` : '—'}</span>
+                </div>
+                <span className="sd-vote__bar" aria-hidden="true">
+                  <span style={{ transform: `scaleX(${share})` }} />
                 </span>
+                <button
+                  type="button"
+                  className={`sd-btn sd-vote__btn${chosen ? ' sd-btn--primary' : ''}`}
+                  onClick={() => vote(c)}
+                  aria-disabled={(Boolean(pending) && !chosen) || undefined}
+                  aria-pressed={signedIn ? chosen : undefined}
+                  aria-label={signedIn ? `Vote for ${c.name}` : `Log in to vote for ${c.name}`}
+                >
+                  {chosen ? 'Your vote' : 'Vote'}
+                </button>
               </div>
-              <span className="sd-vote__bar" aria-hidden="true">
-                <span style={{ transform: `scaleX(${share})` }} />
-              </span>
-              <button
-                type="button"
-                className={`sd-btn sd-vote__btn${chosen ? ' sd-btn--primary' : ''}`}
-                onClick={() => vote(c)}
-                aria-disabled={(Boolean(pending) && !chosen) || undefined}
-                aria-pressed={signedIn ? chosen : undefined}
-                aria-label={signedIn ? `Vote for ${c.name}` : `Log in to vote for ${c.name}`}
-              >
-                {chosen ? 'Your vote' : 'Vote'}
-              </button>
             </li>
           );
         })}
