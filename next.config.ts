@@ -53,8 +53,11 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  // stellarr.club is the card product; the legacy app lives on its own project. Its APIs and
-  // /m/* stay reachable here because minted metadata, webhooks and old links point at this domain.
+  // stellarr.club is the card product; the legacy app lives on its own project. Only what
+  // minted metadata, old links and this app still point at here is forwarded to it: /m/*, the
+  // NFT metadata and images, observation photos, OG images, passports, the signed X-agent links,
+  // and the user/cohort upserts useUserSync makes. Nothing that moves money or SOL (mint,
+  // orders, wallet/fund, award-stars, redeem-code, stars, club, admin) is reachable from here.
   // The set's page moved from /set/001 to /genesis; old links and search results follow it.
   async redirects() {
     return [{ source: '/set/001', destination: '/genesis', permanent: true }];
@@ -62,7 +65,10 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        { source: '/api/:path((?!skychaser/|cron/|track|health).*)', destination: `${LEGACY_ORIGIN}/api/:path` },
+        {
+          source: '/api/:path((?:metadata|nft-image|passport|og|share/og|observe/photo|agent|users/upsert|cohort/upsert)(?:/.*)?)',
+          destination: `${LEGACY_ORIGIN}/api/:path`,
+        },
         { source: '/m/:path*', destination: `${LEGACY_ORIGIN}/m/:path*` },
       ],
       afterFiles: [],
