@@ -31,12 +31,12 @@
   color: var(--t-ink); font: 700 max(10px, 4.9cqw)/1 var(--font-oswald), sans-serif; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 .25cqw 0 color-mix(in srgb, var(--t-hi) 55%, transparent);
   box-shadow: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #0000004d, 0 0 0 1px var(--t-edge), 0 .8cqw 2cqw -.6cqw #000, 0 0 4cqw -.6cqw color-mix(in srgb, var(--rarity) 80%, transparent);
 }
-/* Each rarity is a metal of its own colour — silver, sapphire, amethyst, gold — lettered in that colour's darkest shade so the name reads, not white. */
-.sdc-card[data-rarity='common'] .sdc-tier { --t-hi: #f6f8fa; --t-up: #dde3ea; --t-mid: #b9c2cd; --t-lo: #8793a1; --t-edge: #39414b; --t-ink: #0a0e14; }
-.sdc-card[data-rarity='rare'] .sdc-tier { --t-hi: #e9f2ff; --t-up: #b4d3ff; --t-mid: #74b0ff; --t-lo: #3a7fe6; --t-edge: #173f8c; --t-ink: #03112b; }
-.sdc-card[data-rarity='epic'] .sdc-tier { --t-hi: #f5ecff; --t-up: #dbbdff; --t-mid: #bc8fff; --t-lo: #8d52e8; --t-edge: #45208c; --t-ink: #10022a; }
-/* Legendary: polished gold, a bright band through the middle and a second catch of light low down. */
-.sdc-card[data-rarity='legendary'] .sdc-tier { --t-hi: #fff7d6; --t-up: #f9dd85; --t-mid: #ecbf4f; --t-lo: #b9861f; --t-edge: #6e4a08; --t-ink: #1c1000; }
+/* Each rarity is a metal in a colour crypto already owns — Solana green, Ethereum blue, Solana purple, Bitcoin orange — lettered in its darkest shade so the name reads. */
+.sdc-card[data-rarity='common'] .sdc-tier { --t-hi: #e9fff5; --t-up: #9dffd6; --t-mid: #14f195; --t-lo: #0bb06f; --t-edge: #065a3a; --t-ink: #032417; }
+.sdc-card[data-rarity='rare'] .sdc-tier { --t-hi: #eaf0ff; --t-up: #a9c2ff; --t-mid: #3c7dff; --t-lo: #255ad8; --t-edge: #112f7a; --t-ink: #040f2c; }
+.sdc-card[data-rarity='epic'] .sdc-tier { --t-hi: #f3e8ff; --t-up: #d0a6ff; --t-mid: #9945ff; --t-lo: #6f2bd6; --t-edge: #3a1479; --t-ink: #16053a; }
+/* Legendary: Bitcoin orange, polished. */
+.sdc-card[data-rarity='legendary'] .sdc-tier { --t-hi: #fff2dd; --t-up: #ffcb7d; --t-mid: #f7931a; --t-lo: #c66c09; --t-edge: #6b3a03; --t-ink: #2a1500; }
 /* The gloss: a wet highlight on the upper half, and a glint that crosses now and then. */
 .sdc-tier::before { content: ''; position: absolute; inset: 0 0 50%; z-index: -1; border-radius: inherit; background: linear-gradient(180deg, #ffffff59, #ffffff00); }
 .sdc-tier i { position: absolute; top: -50%; bottom: -50%; left: -60%; width: 40%; rotate: 20deg; background: linear-gradient(90deg, transparent, #ffffffd9 50%, transparent); opacity: 0; pointer-events: none; }

@@ -6,34 +6,12 @@ import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
+import HolderOrb from './HolderOrb';
 
 const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 /** Circle's USDC mint on the cluster the app runs on. */
 const USDC_MINT = DEVNET ? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU' : 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_HELIUS_RPC_URL || (DEVNET ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com');
-
-/** A hue from the holder's address, so every holder has their own colour. */
-function hueOf(address: string | null | undefined): number {
-  let h = 0;
-  for (const c of address ?? '') h = (h * 31 + c.charCodeAt(0)) % 360;
-  return h;
-}
-
-/** The holder's mark: a plain disc, two tones of the holder's own colour. */
-const HolderOrb = ({ address }: { address: string | null | undefined }) => {
-  const h = hueOf(address);
-  return (
-    <svg className="sd-orb" viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id="sdo-fill" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={`hsl(${h} 72% 70%)`} />
-          <stop offset="1" stopColor={`hsl(${(h + 48) % 360} 62% 38%)`} />
-        </linearGradient>
-      </defs>
-      <circle cx="16" cy="16" r="16" fill="url(#sdo-fill)" />
-    </svg>
-  );
-};
 
 /** Two cards, one over the other. */
 const CardsGlyph = (

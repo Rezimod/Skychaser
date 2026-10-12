@@ -17,10 +17,10 @@
   --o-hal-glow: rgba(227, 72, 44, 0.55);
   --o-line: rgba(255, 255, 255, 0.09);
   --o-line-hi: rgba(255, 255, 255, 0.22);
-  --o-common: #b9c2cd;
-  --o-rare: #4a9bff;
-  --o-epic: #b06bff;
-  --o-legendary: #d8b66f;
+  --o-common: #14f195;
+  --o-rare: #3c7dff;
+  --o-epic: #9945ff;
+  --o-legendary: #f7931a;
   --o-cond: var(--font-oswald), var(--font-geist), sans-serif;
   --o-title: var(--font-anton), Impact, sans-serif;
   --o-display: var(--font-anton), Impact, sans-serif;
