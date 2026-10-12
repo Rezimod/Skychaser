@@ -12,7 +12,7 @@ import { holderView, type HolderEdition } from '@/lib/skychaser/repo'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Collection',
+  title: 'Collection — Skychaser',
   robots: { index: false },
 }
 

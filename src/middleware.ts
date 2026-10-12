@@ -5,8 +5,11 @@ import { LEGACY_HOST } from '@/lib/skychaser/legacy';
 /** Cards of the first Set 001, replaced by First Light before anything sold. Names First Light reuses are live again. */
 const RETIRED_CARD = /^\/card\/(TRANQUILITY-BASE|TWIN-SUN|TIDE-WORLD|RING-HABITAT|UNIT-7|SENTINEL|BLACK-SLAB)\/?$/i;
 
-/** The pages the card product serves. Every other page is the legacy Skychaser app, which now lives on its own domain. */
+/** The pages the card product serves. */
 const CARD_PAGES = /^\/($|(genesis|set|card|collection|capsules?|tonight|vote|node|voyage|invite|terms|privacy|contact)(\/|$))/;
+
+/** The legacy app's pages, which now live on its own domain. Anything else is the card product's 404. */
+const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|darksky|earn|faq|feed|field|first-light|games|hub|leaderboard|learn|marketplace|missions|moon|network|nfts|observations|observatory|observe|play|profile|proof|returns|security-policy|settings|shop|sky|solar-system|star|u)(\/|$)/;
 
 /**
  * The closed beta. While STELLAR_INVITE_CODES names any code, a page opens only
@@ -18,7 +21,8 @@ const CARD_PAGES = /^\/($|(genesis|set|card|collection|capsules?|tonight|vote|no
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   if (RETIRED_CARD.test(pathname)) return NextResponse.redirect(new URL('/genesis', req.url), 307);
-  if (!CARD_PAGES.test(pathname)) return NextResponse.redirect(`${LEGACY_HOST}${pathname}${search}`, 307);
+  if (LEGACY_PAGES.test(pathname)) return NextResponse.redirect(`${LEGACY_HOST}${pathname}${search}`, 307);
+  if (!CARD_PAGES.test(pathname)) return NextResponse.next();
 
   const codes = inviteCodes();
   if (codes.length === 0) return NextResponse.next();

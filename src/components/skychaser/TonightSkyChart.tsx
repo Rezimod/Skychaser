@@ -54,8 +54,11 @@ export default function TonightSkyChart({
     .map((p) => ({ ...p, px: x(Date.parse(p.c.at)), py: y(p.c.altitudeDeg), ly: y(p.c.altitudeDeg) }))
     .sort((a, b) => a.py - b.py);
   for (let i = 1; i < labels.length; i++) {
-    if (Math.abs(labels[i].px - labels[i - 1].px) < 240 && labels[i].ly - labels[i - 1].ly < 24) {
-      labels[i].ly = labels[i - 1].ly + 24;
+    for (let j = 0; j < i; j++) {
+      if (Math.abs(labels[i].px - labels[j].px) < 240 && Math.abs(labels[i].ly - labels[j].ly) < 26) {
+        labels[i].ly = labels[j].ly + 26;
+        j = -1;
+      }
     }
   }
 

@@ -88,7 +88,7 @@ export default async function CapsulesPage() {
       </section>
 
       <section className="sd-container sd-chapter-block">
-        <Chapter n="01" title="Odds per card" aside="Provisional" />
+        <Chapter n="01" title="Odds per card" />
         {odds.map((row) => (
           <div key={row.key} className="sd-section">
             <p className="sd-label">{row.label}</p>

@@ -116,7 +116,7 @@ export default function CapsuleCounter({ onSale }: { onSale: Record<string, numb
       </details>
 
       <div className="sd-counter__foot">
-        <span>{stock === null ? 'Sale not read' : `${stock} on sale`}</span>
+        <span>{stock === null ? 'Sale not read' : `${stock} ${tier.name} on sale`}</span>
         <Link href="/capsules/log" className="sd-counter__fair">
           Checkable by anyone
         </Link>

@@ -51,6 +51,11 @@
 .sdc-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 3cqw; margin-top: 3.6cqw; padding-top: 3.4cqw; border-top: 1px solid #ffffff2b; }
 .sdc-perk { min-width: 0; color: color-mix(in srgb, var(--card-accent) 72%, #fff); font: 600 max(8.5px, 3.2cqw)/1.2 var(--font-mono), monospace; letter-spacing: .16em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sdc-left { flex: none; color: #f0efea; font: 500 max(9px, 3.5cqw)/1.2 var(--font-geist), sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Small shelf tiles on a phone: the floors above outgrow the card, so the small print tightens instead of cutting off. */
+@container (max-width: 240px) {
+  .sdc-kind, .sdc-perk { font-size: 7px; letter-spacing: .06em; }
+  .sdc-left { font-size: 8px; }
+}
 .sdc-glare { position: absolute; inset: -50%; pointer-events: none; opacity: .4; background: radial-gradient(closest-side, #ffffff15, transparent); translate: calc((var(--px, .5) - .5) * 50%) calc((var(--py, .5) - .5) * 50%); }
 .sdc-card--back { background: linear-gradient(145deg, #1b1a17, #0c0c0b 65%); }
 .sdc-notes { position: absolute; inset: 6%; display: flex; flex-direction: column; }
@@ -78,6 +83,7 @@
 .sdc-notes__foot span:last-child { color: var(--rarity); font-weight: 600; }
 .sdc-turn.sd-btn { display: inline-flex; gap: 8px; min-width: 0; min-height: 44px; padding: 9px 16px; border-radius: 999px; background: #ffffff06; color: #c7c7c3; border: 1px solid #ffffff24; font: 400 12px/1.2 var(--font-geist), sans-serif; letter-spacing: 0; text-transform: none; box-shadow: none; }
 .sdc-turn kbd { border: 1px solid #ffffff30; border-radius: 3px; padding: 2px 4px; font: 10px var(--font-mono), monospace; }
+@media (hover: none) { .sdc-turn kbd { display: none; } }
 .sdc-sides { display: inline-flex; gap: 4px; margin-left: 4px; }
 .sdc-sides i { width: 5px; height: 3px; border-radius: 2px; background: #ffffff40; }
 .sdc-sides i[data-active='true'] { width: 10px; background: #efefed; }

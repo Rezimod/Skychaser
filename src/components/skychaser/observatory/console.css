@@ -481,8 +481,15 @@
   45% { translate: -0.5px 0.5px; filter: contrast(1.08) saturate(.92) blur(0.2px); }
   70% { translate: 0.3px 0.6px; filter: contrast(1.08) saturate(.92) blur(0.5px); }
 }
-/* Where the strip is tight, only the step in hand keeps its name. */
-@media (min-width: 1280px) and (max-width: 1599px) {
+/* In the strip only the step in hand keeps its name; where the strip is narrowest, only that step shows. */
+@media (min-width: 1280px) {
   .sdo-fs:not(.is-now) .sdo-fs__nm { display: none; }
-  .sdo-flow > li:has(.is-now) { flex: 2.4; }
+  .sdo-flow > li { flex: none; }
+  .sdo-fs:not(.is-now) { padding-inline: 0; }
+  .sdo-fs.is-now .sdo-fs__nm { overflow: visible; }
+}
+@media (min-width: 1280px) and (max-width: 1439px) {
+  .sdo-flow > li:not(:has(.is-now)) { display: none; }
+  .sdo-flow > li:has(.is-now) { flex: 1; min-width: 0; }
+  .sdo-fs.is-now .sdo-fs__nm { overflow: hidden; }
 }

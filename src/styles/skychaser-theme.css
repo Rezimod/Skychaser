@@ -251,6 +251,9 @@
   .sd-bar__links { gap: 14px; border-top: 1px solid var(--sd-rule); margin-top: 12px; overflow-x: auto; }
   .sd-bar__links .sd-navlink { font-size: 14px; }
 }
+/* A short page still ends at the bottom of the window: the page grows, the footer stays under it. */
+.skychaser--framed { display: flex; flex-direction: column; min-height: 100svh; }
+.skychaser--framed > .sd-page { flex: 1 0 auto; }
 .sd-foot { border-top: 1px solid var(--sd-rule); margin-top: 96px; padding-block: 32px 40px; }
 .sd-foot__top { display: grid; gap: 28px; justify-items: center; }
 @media (min-width: 860px) { .sd-foot__top { grid-template-columns: auto minmax(0, 1fr); align-items: center; justify-items: stretch; gap: 64px; } }
@@ -794,6 +797,7 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-legal { max-width: 760px; padding-bottom: 72px; }
 .sd-legal .sd-chapter-block { margin-top: 44px; }
 .sd-legal p, .sd-legal li { color: var(--sd-ink-2); font-size: 16px; line-height: 1.65; max-width: 64ch; margin: 0; }
+.sd-legal p + p { margin-top: 0.9em; }
 .sd-legal ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
 .sd-legal a { color: var(--sd-ink); text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--sd-ink-4); }
 .sd-legal a:hover { text-decoration-color: var(--sd-accent); }

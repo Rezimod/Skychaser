@@ -71,7 +71,7 @@ function CardFront({ plate, capture, priority = false, price, sub }: Props) {
         </div>
         <div className="sdc-caption">
           <div className="sdc-title">
-            <strong className="sdc-name" style={{ '--card-name-size': `${Math.min(10.5, 150 / plate.name.length)}cqw` } as CSSProperties}>{plate.name}</strong>
+            <strong className="sdc-name" style={{ '--card-name-size': `${Math.max(7, Math.min(10.5, 150 / plate.name.length))}cqw` } as CSSProperties}>{plate.name}</strong>
             <span className="sdc-price">{shown}</span>
           </div>
           <span className="sdc-kind">{seed?.objectType ?? plate.poster.headline}</span>

@@ -23,7 +23,7 @@ const RECOGNITION = [
   },
   {
     href: 'https://superteam.fun/earn/grants/solana-foundation-georgia-grants',
-    logo: '/brand-partners/superteam.webp', logoAlt: 'Superteam', logoWidth: 160, logoHeight: 48,
+    logo: '/brand-partners/superteam-mark.png', logoAlt: 'Superteam', logoWidth: 160, logoHeight: 48,
     label: 'Superteam', rank: 'Grant',
     linkLabel: 'View the Solana Foundation grant on Superteam Earn',
   },
@@ -75,7 +75,7 @@ export default function SkychaserShell({
     );
   return (
     <SkychaserAuth>
-      <div className="skychaser">
+      <div className="skychaser skychaser--framed">
         <script dangerouslySetInnerHTML={{ __html: LIVE_SCRIPT }} />
         <div className="sd-backdrop" aria-hidden="true" />
         <header className="sd-bar">
@@ -91,7 +91,7 @@ export default function SkychaserShell({
         </header>
 
         {title && <h1 className="sr-only">{title}</h1>}
-        {children}
+        <div className="sd-page">{children}</div>
 
         <footer className="sd-foot">
           <div className="sd-container">
