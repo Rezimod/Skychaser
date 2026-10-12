@@ -8,6 +8,7 @@
   --sn-cw: 260px;
   --sn-cy: 42vh;
   --sn-cy: 42svh;
+  --sn-lb: 7.5%;
   position: fixed; inset: 0; z-index: 80; overflow: hidden; overscroll-behavior: contain;
   background: #000; color: #fff; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   animation: sn-in 500ms var(--sd-ease, ease) both;
@@ -15,6 +16,8 @@
 @keyframes sn-in { from { opacity: 0; } to { opacity: 1; } }
 .sn[data-nogl='1'] { background: radial-gradient(ellipse 70% 55% at 50% 42%, #3a0f08 0, #120302 55%, #000 100%); }
 .sn-shake { position: absolute; inset: 0; }
+/* The letterbox: during the flight the bars cut the screen, and the sky and the card play between them, never under them. */
+.sn.is-cine .sn-shake { top: var(--sn-lb); bottom: var(--sn-lb); }
 .sn-sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
 
 /* the card */
@@ -48,7 +51,7 @@
 }
 
 /* the frame around the picture */
-.sn-lb { position: absolute; left: 0; right: 0; height: 7.5%; background: #000; z-index: 5; pointer-events: none; transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1); }
+.sn-lb { position: absolute; left: 0; right: 0; height: var(--sn-lb); background: #000; z-index: 5; pointer-events: none; transition: transform 1.1s cubic-bezier(0.65, 0, 0.35, 1); }
 .sn-lb--top { top: 0; transform: translateY(-100%); }
 .sn-lb--bot { bottom: 0; transform: translateY(100%); }
 .sn.is-cine .sn-lb { transform: none; }
@@ -209,10 +212,12 @@
 .skychaser .sn-after .sd-pay__actions .sd-btn:not(.sd-btn--primary):hover { background: color-mix(in srgb, var(--sn-accent) 14%, rgba(8, 8, 12, 0.85)); }
 .sn-provenance a { color: color-mix(in srgb, var(--sn-accent) 55%, #fff); }
 
-/* Wide screens: the card on the left, everything about it on the right. */
+/* Wide screens: the card on the left, everything about it on the right. The two stand as one group,
+   centred on the screen and on the same line, the words' column as wide as the room allows. */
 @media (min-width: 1024px) and (min-height: 600px) {
-  .sn.is-done .sn-center { left: 33%; transition: left 0.7s var(--sd-ease, ease), top 0.6s var(--sd-ease, ease), scale 0.6s var(--sd-ease, ease); }
-  .sn.is-done .sn-hud { left: 53%; right: auto; top: 50%; bottom: auto; width: min(480px, 40vw); translate: 0 -50%; justify-items: start; gap: 22px; padding: 0; }
+  .sn.is-done { --sn-iw: min(480px, 40vw); --sn-gap: clamp(48px, 6vw, 110px); }
+  .sn.is-done .sn-center { left: calc(50% - (var(--sn-gap) + var(--sn-iw)) / 2); top: calc(50% + var(--sn-fit-y, 0px)); transition: left 0.7s var(--sd-ease, ease), top 0.6s var(--sd-ease, ease), scale 0.6s var(--sd-ease, ease); }
+  .sn.is-done .sn-hud { left: calc(50% + (var(--sn-cw) + var(--sn-gap) - var(--sn-iw)) / 2); right: auto; top: 50%; bottom: auto; width: var(--sn-iw); translate: 0 -50%; justify-items: start; gap: 22px; padding: 0; }
   .sn.is-done .sn-hud::before { left: -6vw; right: -100vw; top: -100vh; bottom: -100vh; background: linear-gradient(90deg, transparent, rgba(4, 4, 7, 0.72) 8vw, rgba(4, 4, 7, 0.86)); }
   .sn.is-done .sn-tag { justify-items: start; text-align: left; gap: 14px; }
   .sn.is-done .sn-tag__kind { display: block; color: color-mix(in srgb, var(--sn-accent) 70%, #fff); font: 600 13px/1 var(--sd-mono); letter-spacing: 0.22em; text-transform: uppercase; }

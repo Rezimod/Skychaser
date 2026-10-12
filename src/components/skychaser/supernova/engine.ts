@@ -267,8 +267,10 @@ export function startSupernova(root: HTMLElement, opts: SupernovaOptions): Super
     target(QW, QH, qb, fb);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
+  // The sky and the card are laid out in the stage box, not the screen: during the flight the letterbox narrows it.
+  const box = shake ?? root;
   function layout() {
-    const r = root.getBoundingClientRect();
+    const r = box.getBoundingClientRect();
     W = r.width;
     H = r.height;
     const cw = Math.min(W * 0.62, H * 0.4, 330);
@@ -843,6 +845,8 @@ export function startSupernova(root: HTMLElement, opts: SupernovaOptions): Super
   }
   const onResize = () => layout();
   window.addEventListener('resize', onResize);
+  const sized = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onResize);
+  sized?.observe(box);
   layout();
   raf = requestAnimationFrame(frame);
 
@@ -871,6 +875,7 @@ export function startSupernova(root: HTMLElement, opts: SupernovaOptions): Super
       dead = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
+      sized?.disconnect();
       hush();
       if (AC) {
         const a = AC;
