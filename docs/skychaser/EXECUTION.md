@@ -1,7 +1,7 @@
 # Stellar rebrand — execution plan
 
 ## Context
-`~/Desktop/Stellar/plans/stellar-rebrand-migration-plan.md` rebrands Stellar into a card universe backed by the observatory. It has 9 phases and 4 hard gates. The work happens on an isolated `stellar-cards` branch, and production (stellarr.club) keeps running from `main`.
+`~/Desktop/Skychaser/docs/plans/stellar-rebrand-migration-plan.md` rebrands Stellar into a card universe backed by the observatory. It has 9 phases and 4 hard gates. The work happens on an isolated `stellar-cards` branch, and production (stellarr.club) keeps running from `main`.
 
 **Repo rule:** all work, branches and pushes go to **Rezimod/Stellar** (`origin`, local `/Users/nika/Desktop/Stellar-rezimod`). The Darkview repo (github.com/Bekatsertsvadzee/Online-Observatory) is consumed over its HTTP contract only; nothing is pushed there. See "Beka's repo" below.
 

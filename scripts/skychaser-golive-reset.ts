@@ -4,7 +4,7 @@
  *   STELLAR_DATABASE_CONFIRM=stellar npx tsx scripts/skychaser-golive-reset.ts          # dry run
  *   STELLAR_DATABASE_CONFIRM=stellar npx tsx scripts/skychaser-golive-reset.ts --apply
  *
- * Writes a JSON backup of everything it removes to ~/Desktop/Stellar/backups
+ * Writes a JSON backup of everything it removes to ~/Desktop/Skychaser/backups
  * first. Then, in one transaction: capsule, capsule_pull, edition and
  * capsule_log are truncated (the log's truncate guard is lifted and restored
  * inside it), Skychaser orders are deleted, and votes for tonight onward are

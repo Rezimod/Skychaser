@@ -11,10 +11,10 @@ Repository: Rezimod/Stellar only. The Darkview platform
 nothing is pushed there and no Darkview source is copied here.
 
 Transition (October 2026): until `skychaser` has been pushed to `main`
-(see `~/Desktop/Stellar/plans/legacy-cut/HANDOVER.md`), work on
+(see `~/Desktop/Skychaser/docs/plans/legacy-cut/HANDOVER.md`), work on
 `skychaser`. After that, `main` is the only working branch.
 
-Source plan: `~/Desktop/Stellar/plans/stellar-rebrand-migration-plan.md`.
+Source plan: `~/Desktop/Skychaser/docs/plans/stellar-rebrand-migration-plan.md`.
 Execution plan with corrections: `docs/skychaser/EXECUTION.md`.
 
 ## Never
