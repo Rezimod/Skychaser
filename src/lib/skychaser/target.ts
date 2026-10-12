@@ -55,7 +55,7 @@ export function siteDarkWindow(node: ObservatoryNode, night: string) {
  * Midday UTC will not do: west of Greenwich it is still the morning of that
  * date, and the window search would walk back to the night before.
  */
-function siteNoon(timezone: string, night: string): Date {
+export function siteNoon(timezone: string, night: string): Date {
   const utcNoon = new Date(`${night}T12:00:00Z`)
   // The site's wall clock at UTC noon, counted in hours from midnight of
   // `night` — past 24 or below 0 when the site is already on another date.

@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   createCardOrder: vi.fn(),
   unpaidCapsules: vi.fn(),
   orderRows: [] as Array<Record<string, unknown>>,
+  grantCredits: vi.fn(),
 }));
 vi.mock('next/server', async (actual) => ({ ...(await actual<typeof import('next/server')>()), after: vi.fn() }));
 vi.mock('@/lib/api-auth', () => ({ verifyPrivy: mocks.privy, assertOwnsWallet: mocks.owns, getSessionWalletAddresses: mocks.linked }));
@@ -43,6 +44,7 @@ vi.mock('@/lib/skychaser/capsule', () => ({
 vi.mock('@/lib/skychaser/orders', () => ({
   CAPSULE_PRODUCT_ID: 'stellar-capsule',
   CARD_PRODUCT_PREFIX: 'stellar-card:',
+  creditsInOrder: (id: string) => (id.startsWith('skychaser-credits:') ? Number(id.split(':')[2]) : null),
   usdToSol: mocks.usdToSol,
   merchantWallet: () => ({ toBase58: () => 'merchant' }),
   newPaymentReference: () => 'reference',
@@ -61,6 +63,7 @@ vi.mock('@/lib/skychaser/orders', () => ({
   paymentNetworkMisconfig: () => null,
   unpaidRehearsal: (o: { signature?: string | null }) => !!o.signature?.startsWith('simulated-no-payment:'),
 }));
+vi.mock('@/lib/skychaser/booking', () => ({ grantCredits: mocks.grantCredits, bookingTablesMissing: () => false }));
 import { POST as open } from '@/app/api/skychaser/capsules/open/route';
 import { POST as buy } from '@/app/api/skychaser/capsules/buy/route';
 import { GET as verify } from '@/app/api/skychaser/capsules/verify/route';
@@ -315,6 +318,17 @@ describe('confirming a payment', () => {
     expect(mocks.markRefundDue).toHaveBeenCalledWith(expect.anything(), ORDER, 'sig', expect.any(Date), 'paid after its payment window closed');
     expect(mocks.markPaid).not.toHaveBeenCalled();
     expect(res.status).toBe(409);
+  });
+
+  it('adds a paid pack of credits to the account, once', async () => {
+    mocks.orderRows = [order({ productId: 'skychaser-credits:night:60' })];
+    mocks.findPayment.mockResolvedValue({ paid: true, signature: 'sig', paidAt: new Date(), late: false });
+    mocks.markPaid.mockResolvedValue(order({ productId: 'skychaser-credits:night:60', status: 'paid', signature: 'sig' }));
+    mocks.grantCredits.mockResolvedValue({ added: true, balance: 80 });
+    const res = await confirm(post('/api/skychaser/orders/confirm', { orderId: ORDER }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ confirmed: true, signature: 'sig', credits: { added: 60, balance: 80 } });
+    expect(mocks.grantCredits).toHaveBeenCalledWith(expect.anything(), { privyId: 'privy-holder', credits: 60, orderId: ORDER });
   });
 
   it('refuses anything but a strict UUID', async () => {

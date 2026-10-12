@@ -6,7 +6,7 @@ import { LEGACY_HOST } from '@/lib/skychaser/legacy';
 const RETIRED_CARD = /^\/card\/(TRANQUILITY-BASE|TWIN-SUN|TIDE-WORLD|RING-HABITAT|UNIT-7|SENTINEL|BLACK-SLAB)\/?$/i;
 
 /** The pages the card product serves. */
-const CARD_PAGES = /^\/($|(genesis|set|card|collection|capsules?|tonight|vote|node|voyage|invite|terms|privacy|contact)(\/|$))/;
+const CARD_PAGES = /^\/($|(genesis|set|card|collection|capsules?|tonight|vote|node|book|voyage|invite|terms|privacy|contact)(\/|$))/;
 
 /** The legacy app's pages, which now live on its own domain. Anything else is the card product's 404. */
 const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|darksky|earn|faq|feed|field|first-light|games|hub|leaderboard|learn|marketplace|missions|moon|network|nfts|observations|observatory|observe|play|profile|proof|returns|security-policy|settings|shop|sky|solar-system|star|u)(\/|$)/;

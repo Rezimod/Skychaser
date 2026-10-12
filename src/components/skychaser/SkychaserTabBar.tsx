@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Layers, Moon, Telescope, Wallet } from 'lucide-react';
+import { CalendarClock, Layers, Moon, Telescope, Wallet } from 'lucide-react';
 
 const TABS = [
   { href: '/genesis', label: 'Genesis', icon: Layers, match: ['/genesis', '/card', '/capsule'] },
   { href: '/vote', label: 'Vote', icon: Moon, match: ['/vote'] },
   { href: '/node', label: 'Observatory', icon: Telescope, match: ['/node'] },
+  { href: '/book', label: 'Book', icon: CalendarClock, match: ['/book'] },
   { href: '/collection', label: 'Collection', icon: Wallet, match: ['/collection'] },
 ];
 

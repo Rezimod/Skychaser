@@ -5,10 +5,12 @@ import { capsule, orders } from '@/lib/schema';
 import { verifyPrivy } from '@/lib/api-auth';
 import { paused } from '@/lib/kill-switch';
 import { skychaserConfirmRateLimit } from '@/lib/rate-limit';
+import { bookingTablesMissing, grantCredits } from '@/lib/skychaser/booking';
 import { settleCapsulePayment } from '@/lib/skychaser/capsule';
 import {
   CAPSULE_PRODUCT_ID,
   CARD_PRODUCT_PREFIX,
+  creditsInOrder,
   findPayment,
   fulfilCardOrder,
   markPaid,
@@ -26,7 +28,8 @@ export const runtime = 'nodejs';
 
 /**
  * Confirms a Skychaser order's Solana Pay transfer. A paid capsule is then ready
- * to open; a paid card is allocated its edition here. Safe to call again.
+ * to open; a paid card is allocated its edition here; a paid pack of credits is
+ * added to the account here. Safe to call again.
  *
  * A transfer is never dropped: one that landed after the order's window
  * closed, or for an order already cancelled (its capsule voided or released
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (r) return r;
 
   const [found] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.privyId, privyId))).limit(1);
-  const isSkychaser = found && (found.productId === CAPSULE_PRODUCT_ID || found.productId.startsWith(CARD_PRODUCT_PREFIX));
+  const isSkychaser = found && (found.productId === CAPSULE_PRODUCT_ID || found.productId.startsWith(CARD_PRODUCT_PREFIX) || creditsInOrder(found.productId) !== null);
   if (!found || !isSkychaser) return NextResponse.json({ confirmed: false, error: 'Order not found' }, { status: 404 });
 
   let order: OrderRow = found;
@@ -93,6 +96,18 @@ export async function POST(req: NextRequest) {
   if (order.productId === CAPSULE_PRODUCT_ID) {
     const [c] = await db.select({ id: capsule.id }).from(capsule).where(eq(capsule.orderId, order.id)).limit(1);
     return NextResponse.json({ confirmed: true, signature: order.signature, capsuleId: c?.id ?? null });
+  }
+
+  const credits = creditsInOrder(order.productId);
+  if (credits !== null) {
+    try {
+      const granted = await grantCredits(db, { privyId, credits, orderId: order.id });
+      return NextResponse.json({ confirmed: true, signature: order.signature, credits: { added: credits, balance: granted.balance } });
+    } catch (err) {
+      if (!bookingTablesMissing(err)) throw err;
+      console.error('[skychaser/orders/confirm] credits paid but the credit tables are missing', order.id);
+      return NextResponse.json({ confirmed: true, signature: order.signature, error: 'Paid. The credits will be added when booking opens.' }, { status: 409 });
+    }
   }
 
   const fulfilled = await fulfilCardOrder(db, order);

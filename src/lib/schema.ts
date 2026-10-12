@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { pgTable, uuid, text, integer, bigint, bigserial, timestamp, doublePrecision, boolean, uniqueIndex, index, date, jsonb, check } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, bigint, bigserial, timestamp, doublePrecision, boolean, uniqueIndex, index, date, jsonb, check, primaryKey } from 'drizzle-orm/pg-core'
 
 // Run in Neon SQL editor if migrating an existing DB:
 //   ALTER TABLE public.users ADD COLUMN IF NOT EXISTS avatar text;
@@ -1033,3 +1033,56 @@ export const capsuleLog = pgTable('capsule_log', {
   uniqueIndex('capsule_log_card_sold_unique').on(sql`(outcome->>'orderHash')`).where(sql`event = 'card_sold'`),
   index('capsule_log_capsule_idx').on(t.capsuleId, t.seq),
 ])
+
+// Booking the Live Telescope with credits (2026-10-12). Created by scripts/skychaser-bookings.sql;
+// src/lib/skychaser/booking.ts writes them in single statements. Defined here for the record.
+export const creditAccount = pgTable('credit_account', {
+  privyId: text('privy_id').primaryKey(),
+  balance: integer('balance').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [check('credit_account_balance_check', sql`${t.balance} >= 0`)])
+
+export const creditLedger = pgTable('credit_ledger', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  privyId: text('privy_id').notNull(),
+  delta: integer('delta').notNull(),
+  /** 'purchase' | 'booking' | 'refund' | 'grant' */
+  kind: text('kind').notNull(),
+  orderId: uuid('order_id'),
+  bookingId: uuid('booking_id'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('credit_ledger_order_unique').on(t.orderId).where(sql`order_id IS NOT NULL`),
+  index('credit_ledger_privy_idx').on(t.privyId, t.createdAt),
+])
+
+export const telescopeBooking = pgTable('telescope_booking', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  privyId: text('privy_id').notNull(),
+  walletAddress: text('wallet_address').notNull(),
+  nodeId: text('node_id').notNull(),
+  nightDate: date('night_date').notNull(),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  /** 30 or 60 */
+  minutes: integer('minutes').notNull(),
+  targetId: text('target_id'),
+  credits: integer('credits').notNull(),
+  /** The Epic edition whose session paid for a half-hour, if one did. */
+  editionId: uuid('edition_id'),
+  /** 'booked' | 'cancelled' */
+  status: text('status').notNull().default('booked'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+}, (t) => [
+  index('telescope_booking_privy_idx').on(t.privyId, t.startsAt),
+  index('telescope_booking_night_idx').on(t.nodeId, t.nightDate),
+  uniqueIndex('telescope_booking_edition_unique').on(t.editionId).where(sql`edition_id IS NOT NULL AND status = 'booked'`),
+])
+
+/** The half-hours a booking occupies; the primary key is what keeps two bookings apart. */
+export const telescopeSlot = pgTable('telescope_slot', {
+  nodeId: text('node_id').notNull(),
+  slotAt: timestamp('slot_at', { withTimezone: true }).notNull(),
+  bookingId: uuid('booking_id').notNull(),
+}, (t) => [primaryKey({ columns: [t.nodeId, t.slotAt] })])

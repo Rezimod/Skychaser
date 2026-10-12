@@ -246,3 +246,21 @@ most reversible option; each needs a yes/no from Rezi.
     the other waits beside it — but the unsold shelf should be voided and
     relisted so every capsule on sale holds one.
 
+
+## Booking the telescope with credits (2026-10-12)
+
+29. **Session prices, credit packs and the first bookable night are
+    provisional.** /book sells half-hours on Live Telescope V1 from
+    `FIRST_NIGHT` (1 November 2026, `src/lib/skychaser/booking.ts`), 20:00 to
+    02:00 Tbilisi time inside the dark window. Took the reversible numbers: a
+    30-minute session is 20 credits, an hour 36; packs of 20 / 60 / 150
+    credits cost $20 / $54 / $120, paid in SOL on the capsule rail; one
+    credit stands for one dollar and credits do not expire. An Epic edition
+    pays for one half-hour (its perk), once per edition while the booking
+    stands. A session cancels with its credits back until 24 hours before it
+    starts. The tables are additive (`scripts/skychaser-bookings.sql`) and
+    have to be applied to the card database by hand; until then the page
+    shows every half-hour open and the routes answer 503.
+    **For the owner:** the prices and pack sizes, the first night, whether
+    sessions on cloudy nights are refunded by hand (nothing automatic yet),
+    and whether the operator takes bookings past 02:00.

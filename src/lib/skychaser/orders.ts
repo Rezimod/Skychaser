@@ -32,6 +32,8 @@ export type OrderRow = typeof orders.$inferSelect;
 
 export const CAPSULE_PRODUCT_ID = 'stellar-capsule';
 export const CARD_PRODUCT_PREFIX = 'stellar-card:';
+/** `skychaser-credits:<pack>:<credits>` — the count is in the id so an old order grants what it paid for. */
+export const CREDITS_PRODUCT_PREFIX = 'skychaser-credits:';
 
 const REHEARSAL_PREFIX = 'simulated-no-payment:';
 
@@ -124,18 +126,16 @@ export function paymentUrl(input: { recipient: PublicKey; amountSol: number; ref
   }).toString();
 }
 
-/** A pending order for one card, bought on its own. */
-export async function createCardOrder(
-  db: Db,
-  input: { privyId: string; wallet: string; designation: string; name: string; priceUsd: number; amountSol: number; reference: string },
-): Promise<OrderRow> {
+type NewOrder = { privyId: string; wallet: string; productId: string; productName: string; priceUsd: number; amountSol: number; reference: string };
+
+async function insertOrder(db: Db, input: NewOrder): Promise<OrderRow> {
   const [row] = await db
     .insert(orders)
     .values({
       privyId: input.privyId,
       walletAddress: input.wallet,
-      productId: `${CARD_PRODUCT_PREFIX}${input.designation}`,
-      productName: input.name,
+      productId: input.productId,
+      productName: input.productName,
       dealerId: 'stellar',
       paymentMethod: 'sol',
       amountSol: input.amountSol,
@@ -153,6 +153,29 @@ export async function createCardOrder(
     })
     .returning();
   return row;
+}
+
+/** A pending order for one card, bought on its own. */
+export async function createCardOrder(
+  db: Db,
+  input: { privyId: string; wallet: string; designation: string; name: string; priceUsd: number; amountSol: number; reference: string },
+): Promise<OrderRow> {
+  return insertOrder(db, { ...input, productId: `${CARD_PRODUCT_PREFIX}${input.designation}`, productName: input.name });
+}
+
+/** A pending order for a pack of telescope credits. */
+export async function createCreditsOrder(
+  db: Db,
+  input: { privyId: string; wallet: string; pack: string; credits: number; priceUsd: number; amountSol: number; reference: string },
+): Promise<OrderRow> {
+  return insertOrder(db, { ...input, productId: `${CREDITS_PRODUCT_PREFIX}${input.pack}:${input.credits}`, productName: `${input.credits} credits` });
+}
+
+/** How many credits a credits order bought, from its id; null for any other order. */
+export function creditsInOrder(productId: string): number | null {
+  if (!productId.startsWith(CREDITS_PRODUCT_PREFIX)) return null;
+  const n = Number(productId.slice(CREDITS_PRODUCT_PREFIX.length).split(':')[1]);
+  return Number.isInteger(n) && n > 0 ? n : null;
 }
 
 /** A transfer that reached the merchant: its signature and when it landed. */

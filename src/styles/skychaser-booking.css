@@ -1,0 +1,195 @@
+/* SKYCHASER — /book. The board for Live Telescope V1: a night, a start, a target, the session beside them.
+   Monolith panels and HAL red from the Odyssey layer; the night strip and the half-hours are the console's own. */
+
+.skychaser .sd-book { padding-top: 28px; padding-bottom: 40px; }
+
+/* ── The hero: the words, the four figures, Saturn as the telescope sees it ── */
+.skychaser .sd-book__hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); align-items: center; gap: 32px 48px; margin-bottom: 44px; }
+.skychaser .sd-book__title { margin: 6px 0 0; font: 400 clamp(44px, 6.4vw, 88px)/0.96 var(--sd-display); letter-spacing: 0.01em; text-transform: uppercase; color: #fff; text-wrap: balance; }
+.skychaser .sd-book__line { margin: 16px 0 0; max-width: 40ch; font: 400 17px/1.5 var(--sd-sans); color: var(--sd-ink-2); }
+.skychaser .sd-book__facts { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: 10px 28px; margin: 26px 0 0; padding: 14px 18px; border: 1px solid var(--sd-line); border-radius: 10px; background: var(--sd-ticks), rgba(0, 0, 0, 0.35); }
+.skychaser .sd-book__facts div { display: flex; flex-direction: column; gap: 4px; }
+.skychaser .sd-book__facts dt { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sd-hal); }
+.skychaser .sd-book__facts dd { margin: 0; font: 600 15px var(--sd-mono); font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; }
+.skychaser .sd-book__scope { position: relative; margin: 0; aspect-ratio: 1; max-width: 460px; justify-self: end; width: 100%; border-radius: 16px; overflow: hidden; isolation: isolate; border: 1px solid var(--sd-line); background: var(--sd-ticks), #000; }
+.skychaser .sd-book__scope img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.skychaser .sd-book__scope::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(60% 60% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55)); }
+.skychaser .sd-book__scope::after { content: ''; position: absolute; left: 50%; top: 50%; z-index: 1; width: 46%; height: 46%; translate: -50% -50%; pointer-events: none; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 50%; }
+.skychaser .sd-book__scope figcaption { position: absolute; left: 16px; bottom: 12px; z-index: 2; padding: 0; color: #cfcfd4; }
+
+/* ── The grid: the picks, the session beside them ── */
+.skychaser .sd-book__grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px 40px; align-items: start; }
+.skychaser .sd-book__pick { min-width: 0; }
+
+.skychaser .sd-book__step { display: flex; align-items: center; gap: 14px; margin: 34px 0 14px; }
+.skychaser .sd-book__step:first-child { margin-top: 0; }
+.skychaser .sd-book__n { font: 500 12px var(--sd-mono); letter-spacing: 0.1em; color: var(--sd-hal); }
+.skychaser .sd-book__step h2 { margin: 0; font: 400 26px/1 var(--sd-display); letter-spacing: 0.02em; text-transform: uppercase; color: #fff; }
+.skychaser .sd-book__rule { flex: 1 1 auto; min-width: 16px; height: 1px; background: linear-gradient(90deg, var(--sd-line-hi), transparent); }
+.skychaser .sd-book__aside { font: 500 11px var(--sd-spaced); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); white-space: nowrap; }
+
+/* ── 01 The nights: a strip of tabs, each with its Moon ── */
+.skychaser .sd-book__nights { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x proximity; padding: 2px 2px 10px; scrollbar-width: thin; scrollbar-color: #ffffff22 transparent; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+.skychaser .sd-book__night {
+  flex: 0 0 72px; scroll-snap-align: start; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px 9px;
+  border: 1px solid var(--sd-line); border-radius: 10px; background: rgba(255, 255, 255, 0.025); color: var(--sd-ink-2); cursor: pointer;
+  transition: border-color var(--sd-dur-fast), background var(--sd-dur-fast), color var(--sd-dur-fast);
+}
+.skychaser .sd-book__night small { font: 600 10px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-book__night b { font: 400 26px/1 var(--sd-display); color: #fff; }
+.skychaser .sd-book__night i { margin-top: 5px; font: 500 10px var(--sd-mono); font-style: normal; letter-spacing: 0.04em; color: var(--sd-ink-3); }
+.skychaser .sd-book__night .sd-book__moon { margin-top: 5px; }
+.skychaser .sd-book__night:hover { border-color: var(--sd-line-hi); background: rgba(255, 255, 255, 0.05); }
+.skychaser .sd-book__night[aria-checked='true'], .skychaser .sd-book__night[aria-checked='true']:hover { border-color: var(--sd-hal); background: color-mix(in srgb, var(--sd-hal) 14%, transparent); box-shadow: 0 0 24px -8px var(--sd-hal-glow), inset 0 0 0 1px color-mix(in srgb, var(--sd-hal) 45%, transparent); }
+.skychaser .sd-book__night[aria-checked='true'] i { color: var(--sd-hal); }
+.skychaser .sd-book__night.is-full { opacity: 0.55; }
+.skychaser .sd-book__night.is-full i { color: var(--sd-ink-4); }
+.skychaser .sd-book__moon-dark { fill: #2a2a30; stroke: rgba(255, 255, 255, 0.18); stroke-width: 0.6; }
+.skychaser .sd-book__moon-lit { fill: #e6e3d6; }
+
+/* ── 02 The half-hours ── */
+.skychaser .sd-book__len { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--sd-line); border-radius: 8px; background: rgba(0, 0, 0, 0.45); }
+.skychaser .sd-book__len button { display: inline-flex; align-items: baseline; gap: 6px; min-height: 32px; padding: 4px 12px; border: 0; border-radius: 6px; background: none; color: #b4b4bb; font: 700 10.5px var(--sd-spaced); letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
+.skychaser .sd-book__len button span { font: 500 10px var(--sd-mono); letter-spacing: 0.02em; text-transform: none; color: var(--sd-ink-3); }
+.skychaser .sd-book__len button[aria-checked='true'] { color: #fff; background: linear-gradient(180deg, var(--sd-hal-hi), var(--sd-hal) 60%, #b8321f); box-shadow: inset 0 1px 0 rgba(255, 220, 200, 0.4); }
+.skychaser .sd-book__len button[aria-checked='true'] span { color: #ffd9cf; }
+
+.skychaser .sd-book__slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; }
+.skychaser .sd-book__slot {
+  min-height: 46px; border: 1px solid var(--sd-line-hi); border-radius: 8px; background: rgba(255, 255, 255, 0.025); color: #e8e8ea;
+  font: 600 15px var(--sd-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; cursor: pointer;
+  transition: border-color var(--sd-dur-fast), background var(--sd-dur-fast), color var(--sd-dur-fast), box-shadow var(--sd-dur-fast);
+}
+.skychaser .sd-book__slot:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.06); }
+.skychaser .sd-book__slot[aria-checked='true'], .skychaser .sd-book__slot[aria-checked='true']:hover:not(:disabled) { color: #fff; border-color: var(--sd-hal); background: linear-gradient(180deg, var(--sd-hal-hi), var(--sd-hal) 60%, #b8321f); box-shadow: 0 10px 30px -12px var(--sd-hal-glow), inset 0 1px 0 rgba(255, 220, 200, 0.4); }
+.skychaser .sd-book__slot:disabled { cursor: default; }
+.skychaser .sd-book__slot.is-taken { border-color: transparent; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0 6px, transparent 6px 12px); color: var(--sd-ink-4); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.35); }
+.skychaser .sd-book__slot.is-past { border-color: transparent; color: var(--sd-ink-4); }
+.skychaser .sd-book__slot.is-short { border-style: dashed; border-color: var(--sd-line); color: var(--sd-ink-3); }
+
+/* ── 03 The targets: the card art, dimmed when the object is below the horizon ── */
+.skychaser .sd-book__targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.skychaser .sd-book__target {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 2px; aspect-ratio: 4 / 3; padding: 12px; overflow: hidden; isolation: isolate;
+  border: 1px solid var(--sd-line); border-radius: 12px; background: #000; color: #fff; text-align: left; cursor: pointer;
+  transition: border-color var(--sd-dur-fast), box-shadow var(--sd-dur-fast), transform var(--sd-dur-fast);
+}
+.skychaser .sd-book__target img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; transition: transform 600ms var(--sd-ease), filter var(--sd-dur-fast); }
+.skychaser .sd-book__target::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.82)); }
+.skychaser .sd-book__target:hover:not(:disabled) { border-color: var(--sd-line-hi); }
+.skychaser .sd-book__target:hover:not(:disabled) img { transform: scale(1.05); }
+.skychaser .sd-book__target[aria-checked='true'], .skychaser .sd-book__target[aria-checked='true']:hover:not(:disabled) { border-color: var(--sd-hal); box-shadow: 0 0 0 1px var(--sd-hal), 0 16px 40px -18px var(--sd-hal-glow); }
+.skychaser .sd-book__target.is-down { cursor: default; }
+.skychaser .sd-book__target.is-down img { filter: grayscale(1) brightness(0.35); }
+.skychaser .sd-book__target.is-down .sd-book__tname { color: var(--sd-ink-3); }
+.skychaser .sd-book__tname { font: 400 19px/1 var(--sd-display); letter-spacing: 0.02em; text-transform: uppercase; }
+.skychaser .sd-book__tsub { font: 500 10px var(--sd-spaced); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-book__target[aria-checked='true'] .sd-book__tsub { color: var(--sd-hal-hi); }
+.skychaser .sd-book__target--any { background: var(--sd-ticks), radial-gradient(80% 80% at 50% 100%, rgba(227, 72, 44, 0.18), transparent 70%), #07070a; }
+.skychaser .sd-book__star { position: absolute; left: 50%; top: 42%; translate: -50% -50%; font-size: 34px; line-height: 1; color: var(--sd-gold); text-shadow: 0 0 18px color-mix(in srgb, var(--sd-gold) 60%, transparent); }
+
+/* ── The session: a monolith that stays beside the picks ── */
+.skychaser .sd-book__sum {
+  position: sticky; top: calc(var(--sd-bar-h, 76px) + 16px); display: flex; flex-direction: column; gap: 14px; padding: 18px 18px 16px;
+  border: 1px solid var(--sd-line); border-radius: 14px; background: var(--sd-ticks), linear-gradient(180deg, rgba(18, 18, 24, 0.92), rgba(6, 6, 9, 0.96));
+  box-shadow: 0 30px 80px -40px rgba(227, 72, 44, 0.35);
+}
+.skychaser .sd-book__sumhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.skychaser .sd-book__sumhead .sd-eyebrow { margin: 0; }
+.skychaser .sd-book__credits { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px 6px 12px; border: 1px solid var(--sd-line-hi); border-radius: 999px; background: rgba(255, 255, 255, 0.03); color: var(--sd-ink-2); font: 500 12px var(--sd-mono); cursor: pointer; }
+.skychaser .sd-book__credits b { color: #fff; font-weight: 700; }
+.skychaser .sd-book__credits span { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--sd-hal); color: #fff; font: 700 12px/1 var(--sd-sans); }
+.skychaser .sd-book__credits:hover { border-color: rgba(255, 255, 255, 0.5); color: #fff; }
+.skychaser .sd-book__rows { display: flex; flex-direction: column; margin: 0; }
+.skychaser .sd-book__rows > div { display: grid; grid-template-columns: 64px 1fr; align-items: baseline; gap: 12px; padding: 10px 0; border-top: 1px solid var(--sd-line); }
+.skychaser .sd-book__rows dt { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-book__rows dd { margin: 0; display: flex; flex-direction: column; gap: 2px; font: 600 15px var(--sd-mono); font-variant-numeric: tabular-nums; color: #fff; }
+.skychaser .sd-book__rows dd small { font: 500 11px var(--sd-mono); color: var(--sd-ink-3); }
+.skychaser .sd-book__editions { display: flex; flex-direction: column; gap: 8px; }
+.skychaser .sd-book__editions > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.skychaser .sd-book__editions button { padding: 7px 11px; border: 1px solid var(--sd-line-hi); border-radius: 999px; background: none; color: var(--sd-ink-2); font: 600 11px var(--sd-spaced); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.skychaser .sd-book__editions button span { color: var(--sd-ink-3); }
+.skychaser .sd-book__editions button[aria-checked='true'] { border-color: var(--sd-rarity-epic); color: #fff; background: color-mix(in srgb, var(--sd-rarity-epic) 18%, transparent); }
+.skychaser .sd-book__total { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 12px; padding: 14px 16px; border: 1px solid var(--sd-line-hi); border-radius: 10px; background: rgba(0, 0, 0, 0.35); }
+.skychaser .sd-book__total strong { grid-row: span 2; align-self: center; font: 700 20px var(--sd-mono); font-variant-numeric: tabular-nums; color: #fff; }
+.skychaser .sd-book__total > span:last-child { font: 500 11.5px var(--sd-mono); color: var(--sd-ink-3); }
+.skychaser .sd-book__sum .sd-btn--primary { min-height: 52px; }
+.skychaser .sd-book__sum .sd-caption { padding-top: 0; }
+.skychaser .sd-book__note { margin: 0; font: 500 12.5px/1.5 var(--sd-mono); color: var(--sd-hal-hi); }
+.skychaser .sd-book__back { align-self: flex-start; padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
+.skychaser .sd-book__back:hover { color: #fff; }
+
+/* Adding credits: three packs, then the same pay panel as a capsule. */
+.skychaser .sd-book__sheet { display: flex; flex-direction: column; gap: 14px; }
+.skychaser .sd-book__packs { display: flex; flex-direction: column; gap: 10px; }
+.skychaser .sd-book__pack {
+  position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 8px 10px; padding: 14px 16px;
+  border: 1px solid var(--sd-line-hi); border-radius: 10px; background: rgba(255, 255, 255, 0.025); color: #fff; text-align: left; cursor: pointer;
+  transition: border-color var(--sd-dur-fast), background var(--sd-dur-fast);
+}
+.skychaser .sd-book__pack:hover:not(:disabled) { border-color: var(--sd-hal); background: color-mix(in srgb, var(--sd-hal) 10%, transparent); }
+.skychaser .sd-book__pack:disabled { opacity: 0.6; cursor: default; }
+.skychaser .sd-book__pack b { font: 400 30px/1 var(--sd-display); }
+.skychaser .sd-book__pack span { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-book__pack em { font: 700 16px var(--sd-mono); font-style: normal; font-variant-numeric: tabular-nums; }
+.skychaser .sd-book__pack i { position: absolute; right: 12px; top: -9px; padding: 3px 7px; border-radius: 4px; background: var(--sd-gold); color: #1c1406; font: 700 10px var(--sd-spaced); font-style: normal; letter-spacing: 0.12em; }
+
+/* Booked: the ticket. */
+.skychaser .sd-book__ticket { display: flex; flex-direction: column; gap: 10px; }
+.skychaser .sd-book__ticket .sd-eyebrow { margin: 0; color: var(--sd-gold); }
+.skychaser .sd-book__ticket-time { font: 400 clamp(34px, 3vw, 44px)/1 var(--sd-display); letter-spacing: 0.01em; color: #fff; }
+.skychaser .sd-book__ticket-day { font: 500 13px var(--sd-mono); color: var(--sd-ink-2); }
+.skychaser .sd-book__ticket-target { position: relative; display: flex; align-items: flex-end; aspect-ratio: 16 / 9; margin: 6px 0 4px; padding: 12px; overflow: hidden; border: 1px solid var(--sd-line); border-radius: 10px; background: var(--sd-ticks), #07070a; font: 400 20px/1 var(--sd-display); text-transform: uppercase; color: #fff; }
+.skychaser .sd-book__ticket-target img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+.skychaser .sd-book__ticket-target::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.8)); }
+.skychaser .sd-book__ticket-target .sd-book__star { top: 40%; }
+.skychaser .sd-book__ticket .sd-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; text-decoration: none; }
+
+/* 04 The holder's sessions. */
+.skychaser .sd-book__mine { margin-top: 40px; }
+.skychaser .sd-book__mine ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.skychaser .sd-book__session { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 12px 16px; border: 1px solid var(--sd-line); border-radius: 10px; background: rgba(255, 255, 255, 0.025); }
+.skychaser .sd-book__session-when { display: flex; flex-direction: column; min-width: 64px; }
+.skychaser .sd-book__session-when b { font: 400 24px/1 var(--sd-display); color: #fff; }
+.skychaser .sd-book__session-when small, .skychaser .sd-book__session-what small { font: 500 11px var(--sd-mono); color: var(--sd-ink-3); }
+.skychaser .sd-book__session-what { display: flex; flex-direction: column; gap: 2px; font: 600 14px var(--sd-sans); color: var(--sd-ink); }
+.skychaser .sd-book__cancel { padding: 8px 14px; border: 1px solid var(--sd-line-hi); border-radius: 999px; background: none; color: var(--sd-ink-2); font: 600 11px var(--sd-spaced); letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
+.skychaser .sd-book__cancel:hover:not(:disabled) { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
+.skychaser .sd-book__cancel.is-sure { border-color: var(--sd-hal); color: var(--sd-hal-hi); }
+
+/* The phone's bottom bar: the chosen start, the cost, the way to the session. */
+.skychaser .sd-book__bar { display: none; }
+
+@media (max-width: 1023px) {
+  .skychaser .sd-book__hero { grid-template-columns: 1fr; gap: 20px; }
+  .skychaser .sd-book__scope { max-width: none; aspect-ratio: 16 / 9; justify-self: stretch; }
+  .skychaser .sd-book__grid { grid-template-columns: 1fr; }
+  .skychaser .sd-book__sum { position: static; }
+  .skychaser .sd-book__targets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .skychaser .sd-book { padding-top: 16px; }
+  .skychaser .sd-book__hero { margin-bottom: 28px; }
+  .skychaser .sd-book__facts { grid-template-columns: repeat(2, 1fr); gap: 12px 20px; padding: 12px 14px; }
+  .skychaser .sd-book__scope { aspect-ratio: 4 / 3; }
+  .skychaser .sd-book__step { flex-wrap: wrap; margin-top: 26px; }
+  .skychaser .sd-book__step h2 { font-size: 22px; }
+  .skychaser .sd-book__nights { -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 28px; }
+  .skychaser .sd-book__night { flex-basis: 64px; }
+  .skychaser .sd-book__slots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .skychaser .sd-book__targets { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .skychaser .sd-book__tname { font-size: 16px; }
+  .skychaser .sd-book__session { grid-template-columns: auto 1fr; }
+  .skychaser .sd-book__session .sd-book__cancel, .skychaser .sd-book__session > .sd-caption { grid-column: 2; justify-self: start; }
+  .skychaser .sd-book__bar {
+    position: fixed; left: 12px; right: 12px; bottom: calc(var(--sd-tabs-h, 62px) + 10px); z-index: 44;
+    display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 16px; border: 1px solid var(--sd-line-hi); border-radius: 12px;
+    background: var(--sd-bar-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); color: var(--sd-ink-2); text-decoration: none;
+    font: 500 13px var(--sd-mono); box-shadow: 0 20px 50px -20px #000;
+  }
+  .skychaser .sd-book__bar b { margin-left: auto; color: #fff; }
+  .skychaser .sd-book__bar-go { padding: 9px 16px; border-radius: 6px; background: linear-gradient(180deg, var(--sd-hal-hi), var(--sd-hal) 60%, #b8321f); color: #fff; font: 600 12px var(--sd-spaced); letter-spacing: 0.14em; text-transform: uppercase; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skychaser .sd-book__target img { transition: none; }
+}

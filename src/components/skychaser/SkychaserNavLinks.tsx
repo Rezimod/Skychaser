@@ -7,6 +7,7 @@ const LINKS = [
   { href: '/genesis', label: 'Genesis', match: ['/genesis', '/card', '/capsule'] },
   { href: '/vote', label: 'Vote', match: ['/vote'] },
   { href: '/node', label: 'Observatory', match: ['/node'] },
+  { href: '/book', label: 'Book', match: ['/book'] },
 ];
 
 /** The Skychaser destinations. Client-side only to mark the current page. */

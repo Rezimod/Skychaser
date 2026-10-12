@@ -49,11 +49,12 @@ const CardsGlyph = (
  */
 export default function SkychaserAccount() {
   const router = useRouter();
-  const { login, logout } = usePrivy();
+  const { login, logout, getAccessToken } = usePrivy();
   const { authenticated, ready, address } = useSkychaserHolder();
   const [menuOpen, setMenuOpen] = useState(false);
   const [cards, setCards] = useState<number | null>(null);
   const [usdc, setUsdc] = useState<number | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [topUp, setTopUp] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -65,6 +66,11 @@ export default function SkychaserAccount() {
     fetch(`/api/skychaser/holder?wallet=${address}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => live && d && setCards(d.cards))
+      .catch(() => {});
+    getAccessToken()
+      .then((bearer) => fetch('/api/skychaser/booking/mine', { headers: bearer ? { Authorization: `Bearer ${bearer}` } : {} }))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => live && d && setCredits(Number(d.balance)))
       .catch(() => {});
     fetch(RPC, {
       method: 'POST',
@@ -173,6 +179,15 @@ export default function SkychaserAccount() {
             <span className="sd-label">Wallet</span>
             <code className="sd-menu__short">{short}</code>
           </div>
+          {credits !== null && (
+            <div className="sd-menu__id sd-menu__bal">
+              <span className="sd-label">Credits</span>
+              <span className="sd-menu__usdc">
+                <i className={credits ? 'is-funded' : ''} aria-hidden="true" />
+                {credits} <small>telescope</small>
+              </span>
+            </div>
+          )}
           {usdc !== null && (
             <div className="sd-menu__id sd-menu__bal">
               <span className="sd-label">Balance</span>
@@ -218,6 +233,9 @@ export default function SkychaserAccount() {
           </Link>
           <Link role="menuitem" href="/vote" onClick={() => setMenuOpen(false)}>
             This week’s vote <span aria-hidden="true">→</span>
+          </Link>
+          <Link role="menuitem" href="/book" onClick={() => setMenuOpen(false)}>
+            Book the telescope <span aria-hidden="true">→</span>
           </Link>
           <button role="menuitem" type="button" onClick={signOut}>
             Log out <span aria-hidden="true">⎋</span>

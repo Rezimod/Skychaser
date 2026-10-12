@@ -10,6 +10,7 @@ import '../styles/skychaser-supernova.css';
 import '../styles/skychaser-type.css';
 import '../styles/skychaser-home.css';
 import '../styles/skychaser-odyssey.css';
+import '../styles/skychaser-booking.css';
 import '../styles/skychaser-mobile.css';
 import { AnalyticsBoot } from '@/components/providers/AnalyticsBoot';
 import JsonLd from '@/components/shared/JsonLd';

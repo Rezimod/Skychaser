@@ -60,6 +60,8 @@ export const skychaserConfirmRateLimit = { limit: (id: string) => makeLimit('60 
 export const skychaserOpenRateLimit = { limit: (id: string) => makeLimit('60 s', 20, 'rl:stellar:open').limit(id) };
 export const skychaserLogRateLimit = { limit: (id: string) => makeLimit('60 s', 60, 'rl:stellar:log').limit(id) };
 export const skychaserVoteRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:vote').limit(id) };
+// A booking is one statement; ten a minute lets a holder change their mind, not paper the board.
+export const skychaserBookRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:book').limit(id) };
 
 // Daily ceilings (24h sliding) — bound the worst-case AI cost / token
 // issuance per user even if the per-minute / per-hour limits are saturated.
