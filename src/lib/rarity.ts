@@ -19,7 +19,7 @@ export type RarityInfo = {
   rarity: Rarity;
   /** 0 for common, rising with scarcity — for sorting a Collection. */
   rank: number;
-  /** Hex on the cool-to-hot ramp, for the plate's edge, the chip and the drawn plate. */
+  /** Hex on the collector's ramp — silver, sapphire, amethyst, gold — for the plate's edge, the chip and the drawn plate. */
   color: string;
   label: string;
   /** A single character, never an emoji. */
@@ -27,9 +27,9 @@ export type RarityInfo = {
 };
 
 const RARITY_MAP: Record<Rarity, Omit<RarityInfo, 'rarity' | 'rank'>> = {
-  common: { color: '#4C8DFF', label: 'Common', glyph: '◇' },
-  rare: { color: '#A66BFF', label: 'Rare', glyph: '◈' },
-  epic: { color: '#E3482C', label: 'Epic', glyph: '◆' },
+  common: { color: '#B9C2CD', label: 'Common', glyph: '◇' },
+  rare: { color: '#4A9BFF', label: 'Rare', glyph: '◈' },
+  epic: { color: '#B06BFF', label: 'Epic', glyph: '◆' },
   legendary: { color: '#D8B66F', label: 'Legendary', glyph: '✦' },
 };
 

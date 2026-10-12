@@ -31,10 +31,10 @@
   color: var(--t-ink); font: 700 max(10px, 4.9cqw)/1 var(--font-oswald), sans-serif; letter-spacing: .14em; text-transform: uppercase; text-shadow: 0 .25cqw 0 color-mix(in srgb, var(--t-hi) 55%, transparent);
   box-shadow: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #0000004d, 0 0 0 1px var(--t-edge), 0 .8cqw 2cqw -.6cqw #000, 0 0 4cqw -.6cqw color-mix(in srgb, var(--rarity) 80%, transparent);
 }
-/* Each rarity is a metal of its own colour, lettered in that colour's darkest shade so the name reads, not white. */
-.sdc-card[data-rarity='common'] .sdc-tier { --t-hi: #eaf2ff; --t-up: #b3cfff; --t-mid: #7eadff; --t-lo: #4c8dff; --t-edge: #1d4596; --t-ink: #010a1e; }
-.sdc-card[data-rarity='rare'] .sdc-tier { --t-hi: #f4ebff; --t-up: #d6b8ff; --t-mid: #b98cff; --t-lo: #9159ee; --t-edge: #4a2394; --t-ink: #10022a; }
-.sdc-card[data-rarity='epic'] .sdc-tier { --t-hi: #ffe3d9; --t-up: #ffab90; --t-mid: #f36e4d; --t-lo: #d1452a; --t-edge: #7d200f; --t-ink: #210300; }
+/* Each rarity is a metal of its own colour — silver, sapphire, amethyst, gold — lettered in that colour's darkest shade so the name reads, not white. */
+.sdc-card[data-rarity='common'] .sdc-tier { --t-hi: #f6f8fa; --t-up: #dde3ea; --t-mid: #b9c2cd; --t-lo: #8793a1; --t-edge: #39414b; --t-ink: #0a0e14; }
+.sdc-card[data-rarity='rare'] .sdc-tier { --t-hi: #e9f2ff; --t-up: #b4d3ff; --t-mid: #74b0ff; --t-lo: #3a7fe6; --t-edge: #173f8c; --t-ink: #03112b; }
+.sdc-card[data-rarity='epic'] .sdc-tier { --t-hi: #f5ecff; --t-up: #dbbdff; --t-mid: #bc8fff; --t-lo: #8d52e8; --t-edge: #45208c; --t-ink: #10022a; }
 /* Legendary: polished gold, a bright band through the middle and a second catch of light low down. */
 .sdc-card[data-rarity='legendary'] .sdc-tier { --t-hi: #fff7d6; --t-up: #f9dd85; --t-mid: #ecbf4f; --t-lo: #b9861f; --t-edge: #6e4a08; --t-ink: #1c1000; }
 /* The gloss: a wet highlight on the upper half, and a glint that crosses now and then. */

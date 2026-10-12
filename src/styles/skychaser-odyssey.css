@@ -154,6 +154,7 @@
 .skychaser .sd-filter__chip[aria-pressed='true'] i { background: #fff; box-shadow: 0 0 8px #fff; }
 .skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { color: #0b0b0d; background: #f2f2f0; box-shadow: 0 0 22px -6px rgba(255, 255, 255, 0.6); }
 .skychaser .sd-filter__chip[data-rarity='legendary'][aria-pressed='true'] { color: #1c1406; }
+.skychaser .sd-filter__chip[data-rarity='common'][aria-pressed='true'] { color: #0a0e14; }
 .skychaser .sd-filter__count { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sd-hal); }
 
 /* One row on a wide screen: the title, then the search and the chips. */

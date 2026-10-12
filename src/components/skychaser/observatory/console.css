@@ -17,9 +17,9 @@
   --o-hal-glow: rgba(227, 72, 44, 0.55);
   --o-line: rgba(255, 255, 255, 0.09);
   --o-line-hi: rgba(255, 255, 255, 0.22);
-  --o-common: #4c8dff;
-  --o-rare: #a66bff;
-  --o-epic: #e3482c;
+  --o-common: #b9c2cd;
+  --o-rare: #4a9bff;
+  --o-epic: #b06bff;
   --o-legendary: #d8b66f;
   --o-cond: var(--font-oswald), var(--font-geist), sans-serif;
   --o-title: var(--font-anton), Impact, sans-serif;

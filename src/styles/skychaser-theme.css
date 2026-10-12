@@ -54,9 +54,9 @@
   --sd-teal: var(--sd-gold);
 
   /* Rarity — blue, violet, the login red, gold */
-  --sd-rarity-common: #4c8dff;
-  --sd-rarity-rare: #a66bff;
-  --sd-rarity-epic: #e3482c;
+  --sd-rarity-common: #b9c2cd;
+  --sd-rarity-rare: #4a9bff;
+  --sd-rarity-epic: #b06bff;
   --sd-rarity-legendary: #d8b66f;
   --rarity: var(--sd-rarity-common);
 
