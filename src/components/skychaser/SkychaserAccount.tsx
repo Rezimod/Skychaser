@@ -11,35 +11,52 @@ const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 const USDC_MINT = DEVNET ? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU' : 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_HELIUS_RPC_URL || (DEVNET ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com');
 
-/** The holder's helmet, drawn in the round: a white shell lit from above, a gold visor with the Earth in it. */
-const Helmet = () => (
-  <svg className="sd-helmet" viewBox="0 0 64 64" aria-hidden="true">
-    <defs>
-      <radialGradient id="sdh-sky" cx=".5" cy=".35" r=".75"><stop offset="0" stopColor="#1b2440" /><stop offset="1" stopColor="#05060b" /></radialGradient>
-      <radialGradient id="sdh-shell" cx=".36" cy=".26" r=".85"><stop offset="0" stopColor="#ffffff" /><stop offset=".45" stopColor="#e3e6ec" /><stop offset=".8" stopColor="#9aa2b1" /><stop offset="1" stopColor="#5d6574" /></radialGradient>
-      <linearGradient id="sdh-visor" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stopColor="#ffe3a0" /><stop offset=".28" stopColor="#e2a443" /><stop offset=".62" stopColor="#7a4410" /><stop offset="1" stopColor="#1e1006" /></linearGradient>
-      <radialGradient id="sdh-earth" cx=".4" cy=".35" r=".7"><stop offset="0" stopColor="#9fd4ff" /><stop offset=".55" stopColor="#2f7fd6" /><stop offset="1" stopColor="#123a7a" /></radialGradient>
-      <linearGradient id="sdh-ring" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#c9ced8" /><stop offset="1" stopColor="#4b525f" /></linearGradient>
-      <clipPath id="sdh-vclip"><ellipse cx="32" cy="33" rx="15.5" ry="12.5" /></clipPath>
-    </defs>
-    <circle cx="32" cy="32" r="32" fill="url(#sdh-sky)" />
-    <circle cx="13" cy="14" r=".7" fill="#fff" opacity=".8" /><circle cx="52" cy="11" r=".5" fill="#fff" opacity=".7" /><circle cx="55" cy="44" r=".6" fill="#fff" opacity=".6" />
-    <ellipse cx="32" cy="58" rx="20" ry="7" fill="url(#sdh-ring)" />
-    <ellipse cx="32" cy="55.5" rx="17" ry="3.2" fill="#2b2f37" />
-    <circle cx="32" cy="32" r="22" fill="url(#sdh-shell)" />
-    <rect x="12.5" y="24" width="4" height="9" rx="2" fill="#b9c0cc" /><rect x="47.5" y="24" width="4" height="9" rx="2" fill="#8e96a4" />
-    <circle cx="20.5" cy="15.5" r="2.2" fill="#fff6d8" /><circle cx="20.5" cy="15.5" r="1.1" fill="#ffd36b" />
-    <ellipse cx="32" cy="33" rx="17.2" ry="14.2" fill="#6c7482" />
-    <ellipse cx="32" cy="33" rx="15.5" ry="12.5" fill="url(#sdh-visor)" />
-    <g clipPath="url(#sdh-vclip)">
-      <circle cx="40" cy="44" r="10" fill="url(#sdh-earth)" opacity=".85" />
-      <path d="M17 30 C 22 22, 30 20, 38 21" stroke="#fffbe8" strokeWidth="2.4" fill="none" strokeLinecap="round" opacity=".85" />
-      <path d="M19 35 C 22 30, 26 28, 30 27.5" stroke="#fff" strokeWidth="1.1" fill="none" strokeLinecap="round" opacity=".55" />
-      <ellipse cx="32" cy="33" rx="15.5" ry="12.5" fill="none" stroke="#000" strokeOpacity=".45" strokeWidth="3" />
-    </g>
-    <ellipse cx="25" cy="15" rx="8" ry="3.4" fill="#fff" opacity=".55" transform="rotate(-22 25 15)" />
-  </svg>
-);
+/** Ember, gold, ice, blue, violet, rose: the worlds a holder's address can draw. */
+const HUES = [16, 36, 192, 218, 266, 336];
+
+/** A hue from the holder's address, so every holder carries their own world. */
+function hueOf(address: string | null | undefined): number {
+  let h = 0;
+  for (const c of address ?? '') h = (h * 31 + c.charCodeAt(0)) % 997;
+  return HUES[h % HUES.length];
+}
+
+/**
+ * The holder's mark: an obsidian disc in a gold rim, with the holder's own
+ * world in it, lit from the upper left, a thin orbit, and the brand's red star.
+ */
+const HolderOrb = ({ address }: { address: string | null | undefined }) => {
+  const h = hueOf(address);
+  return (
+    <svg className="sd-orb" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="sdo-rim" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f7e2a8" /><stop offset=".45" stopColor="#b98a3e" /><stop offset=".7" stopColor="#5c3f17" /><stop offset="1" stopColor="#e9c77a" />
+        </linearGradient>
+        <radialGradient id="sdo-disc" cx=".5" cy=".4" r=".7"><stop offset="0" stopColor="#15131c" /><stop offset="1" stopColor="#050407" /></radialGradient>
+        <radialGradient id="sdo-world" cx=".34" cy=".3" r=".85">
+          <stop offset="0" stopColor={`hsl(${h} 70% 84%)`} />
+          <stop offset=".38" stopColor={`hsl(${h} 52% 54%)`} />
+          <stop offset=".78" stopColor={`hsl(${(h + 330) % 360} 50% 22%)`} />
+          <stop offset="1" stopColor="#07060a" />
+        </radialGradient>
+        <radialGradient id="sdo-glow" cx=".5" cy=".5" r=".5"><stop offset=".55" stopColor={`hsl(${h} 60% 58%)`} stopOpacity=".28" /><stop offset="1" stopColor={`hsl(${h} 60% 58%)`} stopOpacity="0" /></radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="32" fill="url(#sdo-rim)" />
+      <circle cx="32" cy="32" r="30.4" fill="url(#sdo-disc)" />
+      <circle cx="12" cy="20" r=".6" fill="#fff" opacity=".7" /><circle cx="50" cy="48" r=".5" fill="#fff" opacity=".5" /><circle cx="17" cy="47" r=".45" fill="#fff" opacity=".45" />
+      <circle cx="32" cy="33" r="21" fill="url(#sdo-glow)" />
+      <g transform="rotate(-20 32 33)">
+        <ellipse cx="32" cy="33" rx="24" ry="6.4" fill="none" stroke="#e9c77a" strokeOpacity=".4" strokeWidth="1" />
+      </g>
+      <circle cx="32" cy="33" r="15" fill="url(#sdo-world)" />
+      <g transform="rotate(-20 32 33)">
+        <path d="M 8 33 A 24 6.4 0 0 0 56 33" fill="none" stroke="#f1d58f" strokeOpacity=".9" strokeWidth="1.2" />
+      </g>
+      <path transform="translate(48 14) scale(3.6)" d="M0 -1C0.09 -0.27 0.27 -0.09 1 0C0.27 0.09 0.09 0.27 0 1C-0.09 0.27 -0.27 0.09 -1 0C-0.27 -0.09 -0.09 -0.27 0 -1Z" fill="#E04A2F" />
+    </svg>
+  );
+};
 
 /** Two cards, one over the other. */
 const CardsGlyph = (
@@ -50,7 +67,7 @@ const CardsGlyph = (
 );
 
 /**
- * The account corner: how many cards the holder has, and the holder's helmet,
+ * The account corner: how many cards the holder has, and the holder's mark,
  * which opens the profile: cards, wallet and its USDC balance.
  */
 export default function SkychaserAccount() {
@@ -158,7 +175,7 @@ export default function SkychaserAccount() {
         aria-label="Account"
         onClick={() => setMenuOpen((v) => !v)}
       >
-        <Helmet />
+        <HolderOrb address={address} />
       </button>
 
       {menuOpen && (

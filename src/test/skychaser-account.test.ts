@@ -25,7 +25,7 @@ it('keeps balances out of the header and shows USDC in the profile, behind a hel
   await act(async () => {});
   expect(host.querySelector('.sd-acct')?.textContent).toContain('24');
   expect(host.querySelector('.sd-acct')?.textContent).not.toMatch(/SOL|USDC/);
-  expect(host.querySelector('.sd-avatar .sd-helmet')).not.toBeNull();
+  expect(host.querySelector('.sd-avatar .sd-orb')).not.toBeNull();
   await act(async () => (host.querySelector('.sd-avatar') as HTMLButtonElement).click());
   expect(host.querySelector('.sd-menu__usdc')?.textContent).toContain('12.50');
   expect(host.querySelector('.sd-menu__usdc')?.textContent).toContain('USDC');

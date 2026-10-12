@@ -683,8 +683,8 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 }
 .sd-avatar:hover, .sd-avatar[aria-expanded='true'] { transform: scale(1.05); box-shadow: inset 0 0 0 1px var(--sd-gold), 0 0 0 3px rgba(226, 184, 106, 0.16); }
 .sd-avatar { display: grid; place-items: center; }
-.sd-avatar .sd-helmet { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 3px #0008); }
-/* Narrower: a smaller count beside the helmet. */
+.sd-avatar .sd-orb { display: block; width: 100%; height: 100%; filter: drop-shadow(0 2px 4px #000a); }
+/* Narrower: a smaller count beside the mark. */
 @media (max-width: 1023px) {
   .sd-acct { height: 36px; }
   .sd-acct__seg { padding: 0 12px; gap: 7px; }
