@@ -199,3 +199,24 @@
 @media (prefers-reduced-motion: reduce) {
   .skychaser .sd-hero3::after { animation: none; }
 }
+
+/* The card page fits the first screen on a laptop: card, title, perk, price and the pay panel together. */
+@media (min-width: 960px) {
+  .skychaser .sd-top:has(.sd-cardhero) { padding-top: 14px; }
+  .skychaser .sd-top:has(.sd-cardhero) .sd-crumb { margin-bottom: 8px; }
+  .skychaser .sd-cardhero { align-items: start; gap: 56px; }
+  .skychaser .sd-cardhero__plate { position: sticky; top: calc(var(--sd-bar-h, 76px) + 16px); padding-block: 0; }
+  .skychaser .sd-cardhero__plate .sd-cardplate { --sd-card-cap: min(380px, calc((100svh - 230px) / 1.42)); }
+  .skychaser .sd-cardhero__title { font-size: clamp(40px, 4.2vw, 60px); margin-top: 4px; }
+  .skychaser .sd-cardhero__line { margin-top: 10px; }
+  .skychaser .sd-cardhero .sd-perk { margin-top: 14px; padding-block: 10px; }
+  .skychaser .sd-cardhero .sd-facts { margin-top: 12px; padding: 10px 16px; }
+  .skychaser .sd-cardhero .sd-buy { margin-top: 14px; }
+  .skychaser .sd-cardhero .sd-pay { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+  .skychaser .sd-cardhero .sd-pay > :not(.sd-pay__total, .sd-pay__wallet) { grid-column: 1 / -1; }
+  .skychaser .sd-cardhero .sd-pay__total { grid-template-columns: 1fr; gap: 2px; padding: 10px 14px; }
+  .skychaser .sd-cardhero .sd-pay__total strong { grid-row: auto; font-size: 19px; }
+  .skychaser .sd-cardhero .sd-pay__wallet { display: flex; flex-direction: column; justify-content: center; }
+  .skychaser .sd-cardhero .sd-facts { column-gap: 22px; }
+  .skychaser .sd-cardhero .sd-facts dd { font-size: 14px; }
+}

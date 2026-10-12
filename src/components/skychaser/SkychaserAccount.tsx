@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
 
@@ -11,49 +12,25 @@ const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 const USDC_MINT = DEVNET ? '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU' : 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 const RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_HELIUS_RPC_URL || (DEVNET ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com');
 
-/** Ember, gold, ice, blue, violet, rose: the worlds a holder's address can draw. */
-const HUES = [16, 36, 192, 218, 266, 336];
-
-/** A hue from the holder's address, so every holder carries their own world. */
+/** A hue from the holder's address, so every holder has their own colour. */
 function hueOf(address: string | null | undefined): number {
   let h = 0;
-  for (const c of address ?? '') h = (h * 31 + c.charCodeAt(0)) % 997;
-  return HUES[h % HUES.length];
+  for (const c of address ?? '') h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
 }
 
-/**
- * The holder's mark: an obsidian disc in a gold rim, with the holder's own
- * world in it, lit from the upper left, a thin orbit, and the brand's red star.
- */
+/** The holder's mark: a plain disc, two tones of the holder's own colour. */
 const HolderOrb = ({ address }: { address: string | null | undefined }) => {
   const h = hueOf(address);
   return (
-    <svg className="sd-orb" viewBox="0 0 64 64" aria-hidden="true">
+    <svg className="sd-orb" viewBox="0 0 32 32" aria-hidden="true">
       <defs>
-        <linearGradient id="sdo-rim" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f7e2a8" /><stop offset=".45" stopColor="#b98a3e" /><stop offset=".7" stopColor="#5c3f17" /><stop offset="1" stopColor="#e9c77a" />
+        <linearGradient id="sdo-fill" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor={`hsl(${h} 72% 70%)`} />
+          <stop offset="1" stopColor={`hsl(${(h + 48) % 360} 62% 38%)`} />
         </linearGradient>
-        <radialGradient id="sdo-disc" cx=".5" cy=".4" r=".7"><stop offset="0" stopColor="#15131c" /><stop offset="1" stopColor="#050407" /></radialGradient>
-        <radialGradient id="sdo-world" cx=".34" cy=".3" r=".85">
-          <stop offset="0" stopColor={`hsl(${h} 70% 84%)`} />
-          <stop offset=".38" stopColor={`hsl(${h} 52% 54%)`} />
-          <stop offset=".78" stopColor={`hsl(${(h + 330) % 360} 50% 22%)`} />
-          <stop offset="1" stopColor="#07060a" />
-        </radialGradient>
-        <radialGradient id="sdo-glow" cx=".5" cy=".5" r=".5"><stop offset=".55" stopColor={`hsl(${h} 60% 58%)`} stopOpacity=".28" /><stop offset="1" stopColor={`hsl(${h} 60% 58%)`} stopOpacity="0" /></radialGradient>
       </defs>
-      <circle cx="32" cy="32" r="32" fill="url(#sdo-rim)" />
-      <circle cx="32" cy="32" r="30.4" fill="url(#sdo-disc)" />
-      <circle cx="12" cy="20" r=".6" fill="#fff" opacity=".7" /><circle cx="50" cy="48" r=".5" fill="#fff" opacity=".5" /><circle cx="17" cy="47" r=".45" fill="#fff" opacity=".45" />
-      <circle cx="32" cy="33" r="21" fill="url(#sdo-glow)" />
-      <g transform="rotate(-20 32 33)">
-        <ellipse cx="32" cy="33" rx="24" ry="6.4" fill="none" stroke="#e9c77a" strokeOpacity=".4" strokeWidth="1" />
-      </g>
-      <circle cx="32" cy="33" r="15" fill="url(#sdo-world)" />
-      <g transform="rotate(-20 32 33)">
-        <path d="M 8 33 A 24 6.4 0 0 0 56 33" fill="none" stroke="#f1d58f" strokeOpacity=".9" strokeWidth="1.2" />
-      </g>
-      <path transform="translate(48 14) scale(3.6)" d="M0 -1C0.09 -0.27 0.27 -0.09 1 0C0.27 0.09 0.09 0.27 0 1C-0.09 0.27 -0.27 0.09 -1 0C-0.27 -0.09 -0.09 -0.27 0 -1Z" fill="#E04A2F" />
+      <circle cx="16" cy="16" r="16" fill="url(#sdo-fill)" />
     </svg>
   );
 };
@@ -78,6 +55,7 @@ export default function SkychaserAccount() {
   const [cards, setCards] = useState<number | null>(null);
   const [usdc, setUsdc] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [topUp, setTopUp] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -193,11 +171,8 @@ export default function SkychaserAccount() {
           <p className="sd-menu__note">Every card you own is a numbered edition, yours alone.</p>
           <div className="sd-menu__id">
             <span className="sd-label">Wallet</span>
-            <button type="button" className="sd-menu__copy" onClick={copy} aria-label="Copy wallet address">
-              {copied ? 'Copied' : 'Copy'}
-            </button>
+            <code className="sd-menu__short">{short}</code>
           </div>
-          <p className="sd-menu__addr">{address ?? 'No Solana wallet yet'}</p>
           {usdc !== null && (
             <div className="sd-menu__id sd-menu__bal">
               <span className="sd-label">Balance</span>
@@ -205,6 +180,36 @@ export default function SkychaserAccount() {
                 <i className={usdc ? 'is-funded' : ''} aria-hidden="true" />
                 {usdc.toFixed(2)} <small>USDC</small>
               </span>
+            </div>
+          )}
+          {address && (
+            <div className="sd-menu__topup">
+              {topUp ? (
+                <>
+                  <div className="sd-menu__qr">
+                    <QRCodeSVG value={`solana:${address}`} size={148} bgColor="#ffffff" fgColor="#0b0810" level="M" />
+                  </div>
+                  <p className="sd-menu__addr">{address}</p>
+                  <p className="sd-menu__note">Send SOL on Solana{DEVNET ? ' devnet' : ''} to this address from an exchange or another wallet.</p>
+                  <div className="sd-menu__pair">
+                    <button type="button" className="sd-menu__btn" onClick={copy}>
+                      {copied ? 'Copied' : 'Copy address'}
+                    </button>
+                    <button type="button" className="sd-menu__btn sd-menu__btn--quiet" onClick={() => setTopUp(false)}>
+                      Done
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="sd-menu__pair">
+                  <button type="button" className="sd-menu__btn" onClick={() => setTopUp(true)}>
+                    Top up
+                  </button>
+                  <button type="button" className="sd-menu__btn sd-menu__btn--quiet" onClick={copy}>
+                    {copied ? 'Copied' : 'Copy address'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
           <div className="sd-menu__rule" />

@@ -13,7 +13,7 @@ import SkychaserAccount from '@/components/skychaser/SkychaserAccount';
 
 afterEach(() => vi.unstubAllGlobals());
 
-it('keeps balances out of the header and shows USDC in the profile, behind a helmet', async () => {
+it('keeps balances out of the header and shows USDC in the profile, behind the holder’s mark', async () => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
     ok: true,
     json: async () => (String(url).startsWith('/api/skychaser/holder') ? { cards: 24 } : { result: { value: [{ account: { data: { parsed: { info: { tokenAmount: { uiAmount: 12.5 } } } } } }] } }),

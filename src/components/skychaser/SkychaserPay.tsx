@@ -262,10 +262,19 @@ export default function SkychaserPay({
         </>
       ) : (
         <>
-          <button type="button" className="sd-btn sd-btn--primary sd-btn--block" onClick={connect} disabled={!session}>
+          <div className="sd-pay__wallet">
+            <div className="sd-pay__wallet-row">
+              <span className="sd-pay__wallet-plus" aria-hidden>{WalletGlyph}</span>
+              <span className="sd-pay__wallet-name">
+                No wallet connected
+                <code>Phantom · Solflare · Backpack</code>
+              </span>
+            </div>
+          </div>
+          <button type="button" className="sd-btn sd-btn--primary sd-btn--block sd-pay__connect" onClick={connect} disabled={!session}>
+            {WalletGlyph}
             Connect wallet
           </button>
-          <p className="sd-pay__hint">Phantom, Solflare, Backpack or any Solana wallet.</p>
           {embedded && (
             <button type="button" className="sd-pay__alt" onClick={() => choose(embedded.address)}>
               Pay from your Skychaser wallet instead
@@ -305,6 +314,15 @@ export default function SkychaserPay({
     </div>
   );
 }
+
+/** A wallet: a folded case with its clasp. */
+const WalletGlyph = (
+  <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 6.5A2.5 2.5 0 0 1 5.5 4H15v2.5" />
+    <rect x="3" y="6.5" width="14" height="10" rx="2" />
+    <path d="M17 10h-3a1.5 1.5 0 0 0 0 3h3" />
+  </svg>
+);
 
 const isEmbedded = (w: { standardWallet: { name: string } }) => /privy/i.test(w.standardWallet.name);
 const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
