@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Book the telescope',
-  description: 'Half an hour or an hour on Live Telescope V1 in Tbilisi, from November. Pick a night, a start and a target; pay in credits.',
+  description: 'Half an hour or an hour on Live Telescope V1, from November. Pick a night, a start and a target; pay in credits.',
 };
 
 /** The booking board: the sky is computed here, the taken half-hours read from the database, the rest happens in the console. */
