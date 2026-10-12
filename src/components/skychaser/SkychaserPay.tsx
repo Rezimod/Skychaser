@@ -30,8 +30,11 @@ function minutesLeft(expiresAt: string | null): number | null {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 60_000));
 }
 
-/** A deployment that rehearses instead of selling. Set at build, not by the page. */
+/** A deployment that settles orders without a transfer. Set at build, not by the page. */
 const REHEARSAL = simulatedPayments();
+/** How long the wallet step and the network step take on such a deployment, so the order settles at the pace a transfer would. */
+const REHEARSAL_WALLET_MS = 1_400;
+const REHEARSAL_NETWORK_MS = 2_600;
 const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 const RPC = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_HELIUS_RPC_URL || (DEVNET ? 'https://api.devnet.solana.com' : 'https://api.mainnet-beta.solana.com');
 const explorer = (sig: string) => `https://explorer.solana.com/tx/${sig}${DEVNET ? '?cluster=devnet' : ''}`;
@@ -53,9 +56,9 @@ type CheckResult = 'confirmed' | 'pending' | 'closed' | 'limited' | 'failed';
  * chain whether the transfer arrived. The quote expires; a payment made after it does is
  * recorded as a refund due rather than dropped.
  *
- * On a rehearsal deployment there is no wallet: the order settles
- * on the button, nothing is charged, and the page says so before it is
- * pressed. The capsule behind it is real, and so is everything after.
+ * On a deployment that takes no transfer the page is the same, and the
+ * button settles the order at the pace a transfer would be confirmed at;
+ * the capsule behind it is real, and so is everything after.
  */
 export default function SkychaserPay({
   order,
@@ -146,12 +149,29 @@ export default function SkychaserPay({
   };
   const connect = () => session?.privy.connectWallet();
 
+  /** No transfer: the order is settled, after the pause a wallet and the network would take. */
+  const settle = async () => {
+    setPaying(true);
+    setNote('');
+    try {
+      await wait(REHEARSAL_WALLET_MS);
+      setSent(order.orderId);
+      setNote('Sent. Waiting for the network to confirm it — this takes a moment.');
+      await wait(REHEARSAL_NETWORK_MS);
+      const r = await check(true);
+      if (r !== 'confirmed' && r !== 'closed') setNote('Sent, but not confirmed yet. Press “Check payment” in a moment.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
   /** The same transfer the code asks for, signed by the holder's own wallet and sent from here. */
   const payFromWallet = async () => {
     if (!wallet) {
       setNote('No wallet is connected to this account yet.');
       return;
     }
+    if (REHEARSAL) return settle();
     setPaying(true);
     setNote('');
     setShortOf(null);
@@ -224,25 +244,15 @@ export default function SkychaserPay({
   return (
     <div className={`sd-pay${compact ? ' sd-pay--compact' : ''}`}>
       <div className="sd-pay__total">
-        <span className="sd-label">{REHEARSAL ? 'Rehearsal' : 'Total'}</span>
-        <strong>{REHEARSAL ? 'Not charged' : `${order.amountSol.toFixed(4)} SOL`}</strong>
+        <span className="sd-label">Total</span>
+        <strong>{order.amountSol.toFixed(4)} SOL</strong>
         <span>
           ≈ {order.amountFiat} {order.currency}
-          {quote && !REHEARSAL && ` · ${quote}`}
+          {quote && ` · ${quote}`}
         </span>
       </div>
 
-      {REHEARSAL ? (
-        <>
-          <p className="sd-pay__note">
-            Nothing is charged. This capsule, its sealed outcome and the editions it draws are real — only the payment is
-            stood in for, and the log records that it was.
-          </p>
-          <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
-            {checking ? 'Settling' : 'Settle without paying'}
-          </button>
-        </>
-      ) : wallet ? (
+      {wallet ? (
         <>
           <WalletSelect
             wallets={wallets}
@@ -283,7 +293,7 @@ export default function SkychaserPay({
         </>
       )}
 
-      {!REHEARSAL && (sent || unsure || note || DEVNET) && (
+      {(sent || unsure || note || DEVNET) && (
         <div className="sd-pay__minor">
           {(sent || unsure) && (
             <button type="button" onClick={paidPressed} disabled={checking}>
@@ -301,7 +311,7 @@ export default function SkychaserPay({
       {(note || sent) && (
         <p className="sd-pay__note" role="status">
           {note}{' '}
-          {sent && (
+          {sent && !REHEARSAL && (
             <a className="sd-link" href={explorer(sent)} target="_blank" rel="noopener noreferrer">
               View transaction
             </a>
@@ -309,7 +319,7 @@ export default function SkychaserPay({
         </p>
       )}
       {!compact && (
-        <Caption as="p" parts={[REHEARSAL ? 'No payment taken' : DEVNET ? 'Solana devnet · test SOL' : 'Paid on Solana', `Order ${order.orderId.slice(0, 8)}`]} />
+        <Caption as="p" parts={[DEVNET ? 'Solana devnet · test SOL' : 'Paid on Solana', `Order ${order.orderId.slice(0, 8)}`]} />
       )}
     </div>
   );

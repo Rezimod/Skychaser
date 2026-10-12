@@ -257,6 +257,8 @@
 
 /* ── Page furniture ───────────────────────────────────────────── */
 .sd-page { padding-block: 48px 8px; }
+/* The home hero sits straight under the bar: no strip of sky between them. */
+.sd-page:has(> .sd-hero3) { padding-top: 0; }
 .sd-page__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
 .sd-page__title { font-family: var(--sd-sans); font-weight: 600; font-size: clamp(32px, 6vw, 52px); line-height: 1.05; letter-spacing: -0.025em; margin: 0; }
 .sd-lede { color: var(--sd-ink-2); max-width: 62ch; margin: 14px 0 0; font-size: 17px; }

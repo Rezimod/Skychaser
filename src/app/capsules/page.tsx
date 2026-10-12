@@ -11,7 +11,6 @@ import { RARITIES, type Rarity } from '@/lib/rarity';
 import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES } from '@/lib/skychaser/economics';
 import { TIERS, formatOdds, tierByKey } from '@/lib/skychaser/tiers';
 import { capsulesOnSale, goneRarities, heldDraws, readSupply, type SupplyRow } from '@/lib/skychaser/capsule';
-import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,11 +77,7 @@ export default async function CapsulesPage() {
               One card, committed by hash before the sale. Your nonce seals the draw; anyone can recompute it after
               the card is out.
             </p>
-            {simulatedPayments() ? (
-              <p className="sd-strip-note">Rehearsal · no payment is taken · every sale is marked in the log</p>
-            ) : (
-              process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' && <p className="sd-strip-note">Solana devnet · paid in test SOL</p>
-            )}
+            {process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' && <p className="sd-strip-note">Solana devnet · paid in test SOL</p>}
           </div>
         </div>
       </section>

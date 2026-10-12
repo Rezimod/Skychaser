@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 import Link from 'next/link';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
@@ -30,7 +29,6 @@ const SkychaserPay = dynamic(() => import('./SkychaserPay'), { ssr: false });
 const SkychaserReveal = dynamic(() => import('./SkychaserReveal'), { ssr: false });
 
 /** A deployment that rehearses instead of selling. Set at build, not by the page. */
-const REHEARSAL = simulatedPayments();
 const STEPS = ['Buy', 'Pay', 'Open'] as const;
 
 /**
@@ -133,23 +131,7 @@ export default function SkychaserBuyCapsule({
       }
       setReceipt(got);
       keepReceipt(capsuleId, got);
-      const next = data as SkychaserOrder;
-      if (!REHEARSAL) {
-        setOrder(next);
-        return;
-      }
-      // A rehearsal has no wallet step: settle, then open, in the same press.
-      setBusy('Settling');
-      const settled = await post('/api/skychaser/orders/confirm', { orderId: next.orderId });
-      if (!settled.data.confirmed) {
-        setOrder(next);
-        setError(settled.data.error ?? 'The order could not be settled.');
-        return;
-      }
-      setPaid(true);
-      setLaunchNow(true);
-      setBusy('');
-      await open();
+      setOrder(data as SkychaserOrder);
     } catch {
       setError('The capsule could not be reserved. Try again in a moment.');
     } finally {
@@ -219,7 +201,7 @@ export default function SkychaserBuyCapsule({
 
       {!order && !paid && (
         <p className="sd-buyflow__note">
-          {cardsPerCapsule === 1 ? 'One card' : `${cardsPerCapsule} cards`} · {REHEARSAL ? 'rehearsal — nothing is charged' : 'ready to ignite the moment it is paid'}
+          {cardsPerCapsule === 1 ? 'One card' : `${cardsPerCapsule} cards`} · ready to ignite the moment it is paid
         </p>
       )}
       {error && (

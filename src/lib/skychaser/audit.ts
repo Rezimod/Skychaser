@@ -25,6 +25,7 @@
 import bs58 from 'bs58';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { SoldOutError, commitmentOf, planPulls, purchaseHash, verifyCapsule, type SupplyEntry } from './randomness';
+import { simulatedPayments } from './rehearsal';
 
 export type CapsuleEvent = 'listed' | 'purchased' | 'opened' | 'voided' | 'released' | 'refund_due' | 'card_sold';
 
@@ -262,7 +263,8 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
     const revealed = (secret: string | null | undefined) => Boolean(secret) && commitmentOf(secret as string) === committed;
 
     const expiresAt = time((purchased?.outcome as PurchasedOutcome)?.expiresAt);
-    if ((purchased?.outcome as PurchasedOutcome)?.simulated) {
+    // The deployment that settles without a transfer does not annotate its own sales; one that sells for real does.
+    if ((purchased?.outcome as PurchasedOutcome)?.simulated && !simulatedPayments()) {
       note('simulated_payment', `bought on a deployment that takes no payment: nothing was paid for this capsule`);
     }
     if (purchased && !opened && !voided && !released) {
