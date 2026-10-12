@@ -167,7 +167,7 @@ export default async function CardPage({ params }: { params: Promise<{ designati
 
       {photo && (
         <section className="sd-container sd-chapter-block">
-          <Chapter n="01" title="The real thing" aside={photo.kind === 'impression' ? 'Artist’s impression' : 'Photograph'} />
+          <Chapter title="The real thing" aside={photo.kind === 'impression' ? 'Artist’s impression' : 'Photograph'} />
           <figure className="sd-realphoto">
             <img src={photo.file} alt={photo.kind === 'impression' ? `An artist’s impression of ${seed.name}` : `${seed.name}, photographed by ${photo.source}`} loading="lazy" decoding="async" />
             <figcaption className="sd-caption">
@@ -178,7 +178,7 @@ export default async function CardPage({ params }: { params: Promise<{ designati
       )}
 
       <section className="sd-container sd-chapter-block">
-        <Chapter n={photo ? '02' : '01'} title="Record" aside={seed.catalogRef} />
+        <Chapter title="Record" aside={seed.catalogRef} />
         <DataRow
           layout="stacked"
           items={[

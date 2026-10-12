@@ -16,7 +16,7 @@ export default function TermsPage() {
         <p className="sd-label">Last updated 23 September 2026</p>
 
         <section className="sd-chapter-block">
-          <Chapter n="01" title="What Skychaser is" />
+          <Chapter title="What Skychaser is" />
           <p>
             Skychaser is a set of collectible cards, each a numbered edition of a real object or a dated event in the sky. It is run
             by Astroman (astroman.ge). The Live Telescope, the telescope that will photograph the night&rsquo;s card, sees first light in November 2026: until it
@@ -25,7 +25,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="02" title="Your account" />
+          <Chapter title="Your account" />
           <p>
             You log in through Privy with email or a wallet. Your cards are held against the Solana wallet on that account.
             Keep the account to yourself; whoever controls it controls the cards.
@@ -33,7 +33,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="03" title="Capsules and cards" />
+          <Chapter title="Capsules and cards" />
           <p>
             A capsule holds one card, drawn under the published odds and committed by hash before it goes on sale. The public{' '}
             <Link href="/capsules/log">log</Link> records every listing, sale and opening, and anyone can recompute a draw after
@@ -43,7 +43,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="04" title="What a card is not" />
+          <Chapter title="What a card is not" />
           <p>
             A card is a record of an edition in this collection. It carries no promise of financial value, resale or return.
             Buy a capsule for the cards and the photographs to come, not as an investment.
@@ -51,7 +51,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="05" title="What each rarity gives" />
+          <Chapter title="What each rarity gives" />
           <p>
             Legendary cards carry a physical item: a piece of the meteorite, or of the Moon, that the card shows. These items are
             planned, not yet shipping. How to redeem one, and where it can be sent, will be published here before any item ships.
@@ -65,7 +65,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="06" title="When something goes wrong" />
+          <Chapter title="When something goes wrong" />
           <p>
             If a payment lands and nothing is delivered, because a card sold out between order and payment or a capsule was
             withdrawn, write to us with the transaction and we will refund it by hand. Opened capsules are final.
@@ -73,7 +73,7 @@ export default function TermsPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="07" title="Changes" />
+          <Chapter title="Changes" />
           <p>
             These terms change as Skychaser does. The date above moves when they do, and continuing to use Skychaser after a change
             means accepting it. Questions go to <Link href="/contact">Contact</Link>.

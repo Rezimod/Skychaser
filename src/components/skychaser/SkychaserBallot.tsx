@@ -111,13 +111,11 @@ export default function SkychaserBallot({ week, candidates }: { week: string; ca
 
   return (
     <>
-      <p className="sd-ballot__power">
-        {signedIn
-          ? power
-            ? <>Your vote counts <b>×{power}</b>{mine?.designation ? ' · tap another object to move it' : ' · pick one object below'}</>
-            : 'Hold a card to vote. Every card you hold adds weight.'
-          : <>Log in to vote. Each card you hold adds weight.</>}
-      </p>
+      {signedIn && !!power && (
+        <p className="sd-ballot__power">
+          Your vote counts <b>×{power}</b>
+        </p>
+      )}
       <ol className="sd-ballot sd-votes">
         {candidates.map((c) => {
           const votes = tally[c.designation] ?? 0;

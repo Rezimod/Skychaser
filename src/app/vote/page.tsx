@@ -89,18 +89,13 @@ export default async function VotePage() {
 
       {view && (
         <section className="sd-container sd-top sd-vote-block">
-          <Chapter
-            n="01"
-            title={`The week’s vote · ${weekLabel(view.voting.week)}`}
+          <Chapter title={`The week’s vote · ${weekLabel(view.voting.week)}`}
             aside={`${cast} weighted ${cast === 1 ? 'vote' : 'votes'}`}
           />
           {candidates.length === 0 ? (
             <p className="sd-note">Nothing in the set clears the horizon for the Live Telescope that week.</p>
           ) : (
             <>
-              <p className="sd-strip-note">
-                One vote per holder a week · every card held adds to it: commons ×1 to ×3, rares ×4, epics and legendaries ×5 · the vote locks {dateOf(view.voting.night, { weekday: 'long', day: 'numeric', month: 'long' })} at 13:00 UTC, and the winner is observed on the first clear night of the week
-              </p>
               <SkychaserBallot
                 week={view.voting.week}
                 candidates={candidates.map((c) => ({
@@ -177,9 +172,7 @@ export default async function VotePage() {
 
       {view?.voting.window && candidates.length > 0 && (
         <section className="sd-container sd-chapter-block">
-          <Chapter
-            n="02"
-            title={`The sky on ${nightLabel(view.voting.night)}`}
+          <Chapter title={`The sky on ${nightLabel(view.voting.night)}`}
             aside={`${localTime(view.voting.window.dusk)} – ${localTime(view.voting.window.dawn)}`}
           />
           <TonightSkyChart
@@ -194,7 +187,7 @@ export default async function VotePage() {
 
       {view && view.recent.length > 0 && (
         <section className="sd-container sd-chapter-block">
-          <Chapter n="03" title="Past nights" />
+          <Chapter title="Past nights" />
           <ol className="sd-nights">
             {view.recent.map((r) => (
               <li key={r.night} className="sd-nights__item" data-result={r.result}>

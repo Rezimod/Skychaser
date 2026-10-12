@@ -92,7 +92,7 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
         </p>
       </section>
       <section className="sd-container sd-chapter-block">
-        <Chapter n="01" title="Commitment" />
+        <Chapter title="Commitment" />
         <DataRow
           layout="stacked"
           className="sd-ledger--hash"
@@ -121,7 +121,7 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
 
         {outcome && (
           <div className="sd-chapter-block">
-            <Chapter n="02" title="Drawn" />
+            <Chapter title="Drawn" />
             <ul className="sd-grid">
               {outcome.pulls.map((p) => (
                 <li key={p.drawIndex}>
@@ -139,7 +139,7 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
         {outcome && (
           <>
             <div className="sd-chapter-block">
-              <Chapter n="03" title="Recompute it" />
+              <Chapter title="Recompute it" />
             </div>
             <p className="sd-note">Secret committed before the sale, nonce set by the buyer after. Together they reproduce every draw.</p>
             <SkychaserVerify capsuleId={id} />

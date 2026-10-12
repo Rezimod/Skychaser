@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <p className="sd-label">Last updated 23 September 2026</p>
 
         <section className="sd-chapter-block">
-          <Chapter n="01" title="What we keep" />
+          <Chapter title="What we keep" />
           <ul>
             <li>The email or wallet you log in with, through Privy.</li>
             <li>The Solana wallet address your cards are held against.</li>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="02" title="What we never hold" />
+          <Chapter title="What we never hold" />
           <ul>
             <li>Private keys or recovery phrases. They stay with Privy or your wallet.</li>
             <li>Payment card details. Payment is made in SOL from your wallet.</li>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="03" title="Who else sees it" />
+          <Chapter title="Who else sees it" />
           <p>
             Privy for sign-in, Neon for the database, Vercel for hosting, and the Solana network for payments. Each receives only
             what it needs. Payments on Solana, and the capsule log, are public by design.
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
         </section>
 
         <section className="sd-chapter-block">
-          <Chapter n="04" title="Removing it" />
+          <Chapter title="Removing it" />
           <p>
             Write to <a href="mailto:info@astroman.ge">info@astroman.ge</a> from the account&rsquo;s email and we will delete
             everything we hold about you. Payments already on Solana, and your capsules&rsquo; lines in the public log, cannot be

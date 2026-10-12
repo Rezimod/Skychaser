@@ -1,3 +1,4 @@
+import { APP_URL } from '@/lib/skychaser/app-origin';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
@@ -99,9 +100,8 @@ export default async function HomePage() {
             Real objects, numbered editions. A card is a seat at the telescope — and, for some, an object you can hold.
           </p>
           <div className="sd-hero3__cta">
-            <Link href="/genesis" className="sd-btn sd-btn--light">
-              <span className="sd-hero3__cta-wide">Detonate a star</span>
-              <span className="sd-hero3__cta-phone">Launch</span>
+            <Link href={APP_URL} className="sd-btn sd-btn--light">
+              Launch
             </Link>
           </div>
         </div>
@@ -190,8 +190,8 @@ export default async function HomePage() {
         </h2>
         <p className="sd-home-sec__lede">Sealed before sale. Published after opening.</p>
         <div className="sd-hero2__cta">
-          <Link href="/genesis" className="sd-btn sd-btn--light">
-            Detonate a star
+          <Link href={APP_URL} className="sd-btn sd-btn--light">
+            Launch
           </Link>
           <Link href="/capsules/log" className="sd-btn">
             Public log

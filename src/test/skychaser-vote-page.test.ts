@@ -41,7 +41,6 @@ it('opens the vote before the week is decided', async () => {
   expect(html).toContain('aria-label="Log in to vote for Saturn"');
   expect(html).toContain('transform:scaleX(1)');
   expect(html).toContain('lock the week’s card on Sunday at 13:00 UTC');
-  expect(html).toContain('the winner is observed on the first clear night of the week');
 });
 
 it('says plainly that a cloudy night was lost, and that the week’s card is tried again', async () => {

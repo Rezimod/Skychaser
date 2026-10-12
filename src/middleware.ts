@@ -1,3 +1,4 @@
+import { APP_HOST } from '@/lib/skychaser/app-origin';
 import { NextResponse, type NextRequest } from 'next/server';
 import { INVITE_COOKIE, inviteCodes } from '@/lib/invite';
 import { LEGACY_HOST } from '@/lib/skychaser/legacy';
@@ -20,6 +21,8 @@ const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|dark
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  // The app host has no landing page: its front door is the set.
+  if (pathname === '/' && req.headers.get('host')?.split(':')[0] === APP_HOST) return NextResponse.rewrite(new URL('/genesis', req.url));
   if (RETIRED_CARD.test(pathname)) return NextResponse.redirect(new URL('/genesis', req.url), 307);
   if (LEGACY_PAGES.test(pathname)) return NextResponse.redirect(`${LEGACY_HOST}${pathname}${search}`, 307);
   if (!CARD_PAGES.test(pathname)) return NextResponse.next();

@@ -31,6 +31,8 @@
   .sd-bar .sd-chip { height: 40px; }
   .sd-bar .sd-chip--cta { padding: 0 16px; font-size: 14px; }
   .sd-bar .sd-acct { height: 36px; }
+  .sd-bar .sd-acct__seg { padding: 0 10px; }
+  .sd-bar .sd-acct__in span { display: none; }
   .sd-bar .sd-avatar { width: 36px; height: 36px; }
 
   /* The bottom bar. */

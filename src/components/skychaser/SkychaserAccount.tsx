@@ -43,6 +43,14 @@ const CardsGlyph = (
   </svg>
 );
 
+/** A credit: a coin, seen face on. */
+const CreditsGlyph = (
+  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+    <circle cx="8" cy="8" r="6.2" />
+    <circle cx="8" cy="8" r="2.6" />
+  </svg>
+);
+
 /**
  * The account corner: how many cards the holder has, and the holder's mark,
  * which opens the profile: cards, wallet and its USDC balance.
@@ -148,6 +156,15 @@ export default function SkychaserAccount() {
             </span>
           )}
         </Link>
+        {credits !== null && (
+          <Link href="/book" className="sd-acct__seg sd-acct__credits" aria-label={`${credits} telescope credits, book a session`}>
+            {CreditsGlyph}
+            <span className="sd-acct__in">
+              <strong>{credits}</strong>
+              <span>{credits === 1 ? 'credit' : 'credits'}</span>
+            </span>
+          </Link>
+        )}
       </div>
       <button
         ref={triggerRef}

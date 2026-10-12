@@ -135,7 +135,6 @@
 .skychaser .sd-hero3__title em { font-style: normal; color: var(--sd-accent); }
 .skychaser .sd-hero3__sub { margin: 24px auto 0; max-width: 44ch; color: rgba(244, 232, 204, 0.84); font-size: clamp(16px, 1.3vw, 19px); font-weight: 500; line-height: 1.5; }
 .skychaser .sd-hero3__cta { display: flex; justify-content: center; margin-top: 34px; }
-.skychaser .sd-hero3__cta-phone { display: none; }
 @media (prefers-reduced-motion: no-preference) {
   .skychaser .sd-hero3__copy > * { animation: sd-arrive 700ms var(--sd-ease) both; }
   .skychaser .sd-hero3__copy > :nth-child(2) { animation-delay: 90ms; }
@@ -145,8 +144,6 @@
   .skychaser .sd-hero3 { min-height: clamp(460px, calc(100svh - var(--sd-bar-h)), 760px); }
   .skychaser .sd-hero3 .sd-sky { display: none; }
   .skychaser .sd-hero3__cta .sd-btn { min-width: 220px; }
-  .skychaser .sd-hero3__cta-wide { display: none; }
-  .skychaser .sd-hero3__cta-phone { display: inline; }
 }
 
 /* ── Phones ───────────────────────────────────────────────────── */

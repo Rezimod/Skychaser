@@ -88,7 +88,7 @@ export default async function CapsulesPage() {
       </section>
 
       <section className="sd-container sd-chapter-block">
-        <Chapter n="01" title="Odds per card" />
+        <Chapter title="Odds per card" />
         {odds.map((row) => (
           <div key={row.key} className="sd-section">
             <p className="sd-label">{row.label}</p>
@@ -112,7 +112,7 @@ export default async function CapsulesPage() {
       </section>
 
       <section className="sd-container sd-chapter-block">
-        <Chapter n="02" title="On sale" aside={onSale ? `${onSale.length} listed` : undefined} />
+        <Chapter title="On sale" aside={onSale ? `${onSale.length} listed` : undefined} />
         {onSale === null && <p className="sd-note">The sale cannot be read at the moment.</p>}
         {onSale?.length === 0 && <p className="sd-note">Nothing is listed right now.</p>}
         <div className="sd-capsules">

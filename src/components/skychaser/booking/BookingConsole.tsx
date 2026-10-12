@@ -30,7 +30,11 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
   const { login, getAccessToken } = usePrivy();
   const { ready, authenticated, address } = useSkychaserHolder();
   const signedIn = ready && authenticated;
-  const tz = initial.node.timezone;
+  // Times are shown on the viewer's own clock; the server renders them on the telescope's until the page is up.
+  const [tz, setTz] = useState(initial.node.timezone);
+  useEffect(() => {
+    setTz(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }, []);
 
   const [board, setBoard] = useState(initial);
   const [minutes, setMinutes] = useState<SessionMinutes>(30);
@@ -113,7 +117,6 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
   const short = signedIn && mine !== null && cost > balance;
   const target = board.targets.find((t) => t.id === targetId) ?? null;
   const nameOf = (id: string | null) => board.targets.find((t) => t.id === id)?.name ?? 'Operator’s pick';
-  const viewerClock = chosen && clock(chosen.at) !== clock(chosen.at, tz) ? clock(chosen.at) : null;
 
   const pickMinutes = (m: SessionMinutes) => {
     setMinutes(m);
@@ -198,39 +201,30 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
 
   return (
     <div className="sd-container sd-book">
-      <header className="sd-book__hero">
-        <div className="sd-book__copy">
-          <p className="sd-eyebrow">{board.node.name} · {board.node.site}</p>
+      <header className="sd-book__head">
+        <div>
+          <p className="sd-eyebrow">Live Telescope V1 · from November</p>
           <h1 className="sd-book__title">Book the telescope</h1>
-          <p className="sd-book__line">Half an hour at the eyepiece, from November. Paid in credits.</p>
-          <dl className="sd-book__facts">
-            <div>
-              <dt>30 min</dt>
-              <dd>{board.credits[30]} credits</dd>
-            </div>
-            <div>
-              <dt>60 min</dt>
-              <dd>{board.credits[60]} credits</dd>
-            </div>
-            <div>
-              <dt>1 credit</dt>
-              <dd>$1</dd>
-            </div>
-            <div>
-              <dt>Epic card</dt>
-              <dd>30 min free</dd>
-            </div>
-          </dl>
         </div>
-        <figure className="sd-book__scope">
-          <img src="/cards/scope/saturn.webp" alt="Saturn, as Live Telescope V1 sees it" width={720} height={720} />
-          <figcaption className="sd-caption">Saturn · as the telescope sees it</figcaption>
-        </figure>
+        <ul className="sd-book__facts">
+          <li>
+            <b>30 min</b>
+            <span>{board.credits[30]} credits</span>
+          </li>
+          <li>
+            <b>60 min</b>
+            <span>{board.credits[60]} credits</span>
+          </li>
+          <li>
+            <b>Epic card</b>
+            <span>30 min free</span>
+          </li>
+        </ul>
       </header>
 
       <div className="sd-book__grid">
         <div className="sd-book__pick">
-          <Step n="01" title="Night" aside={`${board.node.site.split(',')[0]} time`} />
+          <Step title="Night" />
           <div className="sd-book__nights" role="radiogroup" aria-label="Night">
             {board.nights.map((n) => {
               const open = openCount(n);
@@ -255,7 +249,6 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
           </div>
 
           <Step
-            n="02"
             title="Start"
             aside={
               <div className="sd-book__len" role="radiogroup" aria-label="Length">
@@ -294,7 +287,7 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
             </div>
           )}
 
-          <Step n="03" title="Target" aside="Optional" />
+          <Step title="Target" aside="Optional" />
           <div className="sd-book__targets" role="radiogroup" aria-label="Target">
             <button type="button" role="radio" aria-checked={targetId === null} className="sd-book__target sd-book__target--any" onClick={() => setTargetId(null)}>
               <span className="sd-book__star" aria-hidden="true">✦</span>
@@ -383,7 +376,6 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
                   <dt>Start</dt>
                   <dd>
                     {chosen ? `${clock(chosen.at, tz)} – ${clock(endOf(chosen.at, minutes), tz)}` : 'Pick a half-hour'}
-                    {viewerClock && <small>Your time {viewerClock}</small>}
                   </dd>
                 </div>
                 <div>
@@ -440,7 +432,7 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
 
       {mine && mine.bookings.length > 0 && (
         <section className="sd-book__mine">
-          <Step n="04" title="Your sessions" aside={`${mine.bookings.length}`} />
+          <Step title="Your sessions" aside={`${mine.bookings.length}`} />
           <ol>
             {mine.bookings.map((b) => (
               <SessionRow key={b.id} booking={b} tz={tz} name={nameOf(b.targetId)} now={now} busy={busy === b.id} onCancel={() => cancel(b.id)} />
@@ -462,10 +454,9 @@ export default function BookingConsole({ board: initial }: { board: Board }) {
   );
 }
 
-function Step({ n, title, aside }: { n: string; title: string; aside?: React.ReactNode }) {
+function Step({ title, aside }: { title: string; aside?: React.ReactNode }) {
   return (
     <header className="sd-book__step">
-      <span className="sd-book__n">{n}</span>
       <h2>{title}</h2>
       <span className="sd-book__rule" aria-hidden="true" />
       {aside && <span className="sd-book__aside">{aside}</span>}
