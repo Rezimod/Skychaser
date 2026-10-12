@@ -23,6 +23,8 @@
 /* the card */
 .sn-center { position: absolute; left: 50%; top: calc(var(--sn-cy) + var(--sn-fit-y, 0px)); width: var(--sn-cw); aspect-ratio: 630 / 880; translate: -50% -50%; scale: var(--sn-fit-s, 1); z-index: 2; perspective: 1100px; }
 .sn.is-done .sn-center { transition: top 0.6s var(--sd-ease, ease), scale 0.6s var(--sd-ease, ease); }
+/* Where the card stands before any fit, with no glide and no scale: what the fit measures. */
+.sn-probe { position: absolute; left: 50%; top: var(--sn-cy); width: var(--sn-cw); aspect-ratio: 630 / 880; translate: -50% -50%; visibility: hidden; pointer-events: none; }
 .sn-halo {
   position: absolute; inset: -28%; opacity: 0; pointer-events: none; mix-blend-mode: screen;
   background: radial-gradient(closest-side, var(--sn-tone), color-mix(in srgb, var(--sn-tone) 30%, transparent) 55%, transparent);
@@ -216,7 +218,9 @@
    centred on the screen and on the same line, the words' column as wide as the room allows. */
 @media (min-width: 1024px) and (min-height: 600px) {
   .sn.is-done { --sn-iw: min(480px, 40vw); --sn-gap: clamp(48px, 6vw, 110px); }
-  .sn.is-done .sn-center { left: calc(50% - (var(--sn-gap) + var(--sn-iw)) / 2); top: calc(50% + var(--sn-fit-y, 0px)); transition: left 0.7s var(--sd-ease, ease), top 0.6s var(--sd-ease, ease), scale 0.6s var(--sd-ease, ease); }
+  .sn.is-done .sn-center, .sn.is-done .sn-probe { left: calc(50% - (var(--sn-gap) + var(--sn-iw)) / 2); }
+  .sn.is-done .sn-probe { top: 50%; }
+  .sn.is-done .sn-center { top: calc(50% + var(--sn-fit-y, 0px)); transition: left 0.7s var(--sd-ease, ease), top 0.6s var(--sd-ease, ease), scale 0.6s var(--sd-ease, ease); }
   .sn.is-done .sn-hud { left: calc(50% + (var(--sn-cw) + var(--sn-gap) - var(--sn-iw)) / 2); right: auto; top: 50%; bottom: auto; width: var(--sn-iw); translate: 0 -50%; justify-items: start; gap: 22px; padding: 0; }
   .sn.is-done .sn-hud::before { left: -6vw; right: -100vw; top: -100vh; bottom: -100vh; background: linear-gradient(90deg, transparent, rgba(4, 4, 7, 0.72) 8vw, rgba(4, 4, 7, 0.86)); }
   .sn.is-done .sn-tag { justify-items: start; text-align: left; gap: 14px; }

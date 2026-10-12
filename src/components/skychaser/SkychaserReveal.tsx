@@ -199,14 +199,14 @@ export default function SkychaserReveal({
     if (done && staged) close.current?.focus();
   }, [done, staged]);
 
-  /* Once it is down the card sits in the room left above its words, never under them. */
+  /* Once it is down the card sits in the room left above its words, never under them.
+     It measures the probe, which stands where the card would before any fit: the card
+     itself is mid-glide, and would be measured where the last frame left it. */
   useEffect(() => {
     const el = root.current;
     if (!done || !el) return;
     const fit = () => {
-      el.style.setProperty('--sn-fit-y', '0px');
-      el.style.setProperty('--sn-fit-s', '1');
-      const card = el.querySelector('.sn-center')?.getBoundingClientRect();
+      const card = el.querySelector('.sn-probe')?.getBoundingClientRect();
       const top = el.querySelector('.sn-top')?.getBoundingClientRect().bottom ?? 0;
       const hud = el.querySelector('.sn-hud')?.getBoundingClientRect().top;
       if (!card || hud == null) return;
@@ -214,7 +214,11 @@ export default function SkychaserReveal({
       const beside = window.matchMedia('(min-width: 1024px) and (min-height: 600px)').matches;
       const lo = top + 12;
       const hi = beside ? window.innerHeight - 28 : hud - 16;
-      if (card.top >= lo && card.bottom <= hi) return;
+      if (card.top >= lo && card.bottom <= hi) {
+        el.style.setProperty('--sn-fit-y', '0px');
+        el.style.setProperty('--sn-fit-s', '1');
+        return;
+      }
       const s = Math.max(0.5, Math.min(1, (hi - lo) / card.height));
       el.style.setProperty('--sn-fit-s', s.toFixed(3));
       el.style.setProperty('--sn-fit-y', `${((lo + hi) / 2 - (card.top + card.bottom) / 2).toFixed(1)}px`);
@@ -350,6 +354,7 @@ export default function SkychaserReveal({
     >
       <div className="sn-shake" data-sn="shake">
         <canvas className="sn-sky" data-sn="sky" />
+        <div className="sn-probe" aria-hidden="true" />
         <div className="sn-center">
           <div className="sn-halo" data-sn="halo" aria-hidden="true" />
           <div className="sn-cap" data-sn="cap" aria-hidden="true">
