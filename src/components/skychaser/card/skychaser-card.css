@@ -26,12 +26,19 @@
 .sdc-no { color: color-mix(in srgb, var(--card-accent) 70%, #fff); font: 600 max(9px, 3.5cqw)/1 var(--font-mono), monospace; letter-spacing: .24em; text-transform: uppercase; }
 .sdc-tier {
   position: relative; overflow: hidden; isolation: isolate; padding: 1.5cqw 3.4cqw 1.35cqw; border-radius: 1.3cqw;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 55%, #fff) 0%, color-mix(in srgb, var(--rarity) 85%, #fff) 38%, var(--rarity) 52%, color-mix(in srgb, var(--rarity) 72%, #000) 100%);
-  color: #fff; font: 700 max(8px, 3.6cqw)/1 var(--font-oswald), sans-serif; letter-spacing: .2em; text-transform: uppercase; text-shadow: 0 1px 1px #000c, 0 0 .5em #0008;
-  box-shadow: inset 0 1px 0 #ffffffb3, inset 0 -1px 0 #00000059, 0 0 0 1px #0009, 0 .8cqw 2cqw -.6cqw #000, 0 0 4cqw -.6cqw color-mix(in srgb, var(--rarity) 80%, transparent);
+  --t-hi: color-mix(in srgb, var(--rarity) 30%, #fff); --t-up: color-mix(in srgb, var(--rarity) 60%, #fff); --t-mid: var(--rarity); --t-lo: color-mix(in srgb, var(--rarity) 70%, #000); --t-edge: color-mix(in srgb, var(--rarity) 45%, #000); --t-ink: color-mix(in srgb, var(--rarity) 20%, #000);
+  background: linear-gradient(180deg, var(--t-hi) 0%, var(--t-up) 26%, var(--t-mid) 52%, var(--t-lo) 80%, var(--t-up) 92%, var(--t-lo) 100%);
+  color: var(--t-ink); font: 700 max(8px, 3.6cqw)/1 var(--font-oswald), sans-serif; letter-spacing: .2em; text-transform: uppercase; text-shadow: 0 1px 0 color-mix(in srgb, var(--t-hi) 70%, transparent);
+  box-shadow: inset 0 1px 0 #ffffffcc, inset 0 -1px 0 #0000004d, 0 0 0 1px var(--t-edge), 0 .8cqw 2cqw -.6cqw #000, 0 0 4cqw -.6cqw color-mix(in srgb, var(--rarity) 80%, transparent);
 }
+/* Each rarity is a metal of its own colour, lettered in that colour's darkest shade so the name reads, not white. */
+.sdc-card[data-rarity='common'] .sdc-tier { --t-hi: #eaf2ff; --t-up: #b3cfff; --t-mid: #7eadff; --t-lo: #4c8dff; --t-edge: #1d4596; --t-ink: #06183d; }
+.sdc-card[data-rarity='rare'] .sdc-tier { --t-hi: #f4ebff; --t-up: #d6b8ff; --t-mid: #b98cff; --t-lo: #9159ee; --t-edge: #4a2394; --t-ink: #1e0642; }
+.sdc-card[data-rarity='epic'] .sdc-tier { --t-hi: #ffe3d9; --t-up: #ffab90; --t-mid: #f36e4d; --t-lo: #d1452a; --t-edge: #7d200f; --t-ink: #370801; }
+/* Legendary: polished gold, a bright band through the middle and a second catch of light low down. */
+.sdc-card[data-rarity='legendary'] .sdc-tier { --t-hi: #fff7d6; --t-up: #f9dd85; --t-mid: #ecbf4f; --t-lo: #b9861f; --t-edge: #6e4a08; --t-ink: #2e1c01; }
 /* The gloss: a wet highlight on the upper half, and a glint that crosses now and then. */
-.sdc-tier::before { content: ''; position: absolute; inset: 0 0 50%; z-index: -1; border-radius: inherit; background: linear-gradient(180deg, #ffffff4d, #ffffff0d); }
+.sdc-tier::before { content: ''; position: absolute; inset: 0 0 50%; z-index: -1; border-radius: inherit; background: linear-gradient(180deg, #ffffff59, #ffffff00); }
 .sdc-tier i { position: absolute; top: -50%; bottom: -50%; left: -60%; width: 40%; rotate: 20deg; background: linear-gradient(90deg, transparent, #ffffffd9 50%, transparent); opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: no-preference) {
   .sdc-tier i { animation: sdc-glint 5.5s ease-in-out infinite; }
