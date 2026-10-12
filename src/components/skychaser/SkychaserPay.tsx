@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { useSkychaserSession } from './SkychaserAuth';
+import { useSkychaserSession, type SolanaWallets } from './SkychaserAuth';
 import { usePrivySafe } from './usePrivySafe';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -70,7 +70,9 @@ export default function SkychaserPay({
   compact?: boolean;
 }) {
   const { getAccessToken } = usePrivySafe();
-  const wallets = useSkychaserSession().state?.wallets ?? [];
+  const session = useSkychaserSession().state;
+  const wallets = session?.wallets ?? [];
+  const [chosen, setChosen] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [paying, setPaying] = useState(false);
   const [note, setNote] = useState('');
@@ -136,7 +138,17 @@ export default function SkychaserPay({
     setNote('Sent, but not confirmed yet. Press “I have paid” in a moment.');
   };
 
-  const wallet = wallets[0];
+  // A wallet the holder connected (Phantom, Solflare…) is the one they mean to pay from; the account's own wallet otherwise.
+  const wallet = wallets.find((w) => w.address === chosen) ?? wallets.find((w) => !isEmbedded(w)) ?? wallets[0];
+  const choose = (address: string) => {
+    setChosen(address);
+    setNote('');
+    setShortOf(null);
+  };
+  const connect = () => session?.privy.connectWallet();
+  const picker = !REHEARSAL && !sent && (
+    <WalletPicker wallets={wallets} current={wallet?.address} onChoose={choose} onConnect={connect} disabled={paying || unsure} />
+  );
 
   /** The same transfer the code asks for, signed by the holder's own wallet and sent from here. */
   const payFromWallet = async () => {
@@ -229,6 +241,7 @@ export default function SkychaserPay({
               {quote && ` · ${quote}`}
             </span>
           </p>
+          {picker}
           {REHEARSAL ? (
             <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
               {checking ? 'Settling' : 'Settle & open'}
@@ -245,7 +258,7 @@ export default function SkychaserPay({
           )}
           {!REHEARSAL && (
             <div className="sd-pay__minor">
-              {!sent && left !== 0 && <a href={order.url}>Other wallet</a>}
+              {!sent && left !== 0 && <a href={order.url}>Open in a wallet app</a>}
               <button type="button" onClick={paidPressed} disabled={checking}>
                 {checking ? 'Checking' : 'I have paid'}
               </button>
@@ -296,6 +309,7 @@ export default function SkychaserPay({
             { label: 'Quote', value: left === null ? 'Open' : left > 0 ? `${left} min left` : 'Expired' },
           ]}
         />
+        {picker}
         <div className="sd-pay__actions">
           {REHEARSAL ? (
             <button type="button" className={`sd-btn sd-btn--primary${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
@@ -313,7 +327,7 @@ export default function SkychaserPay({
               </button>
               {!sent && left !== 0 && (
                 <a className="sd-btn" href={order.url}>
-                  Other wallet
+                  Open in a wallet app
                 </a>
               )}
               <button type="button" className={`sd-btn${checking ? ' is-loading' : ''}`} onClick={paidPressed} disabled={checking}>
@@ -341,6 +355,46 @@ export default function SkychaserPay({
   );
 }
 
+const isEmbedded = (w: { standardWallet: { name: string } }) => /privy/i.test(w.standardWallet.name);
+const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
+
+/** The wallets this account can pay from, one to pick, and a way to connect Phantom, Solflare, Backpack or another. */
+function WalletPicker({
+  wallets,
+  current,
+  onChoose,
+  onConnect,
+  disabled,
+}: {
+  wallets: SolanaWallets;
+  current: string | undefined;
+  onChoose: (address: string) => void;
+  onConnect: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <div className="sd-pay__wallets" role="group" aria-label="Pay from">
+      {wallets.map((w) => (
+        <button
+          key={w.address}
+          type="button"
+          className="sd-pay__wallet"
+          aria-pressed={w.address === current}
+          onClick={() => onChoose(w.address)}
+          disabled={disabled}
+        >
+          {w.standardWallet.icon && <img src={w.standardWallet.icon} alt="" width={18} height={18} />}
+          <span>{isEmbedded(w) ? 'Skychaser wallet' : w.standardWallet.name}</span>
+          <code>{short(w.address)}</code>
+        </button>
+      ))}
+      <button type="button" className="sd-pay__wallet sd-pay__wallet--add" onClick={onConnect} disabled={disabled}>
+        {wallets.some((w) => !isEmbedded(w)) ? 'Another wallet' : 'Connect Phantom, Solflare…'}
+      </button>
+    </div>
+  );
+}
+
 /** Where to send SOL when the wallet holds too little: its address, copyable, on any cluster. */
 function FundHint({ address, need }: { address: string; need: string }) {
   const [copied, setCopied] = useState(false);
@@ -355,7 +409,7 @@ function FundHint({ address, need }: { address: string; need: string }) {
   return (
     <div className="sd-pay__fund">
       <p className="sd-data">
-        Send at least {need} SOL to this wallet from an exchange or another wallet, then press Pay again:
+        Send at least {need} SOL to this wallet from an exchange or another wallet, then press Pay again — or connect a wallet that holds SOL above:
       </p>
       <p className="sd-data">
         <code>{address}</code>{' '}

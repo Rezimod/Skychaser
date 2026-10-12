@@ -992,6 +992,15 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-pay__minor a, .sd-pay__minor button { padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
 .sd-pay__minor a:hover, .sd-pay__minor button:hover:not(:disabled) { color: var(--sd-accent-ink); }
 .sd-pay__minor button:disabled { color: var(--sd-ink-4); cursor: default; }
+.sd-pay--compact .sd-pay__fund { grid-column: 1 / -1; }
+.sd-pay__wallets { display: flex; flex-wrap: wrap; gap: 6px; }
+.sd-pay__wallet { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 11px; border: 1px solid var(--sd-rule-strong); border-radius: 999px; background: rgba(255, 255, 255, 0.03); color: var(--sd-ink-2); font: 500 13px var(--sd-sans); cursor: pointer; }
+.sd-pay__wallet img { border-radius: 4px; }
+.sd-pay__wallet code { font: 500 11px var(--sd-mono); color: var(--sd-ink-3); }
+.sd-pay__wallet[aria-pressed='true'] { border-color: var(--sd-accent); color: var(--sd-ink); background: color-mix(in srgb, var(--sd-accent) 12%, transparent); }
+.sd-pay__wallet--add { border-style: dashed; color: var(--sd-ink); }
+.sd-pay__wallet:hover:not(:disabled) { border-color: var(--sd-ink-3); }
+.sd-pay__wallet:disabled { opacity: 0.5; cursor: default; }
 .sd-pay__note { grid-column: 1 / -1; margin: 0; font: 500 12px var(--sd-mono); color: var(--sd-ink-2); overflow-wrap: anywhere; }
 .sd-menu a.sd-menu__chain { min-height: 38px; margin-top: 2px; font-size: 13px; color: var(--sd-ink-3); }
 .sd-menu a.sd-menu__chain:hover { color: var(--sd-ink-2); }
