@@ -60,7 +60,7 @@ export type ViewStageProps = {
   hudLive: [string, string, string];
   hudTarget: [string, string] | null;
   hudField: [string, string];
-  idle: { title: string; text: string } | null;
+  idle: { title: string; text: string; note?: string } | null;
   /** The object in the eyepiece: its photograph, or the drawn plate where there is none. */
   objectSrc: string | null;
   /** objectSrc is a true-scale telescope view, drawn small in the field. */
@@ -151,6 +151,7 @@ function ViewStage(p: ViewStageProps) {
           <span className="sdo-idle__icon"><Icon name="camera" size={24} /></span>
           <p className="sdo-idle__title">{p.idle.title}</p>
           <p className="sdo-idle__text">{p.idle.text}</p>
+          {p.idle.note && <p className="sdo-idle__note"><span className="sdo-led is-go" />{p.idle.note}</p>}
         </div>
       )}
 

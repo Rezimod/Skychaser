@@ -51,7 +51,7 @@ function Modal({ width, head, tone = '#f0785a', night, onClose, labelledBy, chil
 }
 
 const STEPS: Array<[string, string]> = [
-  ['Connect', 'Live Telescope V1, the one telescope open.'],
+  ['Connect', 'The demo telescope, a simulation. Live Telescope V1 comes in November.'],
   ['Calibrate', 'Park at zenith, then align.'],
   ['Target', 'Planets, nebulae, galaxies, clusters.'],
   ['Point', 'GoTo, plate-solve, centre.'],
@@ -279,7 +279,7 @@ export function CaptureDialog({ night, frame, timezone, onClose }: { night: bool
               ['Optics', frame.optics],
               ['Seeing', frame.seeing],
               ['Scale', frame.scale],
-              ['Provenance', 'Live Telescope V1'],
+              ['Provenance', 'Demo · simulated'],
             ] as const).map(([k, v]) => (
               <div key={k}>
                 <dt className="sdo-lbl">{k}</dt>

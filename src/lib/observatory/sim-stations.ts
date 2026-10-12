@@ -18,6 +18,8 @@ export type Station = ObservatoryNode & {
   simulated: boolean;
   /** Not open yet: listed, never connectable. */
   soon?: boolean;
+  /** Replaces "Coming soon" when the opening is known. */
+  soonNote?: string;
 };
 
 /** Minutes of telescope time a connection buys in the console. */

@@ -462,6 +462,15 @@
 /* ── Film: the console as it will be once the telescope is live ── */
 .sdo-pill--live { color: #fff; background: rgba(46, 204, 113, .12); border: 1px solid rgba(46, 204, 113, .55); box-shadow: 0 0 18px -6px rgba(46, 204, 113, .6); }
 .sdo-pill--live .sdo-led { background: #2ecc71; box-shadow: 0 0 0 3px rgba(46, 204, 113, .2), 0 0 10px #2ecc71; }
+/* Demo: the console runs a simulation until Live Telescope V1 opens in November. */
+.sdo-pill--demo { color: var(--o-teal); background: rgba(226, 184, 90, .08); border: 1px solid rgba(226, 184, 90, .5); box-shadow: 0 0 18px -8px rgba(226, 184, 90, .55); }
+.sdo-pill--demo .sdo-led { background: var(--o-teal); box-shadow: 0 0 0 3px rgba(226, 184, 90, .18); }
+.sdo-stn.is-next { opacity: 1; margin-block: 2px; padding-block: 9px; border: 1px dashed rgba(226, 184, 90, .4); background: rgba(226, 184, 90, .05); }
+.sdo-stn.is-next:hover { background: rgba(226, 184, 90, .05); }
+.sdo-stn.is-next .sdo-led { background: var(--o-teal); box-shadow: 0 0 0 3px rgba(226, 184, 90, .14), 0 0 10px var(--o-teal); }
+.sdo-stn.is-next .sdo-stn__soon { color: var(--o-teal); }
+.sdo-idle__note { display: inline-flex; align-items: center; gap: 9px; margin-top: 4px; padding: 7px 13px; border-radius: 30px; border: 1px solid rgba(226, 184, 90, .4); background: rgba(226, 184, 90, .07); font: 600 11px/1 var(--o-cond); letter-spacing: .18em; text-transform: uppercase; color: var(--o-teal); }
+.sdo-idle__note .sdo-led { width: 6px; height: 6px; }
 /* A photograph on black, screened onto the live star field, a little smaller than the field, with the air moving over it. */
 .sdo-art--photo { display: grid; place-items: center; mix-blend-mode: screen; }
 .sdo-art--photo img { width: auto; height: auto; max-width: 92%; max-height: 96%; object-fit: contain; filter: contrast(1.08) saturate(.92); }

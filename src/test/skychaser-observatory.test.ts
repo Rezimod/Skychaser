@@ -13,28 +13,32 @@ import ObservatoryConsole from '@/components/skychaser/observatory/ObservatoryCo
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-it('shows the observatory console as live', async () => {
+it('shows the observatory console as a demo', async () => {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => root.render(createElement(ObservatoryConsole, { tonight: null, nodeCloud: null })));
   const text = host.textContent ?? '';
-  expect(host.querySelector('.sdo-pill--live')?.textContent).toContain('Live');
-  expect(text).not.toMatch(/\bdemo\b|simulated/i);
+  expect(host.querySelector('.sdo-pill--demo')?.textContent).toContain('Demo');
+  expect(host.querySelector('.sdo-pill--live')).toBeNull();
+  expect(text).toContain('Live Telescope V1 comes in November');
   expect(host.querySelector('a[href="/node"]')?.getAttribute('aria-current')).toBe('page');
   await act(async () => root.unmount());
   host.remove();
 });
 
-it('opens one telescope and lists the rest as coming soon', async () => {
+it('opens the demo telescope, lists Live Telescope V1 for November and the rest as coming soon', async () => {
   const host = document.createElement('div');
   document.body.appendChild(host);
   const root = createRoot(host);
   await act(async () => root.render(createElement(ObservatoryConsole, { tonight: null, nodeCloud: null })));
   const open = [...host.querySelectorAll('button.sdo-stn')].map((b) => b.textContent);
   expect(open).toHaveLength(1);
-  expect(open[0]).toContain('Live Telescope V1');
-  const soon = host.querySelectorAll('.sdo-stn.is-soon');
+  expect(open[0]).toContain('Demo telescope');
+  const next = host.querySelectorAll('.sdo-stn.is-next');
+  expect(next).toHaveLength(1);
+  expect(next[0].textContent).toBe('Live Telescope V1Comes in November');
+  const soon = host.querySelectorAll('.sdo-stn.is-soon:not(.is-next)');
   expect(soon).toHaveLength(4);
   for (const row of soon) expect(row.textContent).toContain('Coming soon');
   await act(async () => root.unmount());
