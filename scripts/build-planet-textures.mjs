@@ -41,7 +41,7 @@ async function fetchSource(id, rel) {
   let res;
   for (let attempt = 0; ; attempt++) {
     res = await fetch(`${COMMONS}/${rel}`, {
-      headers: { 'User-Agent': 'skychaser-texture-build/1.0 (stellarr.club)' },
+      headers: { 'User-Agent': 'skychaser-texture-build/1.0 (skychaser.io)' },
     });
     if (res.ok) break;
     if (res.status !== 429 || attempt === 5) throw new Error(`${id}: HTTP ${res.status}`);

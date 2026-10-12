@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { SET_001_CARDS } from '@/lib/sets/set-001';
 
-const BASE = 'https://stellarr.club';
+const BASE = 'https://skychaser.io';
 
 /** Skychaser's public pages: the shop, the set, every card, and the pages around them. */
 export default function sitemap(): MetadataRoute.Sitemap {

@@ -7,20 +7,20 @@ export default function JsonLd() {
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': 'https://stellarr.club/#organization',
+        '@id': 'https://skychaser.io/#organization',
         name: 'Skychaser',
-        url: 'https://stellarr.club',
-        logo: 'https://stellarr.club/apple-touch-icon.png',
+        url: 'https://skychaser.io',
+        logo: 'https://skychaser.io/apple-touch-icon.png',
         sameAs: ['https://astroman.ge'],
         description:
           'Skychaser issues real astronomical objects as numbered card editions, sold in sealed capsules. The Live Telescope, which will photograph the night’s card, sees first light in November 2026.',
       },
       {
         '@type': 'WebSite',
-        '@id': 'https://stellarr.club/#website',
+        '@id': 'https://skychaser.io/#website',
         name: 'Skychaser',
-        url: 'https://stellarr.club',
-        publisher: { '@id': 'https://stellarr.club/#organization' },
+        url: 'https://skychaser.io',
+        publisher: { '@id': 'https://skychaser.io/#organization' },
       },
     ],
   };

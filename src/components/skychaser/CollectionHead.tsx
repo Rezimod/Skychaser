@@ -30,7 +30,7 @@ export default function CollectionHead({ wallet, cards }: { wallet: string; card
           <ShareCard
             title="My Skychaser collection"
             text={address === wallet ? `My Skychaser collection: ${cards} ${cards === 1 ? 'card' : 'cards'} of the cosmos, each a numbered edition.` : `A Skychaser collection: ${cards} ${cards === 1 ? 'card' : 'cards'} of the cosmos.`}
-            url={`https://stellarr.club/collection?wallet=${wallet}`}
+            url={`https://skychaser.io/collection?wallet=${wallet}`}
           />
         </div>
       )}

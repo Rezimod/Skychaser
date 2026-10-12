@@ -3,8 +3,9 @@
 This repository is the card product, and nothing else. The astronomy app it
 grew out of (sky forecast, observations, ASTRA, marketplace, Stellar Field,
 explore mode, observatory network) lives on branch `legacy` and deploys to
-app.stellarr.club from the Vercel project `stellar`. stellarr.club is the
-card product, deployed from the Vercel project `stellar-cards`.
+app.stellarr.club from the Vercel project `stellar`. skychaser.io is the
+card product, deployed from the Vercel project `stellar-cards`; stellarr.club
+forwards its pages there and still answers `/api/*` and `/m/*`.
 Repository: Rezimod/Stellar only. The Darkview platform
 (Bekatsertsvadzee/Online-Observatory) is consumed over its HTTP contract;
 nothing is pushed there and no Darkview source is copied here.

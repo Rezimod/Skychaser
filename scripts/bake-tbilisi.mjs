@@ -29,7 +29,7 @@ import path from 'node:path';
 const OUT = path.resolve('public/explore/tbilisi');
 const CACHE = path.resolve(process.env.TMPDIR ?? '/tmp', 'skychaser-tbilisi-bake');
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
-const UA = 'skychaser-explore-bake/1.0 (+https://stellarr.club)';
+const UA = 'skychaser-explore-bake/1.0 (+https://skychaser.io)';
 
 /** Rike Park (OSM relation 9868102); the pad is searched for inside it, as
  *  near the east end of the Bridge of Peace as a clear lawn allows. */

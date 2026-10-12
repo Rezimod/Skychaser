@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     default: 'Skychaser — the cosmos, issued in editions',
     template: '%s',
   },
-  metadataBase: new URL('https://stellarr.club'),
+  metadataBase: new URL('https://skychaser.io'),
   robots: {
     index: true,
     follow: true,

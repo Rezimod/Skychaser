@@ -6,7 +6,7 @@ Cards arrive sealed in capsules; the reveal is a supernova. Every clear night
 the observatory photographs one object, the collection decides which, and every
 holder of that card receives the image.
 
-Live: [stellarr.club](https://stellarr.club) · Solana devnet · built by [Astroman](https://astroman.ge), Tbilisi.
+Live: [skychaser.io](https://skychaser.io) · Solana devnet · built by [Astroman](https://astroman.ge), Tbilisi.
 
 ## The site
 

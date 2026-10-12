@@ -2,7 +2,7 @@
    Scoped to `.skychaser`, the class SkychaserShell puts on its root, so the legacy
    chrome stays hidden while a card-product page is mounted. Tokens mirror
    src/app/globals.css: the canvas, the terracotta accent and the ink ramp are
-   the same ones stellarr.club runs on. Brief: docs/skychaser/design-system.md. */
+   the same ones skychaser.io runs on. Brief: docs/skychaser/design-system.md. */
 
 .skychaser {
   color-scheme: dark;

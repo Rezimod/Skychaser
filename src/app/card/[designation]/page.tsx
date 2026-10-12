@@ -159,7 +159,7 @@ export default async function CardPage({ params }: { params: Promise<{ designati
               </Link>
             </div>
             <div className="sd-cardhero__share">
-              <ShareCard title={`${seed.name} — Skychaser`} text={`${seed.name} — a Genesis card on Skychaser. ${record.line}`} url={`https://stellarr.club/card/${seed.designation}`} />
+              <ShareCard title={`${seed.name} — Skychaser`} text={`${seed.name} — a Genesis card on Skychaser. ${record.line}`} url={`https://skychaser.io/card/${seed.designation}`} />
             </div>
           </div>
         </div>

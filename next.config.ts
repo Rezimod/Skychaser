@@ -53,14 +53,19 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
-  // stellarr.club is the card product; the legacy app lives on its own project. Only what
+  // skychaser.io is the card product (stellarr.club forwards its pages there); the legacy app lives on its own project. Only what
   // minted metadata, old links and this app still point at here is forwarded to it: /m/*, the
   // NFT metadata and images, observation photos, OG images, passports, the signed X-agent links,
   // and what this app's own pages call: the user/cohort upserts and the voyage's sky forecast. Nothing that moves money or SOL (mint,
   // orders, wallet/fund, award-stars, redeem-code, stars, club, admin) is reachable from here.
   // The set's page moved from /set/001 to /genesis; old links and search results follow it.
+  // The old domain's pages move to skychaser.io; its /api and /m stay put, because minted
+  // metadata and NFT images point at stellarr.club.
   async redirects() {
+    const oldHost = [{ type: 'host' as const, value: '(?:www\\.)?stellarr\\.club' }];
     return [
+      { source: '/', has: oldHost, destination: 'https://skychaser.io/', permanent: true },
+      { source: '/:path((?!api/|m/|_next/).+)', has: oldHost, destination: 'https://skychaser.io/:path', permanent: true },
       { source: '/set/001', destination: '/genesis', permanent: true },
       { source: '/tonight', destination: '/vote', permanent: true },
     ];

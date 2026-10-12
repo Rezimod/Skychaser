@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://stellarr.club/sitemap.xml
+Sitemap: https://skychaser.io/sitemap.xml
