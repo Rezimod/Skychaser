@@ -23,10 +23,10 @@ function QuickStartBase({ name, designation, rarity, onStart }: { name: string |
       )}
       <div className="sdo-ph"><h2 className="sdo-ph__t"><Icon name="bolt" size={15} />Quick start</h2></div>
       <div className="sdo-quick__body">
-        <p id="sdo-quick-t" className="sdo-quick__title">Observe tonight’s card</p>
+        <p id="sdo-quick-t" className="sdo-quick__title">Observe {name ?? 'Saturn'}</p>
         {tier && name && <span className="sdo-quick__rarity">{tier.glyph} {tier.label} · {name}</span>}
         <p className="sdo-quick__text">
-          {name ? `Connect, calibrate and point the demo telescope at ${name} in one go. About a minute.` : 'Tonight’s card is not above the horizon yet.'}
+          {name ? `Connect, calibrate and point the demo telescope at ${name} in one go. About a minute.` : 'Saturn is below the horizon right now.'}
         </p>
         <button className="sdo-btn sdo-btn--primary" type="button" onClick={onStart} disabled={!name} style={{ width: '100%' }}>
           <Icon name="play" size={16} />Start{name ? ` · ${name}` : ''}<span className="sdo-kbd">S</span>

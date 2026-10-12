@@ -564,7 +564,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
   } else if (step === 2) {
     primary = target && !acquisition ? { label: `Point to ${stepLabel}`, run: () => pointAt(target) } : { label: 'Choose a target', run: () => setModal('targets') };
     secondary = [
-      ...(tonightTarget ? [{ label: 'Tonight’s card', run: () => pointAt(tonightTarget) }] : []),
+      ...(tonightTarget && tonight ? [{ label: tonight.name, run: () => pointAt(tonightTarget) }] : []),
       { label: 'Search', run: () => setModal('targets') },
     ];
   } else if (step === 3) {
@@ -581,7 +581,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
   const hints = [
     'Connect to the demo telescope to start.',
     'Park at zenith, then calibrate to start the feed.',
-    `Select a target that has risen.${tonight ? ` Tonight’s card is ${tonight.name}.` : ''}`,
+    `Select a target that has risen.${tonight ? ` Quick start points at ${tonight.name}.` : ''}`,
     `GoTo, plate-solve and centre. About ${pointEstimate} seconds.`,
     stacking ? `Stacking ${subsDone} of ${subsGoal} frames of ${exp} s.` : trackingOn ? 'On target and tracking. Frames stack into one image.' : 'Tracking is off: the sky drifts through the field.',
   ];
@@ -686,7 +686,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
     : 'Connected';
   const idle = step >= 3 ? null
     : step < 2 || !cameraOn
-      ? { title: 'Demo observatory', text: tonight ? 'A simulated telescope on a simulated sky. Connect and calibrate to start the feed, or use Quick start to go straight to tonight’s card.' : 'A simulated telescope on a simulated sky. Connect and calibrate to start the feed.', note: 'Live Telescope V1 comes in November' }
+      ? { title: 'Demo observatory', text: tonight ? `A simulated telescope on a simulated sky. Connect and calibrate to start the feed, or use Quick start to go straight to ${tonight.name}.` : 'A simulated telescope on a simulated sky. Connect and calibrate to start the feed.', note: 'Live Telescope V1 comes in November' }
       : { title: 'Ready to point', text: target ? `Point to ${shortName(target)} to begin.` : 'Choose a target that has risen.' };
   const battery = station ? Math.max(5, 100 - Math.floor(((now - connectedAtMs) / 60_000) * 0.3)) : null;
   const stationName = (station ?? selected).name;
