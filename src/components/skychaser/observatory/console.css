@@ -179,6 +179,10 @@
 .sdo-quick__rarity { align-self: flex-start; font: 600 11px/1 var(--o-cond); letter-spacing: .2em; text-transform: uppercase; color: var(--rarity); }
 .sdo-quick__text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--o-ink-2); }
 .sdo-scopes { flex-grow: 1; display: flex; flex-direction: column; min-height: 0; }
+/* Quick start and Session keep their height; only the telescope list gives way (it scrolls). */
+.sdo-quick, .sdo-col > .sdo-panel:has(.sdo-session__row) { flex-shrink: 0; }
+.sdo-scopes__list { min-height: 146px; }
+@media (max-height: 820px) { .sdo-note--firstlight { display: none; } }
 .sdo-scopes__list { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
 .sdo-stn { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 11px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--o-ink); text-align: left; cursor: pointer; }
 .sdo-stn { transition: background 120ms, border-color 120ms, transform 70ms; }
