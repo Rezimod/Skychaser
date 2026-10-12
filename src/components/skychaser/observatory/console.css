@@ -76,8 +76,8 @@
 /* ── header ─────────────────────────────────────────────────── */
 .sdo-head { position: relative; z-index: 5; height: 64px; padding: 0 22px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 30px;
   border-bottom: 1px solid var(--o-line); background: rgba(5, 5, 8, .82); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); }
-.sdo-head__mark { display: flex; align-items: center; gap: 10px; color: var(--o-ink) !important; }
-.sdo-head__mark span { font-family: var(--o-title); font-weight: 400; font-size: 17px; letter-spacing: .02em; }
+.sdo-head__mark { display: flex; align-items: center; gap: 4px; }
+.sdo-head__mark img { display: block; }
 .sdo-head .sd-bar__links { grid-area: auto; display: flex; gap: 26px; margin: 0; border: 0; }
 .sdo-head .sd-navlink { font: 500 15px/1 var(--o-cond); letter-spacing: .12em; text-transform: uppercase; padding: 8px 0; color: var(--o-ink-3); border-bottom: 2px solid transparent; }
 .sdo-head .sd-navlink:hover { color: var(--o-ink); }

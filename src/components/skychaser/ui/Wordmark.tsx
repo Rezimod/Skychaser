@@ -10,20 +10,23 @@ type WordmarkProps = {
   className?: string;
 };
 
-const MARK_PX: Record<NonNullable<WordmarkProps['size']>, number> = { sm: 22, md: 28, lg: 44 };
-
+/** The mark's side, and the wordmark's height (its letters stand about half as tall as its box). */
+const SIZES: Record<NonNullable<WordmarkProps['size']>, { mark: number; word: number }> = {
+  sm: { mark: 22, word: 26 },
+  md: { mark: 28, word: 34 },
+  lg: { mark: 44, word: 56 },
+};
 /**
- * The Skychaser lockup: the comet mark beside the name, set in the display
- * face. Same mark as the legacy app, because the card product is the same
- * observatory seen from the collector's side.
+ * The Skychaser lockup from the logo kit (October 2026): the comet with its
+ * sunset core beside the name, which is outlined so no font is needed.
  */
 export default function Wordmark({ size = 'sm', href, asHeading = false, className = '' }: WordmarkProps) {
   const cls = `sd-wordmark sd-wordmark--${size} ${className}`.trim();
-  const px = MARK_PX[size];
+  const { mark, word } = SIZES[size];
   const inner = (
     <>
-      <img src="/brand/logo-mark.svg" alt="" width={px} height={px} aria-hidden="true" />
-      <span>Skychaser</span>
+      <img className="sd-wordmark__mark" src="/brand/logo-mark.svg" alt="" width={mark} height={mark} aria-hidden="true" />
+      <img className="sd-wordmark__word" src="/brand/wordmark.svg" alt="Skychaser" width={Math.round((word * 2648) / 400)} height={word} />
     </>
   );
 

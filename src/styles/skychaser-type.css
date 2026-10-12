@@ -70,7 +70,6 @@
 .skychaser .sd-pub__tab[aria-selected='true'] { color: var(--sd-gd-ink); background: linear-gradient(180deg, var(--sd-gd-hi), var(--sd-gd-mid)); box-shadow: 0 2px 0 var(--sd-gd-deep), inset 0 1px 0 rgba(255, 236, 200, 0.4); }
 
 /* The wordmark and nav, the poster's cream and mustard. */
-.skychaser .sd-wordmark { font-family: var(--sd-title); font-weight: 400; letter-spacing: 0.02em; text-transform: uppercase; }
 .skychaser .sd-navlink { font-family: var(--sd-spaced); font-weight: 500; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; }
 .skychaser .sd-navlink[aria-current], .skychaser .sd-navlink:hover { color: var(--sd-ink); }
 

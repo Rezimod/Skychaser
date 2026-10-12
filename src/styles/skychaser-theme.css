@@ -166,21 +166,14 @@
 .sd-rule--strong { border-top-color: var(--sd-rule-strong); }
 
 /* ── Mark ─────────────────────────────────────────────────────── */
-.sd-wordmark {
-  display: inline-flex; align-items: center; gap: 9px;
-  font-family: var(--sd-title);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  line-height: 1;
-  color: var(--sd-ink);
-  text-decoration: none;
-  white-space: nowrap;
-}
+.sd-wordmark { display: inline-flex; align-items: center; gap: 4px; line-height: 1; text-decoration: none; white-space: nowrap; }
 .sd-wordmark img { display: block; }
-.sd-wordmark--sm { font-size: 15px; }
-.sd-wordmark--md { font-size: 20px; }
-.sd-wordmark--lg { font-size: clamp(26px, 5vw, 40px); }
+/* The wordmark's box carries its own clear space; the letters sit on the mark's centre line. */
+.sd-wordmark__word { width: auto; margin-top: 1px; }
+.sd-wordmark--sm .sd-wordmark__word { height: 26px; }
+.sd-wordmark--md .sd-wordmark__word { height: 34px; }
+.sd-wordmark--lg .sd-wordmark__word { height: 56px; }
+.sd-foot__brand .sd-wordmark__word { height: 22px; }
 
 /* ── Data ─────────────────────────────────────────────────────── */
 .sd-caption { font-family: var(--sd-mono); font-size: 12px; line-height: 1.55; color: var(--sd-ink-3); font-variant-numeric: tabular-nums; margin: 0; padding-top: 10px; }
@@ -657,7 +650,7 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 /* Taller and darker, the mark larger, the account corner as chips. */
 .skychaser { --sd-bar-h: 76px; }
 .sd-bar .sd-container { max-width: 1480px; }
-.sd-bar .sd-wordmark--sm { font-size: 18px; }
+.sd-bar .sd-wordmark--sm .sd-wordmark__word { height: 28px; }
 .sd-navlink { font-weight: 600; font-size: 15px; color: var(--sd-ink-3); }
 /* A phone: the four destinations share the second row, spread across it. */
 @media (max-width: 1023px) {
