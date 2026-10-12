@@ -380,12 +380,33 @@
 .sd-band { background: var(--sd-deep); border-block: 1px solid var(--sd-rule); padding-block: 72px; margin-top: 88px; }
 
 /* ── Paying ───────────────────────────────────────────────────── */
-.sd-pay { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
-.sd-pay__code { border: 1px solid var(--sd-rule-strong); border-radius: var(--sd-radius-sm); padding: 14px; background: #fff; line-height: 0; }
-.sd-pay__rehearsal { flex: 0 1 260px; border: 1px dashed var(--sd-rule-strong); border-radius: var(--sd-radius-sm); padding: 16px 18px; background: var(--sd-plate); display: flex; flex-direction: column; gap: 8px; }
-.sd-pay__rehearsal .sd-blurb { margin: 0; font-size: 14px; }
-.sd-pay__side { flex: 1 1 240px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.sd-pay__actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.sd-pay { display: flex; flex-direction: column; gap: 14px; width: min(420px, 100%); }
+.sd-pay__total { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 12px; padding: 16px 18px; border: 1px solid var(--sd-rule-strong); border-radius: var(--sd-radius-sm); background: var(--sd-plate); }
+.sd-pay__total strong { grid-row: span 2; align-self: center; font: 700 22px var(--sd-mono); font-variant-numeric: tabular-nums; color: var(--sd-ink); }
+.sd-pay__total > span:last-child { font: 500 12px var(--sd-mono); color: var(--sd-ink-3); }
+.sd-pay__wallet { border: 1px solid var(--sd-rule-strong); border-radius: var(--sd-radius-sm); background: rgba(255, 255, 255, 0.03); overflow: hidden; }
+.sd-pay__wallet-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
+.sd-pay__wallet img, .sd-pay__wallet-plus { flex: none; width: 28px; height: 28px; border-radius: 8px; }
+.sd-pay__wallet-plus { display: grid; place-items: center; background: color-mix(in srgb, var(--sd-accent) 18%, transparent); color: var(--sd-accent-ink); font: 600 14px var(--sd-sans); }
+.sd-pay__wallet-name { flex: 1; min-width: 0; display: flex; flex-direction: column; color: var(--sd-ink); font: 500 14px var(--sd-sans); }
+.sd-pay__wallet code { font: 500 11px var(--sd-mono); color: var(--sd-ink-3); }
+.sd-pay__change { padding: 6px 12px; border: 1px solid var(--sd-rule-strong); border-radius: 999px; background: none; color: var(--sd-ink-2); font: 500 12px var(--sd-sans); cursor: pointer; }
+.sd-pay__change:hover:not(:disabled) { color: var(--sd-ink); border-color: var(--sd-ink-3); }
+.sd-pay__change:disabled { opacity: 0.4; cursor: default; }
+.sd-pay__wallet-list { display: flex; flex-direction: column; border-top: 1px solid var(--sd-rule); }
+.sd-pay__wallet-list button { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; background: none; color: var(--sd-ink-2); font: 500 14px var(--sd-sans); text-align: left; cursor: pointer; }
+.sd-pay__wallet-list button span:not(.sd-pay__wallet-plus) { flex: 1; }
+.sd-pay__wallet-list button:hover { background: rgba(255, 255, 255, 0.05); color: var(--sd-ink); }
+.sd-pay .sd-btn--primary { min-height: 52px; }
+.sd-pay__hint { margin: -6px 0 0; text-align: center; font: 500 12px var(--sd-sans); color: var(--sd-ink-3); }
+.sd-pay__alt, .sd-pay__minor button { align-self: center; padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
+.sd-pay__alt:hover, .sd-pay__minor button:hover:not(:disabled) { color: var(--sd-accent-ink); }
+.sd-pay__minor { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 18px; }
+.sd-pay__minor button:disabled { color: var(--sd-ink-4); cursor: default; }
+.sd-pay__note { margin: 0; font: 500 12px var(--sd-mono); color: var(--sd-ink-2); overflow-wrap: anywhere; }
+.sd-pay--compact { gap: 10px; width: 100%; }
+.sd-pay--compact .sd-pay__total { padding: 12px 14px; }
+.sd-pay--compact .sd-pay__total strong { font-size: 18px; }
 
 /* ── Capsules ─────────────────────────────────────────────────── */
 .sd-odds { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
@@ -981,27 +1002,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-receipt dd { overflow-wrap: anywhere; }
 .sd-receipt .sd-note { font-size: 13px; margin-top: 10px; }
 
-.sd-pay--compact { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: center; }
-.sd-pay--compact .sd-pay__code { padding: 8px; border-radius: 10px; }
-.sd-pay--compact .sd-pay__side { gap: 8px; }
-.sd-pay--compact:not(:has(.sd-pay__code)) { grid-template-columns: minmax(0, 1fr); }
-.sd-pay__sum { margin: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.sd-pay__sum strong { font: 700 18px var(--sd-mono); font-variant-numeric: tabular-nums; }
-.sd-pay__sum span { font: 500 12px var(--sd-mono); color: var(--sd-ink-3); }
-.sd-pay__minor { display: flex; flex-wrap: wrap; gap: 4px 14px; }
-.sd-pay__minor a, .sd-pay__minor button { padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
-.sd-pay__minor a:hover, .sd-pay__minor button:hover:not(:disabled) { color: var(--sd-accent-ink); }
-.sd-pay__minor button:disabled { color: var(--sd-ink-4); cursor: default; }
-.sd-pay--compact .sd-pay__fund { grid-column: 1 / -1; }
-.sd-pay__wallets { display: flex; flex-wrap: wrap; gap: 6px; }
-.sd-pay__wallet { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 11px; border: 1px solid var(--sd-rule-strong); border-radius: 999px; background: rgba(255, 255, 255, 0.03); color: var(--sd-ink-2); font: 500 13px var(--sd-sans); cursor: pointer; }
-.sd-pay__wallet img { border-radius: 4px; }
-.sd-pay__wallet code { font: 500 11px var(--sd-mono); color: var(--sd-ink-3); }
-.sd-pay__wallet[aria-pressed='true'] { border-color: var(--sd-accent); color: var(--sd-ink); background: color-mix(in srgb, var(--sd-accent) 12%, transparent); }
-.sd-pay__wallet--add { border-style: dashed; color: var(--sd-ink); }
-.sd-pay__wallet:hover:not(:disabled) { border-color: var(--sd-ink-3); }
-.sd-pay__wallet:disabled { opacity: 0.5; cursor: default; }
-.sd-pay__note { grid-column: 1 / -1; margin: 0; font: 500 12px var(--sd-mono); color: var(--sd-ink-2); overflow-wrap: anywhere; }
 .sd-menu a.sd-menu__chain { min-height: 38px; margin-top: 2px; font-size: 13px; color: var(--sd-ink-3); }
 .sd-menu a.sd-menu__chain:hover { color: var(--sd-ink-2); }
 

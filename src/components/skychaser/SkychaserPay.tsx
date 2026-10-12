@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { QRCodeSVG } from 'qrcode.react';
 import { useSkychaserSession, type SolanaWallets } from './SkychaserAuth';
 import { usePrivySafe } from './usePrivySafe';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
@@ -9,7 +8,6 @@ import bs58 from 'bs58';
 import { buildTransfer } from '@/lib/skychaser/transfer';
 import { simulatedPayments } from '@/lib/skychaser/rehearsal';
 import Caption from './ui/Caption';
-import DataRow from './ui/DataRow';
 
 export type SkychaserOrder = {
   orderId: string;
@@ -50,12 +48,12 @@ const sol = (lamports: bigint | number) => (Number(lamports) / LAMPORTS_PER_SOL)
 type CheckResult = 'confirmed' | 'pending' | 'closed' | 'limited' | 'failed';
 
 /**
- * One Solana Pay order, waiting to be paid: the request as a code and as a
- * link, the quote it stands on, and a check that asks the chain whether the
- * transfer arrived. The quote expires; a payment made after it does is
+ * One Solana Pay order, waiting to be paid from a connected wallet: the
+ * quote it stands on, the wallet it is paid from, and a check that asks the
+ * chain whether the transfer arrived. The quote expires; a payment made after it does is
  * recorded as a refund due rather than dropped.
  *
- * On a rehearsal deployment there is no code and no wallet: the order settles
+ * On a rehearsal deployment there is no wallet: the order settles
  * on the button, nothing is charged, and the page says so before it is
  * pressed. The capsule behind it is real, and so is everything after.
  */
@@ -66,7 +64,7 @@ export default function SkychaserPay({
 }: {
   order: SkychaserOrder;
   onConfirmed: (c: Confirmation) => void;
-  /** One screen: the pay button first, the code and the rest beside it, small. */
+  /** Tighter spacing, for the capsule sheet. */
   compact?: boolean;
 }) {
   const { getAccessToken } = usePrivySafe();
@@ -135,20 +133,18 @@ export default function SkychaserPay({
       if (r === 'confirmed' || r === 'closed') return;
       if (r === 'limited') await wait(60_000);
     }
-    setNote('Sent, but not confirmed yet. Press “I have paid” in a moment.');
+    setNote('Sent, but not confirmed yet. Press “Check payment” in a moment.');
   };
 
-  // A wallet the holder connected (Phantom, Solflare…) is the one they mean to pay from; the account's own wallet otherwise.
-  const wallet = wallets.find((w) => w.address === chosen) ?? wallets.find((w) => !isEmbedded(w)) ?? wallets[0];
+  // A wallet the holder connected (Phantom, Solflare…) is the one they mean to pay from; the account's own wallet only when picked.
+  const wallet = wallets.find((w) => w.address === chosen) ?? wallets.find((w) => !isEmbedded(w));
+  const embedded = wallets.find(isEmbedded);
   const choose = (address: string) => {
     setChosen(address);
     setNote('');
     setShortOf(null);
   };
   const connect = () => session?.privy.connectWallet();
-  const picker = !REHEARSAL && !sent && (
-    <WalletPicker wallets={wallets} current={wallet?.address} onChoose={choose} onConnect={connect} disabled={paying || unsure} />
-  );
 
   /** The same transfer the code asks for, signed by the holder's own wallet and sent from here. */
   const payFromWallet = async () => {
@@ -188,7 +184,7 @@ export default function SkychaserPay({
         await wait(POLL_EVERY_MS);
         const r = await check(true);
         if (r === 'pending' || r === 'failed' || r === 'limited') {
-          setNote('Not seen on the network yet. If your wallet shows the transfer, press “I have paid” in a minute; otherwise try again.');
+          setNote('Not seen on the network yet. If your wallet shows the transfer, press “Check payment” in a minute; otherwise try again.');
         }
         return;
       }
@@ -221,136 +217,91 @@ export default function SkychaserPay({
     }
   };
 
-  const payLabel = paying ? 'Sending' : sent ? 'Sent' : left === 0 ? 'Quote expired' : `Pay ${order.amountSol.toFixed(4)} SOL`;
+  const payLabel = paying ? 'Confirm in your wallet' : sent ? 'Sent' : left === 0 ? 'Quote expired' : `Pay ${order.amountSol.toFixed(4)} SOL`;
   const paidPressed = () => (unsure ? retryAfterUnsure() : check());
-
-  if (compact) {
-    const quote = left === null ? null : left > 0 ? `quote ${left} min` : 'quote expired';
-    return (
-      <div className="sd-pay sd-pay--compact">
-        {!REHEARSAL && (
-          <div className="sd-pay__code">
-            <QRCodeSVG value={order.url} size={104} bgColor="#ffffff" fgColor="#1d0b05" level="M" />
-          </div>
-        )}
-        <div className="sd-pay__side">
-          <p className="sd-pay__sum">
-            <strong>{REHEARSAL ? 'Not charged' : `${order.amountSol.toFixed(4)} SOL`}</strong>
-            <span>
-              {order.amountFiat} {order.currency}
-              {quote && ` · ${quote}`}
-            </span>
-          </p>
-          {picker}
-          {REHEARSAL ? (
-            <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
-              {checking ? 'Settling' : 'Settle & open'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : ''}`}
-              onClick={payFromWallet}
-              disabled={paying || !wallet || !!sent || unsure || left === 0}
-            >
-              {payLabel}
-            </button>
-          )}
-          {!REHEARSAL && (
-            <div className="sd-pay__minor">
-              {!sent && left !== 0 && <a href={order.url}>Open in a wallet app</a>}
-              <button type="button" onClick={paidPressed} disabled={checking}>
-                {checking ? 'Checking' : 'I have paid'}
-              </button>
-              {DEVNET && (
-                <button type="button" onClick={airdrop} disabled={paying || !wallet}>
-                  Get test SOL
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-        {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
-        {(note || sent) && (
-          <p className="sd-pay__note">
-            {note}{' '}
-            {sent && (
-              <a className="sd-link" href={explorer(sent)} target="_blank" rel="noopener noreferrer">
-                View transaction
-              </a>
-            )}
-          </p>
-        )}
-      </div>
-    );
-  }
+  const quote = left === null ? null : left > 0 ? `Quote holds ${left} min` : 'Quote expired';
 
   return (
-    <div className="sd-pay">
+    <div className={`sd-pay${compact ? ' sd-pay--compact' : ''}`}>
+      <div className="sd-pay__total">
+        <span className="sd-label">{REHEARSAL ? 'Rehearsal' : 'Total'}</span>
+        <strong>{REHEARSAL ? 'Not charged' : `${order.amountSol.toFixed(4)} SOL`}</strong>
+        <span>
+          ≈ {order.amountFiat} {order.currency}
+          {quote && !REHEARSAL && ` · ${quote}`}
+        </span>
+      </div>
+
       {REHEARSAL ? (
-        <div className="sd-pay__rehearsal">
-          <p className="sd-label">Rehearsal</p>
-          <p className="sd-blurb">
-            Nothing is charged. This capsule, its sealed outcome and the editions it draws are real — only the
-            payment is stood in for, and the log records that it was.
+        <>
+          <p className="sd-pay__note">
+            Nothing is charged. This capsule, its sealed outcome and the editions it draws are real — only the payment is
+            stood in for, and the log records that it was.
           </p>
-        </div>
+          <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
+            {checking ? 'Settling' : 'Settle without paying'}
+          </button>
+        </>
+      ) : wallet ? (
+        <>
+          <WalletSelect
+            wallets={wallets}
+            current={wallet}
+            onChoose={choose}
+            onConnect={connect}
+            disabled={paying || unsure || !!sent}
+          />
+          <button
+            type="button"
+            className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : ''}`}
+            onClick={payFromWallet}
+            disabled={paying || !!sent || unsure || left === 0}
+          >
+            {payLabel}
+          </button>
+        </>
       ) : (
-        <div className="sd-pay__code">
-          <QRCodeSVG value={order.url} size={168} bgColor="#ffffff" fgColor="#1d0b05" level="M" />
-        </div>
-      )}
-      <div className="sd-pay__side">
-        <DataRow
-          layout="stacked"
-          items={[
-            { label: 'Price', value: `${order.amountFiat} ${order.currency}` },
-            { label: 'Amount', value: REHEARSAL ? 'Not charged' : `${order.amountSol.toFixed(4)} SOL` },
-            { label: 'Quote', value: left === null ? 'Open' : left > 0 ? `${left} min left` : 'Expired' },
-          ]}
-        />
-        {picker}
-        <div className="sd-pay__actions">
-          {REHEARSAL ? (
-            <button type="button" className={`sd-btn sd-btn--primary${checking ? ' is-loading' : ''}`} onClick={() => check()} disabled={checking}>
-              {checking ? 'Settling' : 'Settle without paying'}
+        <>
+          <button type="button" className="sd-btn sd-btn--primary sd-btn--block" onClick={connect} disabled={!session}>
+            Connect wallet
+          </button>
+          <p className="sd-pay__hint">Phantom, Solflare, Backpack or any Solana wallet.</p>
+          {embedded && (
+            <button type="button" className="sd-pay__alt" onClick={() => choose(embedded.address)}>
+              Pay from your Skychaser wallet instead
             </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                className={`sd-btn sd-btn--primary${paying ? ' is-loading' : ''}`}
-                onClick={payFromWallet}
-                disabled={paying || !wallet || !!sent || unsure || left === 0}
-              >
-                {payLabel}
-              </button>
-              {!sent && left !== 0 && (
-                <a className="sd-btn" href={order.url}>
-                  Open in a wallet app
-                </a>
-              )}
-              <button type="button" className={`sd-btn${checking ? ' is-loading' : ''}`} onClick={paidPressed} disabled={checking}>
-                {checking ? 'Checking the chain' : 'I have paid'}
-              </button>
-              {DEVNET && (
-                <button type="button" className="sd-btn" onClick={airdrop} disabled={paying || !wallet}>
-                  Get 1 test SOL
-                </button>
-              )}
-            </>
+          )}
+        </>
+      )}
+
+      {!REHEARSAL && (sent || unsure || note || DEVNET) && (
+        <div className="sd-pay__minor">
+          {(sent || unsure) && (
+            <button type="button" onClick={paidPressed} disabled={checking}>
+              {checking ? 'Checking the chain' : 'Check payment'}
+            </button>
+          )}
+          {DEVNET && wallet && (
+            <button type="button" onClick={airdrop} disabled={paying}>
+              Get 1 test SOL
+            </button>
           )}
         </div>
-        {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
-        {note && <p className="sd-data">{note}</p>}
-        {sent && (
-          <a className="sd-link sd-data" href={explorer(sent)} target="_blank" rel="noopener noreferrer">
-            Transaction {sent.slice(0, 10)}… on the explorer
-          </a>
-        )}
-        {DEVNET && wallet && <p className="sd-data">Wallet {wallet.address}</p>}
-        <Caption as="p" parts={[REHEARSAL ? 'No payment taken' : DEVNET ? 'Solana devnet · test SOL' : 'Solana Pay', `Order ${order.orderId.slice(0, 8)}`]} />
-      </div>
+      )}
+      {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
+      {(note || sent) && (
+        <p className="sd-pay__note" role="status">
+          {note}{' '}
+          {sent && (
+            <a className="sd-link" href={explorer(sent)} target="_blank" rel="noopener noreferrer">
+              View transaction
+            </a>
+          )}
+        </p>
+      )}
+      {!compact && (
+        <Caption as="p" parts={[REHEARSAL ? 'No payment taken' : DEVNET ? 'Solana devnet · test SOL' : 'Paid on Solana', `Order ${order.orderId.slice(0, 8)}`]} />
+      )}
     </div>
   );
 }
@@ -358,8 +309,8 @@ export default function SkychaserPay({
 const isEmbedded = (w: { standardWallet: { name: string } }) => /privy/i.test(w.standardWallet.name);
 const short = (address: string) => `${address.slice(0, 4)}…${address.slice(-4)}`;
 
-/** The wallets this account can pay from, one to pick, and a way to connect Phantom, Solflare, Backpack or another. */
-function WalletPicker({
+/** The wallet this order is paid from, and a menu to switch to another or connect Phantom, Solflare, Backpack… */
+function WalletSelect({
   wallets,
   current,
   onChoose,
@@ -367,31 +318,64 @@ function WalletPicker({
   disabled,
 }: {
   wallets: SolanaWallets;
-  current: string | undefined;
+  current: SolanaWallets[number];
   onChoose: (address: string) => void;
   onConnect: () => void;
   disabled: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const others = wallets.filter((w) => w.address !== current.address);
   return (
-    <div className="sd-pay__wallets" role="group" aria-label="Pay from">
-      {wallets.map((w) => (
-        <button
-          key={w.address}
-          type="button"
-          className="sd-pay__wallet"
-          aria-pressed={w.address === current}
-          onClick={() => onChoose(w.address)}
-          disabled={disabled}
-        >
-          {w.standardWallet.icon && <img src={w.standardWallet.icon} alt="" width={18} height={18} />}
-          <span>{isEmbedded(w) ? 'Skychaser wallet' : w.standardWallet.name}</span>
-          <code>{short(w.address)}</code>
+    <div className="sd-pay__wallet">
+      <div className="sd-pay__wallet-row">
+        <WalletIcon wallet={current} />
+        <span className="sd-pay__wallet-name">
+          {walletName(current)}
+          <code>{short(current.address)}</code>
+        </span>
+        <button type="button" className="sd-pay__change" onClick={() => setOpen(!open)} disabled={disabled} aria-expanded={open}>
+          {open ? 'Close' : 'Change'}
         </button>
-      ))}
-      <button type="button" className="sd-pay__wallet sd-pay__wallet--add" onClick={onConnect} disabled={disabled}>
-        {wallets.some((w) => !isEmbedded(w)) ? 'Another wallet' : 'Connect Phantom, Solflare…'}
-      </button>
+      </div>
+      {open && !disabled && (
+        <div className="sd-pay__wallet-list" role="group" aria-label="Pay from">
+          {others.map((w) => (
+            <button
+              key={w.address}
+              type="button"
+              onClick={() => {
+                onChoose(w.address);
+                setOpen(false);
+              }}
+            >
+              <WalletIcon wallet={w} />
+              <span>{walletName(w)}</span>
+              <code>{short(w.address)}</code>
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onConnect();
+            }}
+          >
+            <span className="sd-pay__wallet-plus" aria-hidden>+</span>
+            <span>Connect another wallet</span>
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+const walletName = (w: SolanaWallets[number]) => (isEmbedded(w) ? 'Skychaser wallet' : w.standardWallet.name);
+
+function WalletIcon({ wallet }: { wallet: SolanaWallets[number] }) {
+  return wallet.standardWallet.icon && !isEmbedded(wallet) ? (
+    <img src={wallet.standardWallet.icon} alt="" width={28} height={28} />
+  ) : (
+    <span className="sd-pay__wallet-plus" aria-hidden>{walletName(wallet).charAt(0)}</span>
   );
 }
 
