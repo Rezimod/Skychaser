@@ -3,7 +3,7 @@
  *
  *   STELLAR_DATABASE_CONFIRM=stellar npm run skychaser:seed
  *
- * Idempotent. Refuses to run unless DATABASE_URL is the stellar-cards Neon branch —
+ * Idempotent. Refuses to run unless DATABASE_URL is the skychaser Neon branch —
  * see skychaser-guard.ts.
  */
 

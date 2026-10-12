@@ -31,7 +31,7 @@ links point at this domain.
 
 Next.js 15, React 19, TypeScript, Tailwind 4 · Privy (email sign-in, embedded
 Solana wallets) · Drizzle + Neon Postgres · Upstash rate limiting · Three.js
-for the voyage · Vitest, Playwright · Vercel (`stellar-cards` project).
+for the voyage · Vitest, Playwright · Vercel (`skychaser` project).
 
 ## Running locally
 
@@ -44,7 +44,7 @@ npm run build && npm run test:smoke   # browser tests against a production build
 ```
 
 Card data scripts are `npm run skychaser:*`; every one refuses to touch a
-database that is not the `stellar-cards` Neon branch (`scripts/skychaser-guard.ts`).
+database that is not the `skychaser` Neon branch (`scripts/skychaser-guard.ts`).
 
 ## Rules
 

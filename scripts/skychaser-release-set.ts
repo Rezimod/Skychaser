@@ -9,7 +9,7 @@
  * Releasing is the one switch: until a set's status is 'released', neither a
  * capsule nor a single card can be bought. Idempotent — a set already released
  * is left alone, and no capsule is listed unless a count is given. Refuses to
- * run unless DATABASE_URL is the stellar-cards Neon branch (skychaser-guard.ts), and
+ * run unless DATABASE_URL is the skychaser Neon branch (skychaser-guard.ts), and
  * listing needs CAPSULE_SEAL_KEY: without it a capsule can never be opened.
  */
 

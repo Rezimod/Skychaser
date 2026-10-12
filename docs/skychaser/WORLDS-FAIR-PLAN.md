@@ -7,11 +7,11 @@ Deadline: 2026-10-13 06:59 UTC (Tbilisi: Oct 13, 10:59). Split: Rezi = design, C
 - Merchant wallet `AgZdk4K5…8xy` has 0.002 SOL, zero customer payments, and is shared with personal trading.
 - Fee payer `9jAYpQYZ…TDz` 0.055 SOL (~25 new users' Stars accounts). Tree `3R9uV6aL…` mainnet, ~57 ops of 8,192. Stars mint + collection on mainnet.
 - Anchor `stellar_observations` is devnet only. Not needed by the card product; do not claim it is live.
-- `stellar-cards` env: `SOLANA_RPC_URL=""` (breaks payment checks once simulation is off), no Upstash, stale `NEXT_PUBLIC_SIDERA_SIMULATED_PAYMENT`.
+- `skychaser` env: `SOLANA_RPC_URL=""` (breaks payment checks once simulation is off), no Upstash, stale `NEXT_PUBLIC_SIDERA_SIMULATED_PAYMENT`.
 - tsc clean, 938/938 tests pass.
 
 ## Phase A — payment hardening (Claude, Oct 6–8)
-Code on `stellar-cards`, migrations on the stellar-cards Neon branch only.
+Code on `skychaser`, migrations on the skychaser Neon branch only.
 1. Simulation fails closed when `VERCEL_ENV=production` (orders.ts:42,72,170).
 2. Read RPC with `||` not `??`; refuse empty RPC in production.
 3. Transfers that carry the reference but fail validation → `refund_due` + one Telegram alert (orders.ts:202). Covers top-ups and wallets that append instructions.
@@ -26,7 +26,7 @@ Code on `stellar-cards`, migrations on the stellar-cards Neon branch only.
 ## Phase B — go live (Oct 8–9, needs Rezi for keys and money)
 1. Rezi creates a dedicated merchant wallet (never used for trading); Claude swaps `NEXT_PUBLIC_MERCHANT_WALLET`.
 2. Rezi tops up the fee payer (~0.5 SOL) if Stars/cNFT rewards stay in the flow.
-3. Add Upstash env to `stellar-cards`; set `SOLANA_RPC_URL`; delete both SIMULATED vars.
+3. Add Upstash env to `skychaser`; set `SOLANA_RPC_URL`; delete both SIMULATED vars.
 4. Production migration (Phase A.9) — Rezi approves first.
 5. Golive reset, deploy, then one real $5 capsule bought end to end; verify the transfer on-chain, the order row, the reveal.
 6. Remove "rehearsal" copy and "Provisional" odds label once odds are final.

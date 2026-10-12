@@ -102,7 +102,7 @@ most reversible option; each needs a yes/no from Rezi.
     readable and linkable by naming its holder.
 
 20. ~~**The merchant wallet.**~~ **Settled 2026-09-21.**
-    `NEXT_PUBLIC_MERCHANT_WALLET` is set on the stellar-cards Vercel project for
+    `NEXT_PUBLIC_MERCHANT_WALLET` is set on the skychaser Vercel project for
     production, preview and development — the same mainnet address the Stellar
     project pays to. Until it was set, "Take this capsule" reached the pay step
     and got a 503: the buy route refuses to quote without a recipient. The

@@ -13,7 +13,7 @@
  * Nothing in src does this; only this script. Every capsule it lists is marked
  * demo — in the capsule row, so it is never offered for sale, and in its
  * 'listed' log entry, so the audit labels it wherever the log is copied.
- * Refuses to run unless DATABASE_URL is the stellar-cards Neon branch — see
+ * Refuses to run unless DATABASE_URL is the skychaser Neon branch — see
  * skychaser-guard.ts.
  */
 

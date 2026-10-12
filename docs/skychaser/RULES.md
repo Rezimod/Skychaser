@@ -4,27 +4,27 @@ This repository is the card product, and nothing else. The astronomy app it
 grew out of (sky forecast, observations, ASTRA, marketplace, Stellar Field,
 explore mode, observatory network) lives on branch `legacy` and deploys to
 app.stellarr.club from the Vercel project `stellar`. skychaser.io is the
-card product, deployed from the Vercel project `stellar-cards`; stellarr.club
+card product, deployed from the Vercel project `skychaser`; stellarr.club
 forwards its pages there and still answers `/api/*` and `/m/*`.
 Repository: Rezimod/Stellar only. The Darkview platform
 (Bekatsertsvadzee/Online-Observatory) is consumed over its HTTP contract;
 nothing is pushed there and no Darkview source is copied here.
 
-Transition (October 2026): until `stellar-cards` has been pushed to `main`
+Transition (October 2026): until `skychaser` has been pushed to `main`
 (see `~/Desktop/Stellar/plans/legacy-cut/HANDOVER.md`), work on
-`stellar-cards`. After that, `main` is the only working branch.
+`skychaser`. After that, `main` is the only working branch.
 
 Source plan: `~/Desktop/Stellar/plans/stellar-rebrand-migration-plan.md`.
 Execution plan with corrections: `docs/skychaser/EXECUTION.md`.
 
 ## Never
 - Commit to `legacy`, merge from it, or rebase/force-push anything. Check
-  `git branch --show-current` before any commit; if it is not `stellar-cards`,
-  `stellar-cards/*` or `main`, STOP and report.
+  `git branch --show-current` before any commit; if it is not `skychaser`,
+  `skychaser/*` or `main`, STOP and report.
 - Delete `docs/grant-evidence/` — grant evidence, not code.
 - Translate into `src/messages/ka.json` — v1 is English-only; archive it instead.
 - Run migrations or `db:push` against the production database. Only the
-  `stellar-cards` Neon branch.
+  `skychaser` Neon branch.
 - Remove the rewrites in `next.config.ts` that proxy `/api/*` and `/m/*` to
   the legacy origin. Minted cNFTs and old links point at stellarr.club, and
   the legacy app answers them.

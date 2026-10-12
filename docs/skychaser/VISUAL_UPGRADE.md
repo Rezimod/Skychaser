@@ -60,7 +60,7 @@ HARD RULES
   Mobile-first. Banned words: NFT, mint, drop, payload, manifest, registry, airdrop.
   Node 01 is "commissioning". Never say it is operational.
 
-BRANCH AND GATE — you are on `stellar-cards`. Confirm with `git branch --show-current` before any
+BRANCH AND GATE — you are on `skychaser`. Confirm with `git branch --show-current` before any
 commit; if it is not stellar or stellar/*, STOP. Gate before every commit:
   npx tsc --noEmit && npm test && npm run build
 Commit each prompt as its own commit: `feat(stellar): <summary>`. Deletions in their own

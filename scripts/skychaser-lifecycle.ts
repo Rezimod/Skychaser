@@ -11,7 +11,7 @@
  *   STELLAR_DATABASE_CONFIRM=stellar npm run skychaser:lifecycle -- \
  *     [--wallet <address>] [--night YYYY-MM-DD] [--adapter sim|node]
  *
- * Refuses to run unless DATABASE_URL is the stellar-cards Neon branch — see
+ * Refuses to run unless DATABASE_URL is the skychaser Neon branch — see
  * skychaser-guard.ts. Only .env.local is read, never a bare .env.
  */
 

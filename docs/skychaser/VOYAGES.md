@@ -46,7 +46,7 @@ edition. Objects they do not hold stay visible but locked, with a way to the set
 
 ## Phases
 
-One phase per commit, `feat(stellar): voyages N — <summary>`, on `stellar-cards`.
+One phase per commit, `feat(stellar): voyages N — <summary>`, on `skychaser`.
 tsc, test and build pass before each.
 
 ### V0 — Bring Explore back into the app
@@ -88,7 +88,7 @@ tsc, test and build pass before each.
   `POST /api/skychaser/voyage` with the Privy token, and only when the wallet matches the
   session and holds that edition. One row per edition per day.
 - The card page and the Collection show "Visited 3 times, first on 27 September".
-- Schema change on the stellar-cards Neon branch only; the owner runs it.
+- Schema change on the skychaser Neon branch only; the owner runs it.
 
 ### V4 — Deep sky, extremes, fiction (later, one scene type per commit)
 - Nebula scene (M42, M16, M1, Horsehead, Carina…), cluster scene (M45, M13,
