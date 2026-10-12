@@ -113,7 +113,7 @@ export default async function LogPage() {
       </section>
 
       <section className="sd-container sd-chapter-block">
-        <Chapter n="01" title="Entries" aside={entries ? `${entries.length} logged` : undefined} />
+        <Chapter title="Entries" aside={entries ? `${entries.length} logged` : undefined} />
 
         {entries === null && <p className="sd-note">The log cannot be read at the moment.</p>}
         {entries?.length === 0 && <p className="sd-note">Nothing has been logged yet.</p>}
