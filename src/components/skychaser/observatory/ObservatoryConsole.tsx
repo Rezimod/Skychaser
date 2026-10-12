@@ -51,12 +51,11 @@ const NIGHT_KEY = 'stellar.observatory.night';
 const NODE_ID = 'tbilisi-01';
 /** Parking from the handover position, settling, then aligning. */
 const CAL_ESTIMATE_S = Math.round((slewMs(HANDOVER, { altitude: ALT_TRAVEL.max, azimuth: HANDOVER.azimuth }) + SETTLE_MS + CALIBRATE_MS) / 1000);
-/** The console is a demo: the open station is a simulation, and Live Telescope V1 is listed as coming in November. No station names its city. */
+/** The open station is Live Telescope V1; the rest are listed as coming soon. No station names its city. */
 const STATIONS: Station[] = SIM_STATIONS.flatMap((s) =>
   s.id === NODE_ID
     ? [
-        { ...s, name: 'Demo telescope', site: 'Simulated sky' },
-        { ...s, id: 'live-v1', name: 'Live Telescope V1', site: 'Under the night sky', soon: true, soonNote: 'Comes in November' },
+        { ...s, name: 'Live Telescope V1', site: 'Under the night sky' },
       ]
     : s.id === 'abastumani-sim'
       ? [{ ...s, name: 'Mountain station', site: 'A dark mountain ridge' }]
@@ -105,7 +104,7 @@ function loadImage(src: string) {
 export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: TonightCard; nodeCloud: number | null }) {
   const [clockMs, setClockMs] = useState<number | null>(null);
   const now = clockMs ?? 0;
-  // The sky the demo draws: tonight's, while the Sun is up at the telescope.
+  // The sky the console draws: tonight's, while the Sun is up at the telescope.
   const [skyAheadMs, setSkyAheadMs] = useState(0);
   const skyMs = now + skyAheadMs;
 
@@ -579,7 +578,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       : [{ label: 'Re-centre', run: () => target && pointAt(target) }, { label: 'Change target', run: () => setModal('targets') }];
   }
   const hints = [
-    'Connect to the demo telescope to start.',
+    'Connect to the telescope to start.',
     'Park at zenith, then calibrate to start the feed.',
     `Select a target that has risen.${tonight ? ` Quick start points at ${tonight.name}.` : ''}`,
     `GoTo, plate-solve and centre. About ${pointEstimate} seconds.`,
@@ -686,7 +685,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
     : 'Connected';
   const idle = step >= 3 ? null
     : step < 2 || !cameraOn
-      ? { title: 'Demo observatory', text: tonight ? `A simulated telescope on a simulated sky. Connect and calibrate to start the feed, or use Quick start to go straight to ${tonight.name}.` : 'A simulated telescope on a simulated sky. Connect and calibrate to start the feed.', note: 'Live Telescope V1 comes in November' }
+      ? { title: 'Observatory', text: tonight ? `Connect and calibrate to start the feed, or use Quick start to go straight to ${tonight.name}.` : 'Connect and calibrate to start the feed.', note: 'Live Telescope V1' }
       : { title: 'Ready to point', text: target ? `Point to ${shortName(target)} to begin.` : 'Choose a target that has risen.' };
   const battery = station ? Math.max(5, 100 - Math.floor(((now - connectedAtMs) / 60_000) * 0.3)) : null;
   const stationName = (station ?? selected).name;
@@ -764,7 +763,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
             <span><span className="sdo-lbl">{selected.site.split(',')[0]}</span><b>{clock(skyMs, selected.timezone, true)}</b></span>
             <span><span className="sdo-lbl">{dark[0]}</span><b>{dark[1]}</b></span>
           </div>
-          <span className="sdo-pill sdo-pill--demo" title="A simulation. Live Telescope V1 comes in November."><span className="sdo-led" />Demo<span className="sdo-pill__long">&nbsp;· Simulated</span></span>
+          <span className="sdo-pill sdo-pill--live" title="Live Telescope V1"><span className="sdo-led" />Live<span className="sdo-pill__long">&nbsp;· Telescope V1</span></span>
           <button className={`sdo-ib${night ? ' is-on' : ''}`} type="button" onClick={toggleNight} aria-pressed={night} aria-label="Night mode" title="Night mode"><Icon name="moon" /></button>
           <SkychaserAccount />
         </div>
@@ -775,7 +774,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
         <div className="sdo-phead">
           <p className="sdo-phead__t">Observatory</p>
           <div>
-            <span className="sdo-pill sdo-pill--demo"><span className="sdo-led" />Demo</span>
+            <span className="sdo-pill sdo-pill--live"><span className="sdo-led" />Live</span>
             <button className={`sdo-ib${night ? ' is-on' : ''}`} type="button" onClick={toggleNight} aria-pressed={night} aria-label="Night mode"><Icon name="moon" /></button>
           </div>
         </div>
@@ -792,7 +791,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
       </div>
 
       <main className="sdo-grid">
-        <h1 className="sdo-sr">Observatory demo — Live Telescope V1 comes in November</h1>
+        <h1 className="sdo-sr">Observatory — Live Telescope V1</h1>
         <div className="sdo-col sdo-desk">
           <QuickStart name={quickName} designation={tonight?.designation ?? null} rarity={tonight?.rarity ?? null} onStart={quickStart} />
           <Telescopes rows={rows} selectedId={selectedId} onPick={pick} sky={skyRow} />
@@ -818,7 +817,7 @@ export default function ObservatoryConsole({ tonight, nodeCloud }: { tonight: To
             full={full}
             onFull={() => setFullView(!full)}
             status={{ text: statusText, go: onTarget || stacking, blink: inGoto || connecting || park === 'running' || cal === 'running' }}
-            hudLive={[cameraOn ? 'Demo feed' : 'Standby', stationName, opticsLine]}
+            hudLive={[cameraOn ? 'Live feed' : 'Standby', stationName, opticsLine]}
             objectSrc={plate ? SCOPE_VIEW[plate] ?? photoFor(plate)?.file ?? plateArt(plate, 'object') : null}
             scope={!!plate && plate in SCOPE_VIEW}
             hudTarget={target && targetNow ? [shortName(target), `RA ${raShort(targetNow.raHours)} · DEC ${decShort(targetNow.decDeg)}`] : null}

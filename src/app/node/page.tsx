@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Observatory · Skychaser',
-  description: 'A demo of the observatory console on a simulated sky: connect, calibrate, point and capture. Live Telescope V1 comes in November.',
+  description: 'The observatory console: connect, calibrate, point and capture with Live Telescope V1.',
 };
 
 /** The observatory console, shown live (owner's decision, 2026-10-10). Quick start points it at tonight's card. */

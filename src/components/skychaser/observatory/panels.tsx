@@ -26,7 +26,7 @@ function QuickStartBase({ name, designation, rarity, onStart }: { name: string |
         <p id="sdo-quick-t" className="sdo-quick__title">Observe {name ?? 'Saturn'}</p>
         {tier && name && <span className="sdo-quick__rarity">{tier.glyph} {tier.label} · {name}</span>}
         <p className="sdo-quick__text">
-          {name ? `Connect, calibrate and point the demo telescope at ${name} in one go. About a minute.` : 'Saturn is below the horizon right now.'}
+          {name ? `Connect, calibrate and point the telescope at ${name} in one go. About a minute.` : 'Saturn is below the horizon right now.'}
         </p>
         <button className="sdo-btn sdo-btn--primary" type="button" onClick={onStart} disabled={!name} style={{ width: '100%' }}>
           <Icon name="play" size={16} />Start{name ? ` · ${name}` : ''}<span className="sdo-kbd">S</span>
@@ -73,7 +73,7 @@ function TelescopesBase({ rows, selectedId, onPick, sky }: { rows: StationRow[];
     <section className="sdo-panel sdo-scopes" aria-labelledby="sdo-scopes-t">
       <div className="sdo-ph">
         <h2 id="sdo-scopes-t" className="sdo-ph__t"><Icon name="signal" size={15} />Telescopes</h2>
-        <span className="sdo-ph__id">Demo</span>
+        <span className="sdo-ph__id">Live</span>
       </div>
       <StationList rows={rows} selectedId={selectedId} onPick={onPick} />
       <div className="sdo-hr" style={{ marginTop: 8 }} />
@@ -85,7 +85,6 @@ function TelescopesBase({ rows, selectedId, onPick, sky }: { rows: StationRow[];
           </div>
         ))}
       </div>
-      <p className="sdo-note sdo-note--firstlight">This is a demo on a simulated sky. Live Telescope V1 comes in November; the rest follow</p>
     </section>
   );
 }

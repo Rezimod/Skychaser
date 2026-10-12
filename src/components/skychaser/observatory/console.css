@@ -159,7 +159,6 @@
 .sdo-tg.is-on::after { left: 19px; background: #151515; }
 .sdo-glass { background: rgba(8, 8, 12, .78); backdrop-filter: blur(10px); border: 1px solid var(--o-line); border-radius: 8px; }
 .sdo-pill { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-radius: 30px; font: 600 12px/1 var(--o-cond); letter-spacing: .18em; text-transform: uppercase; white-space: nowrap; }
-/* The demo banner: one ruled strip under the bar, so no one takes the console for the telescope itself. */
 .sdo-sec { white-space: nowrap; height: 36px; padding: 0 13px; border-radius: 6px; border: 1px solid var(--o-line-hi); background: rgba(255, 255, 255, .025); color: rgba(244, 244, 242, .85); font: 600 13px/1 var(--o-cond); letter-spacing: .14em; text-transform: uppercase; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .sdo-sec:hover:not(:disabled) { border-color: rgba(255, 255, 255, .5); background: rgba(255, 255, 255, .06); color: #fff; }
 .sdo-sec:disabled { opacity: .5; cursor: not-allowed; }
@@ -182,7 +181,6 @@
 /* Quick start and Session keep their height; only the telescope list gives way (it scrolls). */
 .sdo-quick, .sdo-col > .sdo-panel:has(.sdo-session__row) { flex-shrink: 0; }
 .sdo-scopes__list { min-height: 146px; }
-@media (max-height: 820px) { .sdo-note--firstlight { display: none; } }
 .sdo-scopes__list { padding: 0 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
 .sdo-stn { display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%; padding: 11px 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: var(--o-ink); text-align: left; cursor: pointer; }
 .sdo-stn { transition: background 120ms, border-color 120ms, transform 70ms; }
@@ -466,9 +464,6 @@
 /* ── Film: the console as it will be once the telescope is live ── */
 .sdo-pill--live { color: #fff; background: rgba(46, 204, 113, .12); border: 1px solid rgba(46, 204, 113, .55); box-shadow: 0 0 18px -6px rgba(46, 204, 113, .6); }
 .sdo-pill--live .sdo-led { background: #2ecc71; box-shadow: 0 0 0 3px rgba(46, 204, 113, .2), 0 0 10px #2ecc71; }
-/* Demo: the console runs a simulation until Live Telescope V1 opens in November. */
-.sdo-pill--demo { color: var(--o-teal); background: rgba(226, 184, 90, .08); border: 1px solid rgba(226, 184, 90, .5); box-shadow: 0 0 18px -8px rgba(226, 184, 90, .55); }
-.sdo-pill--demo .sdo-led { background: var(--o-teal); box-shadow: 0 0 0 3px rgba(226, 184, 90, .18); }
 .sdo-stn.is-next { opacity: 1; margin-block: 2px; padding-block: 9px; border: 1px dashed rgba(226, 184, 90, .4); background: rgba(226, 184, 90, .05); }
 .sdo-stn.is-next:hover { background: rgba(226, 184, 90, .05); }
 .sdo-stn.is-next .sdo-led { background: var(--o-teal); box-shadow: 0 0 0 3px rgba(226, 184, 90, .14), 0 0 10px var(--o-teal); }
