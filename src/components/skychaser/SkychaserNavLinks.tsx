@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
+  { href: '/book', label: 'Book', match: ['/book'] },
+  { href: '/node', label: 'Observatory', match: ['/node'] },
   { href: '/genesis', label: 'Genesis', match: ['/genesis', '/card', '/capsule'] },
   { href: '/vote', label: 'Vote', match: ['/vote'] },
-  { href: '/node', label: 'Observatory', match: ['/node'] },
-  { href: '/book', label: 'Book', match: ['/book'] },
 ];
 
 /** The Skychaser destinations. Client-side only to mark the current page. */
