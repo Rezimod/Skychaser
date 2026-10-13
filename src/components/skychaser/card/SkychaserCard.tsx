@@ -1,7 +1,6 @@
 'use client';
 
 import { memo, useEffect, useId, useRef, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
 import { editionLabel, plateFor } from '@/lib/skychaser/plate';
 import CardBack from './CardBack';
 import CardFront from './CardFront';
@@ -12,7 +11,7 @@ type Props = {
   edition?: number | null;
   capture?: string | null;
   commitment?: string | null;
-  /** The hero card: it floats when left alone and can be turned over. */
+  /** The hero card: it floats when left alone and turns over when tapped (or on F). */
   hero?: boolean;
   /** A small card: its drawing loads as pre-rendered WebP. */
   lite?: boolean;
@@ -86,6 +85,12 @@ function SkychaserCard({ designation, edition, capture, commitment, hero = false
         }}
         onClick={hero ? () => setOver((v) => !v) : undefined}
         style={hero ? { cursor: 'pointer' } : undefined}
+        aria-pressed={hero ? over : undefined}
+        aria-keyshortcuts={hero ? 'F' : undefined}
+        role={hero ? 'button' : undefined}
+        tabIndex={hero ? 0 : undefined}
+        onKeyDown={hero ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOver((v) => !v); } } : undefined}
+        aria-label={hero ? `${plate.name} card, ${over ? 'back' : 'front'}. Tap to turn it over` : undefined}
       >
         <div className="sdc-tilt">
           <div className={`sdc-flip${over ? ' is-over' : ''}`}>
@@ -100,14 +105,6 @@ function SkychaserCard({ designation, edition, capture, commitment, hero = false
           </div>
         </div>
       </div>
-      {hero && <span className="sdc-shadow" aria-hidden="true" />}
-      {hero && (
-        <button type="button" className="sd-btn sdc-turn" aria-pressed={over} aria-keyshortcuts="F" onClick={() => setOver((v) => !v)}>
-          <RotateCcw size={13} aria-hidden="true" />
-          {over ? 'Turn back' : 'Turn it over'} <kbd aria-hidden="true">F</kbd>
-          <span className="sdc-sides" aria-hidden="true"><i data-active={!over} /><i data-active={over} /></span>
-        </button>
-      )}
     </div>
   );
 }

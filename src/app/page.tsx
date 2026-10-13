@@ -104,6 +104,16 @@ export default async function HomePage() {
               Launch
             </Link>
           </div>
+          {/* A phone has no hidden sky: three cards from the set stand in for it. */}
+          <ul className="sd-hero3__cards" aria-label="Three cards from the set">
+            {SHOWCASE.slice(0, 3).map((d) => (
+              <li key={d}>
+                <Link href={`/card/${d}`} aria-label={SET_001_CARD_BY_DESIGNATION.get(d)?.seed.name ?? d} data-zoom={d}>
+                  <CardThumb designation={d} eager />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 

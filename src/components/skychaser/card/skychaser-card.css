@@ -1,5 +1,7 @@
 .sdc { --px: .5; --py: .5; display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; }
 .sdc-stage { --px: .5; --py: .5; width: 100%; perspective: 1700px; }
+.sdc--hero .sdc-stage { -webkit-tap-highlight-color: transparent; outline: none; }
+.sdc--hero .sdc-stage:focus-visible .sdc-card { box-shadow: 0 0 0 3px #fff, 0 0 0 1px #000; }
 /* The lean follows the pointer on a short ease and settles on a longer one; the float rides on
    the separate rotate/translate properties so taking hold of the card never snaps it. The flip is
    symmetric, so the faces swap exactly at its midpoint (90deg), never leaving the card blank. */
@@ -88,13 +90,6 @@
 .sdc-notes__credit { margin: 3% 0 0; color: #c9c8c2; font: 400 3.1cqw/1.4 var(--font-geist), sans-serif; }
 .sdc-notes__foot { margin-top: auto; padding-top: 4%; color: #d6d5cf; }
 .sdc-notes__foot span:last-child { color: var(--rarity); font-weight: 600; }
-.sdc-turn.sd-btn { display: inline-flex; gap: 8px; min-width: 0; min-height: 44px; padding: 9px 16px; border-radius: 999px; background: #ffffff06; color: #c7c7c3; border: 1px solid #ffffff24; font: 400 12px/1.2 var(--font-geist), sans-serif; letter-spacing: 0; text-transform: none; box-shadow: none; }
-.sdc-turn kbd { border: 1px solid #ffffff30; border-radius: 3px; padding: 2px 4px; font: 10px var(--font-mono), monospace; }
-@media (hover: none) { .sdc-turn kbd { display: none; } }
-.sdc-sides { display: inline-flex; gap: 4px; margin-left: 4px; }
-.sdc-sides i { width: 5px; height: 3px; border-radius: 2px; background: #ffffff40; }
-.sdc-sides i[data-active='true'] { width: 10px; background: #efefed; }
-.sdc-shadow { display: none; }
 .sdc-card--blank { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #ffffff40; font: 13px var(--font-mono), monospace; }
 @media (prefers-reduced-motion: no-preference) {
   .sdc--hero .sdc-tilt { animation: sdc-float 10s ease-in-out infinite; }

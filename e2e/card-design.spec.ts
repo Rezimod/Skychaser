@@ -20,13 +20,13 @@ test('browse, turn, navigate and filter the Genesis cards', async ({ page }) => 
   await imagesLoaded(dialog);
   await page.screenshot({ path: 'qa/card-front-desktop.png' });
   await page.keyboard.press('f');
-  await expect(dialog.getByRole('button', { name: /Turn back/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(dialog.getByRole('button', { name: /Tap to turn it over/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(dialog.getByText('Field notes')).toBeVisible();
   await imagesLoaded(dialog);
   await page.screenshot({ path: 'qa/card-back-desktop.png' });
   await page.keyboard.press('ArrowRight');
   await expect(page.locator('#sd-zoom-name')).not.toHaveText('IMILAC');
-  await expect(page.getByRole('button', { name: /Turn it over/ })).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: /Tap to turn it over/ })).toHaveAttribute('aria-pressed', 'false');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(imilac).toBeFocused();

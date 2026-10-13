@@ -95,3 +95,106 @@ html body .skychaser :is(.sd-btn.sd-btn--primary, .sd-btn.sd-btn--light, .sd-chi
 html body .skychaser :is(.sd-btn.sd-btn--primary, .sd-btn.sd-btn--light, .sd-chip.sd-chip--cta):disabled { background: var(--sd-plate); color: var(--sd-ink-3); box-shadow: none; }
 body .skychaser :is(.sd-zoom, .sd-cardhero) { --btn: var(--accent); --btn-ink: var(--accent-ink); }
 body .skychaser .sn { --btn: var(--sn-accent); --btn-ink: var(--accent-ink, #ffffff); }
+
+/* ── The phone pass (2026-10-13) ─────────────────────────────────
+   Every first screen carries the thing itself and what it costs: no empty
+   band under the bar, a card that leaves room for its words, and the
+   sections closer together. The card is the control: tapping it turns it. */
+.sd-hero3__cards { display: none; }
+
+@media (max-width: 767px) {
+  .skychaser .sd-page { padding-block: 10px 8px; }
+  .skychaser .sd-top { padding-top: 8px; }
+  .skychaser .sd-chapter-block { margin-top: 36px; }
+  .skychaser .sd-section { margin-top: 28px; }
+  .skychaser .sd-chapter { margin-bottom: 14px; }
+  .skychaser .sd-home-sec { padding-top: 40px; }
+  .skychaser .sd-note { margin-top: 10px; font-size: 14px; }
+  .skychaser .sd-foot { margin-top: 36px; }
+
+  /* Genesis: the counter is the first screen. */
+  .skychaser .sd-fl { padding-top: 4px; gap: 22px; }
+  .skychaser .sd-counter__stage { height: 168px; }
+  .skychaser .sd-fl__head { margin-bottom: 14px; }
+
+  /* The card page: the card at two thirds of the width, its name, line, perk, price and the way to buy under it. */
+  .skychaser .sd-top:has(.sd-cardhero) .sd-crumb { margin-bottom: 4px; font-size: 12px; }
+  .skychaser .sd-cardhero { gap: 10px; }
+  .skychaser .sd-cardhero__plate { padding-block: 0; }
+  .skychaser .sd-cardhero__plate .sd-cardplate { --sd-card-cap: min(220px, 58vw); }
+  .skychaser .sd-cardhero .sd-eyebrow { margin-bottom: 6px; font-size: 10px; letter-spacing: 0.12em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .skychaser .sd-cardhero__title { font-size: clamp(30px, 9vw, 36px); margin-top: 0; }
+  .skychaser .sd-cardhero__line { margin-top: 6px; font-size: 15px; line-height: 1.45; }
+  .skychaser .sd-cardhero .sd-perk { margin-top: 10px; padding: 9px 12px; }
+  .skychaser .sd-cardhero .sd-perk__line { margin-top: 3px; }
+  .skychaser .sd-cardhero .sd-facts { margin-top: 10px; padding: 9px 14px; column-gap: 20px; }
+  /* The fixed buy bar keeps the price in reach; the buy panel itself sits in the flow, not on a second sticky band. */
+  .skychaser .sd-cardhero .sd-buy { position: static; margin: 10px 0 0; padding: 0; background: none; border: 0; backdrop-filter: none; }
+  .skychaser .sd-buybar { background: rgba(9, 9, 9, 0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .skychaser .sd-cardhero__pair { margin-top: 14px; padding-top: 12px; }
+  .skychaser .sd-cardhero__obs { margin-top: 14px; padding-top: 12px; }
+  .skychaser .sd-cardhero__share { margin-top: 10px; }
+
+  /* The card held out of the shelf: toolbar, card, then its facts and price on the same screen. */
+  .skychaser .sd-zoom { padding: 8px 16px calc(18px + env(safe-area-inset-bottom)); }
+  .skychaser .sd-zoom__panel { padding-top: 54px; gap: 14px; }
+  .skychaser .sd-zoom__toolbar { top: 2px; }
+  .skychaser .sd-zoom__navigation button { width: 40px; height: 40px; }
+  .skychaser .sd-zoom__card { width: min(224px, 58vw); }
+  /* The price and the way to buy come before the perk, so they are on the first screen. */
+  .skychaser .sd-zoom__info { display: flex; flex-direction: column; }
+  .skychaser .sd-zoom__perk { order: 8; margin-top: 12px; }
+  .skychaser .sd-zoom__trust { order: 9; }
+  .skychaser .sd-zoom__rarity { align-self: flex-start; margin-bottom: 8px; padding: 4px 9px; font-size: 10px; }
+  .skychaser .sd-zoom__name { font-size: 28px; line-height: 1; }
+  .skychaser .sd-zoom__line { margin: 6px 0 12px; font-size: 13px; line-height: 1.45; }
+  .skychaser .sd-zoom__facts { margin-bottom: 10px; padding: 8px 0; }
+  .skychaser .sd-zoom__facts > div { padding: 0 10px; }
+  .skychaser .sd-zoom__facts dd { margin-top: 4px; font-size: 12px; }
+  .skychaser .sd-zoom__perk { padding: 10px 12px; gap: 10px; }
+  .skychaser .sd-zoom__perk p { margin-top: 3px; }
+  .skychaser .sd-zoom__pricing { margin: 2px 0 10px; }
+  .skychaser .sd-zoom__price { font-size: 26px; }
+  .skychaser .sd-zoom__trust { margin-top: 10px; }
+  .skychaser .sd-zoom__panel::before { inset: 40px -20px 55%; }
+
+  /* Capsules: the sealed stack smaller, the odds four to a row, the shelf two to a row. */
+  .skychaser .sd-capsule-top { gap: 14px; }
+  .skychaser .sd-sealed { height: 236px; }
+  .skychaser .sd-sealed__card { width: 150px; }
+  .skychaser .sd-sealed__card:nth-child(1) { transform: rotate(-12deg) translateX(-34px); }
+  .skychaser .sd-sealed__card:nth-child(2) { transform: rotate(6deg) translateX(30px); }
+  .skychaser .sd-sealed__card--front { gap: 8px; padding: 14px; }
+  .skychaser .sd-sealed__mark { font-size: 16px; }
+  .skychaser .sd-sealed__label, .skychaser .sd-sealed__hash { font-size: 10px; }
+  .skychaser .sd-capsule-top__line { margin-top: 10px; font-size: 15px; }
+  .skychaser .sd-strip { padding-bottom: 14px; gap: 12px 16px; }
+  .skychaser .sd-oddsboard { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .skychaser .sd-oddsboard li { gap: 8px; padding: 12px 6px 12px 0; border-bottom: 0; }
+  .skychaser .sd-oddsboard__n { font-size: clamp(20px, 6.4vw, 26px); letter-spacing: -0.03em; }
+  .skychaser .sd-capsules { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .skychaser .sd-capsule { padding: 14px; margin-bottom: 0; }
+  .skychaser .sd-capsule__head { margin-bottom: 8px; gap: 8px; }
+  .skychaser .sd-capsule__n { font-size: 18px; gap: 6px; }
+  .skychaser .sd-capsule .sd-datarow--stacked { margin-bottom: 10px; }
+
+  /* The Collection gate and the coming-soon pages. */
+  .skychaser .sd-gate { padding: 24px 18px; }
+  .skychaser .sd-gate__or { margin-top: 16px; }
+  .skychaser .sd-legal__ledger { margin-top: 20px; }
+  .skychaser .sd-legal p + p { margin-top: 0.7em; }
+}
+
+/* The home hero on a phone: the words, the button, and three cards from the set in the sky's place. */
+@media (max-width: 559px) {
+  .skychaser .sd-hero3 { min-height: 0; place-items: start center; }
+  .skychaser .sd-hero3__copy { padding-block: 26px 22px; }
+  .skychaser .sd-hero3__title { white-space: normal; font-size: clamp(34px, 10.5vw, 44px); line-height: 0.98; text-wrap: balance; }
+  .skychaser .sd-hero3__sub { margin-top: 12px; font-size: 16px; line-height: 1.45; }
+  .skychaser .sd-hero3__cta { margin-top: 18px; }
+  .skychaser .sd-hero3__cta .sd-btn { min-width: 0; width: 100%; }
+  .skychaser .sd-hero3__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 22px 0 0; padding: 0; list-style: none; pointer-events: auto; }
+  .skychaser .sd-hero3__cards a { display: block; border-radius: 4.76% / 3.41%; }
+  .skychaser .sd-hero3__cards .sd-thumb { box-shadow: 0 0 0 1px rgba(255, 240, 210, 0.1), 0 18px 36px -18px rgba(0, 0, 0, 0.9); }
+  .skychaser .sd-home-sec:first-of-type { padding-top: 32px; }
+}
