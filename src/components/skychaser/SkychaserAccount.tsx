@@ -135,7 +135,7 @@ export default function SkychaserAccount() {
           )}
         </Link>
         {credits !== null && (
-          <Link href="/book" className="sd-acct__seg sd-acct__credits" aria-label={`${credits} telescope credits, book a session`}>
+          <Link href="/node" className="sd-acct__seg sd-acct__credits" aria-label={`${credits} telescope credits, for sessions from first light`}>
             {CreditsGlyph}
             <span className="sd-acct__in">
               <strong>{credits}</strong>
@@ -228,9 +228,6 @@ export default function SkychaserAccount() {
           </Link>
           <Link role="menuitem" href="/vote" onClick={() => setMenuOpen(false)}>
             This week’s vote <span aria-hidden="true">→</span>
-          </Link>
-          <Link role="menuitem" href="/book" onClick={() => setMenuOpen(false)}>
-            Book the telescope <span aria-hidden="true">→</span>
           </Link>
           <button role="menuitem" type="button" onClick={signOut}>
             Log out <span aria-hidden="true">⎋</span>

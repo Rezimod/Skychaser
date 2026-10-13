@@ -31,7 +31,6 @@ const RECOGNITION = [
 
 const EXPLORE = [
   { href: '/node', label: 'Observatory' },
-  { href: '/book', label: 'Book the telescope' },
   { href: '/voyage', label: 'Voyage' },
 ];
 

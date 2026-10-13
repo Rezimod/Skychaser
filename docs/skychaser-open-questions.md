@@ -264,3 +264,22 @@ most reversible option; each needs a yes/no from Rezi.
     **For the owner:** the prices and pack sizes, the first night, whether
     sessions on cloudy nights are refunded by hand (nothing automatic yet),
     and whether the operator takes bookings past 02:00.
+
+
+## Only the cards are live (2026-10-13)
+
+30. **Booking went behind the coming-soon page with the observatory.** The
+    owner's instruction: no simulated or demo payment anywhere, and the
+    observatory and the vote are coming soon, not live products — only the
+    cards are live. Booking sells half-hours on the same telescope, so /book
+    now redirects to /node, which says first light is in November; the nav
+    reads Genesis, Observatory, Vote. The booking console, its routes and
+    the credits rail are untouched in code and come back by restoring the
+    /book page and the nav entries. Credits already granted stay on the
+    account. The vote and booking APIs still answer direct calls; no page
+    reaches them.
+    **For the owner:** whether /book should be live before first light
+    (selling sessions for November now), and whether the 24 orders the
+    rehearsal builds marked paid — 16 opened capsules, 5 still sealed, 1
+    card, all on the owner's two accounts, nothing paid — should be cleared
+    with the go-live reset or kept as the owner's own cards.
