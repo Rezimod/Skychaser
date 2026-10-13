@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import type { Viewport } from 'next';
-import { Anton, Orbitron, Geist, JetBrains_Mono, Oswald } from 'next/font/google';
+import localFont from 'next/font/local';
 import './skychaser-base.css';
 import '../styles/skychaser-theme.css';
 import '../styles/skychaser-motion.css';
@@ -16,28 +16,16 @@ import { AnalyticsBoot } from '@/components/providers/AnalyticsBoot';
 import JsonLd from '@/components/shared/JsonLd';
 
 // Skychaser's faces: Orbitron for the wordmark and display, Geist for
-// text, JetBrains Mono for figures. The legacy pages add their own in app/(skychaser).
-const orbitron = Orbitron({
-  subsets: ['latin'],
-  variable: '--font-orbitron',
-  weight: ['500', '600', '700'],
-  display: 'swap',
-});
-const geist = Geist({
-  subsets: ['latin'],
-  variable: '--font-geist',
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-});
-// Anton for every title and the card names, Oswald for the spaced-out labels and buttons.
-const anton = Anton({ subsets: ['latin'], variable: '--font-anton', weight: '400', display: 'swap' });
-const oswald = Oswald({ subsets: ['latin'], variable: '--font-oswald', weight: ['300', '400', '500', '600', '700'], display: 'swap' });
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-});
+// text, JetBrains Mono for figures, Anton for every title and the card
+// names, Oswald for the spaced-out labels and buttons. The latin files are
+// kept in app/fonts (Google Fonts, OFL), so a build never asks Google for
+// them: the Google loader broke on a font URL without an extension on
+// 2026-10-13.
+const orbitron = localFont({ src: './fonts/orbitron-latin.woff2', weight: '500 700', variable: '--font-orbitron', display: 'swap' });
+const geist = localFont({ src: './fonts/geist-latin.woff2', weight: '400 700', variable: '--font-geist', display: 'swap' });
+const anton = localFont({ src: './fonts/anton-latin.woff2', weight: '400', variable: '--font-anton', display: 'swap' });
+const oswald = localFont({ src: './fonts/oswald-latin.woff2', weight: '300 700', variable: '--font-oswald', display: 'swap' });
+const jetbrainsMono = localFont({ src: './fonts/jetbrains-mono-latin.woff2', weight: '400 700', variable: '--font-mono', display: 'swap' });
 
 export const viewport: Viewport = {
   width: 'device-width',
