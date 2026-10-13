@@ -8,7 +8,7 @@ import { skychaserOpenRateLimit } from '@/lib/rate-limit';
 import { openCapsule, readCapsule, settleCapsulePayment } from '@/lib/skychaser/capsule';
 import { findPayment, paymentLedger, paymentNetworkMisconfig, reportExtraTransfers, reportSharedTransfers, unpaidRehearsal } from '@/lib/skychaser/orders';
 import { SoldOutError } from '@/lib/skychaser/randomness';
-import { isUuid, limited, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { isUuid, limited } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (!found) return NextResponse.json({ error: 'Capsule not found' }, { status: 404 });
   let order = found;
   if (order.status === 'pending') {
-    const guard = paymentNetworkMisconfig() ?? (await rehearsalOnLiveDatabase(db));
+    const guard = paymentNetworkMisconfig();
     if (guard) return guard;
     const payment = await findPayment(order, paymentLedger(db));
     if (payment.paid) {

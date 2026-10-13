@@ -44,7 +44,6 @@ vi.mock('@/lib/skychaser/orders', async (actual) => ({
   newPaymentReference: () => 'reference',
   paymentUrl: () => 'solana:merchant',
   paymentNetworkMisconfig: () => null,
-  paymentsLive: async () => false,
 }));
 import { GET as board, POST as bookRoute } from '@/app/api/skychaser/booking/route';
 import { GET as mine } from '@/app/api/skychaser/booking/mine/route';

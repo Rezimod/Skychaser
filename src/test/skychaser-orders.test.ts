@@ -19,7 +19,7 @@ import { findPayment, fulfilCardOrder, markPaid, paymentNetworkProblem, recheckC
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
-const NO_SHARED = { sharedWith: async () => false, live: async () => false };
+const NO_SHARED = { sharedWith: async () => false };
 const REFERENCE = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 const EXPIRES = new Date('2026-09-20T12:15:00Z');
 
@@ -130,7 +130,6 @@ describe('the payment network', () => {
     delete process.env.SOLANA_RPC_URL;
     delete process.env.NEXT_PUBLIC_SOLANA_CLUSTER;
     delete process.env.VERCEL_ENV;
-    delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
   });
 
   it('refuses a devnet RPC under mainnet wallets, and anything but mainnet in production', async () => {
@@ -144,13 +143,6 @@ describe('the payment network', () => {
     expect(pay.signatures).not.toHaveBeenCalled();
   });
 
-  it('has no network to check in a rehearsal', () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    process.env.SOLANA_RPC_URL = 'https://api.devnet.solana.com';
-    process.env.NEXT_PUBLIC_SOLANA_CLUSTER = 'devnet';
-    expect(paymentNetworkProblem()).toBeNull();
-  });
-
   it('reads an empty RPC variable as unset, and production must name an RPC of its own', () => {
     process.env.SOLANA_RPC_URL = '';
     process.env.VERCEL_ENV = 'production';
@@ -161,44 +153,21 @@ describe('the payment network', () => {
   });
 });
 
-describe('a rehearsal deployment', () => {
-  afterEach(() => { delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT; });
-
-  it('refuses to mark anything paid in a database that takes real payments', async () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    expect(await findPayment(order(), { ...NO_SHARED, live: async () => true })).toMatchObject({ paid: false, status: 503 });
-    expect(pay.signatures).not.toHaveBeenCalled();
-  });
-
-  it('reads a database without the flag table as not live, and the flag as set only when it is', async () => {
-    const { paymentsLive } = await import('@/lib/skychaser/orders');
-    const missing = { execute: async () => { throw Object.assign(new Error('relation "app_flag" does not exist'), { code: '42P01' }); } } as unknown as Db;
-    expect(await paymentsLive(missing)).toBe(false);
-    expect(await paymentsLive({ execute: async () => ({ rows: [] }) } as unknown as Db)).toBe(false);
-    expect(await paymentsLive({ execute: async () => ({ rows: [{ value: '1' }] }) } as unknown as Db)).toBe(true);
-    // Any other failure is not read as "not live".
-    await expect(paymentsLive({ execute: async () => { throw new Error('connection reset'); } } as unknown as Db)).rejects.toThrow();
-  });
-
-  it('settles the order itself, asks no chain, and records a signature that says so', async () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    const found = await findPayment(order(), NO_SHARED);
-    expect(found).toMatchObject({ paid: true, late: false, signature: `simulated-no-payment:${REFERENCE}` });
-    expect(pay.signatures).not.toHaveBeenCalled();
-    expect(pay.transaction).not.toHaveBeenCalled();
-  });
-
-  it('is off unless the deployment says exactly 1', async () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = 'true';
-    expect(await findPayment(order(), NO_SHARED)).toEqual({ paid: false });
-  });
-
-  it('leaves its paid orders unpaid on a deployment that sells for real', () => {
-    const rehearsed = { signature: `simulated-no-payment:${REFERENCE}` };
-    expect(unpaidRehearsal(rehearsed)).toBe(true);
+describe('orders the rehearsal builds marked paid', () => {
+  it('stay unpaid: nothing was paid for them', () => {
+    expect(unpaidRehearsal({ signature: `simulated-no-payment:${REFERENCE}` })).toBe(true);
     expect(unpaidRehearsal({ signature: 'real' })).toBe(false);
+    expect(unpaidRehearsal({ signature: null })).toBe(false);
+  });
+
+  it('never mark an order paid without a transfer, whatever the environment says', async () => {
     process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    expect(unpaidRehearsal(rehearsed)).toBe(false);
+    try {
+      expect(await findPayment(order(), NO_SHARED)).toEqual({ paid: false });
+      expect(pay.signatures).toHaveBeenCalled();
+    } finally {
+      delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
+    }
   });
 });
 
@@ -243,11 +212,9 @@ describe('quoting in SOL', () => {
     expect((await fetchSolPriceRates()).solPrice).toBe(150);
   });
 
-  it('quotes a rehearsal without a live feed', async () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
+  it('gives no quote without a live feed', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })));
-    expect(await usdToSol(39)).toBeGreaterThan(0);
-    delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
+    await expect(usdToSol(39)).rejects.toBeInstanceOf(SolPriceUnavailableError);
   });
 });
 
@@ -321,10 +288,6 @@ describe('rate limits in production', () => {
     expect(await limited(limiter, 'id')).toBeNull();
     process.env.VERCEL_ENV = 'production';
     expect((await limited(limiter, 'id'))?.status).toBe(503);
-    // A rehearsal takes no money, so it runs without one.
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    expect(await limited(limiter, 'id')).toBeNull();
-    delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
   });
 });
 
@@ -414,16 +377,6 @@ describe('the sweeps', () => {
     } as unknown as Db;
     // The first order's update throws; the second is still cancelled.
     expect(await settleCardOrders(db)).toEqual([{ orderId: 'broken', status: 'error' }, { orderId: 'unpaid', status: 'cancelled' }]);
-  });
-
-  it('never re-check closed orders in a rehearsal, which would find every one "paid"', async () => {
-    process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT = '1';
-    try {
-      const db = { select: () => { throw new Error('should not read'); } } as unknown as Db;
-      expect(await recheckClosedCardOrders(db)).toEqual([]);
-    } finally {
-      delete process.env.NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT;
-    }
   });
 
   it('owe back a payment found on an order already closed', async () => {

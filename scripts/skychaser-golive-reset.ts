@@ -17,14 +17,10 @@
  * Before anything, it checks that this machine's CAPSULE_SEAL_KEY opens a
  * capsule the database already holds (unseals it and recomputes its
  * commitment): the new shelf is sealed with this key, and production must be
- * able to open it. In the same transaction as the clear-out it sets
- * app_flag 'payments_live', after which no rehearsal anywhere may sell from,
- * or mark anything paid in, this database. Apply scripts/skychaser-constraints.sql
- * first: without the app_flag table the reset refuses.
+ * able to open it.
  *
- * Order of go-live: deploy the build that carries the payments_live guard,
- * pause (STELLAR_PAUSED=1 and redeploy), run this with --apply, deploy a fresh
- * build without NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT, then unpause.
+ * Order of go-live: pause (scripts/skychaser-pause.ts on), run this with
+ * --apply, then unpause.
  */
 
 import { writeFileSync, mkdirSync } from 'node:fs'
@@ -79,8 +75,6 @@ async function main() {
       sealCheck = 'this CAPSULE_SEAL_KEY cannot open the capsules already in the database'
     }
   }
-  const { rows: flagTable } = (await db.execute(sql`SELECT to_regclass('public.app_flag') AS t`)) as { rows: Array<{ t: string | null }> }
-  const hasFlagTable = Boolean(flagTable[0]?.t)
   const states = backup.capsule.reduce<Record<string, number>>((m, c) => ({ ...m, [c.state]: (m[c.state] ?? 0) + 1 }), {})
 
   console.log(`capsules: ${Object.entries(states).map(([s, n]) => `${n} ${s}`).join(', ') || 'none'}`)
@@ -90,7 +84,6 @@ async function main() {
   console.log(`votes for tonight onward: ${backup.card_vote.length}`)
   console.log(`then list: ${Object.entries(SHELF).map(([t, n]) => `${n} ${t}`).join(', ')}`)
   console.log(`seal key: ${sealCheck}${sample ? ` (capsule ${sample.sequence})` : ''}`)
-  console.log(`app_flag table: ${hasFlagTable ? 'present' : 'MISSING — apply scripts/skychaser-constraints.sql first'}`)
   if (!apply) {
     console.log('Dry run. Pass --apply to do it.')
     return
@@ -100,7 +93,6 @@ async function main() {
     throw new Error('Orders with on-chain signatures exist. This reset is for rehearsal data only and refuses to erase real sales.')
   }
   if (sealCheck !== 'ok') throw new Error(`Seal key check failed: ${sealCheck}. Copy production's CAPSULE_SEAL_KEY into .env.local first.`)
-  if (!hasFlagTable) throw new Error('The app_flag table is missing. Apply scripts/skychaser-constraints.sql first.')
 
   const dir = join(homedir(), 'Desktop', 'Stellar', 'backups')
   mkdirSync(dir, { recursive: true })
@@ -114,10 +106,8 @@ async function main() {
     q`ALTER TABLE capsule_log ENABLE TRIGGER capsule_log_no_truncate`,
     q`DELETE FROM orders WHERE dealer_id = 'stellar'`,
     q`DELETE FROM card_vote WHERE night_date >= current_date`,
-    q`INSERT INTO app_flag (name, value) VALUES ('payments_live', '1')
-      ON CONFLICT (name) DO UPDATE SET value = '1', set_at = now()`,
   ])
-  console.log('rehearsal sales cleared; payments_live set — no rehearsal may sell from this database now')
+  console.log('rehearsal sales cleared')
 
   for (const [key, count] of Object.entries(SHELF)) {
     const done = await listCapsules(db, { setId, count, tier: tierByKey(key) })

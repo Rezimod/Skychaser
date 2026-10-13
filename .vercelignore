@@ -1,5 +1,5 @@
 # Never upload an env file with a CLI deploy: a NEXT_PUBLIC_ value in one would be baked
-# into the build (NEXT_PUBLIC_STELLAR_SIMULATED_PAYMENT=1 would turn real sales into free ones).
+# into the build.
 .env
 .env.*
 !.env.example

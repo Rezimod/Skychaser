@@ -36,7 +36,6 @@ import {
   reportSharedTransfers,
   paymentLedger,
   retiredEditions,
-  simulatedPayments,
   type Beacon,
   type OrderRow,
   type PaymentCheck,
@@ -419,7 +418,7 @@ export async function purchaseCapsule(
       )
       INSERT INTO capsule_log (capsule_id, capsule_sequence, event, commitment, buyer_wallet, buyer_nonce, purchase_hash, outcome)
       SELECT id, sequence, 'purchased', commitment, buyer_wallet, buyer_nonce, purchase_hash,
-        ${JSON.stringify(simulatedPayments() ? { expiresAt, simulated: true } : { expiresAt, reference: input.paymentReference })}::jsonb FROM c
+        ${JSON.stringify({ expiresAt, reference: input.paymentReference })}::jsonb FROM c
       RETURNING seq
     `),
     db.execute(sql`
@@ -583,8 +582,8 @@ export type OpenResult =
  * are logged, and SoldOutError is thrown.
  *
  * A capsule paid on chain draws with the beacon — the hash of the block its
- * paying transfer landed in — read once, before the first attempt. One paid
- * in a rehearsal, or a demo capsule, moved no money and has none.
+ * paying transfer landed in — read once, before the first attempt. One a
+ * rehearsal build marked paid, or a demo capsule, moved no money and has none.
  */
 export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult> {
   let beacon: Beacon | null | undefined;
@@ -894,8 +893,6 @@ export async function releaseLapsed(db: Db, limit = 25): Promise<Array<{ capsule
  * logged against its capsule. Run by the daily cron.
  */
 export async function recheckClosedCapsuleOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
-  // A rehearsal finds every order "paid"; asking again would turn each closed one into a refund owed.
-  if (simulatedPayments()) return [];
   const closed = await db
     .select()
     .from(orders)

@@ -22,7 +22,7 @@ import {
   type OrderRow,
   paymentNetworkMisconfig,
 } from '@/lib/skychaser/orders';
-import { isUuid, limited, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { isUuid, limited } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
 
@@ -52,8 +52,6 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
   if (!db) return NextResponse.json({ confirmed: false, error: 'Database not configured' }, { status: 503 });
-  const r = await rehearsalOnLiveDatabase(db);
-  if (r) return r;
 
   const [found] = await db.select().from(orders).where(and(eq(orders.id, orderId), eq(orders.privyId, privyId))).limit(1);
   const isSkychaser = found && (found.productId === CAPSULE_PRODUCT_ID || found.productId.startsWith(CARD_PRODUCT_PREFIX) || creditsInOrder(found.productId) !== null);

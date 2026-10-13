@@ -13,7 +13,6 @@
     "test:smoke": "playwright test",
     "skychaser:lifecycle": "npx tsx scripts/skychaser-lifecycle.ts",
     "skychaser:seed": "npx tsx scripts/skychaser-seed-set.ts",
-    "skychaser:capsules": "npx tsx scripts/skychaser-capsule-demo.ts",
     "skychaser:funnel": "npx tsx scripts/skychaser-funnel.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

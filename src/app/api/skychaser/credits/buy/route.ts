@@ -5,7 +5,7 @@ import { paused } from '@/lib/kill-switch';
 import { skychaserBuyIpRateLimit, skychaserBuyRateLimit } from '@/lib/rate-limit';
 import { bookingReady, packByKey } from '@/lib/skychaser/booking';
 import { createCreditsOrder, usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
-import { clientIp, holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { clientIp, holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
 export const runtime = 'nodejs';
@@ -35,8 +35,6 @@ export async function POST(req: NextRequest) {
   if (!recipient) return NextResponse.json({ error: 'Merchant wallet not configured' }, { status: 503 });
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
-  const r = await rehearsalOnLiveDatabase(db);
-  if (r) return r;
   if (!(await bookingReady(db))) return NextResponse.json({ error: 'Booking opens soon' }, { status: 503 });
 
   let amountSol: number;

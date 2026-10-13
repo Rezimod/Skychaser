@@ -24,9 +24,6 @@ import { fetchSolPriceRates } from '@/lib/sol-price';
 import { isSealed } from './almanac';
 import type { Db } from './attach';
 import { ORDER_WINDOW_MINUTES } from './economics';
-import { simulatedPayments } from './rehearsal';
-
-export { simulatedPayments };
 
 export type OrderRow = typeof orders.$inferSelect;
 
@@ -35,25 +32,21 @@ export const CARD_PRODUCT_PREFIX = 'stellar-card:';
 /** `skychaser-credits:<pack>:<credits>` — the count is in the id so an old order grants what it paid for. */
 export const CREDITS_PRODUCT_PREFIX = 'skychaser-credits:';
 
+/**
+ * What the rehearsal builds of 2026-09/10 wrote where a transaction signature
+ * goes. No build writes it any more; the orders that carry it are still in the
+ * database, and nothing was paid for them.
+ */
 const REHEARSAL_PREFIX = 'simulated-no-payment:';
-
-/** What a rehearsal records where a transaction signature would go. */
-export function simulatedSignature(reference: string): string {
-  return `${REHEARSAL_PREFIX}${reference}`;
-}
 
 /** Whether a recorded signature is a rehearsal's stand-in rather than a transaction. */
 export function isRehearsalSignature(signature: string | null | undefined): boolean {
   return Boolean(signature?.startsWith(REHEARSAL_PREFIX));
 }
 
-/**
- * An order a rehearsal marked paid, read by a deployment that sells for real:
- * nothing was paid for it, so it opens and fulfils nothing here. Guards a
- * preview, a rolled-back build or a local server that shares the database.
- */
+/** An order a rehearsal marked paid: nothing was paid for it, so it opens and fulfils nothing. */
 export function unpaidRehearsal(order: { signature: string | null }): boolean {
-  return !simulatedPayments() && !!order.signature?.startsWith(REHEARSAL_PREFIX);
+  return isRehearsalSignature(order.signature);
 }
 
 // An empty variable counts as unset: Vercel keeps a cleared value as "".
@@ -62,13 +55,12 @@ const PAYMENT_RPC = () => CONFIGURED_RPC() || 'https://api.mainnet-beta.solana.c
 const networkOf = (s: string) => (/devnet/i.test(s) ? 'devnet' : /testnet/i.test(s) ? 'testnet' : /mainnet/i.test(s) ? 'mainnet-beta' : 'unknown');
 
 /**
- * Why payments cannot be taken on this deployment's network, or null. A
- * rehearsal moves no money and passes. Otherwise the RPC that checks payments
- * must be on the cluster the wallets pay on, and production takes mainnet only:
- * a devnet RPC there would accept free test SOL for real cards.
+ * Why payments cannot be taken on this deployment's network, or null. The RPC
+ * that checks payments must be on the cluster the wallets pay on, and
+ * production takes mainnet only: a devnet RPC there would accept free test SOL
+ * for real cards.
  */
 export function paymentNetworkProblem(): string | null {
-  if (simulatedPayments()) return null;
   const cluster = process.env.NEXT_PUBLIC_SOLANA_CLUSTER || 'mainnet-beta';
   // The public RPC is rate-limited too hard to confirm payments on; production names its own.
   if (process.env.VERCEL_ENV === 'production' && !CONFIGURED_RPC()) return 'production needs SOLANA_RPC_URL';
@@ -97,11 +89,10 @@ export function merchantWallet(): PublicKey | null {
 /**
  * US dollars to SOL at the live rate, to the lamport-safe six places the orders
  * table already uses. Throws SolPriceUnavailableError rather than quote on a
- * fixed fallback rate, and refuses a quote that comes to nothing. A rehearsal
- * charges nothing, so its quote may rest on the fallback rate.
+ * fixed fallback rate, and refuses a quote that comes to nothing.
  */
 export async function usdToSol(usd: number): Promise<number> {
-  const { solPerGEL, solPrice } = await fetchSolPriceRates({ strict: !simulatedPayments() });
+  const { solPerGEL, solPrice } = await fetchSolPriceRates({ strict: true });
   const sol = +priceToSol(usd, 'USD', solPerGEL, solPrice).toFixed(6);
   if (!(sol > 0)) throw new Error('A Skychaser quote must be a positive amount of SOL');
   return sol;
@@ -208,12 +199,10 @@ const MAX_SIGNATURE_PAGES = 10;
  * What findPayment asks the database. `sharedWith`: whether any of these
  * account keys is another order's payment reference — a transaction that
  * names two orders could otherwise pay both with one amount, so it pays
- * neither and is owed back. `live`: whether this database takes real
- * payments, in which case a rehearsal may mark nothing paid in it.
+ * neither and is owed back.
  */
 export type PaymentLedger = {
   sharedWith: (orderId: string, keys: string[]) => Promise<boolean>;
-  live: () => Promise<boolean>;
 };
 
 export function paymentLedger(db: Db): PaymentLedger {
@@ -227,24 +216,7 @@ export function paymentLedger(db: Db): PaymentLedger {
         .limit(1);
       return Boolean(hit);
     },
-    live: () => paymentsLive(db),
   };
-}
-
-/**
- * Whether the go-live reset has run on this database: from then on it holds
- * real sales, and no deployment or local server that rehearses — whatever its
- * build says — may mark anything in it paid, or sell from it. A database
- * without the app_flag table has not gone live.
- */
-export async function paymentsLive(db: Db): Promise<boolean> {
-  try {
-    const { rows } = (await db.execute(sql`SELECT value FROM app_flag WHERE name = 'payments_live'`)) as Rows<{ value: string }>;
-    return rows[0]?.value === '1';
-  } catch (err) {
-    if (pgCode(err) === '42P01') return false;
-    throw err;
-  }
 }
 
 const lamportsOf = (sol: number) => BigInt(new BigNumber(sol).shiftedBy(9).integerValue(BigNumber.ROUND_CEIL).toFixed(0));
@@ -309,13 +281,6 @@ export async function paymentBeacon(signature: string): Promise<Beacon> {
  * `shared`, owed back.
  */
 export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promise<PaymentCheck> {
-  if (simulatedPayments()) {
-    if (await ledger.live()) {
-      console.error('[skychaser/payments] refusing: a rehearsal build is pointed at a database that takes real payments');
-      return { paid: false, error: 'Payments are not available right now', status: 503 };
-    }
-    return { paid: true, signature: simulatedSignature(order.paymentReference), paidAt: new Date(), late: false };
-  }
   const recipient = merchantWallet();
   if (!recipient) return { paid: false, error: 'Merchant wallet not configured', status: 503 };
   if (!(order.amountSol > 0)) return { paid: false, error: 'The order has no amount to pay', status: 400 };
@@ -696,8 +661,6 @@ async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
  * found now is owed back. Run by the daily cron.
  */
 export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
-  // A rehearsal finds every order "paid"; asking again would turn each closed one into a refund owed.
-  if (simulatedPayments()) return [];
   const closed = await db
     .select()
     .from(orders)

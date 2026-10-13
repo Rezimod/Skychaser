@@ -6,7 +6,7 @@ import { skychaserBuyIpRateLimit, skychaserBuyRateLimit } from '@/lib/rate-limit
 import { purchaseCapsule, readCapsule, releaseLapsed } from '@/lib/skychaser/capsule';
 import { usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
 import { isHex32, verifyPurchaseSignature } from '@/lib/skychaser/randomness';
-import { clientIp, isUuid, holderWallet, limited, NO_LINKED_WALLET, rehearsalOnLiveDatabase } from '@/lib/skychaser/route-guards';
+import { clientIp, isUuid, holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
 export const runtime = 'nodejs';
@@ -52,8 +52,6 @@ export async function POST(req: NextRequest) {
   if (!recipient) return NextResponse.json({ error: 'Merchant wallet not configured' }, { status: 503 });
   const db = getDb();
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
-  const r = await rehearsalOnLiveDatabase(db);
-  if (r) return r;
 
   // Capsules left unpaid go back on the shelf as soon as their window closes,
   // not only at the nightly sweep. One account holds few unpaid at a time; purchaseCapsule enforces it.
