@@ -1,0 +1,46 @@
+{
+  "name": "stellar-explore",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0 <23"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "qa:academy": "node scripts/qa-academy.mjs",
+    "qa:flight": "node scripts/qa-flight.mjs"
+  },
+  "dependencies": {
+    "@privy-io/react-auth": "^3.19.0",
+    "@solana-program/memo": "^0.11.0",
+    "@types/three": "^0.184.1",
+    "astronomy-engine": "^2.1.19",
+    "lucide-react": "^0.577.0",
+    "next": "^15.5.25",
+    "next-intl": "^4.9.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "three": "^0.184.0"
+  },
+  "overrides": {
+    "postcss": "^8.5.28"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.0.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.4"
+  }
+}

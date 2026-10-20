@@ -1,0 +1,3124 @@
+/* The solar system: the guide page's canvas, and every deck the game draws
+   over it — flight, the Moon and the worlds. */
+
+.solar-system--immersive,
+.solar-system--immersive * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-drag: none;
+}
+
+.solar-system {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: oklch(0.14 0.018 260);
+  /* The 3D scene (and all chrome floating over it) is dark in BOTH themes.
+     Pin --text to its night value so day mode never flips it dark. */
+  --text: #F8F4EC;
+  color: var(--text, #e8ecf4);
+}
+
+.solar-system__viewport {
+  position: relative;
+  min-height: 0;
+  background: #02040a;
+}
+
+.solar-system__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.solar-system__chip {
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 0.5px solid rgba(248, 244, 236, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(232, 236, 244, 0.82);
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.solar-system__chip.is-active {
+  border-color: rgba(255, 179, 71, 0.45);
+  background: rgba(255, 179, 71, 0.12);
+  color: #ffd79a;
+}
+.solar-system__seg button.is-active {
+  border-color: rgba(94, 234, 212, 0.45);
+  background: rgba(11, 28, 22, 0.55);
+  color: #5eead4;
+}
+
+/* === Immersive layout (mobile-first full viewport) === */
+.solar-system--immersive {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: #02040a;
+  color: var(--text, #e8ecf4);
+  overscroll-behavior: none;
+}
+
+.solar-system--immersive::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(
+    ellipse 85% 70% at 50% 45%,
+    transparent 0%,
+    transparent 42%,
+    rgba(2, 4, 10, 0.55) 100%
+  );
+}
+
+.solar-system__chrome-float {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.solar-system__fab {
+  pointer-events: auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(248, 244, 236, 0.14);
+  background: rgba(6, 9, 14, 0.82);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.solar-system__fab--close:hover {
+  border-color: rgba(255, 179, 71, 0.4);
+  background: rgba(18, 13, 8, 0.75);
+}
+
+.solar-system__mini-clock {
+  pointer-events: none;
+  margin-top: 10px;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 214, 156, 0.85);
+  text-align: right;
+  flex: 1;
+}
+
+.solar-system__viewport--fill {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  z-index: 2;
+  /* The deck's breakpoints read this box, not the window. */
+  container: viewport / size;
+}
+/* In flight the canvas is only glass under the deck — no gesture of the
+   browser's own may start on it. */
+.solar-system[data-flying='true'] .solar-system__canvas,
+.solar-system[data-flying='true'] .solar-system__viewport--fill,
+.solar-system[data-flying='true'] .flight-hud { touch-action: none; }
+/* — except the panels that can outgrow the glass. Refusing every gesture on
+   the deck also refuses the one that scrolls a menu, so a menu too tall for
+   the screen could not be reached past its first screenful. */
+.solar-system[data-flying='true'] :is(.flight-hud__menu, .flight-hud__help) { touch-action: pan-y; }
+/* Landscape on a phone that will not turn: the whole viewport — canvas and
+   deck — is drawn a quarter turn clockwise and sized to the screen's other
+   way round. The deck's container queries then lay it out as landscape,
+   and its four edges swap to keep clear of the notch and the home bar. */
+.solar-system__viewport--fill[data-rotate='cw'] {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vh;
+  height: 100vw;
+  width: 100dvh;
+  height: 100dvw;
+  transform-origin: top left;
+  transform: rotate(90deg) translateY(-100%);
+}
+.solar-system__viewport--fill[data-rotate='cw'] .flight-hud {
+  --edge-top: max(var(--gutter), env(safe-area-inset-right));
+  --edge-right: max(var(--gutter), env(safe-area-inset-bottom));
+  --edge-bottom: max(var(--gutter), env(safe-area-inset-left));
+  --edge-left: max(var(--gutter), env(safe-area-inset-top));
+}
+
+/* Floating timelapse pill — hovers over the map, bottom centre. */
+.solar-system__dockbar {
+  position: absolute;
+  z-index: 15;
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 999px;
+  background: rgba(5, 9, 18, 0.82);
+  border: 0.5px solid rgba(248, 244, 236, 0.12);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  max-width: calc(100vw - 16px);
+}
+
+.solar-system__dockbar .solar-system__chip {
+  min-height: 30px;
+  padding: 0 9px;
+  flex-shrink: 0;
+}
+
+.solar-system__dockbtn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  border-radius: 50%;
+  border: 0.5px solid rgba(248, 244, 236, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(232, 236, 244, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.solar-system__dockbtn::before {
+  content: none;
+}
+.solar-system__dockbtn.is-active {
+  border-color: rgba(255, 179, 71, 0.45);
+  background: rgba(255, 179, 71, 0.12);
+  color: #ffd79a;
+}
+
+/* ──────────────────── cosmic overlay (sun pin + milky way label) ──────────────────── */
+
+.cosmic-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  pointer-events: none;
+  transform: translate(8px, -50%);
+  font-family: var(--font-body, 'Geist'), system-ui, sans-serif;
+  transition: opacity 200ms ease;
+  z-index: 12;
+}
+
+.cosmic-label__pin {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ffd27a;
+  box-shadow:
+    0 0 0 1.5px rgba(20, 22, 30, 0.85),
+    0 0 12px rgba(255, 210, 122, 0.85),
+    0 0 24px rgba(255, 178, 64, 0.45);
+  flex-shrink: 0;
+}
+
+.cosmic-label__text {
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(244, 232, 200, 0.94);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.cosmic-label--mw {
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  transform: translate(10px, -50%);
+  padding: 6px 10px 6px 8px;
+  border-radius: 999px;
+  background: rgba(14, 18, 28, 0.62);
+  border: 1px solid rgba(212, 196, 168, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.cosmic-label--mw:hover {
+  background: rgba(20, 26, 40, 0.78);
+  border-color: rgba(232, 216, 184, 0.5);
+}
+
+.cosmic-label__pin--mw {
+  width: 7px;
+  height: 7px;
+  background: #e8d8b6;
+  box-shadow:
+    0 0 0 1.5px rgba(20, 22, 30, 0.9),
+    0 0 14px rgba(232, 216, 184, 0.78),
+    0 0 28px rgba(180, 156, 110, 0.4);
+}
+
+.cosmic-label__text--mw {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cosmic-label__hint {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  color: rgba(180, 192, 212, 0.74);
+  font-weight: 400;
+}
+
+@media (max-width: 680px) {
+  .solar-system__dockbar {
+    gap: 5px;
+    padding: 4px 5px;
+  }
+  .solar-system__dockbtn {
+    width: 36px;
+    height: 36px;
+  }
+}
+.solar-system__ratebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+.solar-system__ratebtn svg {
+  opacity: 0.7;
+  transition: transform 140ms ease;
+}
+.solar-system__ratebtn.is-active svg { transform: rotate(180deg); }
+.solar-system__rate-item.is-active {
+  border-color: rgba(255, 179, 71, 0.45);
+  background: rgba(255, 179, 71, 0.12);
+  color: #ffd79a;
+}
+
+/* Explore Mode — the flight deck. Soft glass on a dark sky: rounded cards,
+   round keys, pill-shaped rails. The view owns the middle of the screen —
+   where you are reads top left, the drive and the standing order card in
+   from the top right, the target rail down the left edge, the camera keys
+   on the right, and one dock along the bottom with the two pads, the flight
+   keys between them and the console bar under all of it. */
+.flight-hud,
+.flight-hud * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+.flight-hud {
+  /* The deck's palette: white on near-black glass, teal for what is live
+     and amber for what is spent — the same two accents as the surfaces. */
+  --hud-ink: #f4f8ff;
+  --hud-dim: rgba(176, 196, 222, 0.7);
+  --hud-accent: #5eead4;
+  --hud-line: rgba(140, 180, 220, 0.18);
+  --hud-glass: rgba(6, 10, 20, 0.58);
+  --hud-deep: rgba(5, 9, 18, 0.9);
+  --hud-ok: #46d68a;
+  /* Shapes and sizes; every breakpoint sets these and the rest follows. */
+  --hud-radius: 18px;
+  --hud-round: 44px;
+  --stick: clamp(88px, 26cqw, 116px);
+  --key: clamp(44px, 12cqw, 48px);
+  --card: clamp(152px, 46cqw, 218px);
+  --gutter: 14px;
+  /* The four edges, each held off the phone's own hardware — swapped round
+     when the viewport is turned (see [data-rotate]). */
+  --edge-top: max(var(--gutter), env(safe-area-inset-top));
+  --edge-right: max(var(--gutter), env(safe-area-inset-right));
+  --edge-bottom: max(var(--gutter), env(safe-area-inset-bottom));
+  --edge-left: max(var(--gutter), env(safe-area-inset-left));
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  pointer-events: none;
+  color: var(--hud-ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.flight-hud button {
+  pointer-events: auto;
+  /* Every key here sets its own size; the app's global minimum would
+     otherwise hold the small ones open. */
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-glass);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: var(--hud-ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  padding: 0;
+}
+.flight-hud button::before { content: none; }
+.flight-hud button:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 3px; }
+.flight-hud button:active { border-color: rgba(77, 163, 255, 0.7); }
+.flight-hud button:disabled { opacity: 0.4; cursor: default; }
+.flight-hud__launch {
+  position: absolute;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.flight-hud__launch button { padding: 0 18px; height: 46px; border-radius: 999px; white-space: nowrap; }
+.flight-hud__explore { gap: 8px; font-weight: 600; }
+.flight-hud__ship { color: var(--hud-dim) !important; }
+
+/* ── Top left: where you are, how high, how fast ── */
+.flight-hud__head {
+  position: absolute;
+  top: var(--edge-top);
+  left: var(--edge-left);
+  display: grid;
+  gap: 3px;
+  padding-left: 12px;
+  max-width: min(330px, calc(100% - 130px));
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.75);
+}
+/* The accent stroke down the side of the block. */
+.flight-hud__head::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(var(--hud-accent), rgba(77, 163, 255, 0.1));
+}
+.flight-hud__title { font-size: 21px; font-weight: 600; line-height: 1.2; letter-spacing: 0.01em; }
+.flight-hud__sub { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--hud-dim); }
+.flight-hud__readings { display: grid; gap: 4px; margin-top: 7px; }
+.flight-hud__reading { display: flex; align-items: center; gap: 8px; }
+.flight-hud__reading svg { color: rgba(140, 180, 230, 0.75); flex: none; }
+.flight-hud__reading > span { color: var(--hud-dim); font-size: 11px; }
+.flight-hud__reading > b { font-weight: 500; font-size: 13px; }
+/* Warnings and prompts land under the readings — never over the view. */
+.flight-hud__status { margin-top: 5px; min-height: 1.4em; color: var(--hud-accent); font-size: 11px; line-height: 1.45; }
+
+/* ── The pilot's own layout: every placed control wears an offset (in
+   deck widths and heights) and a scale, set by the editor and kept. ── */
+.flight-hud [data-place] { transform: translate(calc(var(--dx, 0) * 100cqw), calc(var(--dy, 0) * 100cqh)) scale(var(--ds, 1)); }
+
+/* ── The look pad: the right of the glass. A finger dragged across it
+   turns the nose; everything drawn over it takes its own touches first. ── */
+.flight-hud__lookpad {
+  position: absolute;
+  left: 42%;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* ── The jump on the glass ── */
+.flight-hud__warp {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--warp, 0);
+  background:
+    radial-gradient(125% 95% at 50% 50%, rgba(120, 190, 255, 0) 34%, rgba(38, 96, 220, 0.3) 74%, rgba(6, 14, 42, 0.8) 100%);
+}
+/* A hit: the glass rims blue while the shield takes it, red once the hull does. */
+.flight-hud__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: var(--hit, 0);
+  background: radial-gradient(130% 110% at 50% 50%, rgba(80, 170, 255, 0) 52%, rgba(80, 170, 255, 0.22) 78%, rgba(120, 200, 255, 0.55) 100%);
+  box-shadow: inset 0 0 0 2px rgba(140, 210, 255, 0.5);
+}
+.flight-hud[data-guard='hull'] .flight-hud__hit {
+  background: radial-gradient(130% 110% at 50% 50%, rgba(255, 60, 40, 0) 48%, rgba(255, 60, 40, 0.28) 76%, rgba(255, 70, 50, 0.7) 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 110, 90, 0.6);
+}
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__track > span { background: #ff7a5c; }
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child svg,
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__sys-name { color: #ff9a80; }
+.flight-hud__flash {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  pointer-events: none;
+  opacity: var(--flash, 0);
+  background: radial-gradient(58% 58% at 50% 50%, #f2f8ff 0%, rgba(168, 214, 255, 0.8) 42%, rgba(70, 140, 255, 0) 100%);
+  mix-blend-mode: screen;
+}
+
+/* ── The immersive view: only the eye is drawn; the stick and the look pad
+   stay live but unseen, so the view is the whole screen and the ship still
+   answers. ── */
+.flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
+.flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
+.flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
+.flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
+.flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
+.flight-hud__turn[data-on='true'] svg { transform: rotate(90deg); }
+
+/* ── Top right: the round session keys ── */
+.flight-hud__top-keys {
+  position: absolute;
+  top: var(--edge-top);
+  right: var(--edge-right);
+  display: grid;
+  gap: 9px;
+}
+.flight-hud .flight-hud__round { width: var(--hud-round); height: var(--hud-round); border-radius: 50%; }
+/* The menu: everything that is not flown with a thumb, under the two keys. */
+.flight-hud__menu {
+  position: absolute;
+  top: 0;
+  right: calc(var(--hud-round) + 10px);
+  display: grid;
+  gap: 2px;
+  width: min(250px, calc(100cqw - var(--hud-round) - 3 * var(--gutter)));
+  max-height: calc(100cqh - 2 * var(--edge-top));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-deep);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  z-index: 7;
+}
+.flight-hud .flight-hud__menu button {
+  justify-content: flex-start;
+  gap: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border-color: transparent;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.flight-hud .flight-hud__menu button svg { flex: none; color: var(--hud-dim); }
+.flight-hud .flight-hud__menu button:active { background: rgba(77, 163, 255, 0.16); }
+.flight-hud__menu-group { display: grid; gap: 2px; padding: 4px 0; border-top: 1px solid var(--hud-line); border-bottom: 1px solid var(--hud-line); }
+.flight-hud .flight-hud__rail-key[data-on='true'] { color: var(--hud-accent); }
+.flight-hud .flight-hud__rail-key[data-on='true'] svg { color: var(--hud-accent); }
+.flight-hud__rail-key[hidden] { display: none; }
+.flight-hud__menu-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.flight-hud .flight-hud__menu-row button { justify-content: center; padding: 0; border: 1px solid var(--hud-line); }
+.flight-hud .flight-hud__menu-row .flight-hud__view { font-weight: 600; letter-spacing: 0.06em; }
+.flight-hud .flight-hud__menu-exit { color: #ffb4a8; }
+.flight-hud .flight-hud__menu-exit svg { color: #ffb4a8; }
+
+/* ── The right column: the cards, then the camera keys ── */
+.flight-hud__side {
+  position: absolute;
+  top: calc(var(--edge-top) + (var(--hud-round) + 9px) * 3 + 6px);
+  right: var(--edge-right);
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  width: var(--card);
+}
+.flight-hud .flight-hud__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-glass);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  text-align: left;
+}
+.flight-hud__card-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(77, 163, 255, 0.14);
+  color: var(--hud-accent);
+}
+.flight-hud__card-text { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.flight-hud__card-label { font-size: 10px; line-height: 1.35; color: var(--hud-dim); }
+.flight-hud__card-value { font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+.flight-drive__jump .flight-hud__card-value { white-space: nowrap; }
+.flight-drive__dist { font-family: var(--font-mono, ui-monospace, monospace); letter-spacing: 0.02em; }
+.flight-hud__card-go { flex: none; color: var(--hud-dim); }
+/* The state light in the card's corner. */
+.flight-hud__dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hud-ok);
+  box-shadow: 0 0 8px rgba(70, 214, 138, 0.8);
+}
+.flight-drive__jump[data-state='locked'] .flight-hud__dot { background: #f5b545; box-shadow: 0 0 8px rgba(245, 181, 69, 0.8); }
+.flight-drive__jump[data-state='jumping'] .flight-hud__dot { background: var(--hud-accent); box-shadow: 0 0 10px rgba(77, 163, 255, 0.9); }
+.flight-hud .flight-drive__jump[data-state='jumping'] { border-color: rgba(77, 163, 255, 0.6); }
+.flight-drive__jump[data-state='locked'] .flight-hud__card-value { color: var(--hud-dim); }
+.flight-drive__jump-wrap { position: relative; width: 100%; }
+.flight-drive__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  gap: 4px;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(260px, calc(100vw - 32px));
+  padding: 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-deep);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+.flight-hud .flight-drive__menu button {
+  justify-content: space-between;
+  gap: 14px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border-color: transparent;
+  background: transparent;
+  font-size: 12px;
+}
+.flight-hud .flight-drive__menu button:active { background: rgba(77, 163, 255, 0.16); }
+.flight-drive__ly { color: var(--hud-dim); white-space: nowrap; }
+/* The standing order's progress sits under its value. */
+.flight-hud__order .flight-hud__track { margin-top: 3px; }
+.flight-hud__order[hidden] { display: none; }
+.flight-hud__order[data-done='true'] .flight-hud__card-value { color: var(--hud-ok); }
+.flight-hud__order[data-done='true'] .flight-hud__track { display: none; }
+
+/* ── Target bracket out on the glass ── */
+.flight-hud__marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -13px 0 0 -13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 13px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
+}
+.flight-hud__marker::before {
+  content: '';
+  width: 26px;
+  height: 26px;
+  flex: none;
+  background:
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 0 0 / 8px 1px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 0 0 / 1px 8px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 100% 0 / 8px 1px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 100% 0 / 1px 8px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 0 100% / 8px 1px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 0 100% / 1px 8px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 100% 100% / 8px 1px no-repeat,
+    linear-gradient(var(--hud-ink), var(--hud-ink)) 100% 100% / 1px 8px no-repeat;
+  opacity: 0.85;
+}
+.flight-hud__marker[hidden] { display: none; }
+
+/* ── Incoming transmission, top centre ── */
+.flight-hud__comms {
+  position: absolute;
+  top: var(--edge-top);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 2 * (var(--card) + 34px)));
+  padding: 11px 15px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-glass);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  display: grid;
+  gap: 5px;
+}
+.flight-hud__comms[hidden] { display: none; }
+
+/* ── The popup: on a phone, whatever needs saying comes up at the top of the
+   glass and goes again, instead of living in a card on the deck. ── */
+.flight-hud__toast {
+  position: absolute;
+  top: calc(var(--edge-top) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 2 * var(--gutter));
+  width: max-content;
+  padding: 8px 14px;
+  border: 1px solid var(--hud-line);
+  border-radius: 999px;
+  background: var(--hud-deep);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  animation: flight-toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.1) both;
+}
+.flight-hud__toast[hidden] { display: none; }
+.flight-hud__toast[data-tone='warn'] { border-color: rgba(255, 150, 120, 0.6); color: #ffd2c4; }
+.flight-hud__toast[data-tone='ok'] { border-color: color-mix(in srgb, var(--terracotta) 60%, transparent); color: var(--hud-ink); }
+@keyframes flight-toast-in {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-hud__toast { animation: none; }
+}
+.flight-hud__comms-from { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-accent); }
+.flight-hud__comms p { margin: 0; font-size: 12px; line-height: 1.5; }
+
+/* ── The layout editor: a ghost over every control, a bar to keep or drop
+   the result. The ghosts take every touch while it is open. ── */
+.flight-hud__editor { position: absolute; inset: 0; z-index: 9; pointer-events: auto; background: rgba(4, 8, 16, 0.28); touch-action: none; }
+.flight-hud__ghost {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed rgba(77, 163, 255, 0.7);
+  border-radius: 14px;
+  background: rgba(77, 163, 255, 0.12);
+  color: var(--hud-ink);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  cursor: grab;
+  touch-action: none;
+  overflow: hidden;
+}
+.flight-hud__ghost[hidden] { display: none; }
+.flight-hud__ghost span { padding: 2px 6px; border-radius: 999px; background: rgba(8, 14, 27, 0.8); }
+.flight-hud__ghost[data-picked='true'] { border-style: solid; background: rgba(77, 163, 255, 0.24); box-shadow: 0 0 0 3px rgba(77, 163, 255, 0.2); }
+.flight-hud__editor-bar {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--edge-top) + 150px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 2 * var(--gutter));
+  padding: 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 999px;
+  background: var(--hud-deep);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.flight-hud__editor-hint { padding: 0 10px; font-size: 11px; color: var(--hud-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.flight-hud .flight-hud__editor-bar button { width: 38px; height: 38px; border-radius: 50%; }
+.flight-hud .flight-hud__editor-bar .flight-hud__editor-save { width: auto; gap: 6px; padding: 0 14px; border-radius: 999px; border-color: rgba(77, 163, 255, 0.7); color: var(--hud-accent); font-weight: 600; }
+/* While editing, the deck is drawn in full even though the ship is paused. */
+.flight-hud[data-editing='true'] .flight-hud__keys button:disabled,
+.flight-hud[data-editing='true'] .flight-hud__console button:disabled { opacity: 1; }
+
+/* ── Controls card ── */
+.flight-hud__help {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 32px));
+  display: grid;
+  gap: 7px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--hud-line);
+  border-radius: var(--hud-radius);
+  background: var(--hud-deep);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  pointer-events: auto;
+  z-index: 6;
+}
+.flight-hud__help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 11px;
+  color: var(--hud-accent);
+}
+.flight-hud .flight-hud__help-head button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--hud-dim); }
+/* On a narrow screen the centred card ran under the round keys down the
+   right edge (menu, hide the deck) and took their taps: it keeps clear of
+   that column instead. */
+@media (max-width: 600px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--hud-round) + 10px);
+    width: auto;
+    transform: none;
+    max-height: calc(100% - var(--edge-top) - var(--edge-bottom) - 120px);
+    overflow-y: auto;
+  }
+}
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+}
+.flight-hud__help p { margin: 0; font-size: 11px; line-height: 1.55; color: var(--hud-dim); }
+
+/* ── The dock ── */
+.flight-hud__dock {
+  position: absolute;
+  left: var(--edge-left);
+  right: var(--edge-right);
+  bottom: var(--edge-bottom);
+  display: grid;
+  justify-items: center;
+  align-items: end;
+  gap: 10px;
+  grid-template-areas: 'land' 'keys' 'console';
+}
+.flight-hud__prompts { grid-area: land; justify-self: start; display: flex; align-items: flex-end; gap: 8px; }
+/* The menu drops down over the deck; on an upright phone it reaches the
+   land and dock prompts, which would draw over its rows. They step aside
+   while it is open. */
+.flight-hud[data-menu='true'] .flight-hud__prompts { visibility: hidden; }
+.flight-hud .flight-hud__dock-key { border-color: rgba(77, 163, 255, 0.55); color: var(--hud-accent); }
+.flight-hud .flight-hud__dock-key[data-on='true'] { background: rgba(77, 163, 255, 0.2); }
+
+.flight-hud__console { grid-area: console; }
+.flight-hud__keys { grid-area: keys; }
+.flight-hud__move { grid-area: move; }
+.flight-hud .flight-hud__prompt {
+  gap: 8px;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-size: 12px;
+  white-space: nowrap;
+  animation: moon-impact 0.5s ease-out both;
+}
+/* The way down: a small key at the left of the dock, not a card over the ship. */
+.flight-hud .flight-hud__land {
+  --land: 0;
+  height: auto;
+  width: max-content;
+  max-width: min(280px, calc(100cqw - 2 * var(--gutter)));
+  padding: 6px 11px 6px 6px;
+  gap: 9px;
+  border-radius: 14px;
+  border-color: color-mix(in srgb, var(--terracotta) 55%, transparent);
+  background: var(--hud-deep);
+  color: var(--hud-ink);
+  text-align: left;
+  white-space: normal;
+  animation: land-card-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+.flight-hud__land-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--terracotta) 22%, transparent);
+  color: var(--terracotta);
+}
+.flight-hud__land[data-ready='true'] .flight-hud__land-icon { animation: land-icon-bob 1.4s ease-in-out infinite; }
+.flight-hud__land-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.flight-hud__land-title { font-size: 12px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flight-hud__land-gauge {
+  position: relative;
+  height: 2px;
+  margin-top: 2px;
+  border-radius: 2px;
+  background: var(--hud-line);
+  overflow: hidden;
+}
+.flight-hud__land-gauge i {
+  position: absolute;
+  inset: 0;
+  background: var(--terracotta);
+  transform: scaleX(var(--land));
+  transform-origin: left;
+  transition: transform 0.2s linear;
+}
+.flight-hud__land-state { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.25; color: var(--hud-dim); }
+.flight-hud__land[data-ready='true'] .flight-hud__land-state { color: var(--terracotta); }
+.flight-hud__land-key {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--hud-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: var(--hud-ink);
+}
+/* Over a world you could land on but are too high for: the card is there, so
+   you know the way down exists, but it is plainly not lit yet. */
+.flight-hud .flight-hud__land[data-ready='false'] {
+  border-color: var(--hud-line);
+  cursor: default;
+}
+.flight-hud__land[data-ready='false'] .flight-hud__land-icon { background: var(--hud-line); color: var(--hud-dim); }
+.flight-hud__land[data-ready='false'] .flight-hud__land-key { opacity: 0.4; }
+@keyframes land-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes land-icon-bob {
+  0%, 100% { transform: translateY(-2px); }
+  50% { transform: translateY(2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-hud .flight-hud__land, .flight-hud__land[data-ready='true'] .flight-hud__land-icon { animation: none; }
+}
+.flight-hud__prompt[hidden] { display: none; }
+
+/* ── The console bar: the compass, the range, the dial, the systems ── */
+.flight-hud__console {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 820px;
+  padding: 9px 14px;
+  border: 1px solid var(--hud-line);
+  border-radius: 22px;
+  background: var(--hud-glass);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.flight-hud .flight-hud__radar {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(120, 160, 210, 0.1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.flight-hud__radar canvas { width: 100%; height: 100%; }
+.flight-hud__console-label { font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); }
+.flight-hud__console-value { font-size: 16px; }
+.flight-hud__range { display: grid; gap: 3px; min-width: 0; }
+.flight-hud small { font-size: 10px; color: var(--hud-dim); }
+/* Speed dial: a ring open at the bottom, filled to the regime's ceiling. */
+.flight-hud__speed {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  margin: -8px 0;
+  line-height: 1.1;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.flight-hud__speed svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(135deg); fill: none; stroke: rgba(120, 165, 220, 0.22); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 245 327; }
+.flight-hud__speed svg .flight-hud__speed-arc { stroke: var(--hud-accent); stroke-width: 6; stroke-dasharray: calc(var(--speed, 0) * 0.75) 1; }
+.flight-hud__speed-value { font-size: 20px; font-weight: 600; line-height: 1.1; }
+.flight-hud__systems { display: grid; gap: 7px; min-width: 0; }
+.flight-hud__sys { display: grid; grid-template-columns: 16px auto minmax(46px, 1fr); gap: 8px; align-items: center; }
+.flight-hud__sys svg { color: var(--hud-dim); }
+.flight-hud__sys-name { font-size: 10px; color: var(--hud-dim); white-space: nowrap; }
+.flight-hud__track { height: 6px; border-radius: 3px; background: rgba(120, 165, 220, 0.18); overflow: hidden; }
+.flight-hud__track > span { display: block; height: 100%; border-radius: 3px; transform-origin: left; background: var(--hud-accent); }
+.flight-hud__sys:first-child .flight-hud__track > span { background: var(--hud-ink); }
+
+/* ── The keys: the drive first, then whatever the hands need. On a pointer
+   they are a labelled row; under a thumb they are a cluster round the
+   right thumb — fire biggest and nearest, boost and brake and the gear on
+   an arc above and beside it, close enough to reach, far enough apart to
+   never be hit by mistake. ── */
+.flight-hud__keys { display: flex; align-items: center; gap: 8px; }
+.flight-hud__gear-slot { display: flex; }
+.flight-hud .flight-hud__key {
+  gap: 8px;
+  height: var(--hud-round);
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--hud-dim);
+  white-space: nowrap;
+}
+.flight-hud .flight-hud__key:active { color: var(--hud-ink); background: rgba(77, 163, 255, 0.2); }
+.flight-hud .flight-drive__gear {
+  gap: 9px;
+  height: var(--hud-round);
+  padding: 0 14px;
+  border-radius: 999px;
+}
+.flight-drive__gear svg { flex: none; color: var(--hud-dim); }
+.flight-drive__mode { font-size: 11px; white-space: nowrap; }
+.flight-drive__pips { display: flex; gap: 3px; flex: none; }
+.flight-drive__pips i { width: 10px; height: 3px; border-radius: 2px; background: rgba(120, 165, 220, 0.35); }
+/* One lit pip per regime, the whole row at light speed. */
+.flight-drive__gear[data-mode='cruise'] .flight-drive__pips i:first-child,
+.flight-drive__gear[data-mode='fast'] .flight-drive__pips i:nth-child(-n + 2),
+.flight-drive__gear:is([data-mode='ultra'], [data-mode='jump']) .flight-drive__pips i { background: var(--hud-accent); }
+.flight-hud .flight-drive__gear:is([data-mode='ultra'], [data-mode='jump']) { border-color: rgba(77, 163, 255, 0.6); }
+.flight-drive__gear[data-mode='ultra'] svg { color: var(--hud-accent); }
+/* Out in the suit there are no regimes to pick. */
+.flight-drive__gear[data-mode='eva'] { opacity: 0.45; }
+.flight-drive__gear kbd {
+  font: inherit;
+  font-size: 9px;
+  line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--hud-line);
+  border-radius: 5px;
+  color: var(--hud-dim);
+}
+
+/* ── The two pads ── */
+.flight-hud__move { width: var(--stick); height: var(--stick); }
+.flight-hud .flight-hud__move .game-stick {
+  width: 100%;
+  height: 100%;
+  border-color: var(--hud-line);
+  background: radial-gradient(circle at 50% 50%, rgba(23, 38, 64, 0.5), rgba(8, 14, 27, 0.32) 72%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.flight-hud .game-stick__axis { display: none; }
+.flight-hud .game-stick__pad { display: block; position: absolute; inset: 0; color: rgba(186, 212, 240, 0.7); }
+.flight-hud .game-stick__pad svg { position: absolute; }
+.flight-hud .game-stick__pad svg:nth-child(1) { top: 7%; left: 50%; transform: translateX(-50%); }
+.flight-hud .game-stick__pad svg:nth-child(2) { right: 7%; top: 50%; transform: translateY(-50%); }
+.flight-hud .game-stick__pad svg:nth-child(3) { bottom: 7%; left: 50%; transform: translateX(-50%); }
+.flight-hud .game-stick__pad svg:nth-child(4) { left: 7%; top: 50%; transform: translateY(-50%); }
+.flight-hud .game-stick__thumb {
+  left: 32%;
+  top: 32%;
+  width: 36%;
+  height: 36%;
+  border-color: rgba(200, 222, 245, 0.55);
+  background: rgba(58, 92, 138, 0.42);
+}
+.flight-hud .game-stick__thumb svg { display: none; }
+/* Under the thumb the knob is direct; let go and it glides home. */
+.flight-hud .game-stick:not([data-active='true']) .game-stick__thumb { transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.flight-hud .game-stick__thumb::after {
+  content: '';
+  width: 22%;
+  height: 22%;
+  border-radius: 50%;
+  background: var(--hud-ink);
+}
+
+/* ── Touch: the stick bottom left, the cluster bottom right, the console
+   bar under both. ── */
+.flight-hud[data-touch='true'] .flight-hud__keys {
+  position: relative;
+  width: calc(var(--key) * 3.4);
+  height: calc(var(--key) * 2.75);
+  justify-self: end;
+}
+.flight-hud[data-touch='true'] .flight-hud__keys > * { position: absolute; }
+.flight-hud[data-touch='true'] .flight-hud__key,
+.flight-hud[data-touch='true'] .flight-drive__gear { width: var(--key); height: var(--key); padding: 0; border-radius: 50%; justify-content: center; }
+.flight-hud[data-touch='true'] .flight-hud__key span,
+.flight-hud[data-touch='true'] .flight-drive__mode { display: none; }
+.flight-hud[data-touch='true'] .flight-drive__gear { flex-direction: column; gap: 4px; }
+.flight-hud[data-touch='true'] .flight-drive__pips i { width: 8px; }
+.flight-hud[data-touch='true'] .flight-hud__key--fire { right: 0; bottom: 0; width: calc(var(--key) * 1.45); height: calc(var(--key) * 1.45); border-color: rgba(77, 163, 255, 0.45); background: rgba(14, 26, 48, 0.72); }
+.flight-hud[data-touch='true'] .flight-hud__key--fire svg { color: var(--hud-ink); }
+.flight-hud[data-touch='true'] .flight-hud__key--fire:active { background: rgba(77, 163, 255, 0.35); }
+/* Placed by name: counted, they slid round a slot when the fire key was not
+   there (combat off), and the boost key lost its place altogether. */
+.flight-hud[data-touch='true'] .flight-hud__keys [data-place='boost'] { right: calc(var(--key) * 1.7); bottom: calc(var(--key) * 0.1); }
+.flight-hud[data-touch='true'] .flight-hud__keys [data-place='brake'] { right: calc(var(--key) * 0.2); bottom: calc(var(--key) * 1.7); }
+.flight-hud[data-touch='true'] .flight-hud__gear-slot { right: calc(var(--key) * 1.85); bottom: calc(var(--key) * 1.6); }
+/* No fire key: three keys in a tight corner — brake under the thumb, boost
+   beside it, the gear above — instead of round a gap for a key that is not there. */
+.flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] { width: calc(var(--key) * 2.3); height: calc(var(--key) * 2.3); }
+.flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] [data-place='brake'] { right: 0; bottom: 0; }
+.flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] [data-place='boost'] { right: calc(var(--key) * 1.22); bottom: 0; }
+.flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] .flight-hud__gear-slot { right: 0; bottom: calc(var(--key) * 1.22); }
+
+/* ── Phones: the dock is two rows — stick and cluster, then the console
+   bar. Everything is sized off --stick and --key so the whole band fits a
+   320px screen without a single overflow. ── */
+@container viewport (max-width: 599px) {
+  .flight-hud { --gutter: 10px; --hud-round: 44px; }
+  .flight-hud__title { font-size: 19px; }
+  .flight-hud__head { max-width: calc(100% - 120px); }
+  /* Under the heading block, clear of the cards on the other side. */
+  .flight-hud__comms { width: calc(100% - 20px); top: calc(var(--edge-top) + 150px); }
+  .flight-hud__console { gap: 9px; padding: 8px 11px; border-radius: 20px; }
+  .flight-hud .flight-hud__radar { width: 40px; height: 40px; }
+  .flight-hud__console-value { font-size: 14px; }
+  .flight-hud__console-label { font-size: 9px; }
+  .flight-hud__speed { width: 68px; height: 68px; margin: -6px 0; }
+  .flight-hud__speed-value { font-size: 16px; }
+  .flight-hud__speed svg, .flight-hud__speed svg .flight-hud__speed-arc { stroke-width: 5; }
+  .flight-hud__speed small { font-size: 8px; }
+  .flight-hud__speed .flight-hud__console-label { font-size: 8px; }
+  .flight-hud__sys { grid-template-columns: 15px auto minmax(38px, 1fr); gap: 5px; }
+  .flight-hud__sys-name { font-size: 9px; }
+  .flight-hud__systems { gap: 6px; min-width: 52px; }
+  .flight-hud { --key: clamp(44px, 13cqw, 52px); }
+}
+/* ── A phone either way up — narrow, or turned on its side and short. The
+   deck keeps to the edges and the universe gets the middle: the heading is
+   one line and a pair of numbers, the jump is a round key under the menu,
+   the standing order and the ship's alerts come up as the popup, and the
+   console is a pill, not a band. (PlayerShip's `compact` is the same test.) ── */
+@container viewport (max-width: 599px) or (max-height: 500px) {
+  .flight-hud[data-touch='true'] .flight-hud__title { font-size: 16px; }
+  .flight-hud[data-touch='true'] .flight-hud__sub,
+  .flight-hud[data-touch='true'] .flight-hud__status,
+  .flight-hud[data-touch='true'] .flight-hud__reading > span { display: none; }
+  .flight-hud[data-touch='true'] .flight-hud__readings { display: flex; gap: 12px; margin-top: 2px; }
+  .flight-hud[data-touch='true'] .flight-hud__reading { gap: 5px; }
+  .flight-hud[data-touch='true'] .flight-hud__reading > b { font-size: 12px; }
+  .flight-hud[data-touch='true'] .flight-hud__side { width: auto; }
+  .flight-hud[data-touch='true'] .flight-hud__order { display: none; }
+  .flight-hud[data-touch='true'] .flight-drive__jump { width: var(--hud-round); height: var(--hud-round); padding: 0; border-radius: 50%; justify-content: center; }
+  .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__card-text,
+  .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__card-go { display: none; }
+  .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__card-icon { width: auto; height: auto; background: transparent; }
+  .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__dot { top: 5px; right: 5px; }
+  .flight-hud[data-touch='true'] .flight-hud__comms { top: calc(var(--edge-top) + 110px); }
+  .flight-hud[data-touch='true'] .flight-hud__console { width: auto; justify-self: center; gap: 10px; padding: 4px 12px 4px 5px; border-radius: 999px; }
+  .flight-hud[data-touch='true'] .flight-hud__radar { width: 44px; height: 44px; }
+  .flight-hud[data-touch='true'] .flight-hud__range { gap: 1px; }
+  .flight-hud[data-touch='true'] .flight-hud__console-value { font-size: 13px; }
+  .flight-hud[data-touch='true'] .flight-hud__speed { width: 54px; height: 54px; margin: -2px 0; }
+  .flight-hud[data-touch='true'] .flight-hud__speed-value { font-size: 14px; }
+  .flight-hud[data-touch='true'] .flight-hud__speed .flight-hud__console-label { display: none; }
+  .flight-hud[data-touch='true'] .flight-hud__systems { gap: 5px; min-width: 0; width: 64px; }
+  .flight-hud[data-touch='true'] .flight-hud__sys { grid-template-columns: 12px minmax(0, 1fr); gap: 5px; }
+  .flight-hud[data-touch='true'] .flight-hud__sys svg { width: 12px; height: 12px; }
+  .flight-hud[data-touch='true'] .flight-hud__sys-name { display: none; }
+  .flight-hud[data-touch='true'] .flight-hud__track { height: 4px; }
+}
+@container viewport (max-width: 599px) {
+  /* Upright, the menu keys stand in a column: the jump key is the third. */
+  .flight-hud[data-touch='true'] .flight-hud__side { top: calc(var(--edge-top) + (var(--hud-round) + 9px) * 2); }
+}
+@container viewport (max-width: 380px) {
+  .flight-hud__rail-key > span:last-child { display: none; }
+  .flight-hud .flight-hud__rail-key { padding: 0 5px; }
+  .flight-hud__sys { grid-template-columns: 15px minmax(34px, 1fr); }
+  .flight-hud__sys-name { display: none; }
+}
+@container viewport (min-width: 600px) {
+  .flight-hud { --gutter: 22px; --hud-round: 46px; }
+  .flight-hud__title { font-size: 24px; }
+  .flight-hud__reading > span { font-size: 12px; }
+  .flight-hud__reading > b { font-size: 15px; }
+  .flight-hud__status { font-size: 12px; }
+  .flight-hud__console { gap: 22px; padding: 10px 20px; }
+  .flight-hud .flight-hud__radar { width: 58px; height: 58px; }
+  .flight-hud__speed { width: 86px; height: 86px; margin: -10px 0; }
+  .flight-hud__speed-value { font-size: 23px; }
+  .flight-hud__console-value { font-size: 18px; }
+  .flight-hud__sys { grid-template-columns: 16px 58px minmax(80px, 1fr); }
+}
+
+/* ── Touch: the stick and the cluster share a row; wide screens put the
+   console bar between them instead of under them. ── */
+.flight-hud[data-touch='true'] .flight-hud__dock {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    'land land'
+    'move keys'
+    'console console';
+}
+@container viewport (min-width: 600px) {
+  .flight-hud[data-touch='true'] .flight-hud__dock {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'land land    land'
+      'move console keys';
+    column-gap: 18px;
+  }
+}
+/* Landscape: a shallow screen gets a smaller dock rather than less view. */
+/* Short screens: the cards keep to one line each and the camera keys lie
+   down in a row, so the right column always clears the dock. */
+@container viewport (max-height: 640px) {
+  .flight-hud .flight-hud__card { padding: 7px 9px; }
+  .flight-hud__card-label, .flight-hud__card-value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .flight-hud__order .flight-hud__track { display: none; }
+}
+@container viewport (max-height: 700px) {
+}
+@container viewport (max-height: 500px) {
+  .flight-hud { --stick: 104px; --key: 44px; --hud-round: 44px; --gutter: 12px; --card: 196px; }
+  .flight-hud__top-keys { grid-auto-flow: column; }
+  .flight-hud__side { top: calc(var(--edge-top) + var(--hud-round) + 12px); gap: 8px; }
+  .flight-hud .flight-hud__card { padding: 5px 8px; }
+  .flight-hud__card-icon { width: 30px; height: 30px; }
+  .flight-hud__dock { gap: 8px; }
+  .flight-hud__speed { width: 66px; height: 66px; margin: -6px 0; }
+  .flight-hud__speed-value { font-size: 18px; }
+  .flight-hud .flight-hud__radar { width: 44px; height: 44px; }
+  .flight-hud__console { padding: 7px 12px; gap: 12px; }
+  /* Turned sideways there is barely 400px of height, and the menu is a dozen
+     rows: it ran off the bottom of the glass. Two columns, shorter rows, and
+     the whole of it is on screen at once. */
+  .flight-hud__menu {
+    width: min(420px, calc(100cqw - var(--hud-round) - 3 * var(--gutter)));
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 2px 6px;
+  }
+  .flight-hud .flight-hud__menu button { height: 34px; padding: 0 9px; font-size: 11px; }
+  .flight-hud .flight-hud__menu button svg { width: 14px; height: 14px; }
+  .flight-hud__menu-group { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 2px 6px; padding: 3px 0; }
+  .flight-hud__menu-row { grid-column: 1 / -1; }
+}
+/* A thumb is not a cursor: every row it can hit in the deck's menus is 44 px,
+   on its side too — the menu scrolls the last row in rather than shrink them. */
+.flight-hud[data-touch='true'] .flight-hud__menu button,
+.flight-hud[data-touch='true'] .flight-drive__menu button { height: 44px; }
+
+/* ──────────────────── planet info chip (opens the facts card) ────────────────────
+   Picking a body no longer throws a panel over it. A callout docks beside the
+   planet — leader line first, then the tag — and the facts card only appears
+   once the chip is pressed. */
+
+.solar-system__infochip {
+  position: absolute;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px;
+  min-height: 0;
+  border-radius: 12px;
+  border: 0.5px solid rgba(248, 244, 236, 0.18);
+  background: rgba(6, 10, 18, 0.82);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  animation: solar-chip-in 260ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes solar-chip-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes solar-leader-draw {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ──────────────────── facts card: telemetry-style write-in ────────────────────
+   The frame sweeps open from the planet's side, then each block wipes in left
+   to right, the way a mission readout fills a panel line by line. */
+
+.solar-system__popover .solar-system__popcard {
+  animation: solar-popcard-in 300ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes solar-popcard-in {
+  from { opacity: 0; clip-path: inset(0 100% 0 0 round 14px); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0 round 14px); }
+}
+@keyframes solar-popcard-in-left {
+  from { opacity: 0; clip-path: inset(0 0 0 100% round 14px); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0 round 14px); }
+}
+
+/* Rows fill in sequence inside each block, so the numbers arrive one at a time. */
+.solar-system__popcard .solar-system__dl > div {
+  animation: solar-write-in 220ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes solar-write-in {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); }
+  to   { opacity: 1; clip-path: inset(0 -4px 0 0); }
+}
+
+/* Very small phones: the compass and the dial give up a few pixels. */
+@media (max-width: 380px) {
+  .flight-hud .flight-hud__radar { width: 36px; height: 36px; }
+  .flight-hud__console { gap: 7px; padding: 8px 9px; }
+  .flight-hud__speed { width: 58px; height: 58px; }
+  .flight-hud__speed-value { font-size: 16px; }
+}
+
+/* ═══════════════════ Moon Mode: the surface ═══════════════════ */
+/* ── Moon Mode: the surface glass. The screen is the Moon; everything here
+   is a thin instrument laid over it — a compass ribbon at the top, the
+   suit down the left edge, the objective under the place name, and two
+   thumb stations at the bottom corners with nothing in between them. ── */
+.moon-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  background: #000;
+  overflow: hidden;
+  animation: moon-arrive 1.2s ease-out both;
+}
+@keyframes moon-arrive { from { opacity: 0; } to { opacity: 1; } }
+.moon-surface__canvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
+.moon-surface__canvas:active { cursor: grabbing; }
+.moon-hud {
+  /* White on near-black glass; teal for what is live, amber for what is
+     spent. Thin lines, so the glass reads as a visor and not a window. */
+  --hud-ink: #f4f8ff;
+  --hud-dim: rgba(186, 206, 232, 0.62);
+  --hud-accent: #5eead4;
+  --hud-warm: #ffb347;
+  --hud-line: rgba(140, 180, 220, 0.2);
+  --hud-glass: rgba(6, 10, 20, 0.5);
+  --hud-solid: rgba(5, 9, 18, 0.86);
+  --edge-top: max(14px, env(safe-area-inset-top));
+  --edge-right: max(14px, env(safe-area-inset-right));
+  --edge-bottom: max(14px, env(safe-area-inset-bottom));
+  --edge-left: max(14px, env(safe-area-inset-left));
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: var(--hud-ink);
+  font: 400 12px var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.moon-hud button {
+  pointer-events: auto;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: var(--hud-glass);
+  color: var(--hud-ink);
+  font: inherit;
+  cursor: pointer;
+  touch-action: none;
+  padding: 0;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.moon-hud button::before { content: none; }
+.moon-hud button:focus-visible { outline: 2px solid var(--hud-accent); outline-offset: 4px; }
+.moon-hud__reading { display: flex; gap: 8px; color: var(--hud-dim); }
+.moon-hud__reading > span:first-child { letter-spacing: 0.14em; text-transform: uppercase; font-size: 10px; align-self: baseline; }
+.moon-hud__reading > span:last-child { color: var(--hud-ink); }
+
+/* ── Top left: the place, and the three numbers that change. ── */
+.moon-hud__head {
+  position: absolute;
+  top: var(--edge-top);
+  left: var(--edge-left);
+  display: grid;
+  gap: 5px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--hud-glass);
+  max-width: 44vw;
+}
+.moon-hud__place { font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.moon-hud__head-rows { display: grid; gap: 3px; }
+
+/* ── The objective, right under it: a key you can press for the log. ── */
+.moon-hud__objective {
+  position: absolute;
+  top: calc(var(--edge-top) + 92px);
+  left: var(--edge-left);
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 6px !important;
+  max-width: min(320px, 62vw);
+}
+.moon-hud__objective[hidden] { display: none; }
+.moon-hud__objective-tag { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hud-warm); }
+.moon-hud__objective-text { font-size: 13px; line-height: 1.35; }
+.moon-hud__objective-range { font-size: 12px; color: var(--hud-dim); }
+
+/* ── The Moon stacks the place and the objective into one column, so the
+      objective sits under the head however tall the head is. The other
+      worlds still place both cards themselves. ── */
+.moon-hud__topleft {
+  position: absolute;
+  top: var(--edge-top);
+  left: var(--edge-left);
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  max-width: min(320px, 62vw);
+}
+.moon-hud__topleft > .moon-hud__head,
+.moon-hud__topleft > .moon-hud__objective { position: static; max-width: 100%; }
+.moon-hud__head-rows[hidden] { display: none; }
+.moon-hud__head-rows .moon-hud__reading[hidden] { display: none; }
+
+/* ── The compass ribbon. ── */
+.moon-hud__compass {
+  position: absolute;
+  top: calc(var(--edge-top) + 9px);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: min(300px, 44vw);
+  height: 26px;
+}
+.moon-hud__strip-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(6, 14, 28, 0.62), rgba(6, 14, 28, 0.2));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent);
+}
+.moon-hud__strip { position: absolute; top: 0; left: 50%; height: 100%; will-change: transform; }
+.moon-hud__tick { position: absolute; top: 6px; width: 1px; height: 6px; background: rgba(186, 214, 240, 0.45); }
+.moon-hud__tick[data-major='true'] { height: 9px; background: var(--hud-ink); }
+.moon-hud__tick b { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font: 600 10px var(--font-mono), monospace; letter-spacing: 0.1em; }
+.moon-hud__needle {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border: 5px solid transparent;
+  border-top-color: var(--hud-warm);
+  transform: translateX(-50%);
+}
+.moon-hud__pip {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: #5eead4;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 4px rgba(94, 234, 212, 0.8));
+}
+.moon-hud__pip[hidden] { display: none; }
+.moon-hud__pip[data-edge='true'] { background: var(--hud-warm); animation: moon-pulse 0.9s ease-in-out infinite; }
+
+/* ── Top right: three round keys, and the menu under them. ── */
+.moon-hud__top {
+  position: absolute;
+  top: var(--edge-top);
+  right: var(--edge-right);
+  display: flex;
+  gap: 7px;
+}
+.moon-hud__round {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50% !important;
+}
+.moon-hud__round:active { border-color: var(--hud-accent); }
+.moon-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
+.moon-hud__menu {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 210px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: var(--hud-solid);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  z-index: 5;
+}
+.moon-hud__menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--hud-dim);
+  text-align: left;
+}
+.moon-hud__menu button:hover, .moon-hud__menu button:active { background: rgba(77, 178, 255, 0.14); color: var(--hud-ink); }
+.moon-hud__menu-exit { color: var(--hud-warm) !important; }
+
+/* ── One reading: a label and its number, wherever they are shown. ── */
+.moon-hud__vital { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; align-items: baseline; }
+.moon-hud__vital > span { text-align: right; }
+.moon-hud__vital i { font-style: normal; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-dim); }
+.moon-hud__lamp { align-items: center; color: var(--hud-warm); }
+.moon-hud__lamp i { color: var(--hud-warm); }
+.moon-hud__lamp[hidden] { display: none; }
+
+/* ── The Moon's bottom left: the suit, on the glass only when it is low, has
+      just changed, or the crew is looking out of their own helmet. ── */
+.moon-hud__suit {
+  position: absolute;
+  min-width: 128px;
+  left: var(--edge-left);
+  bottom: calc(var(--edge-bottom) + 56px);
+  display: grid;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: var(--hud-glass);
+  font-size: 12px;
+}
+.moon-hud__suit[hidden] { display: none; }
+.moon-hud__suit .moon-hud__vital i { font-size: 12px; letter-spacing: 0.1em; }
+.moon-hud__suit[data-level='low'] .moon-hud__bar i { background: var(--hud-warm); }
+.moon-hud__suit[data-level='critical'] { color: #ffb4a2; }
+.moon-hud__suit[data-level='critical'] .moon-hud__bar i { background: #ff7a5c; }
+
+/* ── And its bottom right: what is in the crew's hands, and the lamp. ── */
+.moon-hud__hands {
+  position: absolute;
+  right: var(--edge-right);
+  bottom: calc(var(--edge-bottom) + 56px);
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+.moon-hud__carry {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--hud-glass);
+  font-size: 12px;
+}
+.moon-hud__carry[hidden] { display: none; }
+.moon-hud__carry i { font-style: normal; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.moon-hud__bar { grid-column: 1 / -1; display: block; height: 2px; border-radius: 2px; background: rgba(186, 214, 240, 0.2); }
+.moon-hud__bar i { display: block; height: 100%; border-radius: 2px; background: var(--hud-accent); }
+
+/* ── The middle of the glass. ── */
+.moon-hud__foot {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--edge-bottom) + 130px);
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(520px, calc(100% - 200px));
+  text-align: center;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85);
+}
+.moon-hud__poi, .moon-hud__hint, .moon-hud__airlock, .moon-hud__stance {
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: var(--hud-glass);
+}
+.moon-hud__poi { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+.moon-hud__hint { margin: 0; font-size: 11px; color: var(--hud-dim); }
+.moon-hud__airlock { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-hud__stance { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-warm); }
+.moon-hud__poi[hidden], .moon-hud__hint[hidden], .moon-hud__airlock[hidden], .moon-hud__stance[hidden] { display: none; }
+
+.moon-hud__impact {
+  position: absolute;
+  top: calc(var(--edge-top) + 54px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 179, 71, 0.5);
+  border-radius: 4px;
+  background: var(--hud-glass);
+  color: #ffd9a0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: moon-impact 0.5s ease-out both;
+}
+.moon-hud__impact[hidden] { display: none; }
+@keyframes moon-impact { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* The banner an act ends on. */
+.moon-hud__banner {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 48px));
+  text-align: center;
+  animation: moon-banner 0.7s ease-out both;
+}
+.moon-hud__banner[hidden] { display: none; }
+.moon-hud__banner span {
+  display: inline-block;
+  padding: 10px 18px;
+  border-top: 1px solid var(--hud-warm);
+  border-bottom: 1px solid var(--hud-warm);
+  background: rgba(6, 14, 28, 0.7);
+  font-size: clamp(11px, 3vw, 14px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ffe6bd;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+}
+@keyframes moon-banner { from { opacity: 0; letter-spacing: 0.3em; } to { opacity: 1; letter-spacing: 0.14em; } }
+
+/* ── The two thumb stations. ── */
+.moon-hud__move {
+  position: absolute;
+  left: var(--edge-left);
+  bottom: var(--edge-bottom);
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.moon-hud__stance-keys { display: flex; gap: 8px; order: -1; }
+.moon-hud__key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 54px;
+  height: 46px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+}
+.moon-hud__key[data-on='true'] { color: var(--hud-ink); border-color: var(--hud-accent); background: rgba(77, 178, 255, 0.18); }
+.moon-hud__key[hidden] { display: none; }
+
+.moon-hud__thumb {
+  position: absolute;
+  right: var(--edge-right);
+  bottom: var(--edge-bottom);
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: end;
+  justify-items: end;
+  gap: 10px;
+}
+.moon-hud__gear { grid-column: 1; grid-row: 1; }
+.moon-hud__gear[data-gear='ion'] { color: #8ff0ff; border-color: rgba(143, 240, 255, 0.6); }
+.moon-hud__action {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 74px;
+  height: 74px;
+  border-radius: 50% !important;
+  border-color: rgba(255, 194, 102, 0.7) !important;
+  color: var(--hud-warm) !important;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
+  animation: moon-impact 0.3s ease-out both;
+}
+.moon-hud__action[hidden] { display: none; }
+.moon-hud__action:active { background: rgba(255, 194, 102, 0.22); }
+/* The word for the key stands above it rather than inside it: "Frame the
+   shot" does not fit in a 74 px circle at a size a thumb can read, and the
+   work ring runs around the circle's edge. */
+.moon-hud__action span {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 116px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+.moon-hud__ico-work, .moon-hud__ico-use { display: none; }
+.moon-hud__action[data-mode='work'] .moon-hud__ico-work { display: block; }
+.moon-hud__action[data-mode='use'] .moon-hud__ico-use { display: block; }
+.moon-hud__jump, .moon-hud__throttle {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 88px;
+  height: 88px;
+  border-radius: 50% !important;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.moon-hud__jump:active { background: rgba(77, 178, 255, 0.22); }
+.moon-hud__throttle { position: relative; overflow: hidden; border-color: rgba(255, 194, 102, 0.7) !important; color: var(--hud-warm) !important; }
+.moon-hud__throttle > * { position: relative; }
+.moon-hud__throttle-fill { position: absolute; inset: 0; display: flex; align-items: flex-end; }
+.moon-hud__throttle-fill i { display: block; width: 100%; background: rgba(255, 150, 60, 0.28); }
+/* The work meter sits over the action key while a tool is running. */
+.moon-hud__work {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  align-self: center;
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--hud-warm) calc(var(--work, 0) * 360deg), rgba(186, 214, 240, 0.14) 0);
+  -webkit-mask: radial-gradient(circle, transparent 41px, #000 42px);
+  mask: radial-gradient(circle, transparent 41px, #000 42px);
+  pointer-events: none;
+  z-index: 2;
+}
+.moon-hud__work[hidden] { display: none; }
+.moon-hud__work span { display: none; }
+
+/* ── The way down. ── */
+.moon-hud__landing { position: absolute; inset: 0; pointer-events: none; }
+.moon-hud__land-card {
+  position: absolute;
+  top: var(--edge-top);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(300px, 76vw);
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px 16px 12px;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: var(--hud-solid);
+  text-align: center;
+}
+.moon-hud__land-title { font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-hud__land-alt { font-size: clamp(26px, 8vw, 38px); line-height: 1; letter-spacing: 0.02em; }
+.moon-hud__land-rows { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; width: 100%; }
+.moon-hud__land-rows .moon-hud__reading { flex-direction: column; align-items: center; gap: 1px; }
+.moon-hud__land-rows .moon-hud__reading > span:first-child { white-space: nowrap; }
+.moon-hud__land-fuel { width: 100%; height: 3px; border-radius: 3px; background: rgba(186, 214, 240, 0.2); overflow: hidden; }
+.moon-hud__land-fuel i { display: block; height: 100%; background: var(--hud-warm); transition: width 0.2s linear; }
+.moon-hud__land-fuel-label { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hud-dim); }
+.moon-hud__assist {
+  position: absolute;
+  top: calc(var(--edge-top) + 150px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border: 1px solid rgba(255, 194, 102, 0.6);
+  border-radius: 4px;
+  background: var(--hud-glass);
+  color: #ffe6bd;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: moon-pulse 1.6s ease-in-out infinite;
+}
+.moon-hud__assist[hidden] { display: none; }
+.moon-hud__plaque {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 14px 26px;
+  border-top: 1px solid var(--hud-accent);
+  border-bottom: 1px solid var(--hud-accent);
+  background: rgba(6, 14, 28, 0.72);
+  text-align: center;
+  animation: moon-banner 0.8s ease-out both;
+}
+.moon-hud__plaque[hidden] { display: none; }
+.moon-hud__plaque-grade { font-size: clamp(15px, 4.6vw, 21px); letter-spacing: 0.18em; text-transform: uppercase; }
+.moon-hud__plaque-speed { font-size: 12px; color: var(--hud-dim); }
+
+/* ── Panels. ── */
+.moon-hud__help, .moon-hud__log {
+  position: absolute;
+  top: var(--edge-top);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, calc(100% - 28px));
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  display: grid;
+  gap: 7px;
+  padding: 12px 14px 14px;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: rgba(6, 14, 28, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  z-index: 6;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.moon-hud__help-head { display: flex; align-items: center; justify-content: space-between; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-hud__help-head button { min-height: 26px; width: 26px; display: grid; place-items: center; border: 0; background: transparent; color: var(--hud-dim); }
+.moon-hud__help p, .moon-hud__log p { margin: 0; font-size: 11px; line-height: 1.55; color: var(--hud-dim); }
+.moon-hud__bind { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.moon-hud__bind kbd {
+  font: inherit;
+  font-size: 11px;
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--hud-line);
+  border-radius: 4px;
+  color: var(--hud-ink);
+  text-align: center;
+}
+.moon-hud__bind .moon-hud__pad { color: var(--hud-dim); }
+.moon-hud__log-brief { color: var(--hud-ink) !important; }
+.moon-hud__log-rewards { display: grid; gap: 8px; padding-top: 6px; border-top: 1px solid var(--hud-line); }
+.moon-hud__reward { display: flex; gap: 8px; align-items: flex-start; color: var(--hud-warm) !important; }
+
+/* ── The mission panel (Tab): the five missions, what is in hand, and a
+   top-down of the mare with the crew and the objective on it. ── */
+.moon-log { display: grid; gap: 10px; }
+.moon-log__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.moon-log__item { display: grid; grid-template-columns: 16px 1fr auto; align-items: center; gap: 8px; font-size: 11px; color: var(--hud-dim); }
+.moon-log__icon { display: grid; place-items: center; color: inherit; }
+.moon-log__item--done { color: var(--hud-ink); }
+.moon-log__item--active { color: var(--hud-accent); }
+.moon-log__item--locked { opacity: 0.45; }
+.moon-log__status { letter-spacing: 0.12em; text-transform: uppercase; font-size: 9px; }
+.moon-log__active { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--hud-line); }
+.moon-log__active h4 { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-log__brief { color: var(--hud-ink) !important; }
+.moon-log__objectives { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; counter-reset: obj; }
+.moon-log__objective { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--hud-dim); }
+.moon-log__objective b { font-variant-numeric: tabular-nums; font-weight: 500; }
+.moon-log__objective.is-done { color: var(--hud-ink); opacity: 0.6; text-decoration: line-through; }
+.moon-log__objective.is-open { color: var(--hud-accent); }
+.moon-log__map {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid var(--hud-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 25% 100%,
+    rgba(255, 255, 255, 0.02);
+}
+.moon-log__mark { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--hud-dim); }
+.moon-log__mark--target { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: transparent; border: 1px solid var(--hud-warm); }
+.moon-log__mark--crew { width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; background: var(--hud-accent); }
+.moon-log__rewards { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid var(--hud-line); }
+
+/* ── The suit's slower numbers: they were on the glass, and they belong here. ── */
+.moon-log__suit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--hud-line);
+  font-size: 12px;
+}
+
+/* ── What the crew actually did up there. Records, not rewards. ── */
+.moon-log__records { display: grid; gap: 6px; padding-top: 8px; border-top: 1px solid var(--hud-line); }
+.moon-log__records h5 { margin: 0; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-log__record { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin: 0; font-size: 12px; color: var(--hud-ink); }
+.moon-log__record time { color: var(--hud-dim); font-variant-numeric: tabular-nums; }
+.moon-log__record a {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--hud-warm);
+  pointer-events: auto;
+  text-decoration: none;
+}
+.moon-log__record a:hover, .moon-log__record a:focus-visible { text-decoration: underline; }
+.moon-log__records-note { margin: 0; font-size: 12px; color: var(--hud-dim); }
+
+/* ── What the telescope found, while it stands. ── */
+.moon-hud__scope {
+  position: absolute;
+  right: var(--edge-right);
+  bottom: 28%;
+  width: min(280px, 44vw);
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--hud-line);
+  border-radius: 8px;
+  background: rgba(6, 14, 28, 0.86);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.moon-hud__scope strong { font-weight: 500; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-accent); }
+.moon-hud__scope span { font-size: 11px; line-height: 1.5; color: var(--hud-dim); }
+
+/* ── Inside the helmet: the visor's edge, a faint reflection of the crew's
+   own face lights, and the sun visor's gold cast at the top of the glass. ── */
+.moon-hud__visor {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background:
+    radial-gradient(ellipse 78% 68% at 50% 52%, transparent 62%, rgba(4, 8, 14, 0.55) 84%, rgba(2, 4, 8, 0.96) 100%),
+    linear-gradient(180deg, rgba(255, 190, 90, 0.16), transparent 22%),
+    radial-gradient(ellipse 30% 10% at 30% 14%, rgba(255, 244, 220, 0.12), transparent 70%);
+}
+.moon-hud__visor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50% / 46%;
+  box-shadow: inset 0 0 0 2px rgba(200, 210, 220, 0.12), inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+.moon-surface[data-view='helmet'] .moon-hud__visor,
+.moon-surface[data-view='cockpit'] .moon-hud__visor { opacity: 1; }
+.moon-surface[data-view='helmet'] .moon-surface__canvas { cursor: crosshair; }
+.moon-surface[data-driving='true'] .moon-hud__hint,
+.moon-surface[data-driving='true'] .moon-hud__stance-keys { display: none; }
+/* Inside the habitat there is neither the room to lope nor the ceiling to
+   hop against: those two keys go, and crouch stays for the hatches. */
+.moon-surface[data-inside]:not([data-inside='']) :is(.moon-hud__jump, .moon-hud__run) { display: none; }
+
+/* ── What each phase shows. ── */
+.moon-surface[data-phase='surface'] .moon-hud__landing,
+.moon-surface[data-phase='surface'] .moon-hud__throttle { display: none; }
+.moon-surface:not([data-phase='surface']) .moon-hud__head,
+.moon-surface:not([data-phase='surface']) .moon-hud__topleft,
+.moon-surface:not([data-phase='surface']) .moon-hud__suit,
+.moon-surface:not([data-phase='surface']) .moon-hud__hands,
+.moon-surface:not([data-phase='surface']) .moon-hud__objective,
+.moon-surface:not([data-phase='surface']) .moon-hud__compass,
+.moon-surface:not([data-phase='surface']) .moon-hud__foot,
+.moon-surface:not([data-phase='surface']) .moon-hud__top,
+.moon-surface:not([data-phase='surface']) .moon-hud__stance-keys,
+.moon-surface:not([data-phase='surface']) .moon-hud__jump,
+.moon-surface:not([data-phase='surface']) .moon-hud__gear,
+.moon-surface:not([data-phase='surface']) .moon-hud__action { display: none; }
+.moon-surface[data-phase='touchdown'] .moon-hud__move,
+.moon-surface[data-phase='touchdown'] .moon-hud__throttle { display: none; }
+.moon-surface[data-phase='surface'] .moon-hud__foot { animation: moon-impact 0.6s ease-out both; }
+
+/* ── The immersive view: the Moon, and one key to come back. ── */
+.moon-surface[data-immersive='true'] .moon-hud > *:not(.moon-hud__unhide):not(.moon-hud__visor) { display: none; }
+.moon-surface[data-immersive='true'] .moon-hud__unhide { display: grid; }
+@keyframes moon-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+
+/* ── Build mode: a key under the top row, and a small console under it. ── */
+.build-hud__toggle { position: absolute; top: calc(var(--edge-top) + 52px); right: var(--edge-right); color: var(--hud-dim); }
+.build-hud__toggle[data-on='true'] { color: var(--hud-warm); border-color: rgba(255, 194, 102, 0.7) !important; background: rgba(60, 38, 8, 0.55) !important; }
+.moon-surface:not([data-phase='surface']) .build-hud__toggle,
+.moon-surface:not([data-phase='surface']) .build-hud,
+.moon-surface[data-driving='true'] .build-hud__toggle,
+.moon-surface[data-backrooms]:not([data-backrooms='']):not([data-backrooms='fall']) .build-hud__toggle { display: none; }
+.build-hud {
+  position: absolute;
+  top: calc(var(--edge-top) + 104px);
+  right: var(--edge-right);
+  width: min(272px, calc(100% - 28px));
+  max-height: calc(100% - var(--edge-top) - 104px - var(--edge-bottom) - 150px);
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--hud-line);
+  border-radius: 10px;
+  background: var(--hud-solid);
+  pointer-events: auto;
+  font-size: 12px;
+  animation: build-hud-in 0.18s ease-out both;
+}
+@keyframes build-hud-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.build-hud__head { display: flex; align-items: center; justify-content: space-between; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hud-warm); }
+.moon-hud .build-hud__head button { width: 28px; min-height: 28px; display: grid; place-items: center; border: 0; background: transparent; color: var(--hud-dim); }
+.build-hud__scopes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.moon-hud .build-hud__scopes button { min-height: 32px; font-size: 12px; letter-spacing: 0.08em; color: var(--hud-dim); }
+.moon-hud .build-hud__scopes button[data-on='true'] { color: var(--hud-ink); border-color: var(--hud-accent); background: rgba(77, 178, 255, 0.18); }
+.build-hud__modules { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.moon-hud .build-hud__modules button {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: baseline;
+  min-height: 42px;
+  padding: 5px 7px;
+  text-align: left;
+  color: var(--hud-dim);
+}
+.moon-hud .build-hud__modules button[data-on='true'] { color: var(--hud-ink); border-color: rgba(255, 194, 102, 0.75); background: rgba(60, 38, 8, 0.5); }
+.build-hud__modules kbd { grid-row: span 2; font: inherit; font-size: 12px; color: var(--hud-warm); }
+.build-hud__modules span { font-size: 12px; line-height: 1.2; }
+.build-hud__modules small { font-size: 12px; color: var(--hud-dim); opacity: 0.8; }
+.build-hud__count { display: flex; justify-content: space-between; gap: 8px; color: var(--hud-dim); }
+.build-hud__status { margin: 0; line-height: 1.4; color: #5eead4; }
+.build-hud__status[data-bad='true'] { color: #ff8a7a; }
+.build-hud__save { margin: 0; color: var(--hud-dim); line-height: 1.4; }
+.build-hud__save:empty { display: none; }
+.build-hud__save[data-state='offline'] { color: var(--hud-warm); }
+.build-hud__keys { margin: 0; color: var(--hud-dim); line-height: 1.5; }
+.moon-hud .build-hud__signin { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border-color: var(--hud-accent); }
+.build-hud__actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.moon-hud .build-hud__actions button { display: grid; justify-items: center; gap: 2px; min-height: 48px; font-size: 12px; color: var(--hud-dim); }
+.moon-hud .build-hud__actions button[data-kind='place'] { color: var(--hud-ink); border-color: #5eead4; background: rgba(20, 70, 64, 0.5); }
+.moon-hud .build-hud__actions button:disabled { opacity: 0.4; }
+/* While building, the place names and walking hints under the crew give way to the console. */
+.moon-hud:has(.build-hud) .moon-hud__foot { display: none; }
+/* A phone on its side: a wider, shorter console beside the key, clear of the thumbs, the keys that act first. */
+@media (max-height: 520px) {
+  .build-hud {
+    top: calc(var(--edge-top) + 52px);
+    right: calc(var(--edge-right) + 118px);
+    width: min(340px, calc(100% - 260px));
+    max-height: calc(100% - var(--edge-top) - 52px - var(--edge-bottom));
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .build-hud__head { order: -3; }
+  .build-hud__actions { order: -2; }
+  .build-hud__scopes { order: -1; }
+  .build-hud__modules { grid-template-columns: repeat(3, 1fr); }
+  .moon-hud .build-hud__modules button { min-height: 34px; padding: 3px 6px; }
+  .build-hud__modules small { display: none; }
+  .moon-hud .build-hud__actions button { min-height: 40px; grid-auto-flow: column; align-items: center; gap: 6px; }
+}
+
+@media (max-width: 599px) {
+  /* The top row is the compass and the three keys; the cards run down the
+     left under it, and the messages sit clear above the thumbs. */
+  .moon-hud__compass { left: var(--edge-left); right: auto; margin-inline: 0; width: calc(100vw - 172px); max-width: 220px; }
+  .moon-hud__head { top: calc(var(--edge-top) + 44px); max-width: 60vw; padding: 7px 10px; }
+  .moon-hud__topleft { top: calc(var(--edge-top) + 44px); max-width: min(300px, 70vw); gap: 6px; }
+  .moon-hud__topleft > .moon-hud__head { top: auto; max-width: 100%; }
+  .moon-hud__suit { bottom: calc(var(--edge-bottom) + 182px); grid-auto-flow: column; gap: 2px 14px; padding: 5px 9px; min-width: 0; }
+  .moon-hud__suit .moon-hud__bar { display: none; }
+  .moon-hud__hands { bottom: calc(var(--edge-bottom) + 182px); }
+  .moon-hud__place { letter-spacing: 0.12em; }
+  .moon-hud__head-rows { grid-auto-flow: column; grid-template-columns: repeat(3, auto); gap: 10px; }
+  .moon-hud__head-rows .moon-hud__reading { flex-direction: column; gap: 0; }
+  .moon-hud__objective { top: calc(var(--edge-top) + 118px); max-width: min(300px, 70vw); }
+  .moon-hud__vital { grid-template-columns: auto auto; justify-content: start; gap: 6px; }
+  .moon-hud__vital > span { text-align: left; }
+  .moon-hud__foot { bottom: calc(var(--edge-bottom) + 236px); width: calc(100% - 32px); }
+  .moon-hud__move .game-stick { width: 112px; height: 112px; }
+  .moon-hud__key { width: 50px; height: 44px; }
+  .moon-hud__jump, .moon-hud__throttle { width: 78px; height: 78px; }
+  .moon-hud__action { width: 66px; height: 66px; }
+  .moon-hud__work { width: 82px; height: 82px; -webkit-mask: radial-gradient(circle, transparent 37px, #000 38px); mask: radial-gradient(circle, transparent 37px, #000 38px); }
+  .moon-hud__banner { top: 20%; }
+  .moon-hud__impact { top: calc(var(--edge-top) + 310px); }
+}
+@media (max-height: 460px) {
+  .moon-hud__objective { display: none; }
+  .moon-hud__suit { padding: 4px 8px; }
+}
+
+.game-stick {
+  position: relative;
+  width: 124px;
+  height: 124px;
+  border: 1px solid var(--hud-line);
+  border-radius: 50%;
+  background: var(--hud-glass);
+  color: var(--hud-ink);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+.game-stick[data-active='true'] { border-color: var(--seafoam); cursor: grabbing; }
+.game-stick__axis::before, .game-stick__axis::after {
+  content: '';
+  position: absolute;
+  background: var(--hud-line);
+}
+.game-stick__axis::before { top: 50%; left: 12px; right: 12px; height: 1px; }
+.game-stick__axis::after { left: 50%; top: 12px; bottom: 12px; width: 1px; }
+.game-stick__thumb {
+  position: absolute;
+  left: calc(50% - 23px);
+  top: calc(50% - 23px);
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--hud-ink);
+  border-radius: 50%;
+  background: var(--hud-glass);
+  transform: translate(var(--stick-x, 0px), var(--stick-y, 0px));
+  pointer-events: none;
+}
+/* The stick's thumb sits where the finger left it; the moon layout above
+   places the stick itself. */
+@media (max-height: 500px) {
+  .game-stick { width: 104px; height: 104px; }
+}
+
+/* ── Moon Mode: the one key, and the instruments that come up for a job ── */
+.moon-hud__prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: var(--hud-glass);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffe6bd;
+}
+.moon-hud__prompt[hidden] { display: none; }
+.moon-hud__prompt { position: relative; overflow: hidden; }
+.moon-hud__prompt kbd {
+  font: inherit;
+  font-size: 11px;
+  min-width: 22px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 194, 102, 0.7);
+  border-radius: 4px;
+  color: var(--hud-warm);
+  text-align: center;
+}
+.moon-hud__prompt small { font-size: 12px; color: var(--hud-dim); }
+.moon-hud__prompt small[hidden] { display: none; }
+/* A hold, filling under the words: the thumb deck's ring is not there to
+   show it on a machine with a keyboard. */
+.moon-hud__prompt-work {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: calc(var(--work, 0) * 100%);
+  background: var(--hud-warm);
+}
+.moon-hud__prompt-work[hidden] { display: none; }
+.moon-surface[data-touch='true'] .moon-hud__prompt { display: none; }
+
+/* ── A keyboard and a mouse need no thumb stations, on any world: the keys
+      are the controls and the prompt in the middle of the glass names them.
+      The rover's gear stays, because it is a readout as much as a key. ── */
+.moon-surface[data-touch='false'] .moon-hud__move,
+.moon-surface[data-touch='false'] .moon-hud__thumb > :not(.moon-hud__gear) { display: none; }
+/* ── A thumb is not a cursor: nothing it has to hit is under 44 px. Held to
+      coarse pointers so the desk keeps its tighter chrome. ── */
+@media (pointer: coarse) {
+  .moon-hud__key { min-height: 44px; }
+  .moon-hud__menu button { min-height: 44px; }
+  .moon-hud__help-head button { min-height: 44px; width: 44px; }
+  .flight-hud .flight-hud__menu button,
+  .flight-hud .flight-drive__menu button { min-height: 44px; }
+}
+
+.moon-hud__objective-job { display: grid; gap: 2px; margin-top: 4px; padding-top: 5px; border-top: 1px solid var(--hud-line); font-size: 11px; line-height: 1.35; }
+.moon-hud__objective-job[hidden] { display: none; }
+.moon-hud__pip--job { background: var(--hud-warm); }
+/* The hum on channel two: not an objective, so it does not get an
+   objective's colour — just something the compass will not let you forget.
+   It keeps that colour off the end of the ribbon too, where two amber pips
+   would be two of the same thing. */
+.moon-hud__pip--hole,
+.moon-hud__pip--hole[data-edge='true'] { background: #b98cff; filter: drop-shadow(0 0 5px rgba(185, 140, 255, 0.85)); }
+.moon-hud__meter {
+  position: absolute;
+  top: calc(var(--edge-top) + 44px);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: min(220px, 40vw);
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+}
+.moon-hud__meter[hidden] { display: none; }
+.moon-hud__meter-bar { width: 100%; height: 4px; border-radius: 2px; background: rgba(186, 214, 240, 0.18); overflow: hidden; }
+.moon-hud__meter-bar i { display: block; height: 100%; width: calc(var(--v, 0) * 100%); background: #5eead4; transition: width 0.12s linear; }
+.moon-hud__meter[data-kind='align'] .moon-hud__meter-bar i { background: var(--hud-warm); }
+.moon-hud__radio {
+  position: absolute;
+  top: calc(var(--edge-top) + 76px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: min(440px, calc(100% - 32px));
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: var(--hud-glass);
+  color: var(--hud-dim);
+  font-size: 11px;
+  text-align: center;
+  animation: moon-impact 0.4s ease-out both;
+}
+.moon-hud__radio[hidden] { display: none; }
+.moon-hud__readout {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--edge-bottom) + 190px);
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  padding: 9px 13px;
+  border: 1px solid var(--hud-line);
+  border-radius: 6px;
+  background: var(--hud-solid);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  animation: moon-impact 0.3s ease-out both;
+}
+.moon-hud__readout[hidden] { display: none; }
+
+/* ── What a villager said, as Astra reads it. ── */
+.moon-hud__dialog {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--edge-bottom) + 190px);
+  transform: translateX(-50%);
+  width: min(460px, calc(100% - 32px));
+  display: grid;
+  gap: 4px;
+  padding: 10px 14px;
+  border: 1px solid rgba(126, 245, 224, 0.4);
+  border-radius: 6px;
+  background: var(--hud-solid);
+  animation: moon-impact 0.3s ease-out both;
+}
+.moon-hud__dialog[hidden] { display: none; }
+.moon-hud__dialog-who { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #7ff5e0; }
+.moon-hud__dialog-text { font-size: 12px; line-height: 1.5; color: var(--hud-ink); }
+.moon-surface--mars { background: #3a1d10; }
+.moon-surface--proximaB { background: #140a1e; }
+.moon-surface--mars .moon-hud { --hud-warm: #ffb36b; --hud-line: rgba(255, 190, 140, 0.3); --hud-glass: rgba(28, 10, 4, 0.5); --hud-solid: rgba(22, 8, 3, 0.86); }
+.moon-surface--proximaB .moon-hud { --hud-accent: #7ff5e0; --hud-line: rgba(160, 130, 235, 0.35); --hud-glass: rgba(14, 6, 24, 0.52); --hud-solid: rgba(12, 5, 20, 0.86); }
+.moon-hud__drill {
+  position: absolute;
+  right: var(--edge-right);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 180px;
+  display: grid;
+  gap: 7px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  background: var(--hud-glass);
+  font-size: 10px;
+}
+.moon-hud__drill[hidden] { display: none; }
+.moon-hud__drill-row { display: grid; grid-template-columns: 46px 1fr; gap: 8px; align-items: center; color: var(--hud-dim); letter-spacing: 0.12em; text-transform: uppercase; }
+.moon-hud__drill-depth { font-size: 17px; color: var(--hud-ink); letter-spacing: 0; text-transform: none; }
+.moon-hud__gauge { position: relative; display: block; height: 7px; border-radius: 3px; background: rgba(186, 214, 240, 0.16); overflow: hidden; }
+.moon-hud__gauge b { position: absolute; top: 0; bottom: 0; left: calc(var(--lo) * 100%); width: calc((var(--hi) - var(--lo)) * 100%); background: rgba(77, 255, 136, 0.28); }
+.moon-hud__gauge i { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--v, 0) * 100%); background: var(--hud-ink); transition: width 0.1s linear; }
+.moon-hud__gauge[data-state='over'] i { background: var(--hud-warm); }
+.moon-hud__gauge[data-state='hot'] i { background: #ff5a4a; }
+.moon-hud__drill-warn { color: var(--hud-warm); letter-spacing: 0.1em; text-transform: uppercase; }
+.moon-hud__drill-warn[hidden] { display: none; }
+.moon-surface[data-driving='true'] :is(.moon-hud__jump, .moon-hud__drill) { display: none; }
+@media (max-width: 599px) {
+  .moon-hud__drill { top: auto; bottom: calc(var(--edge-bottom) + 262px); transform: none; width: 156px; }
+  .moon-hud__readout { bottom: calc(var(--edge-bottom) + 290px); }
+  .moon-hud__meter { top: calc(var(--edge-top) + 36px); left: var(--edge-left); right: auto; margin-inline: 0; width: min(220px, calc(100vw - 172px)); }
+  /* On a phone the objective card runs down the left of the glass and can
+     carry a job under it, so the radio clears its worst case rather than
+     printing across it. */
+  .moon-hud__radio { top: calc(var(--edge-top) + 226px); }
+}
+/* In the rover the jump key is gone: the gear key takes its place under the action key. */
+.moon-surface[data-driving='true'] .moon-hud__gear { grid-column: 2; grid-row: 2; width: auto; min-width: 78px; padding: 0 10px; flex-direction: row; gap: 6px; }
+
+/* ═══════════ The cosmic loading screen: before any 3D scene is ready ═══════════
+   Everything that moves here is a transform or an opacity. The compositor
+   runs those on its own thread, so the screen keeps moving through the
+   seconds the main thread spends building the scene underneath it — a
+   `left` or a `width` would stop dead exactly when the wait is longest. */
+.cosmic-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 70% 110%, rgba(30, 72, 140, 0.3), rgba(5, 8, 18, 0) 60%),
+    radial-gradient(90% 70% at 15% 0%, rgba(40, 30, 90, 0.26), rgba(5, 8, 18, 0) 70%),
+    #050812;
+  color: #eef2fb;
+  text-align: center;
+  padding-inline: 16px;
+  transition: opacity 0.6s ease, visibility 0s linear 0s;
+}
+.cosmic-loader__sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* Two slow clouds of colour behind the stars, and a vignette over all of it. */
+.cosmic-loader__sky::after { content: ''; position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 50%, rgba(2, 3, 8, 0) 55%, rgba(2, 3, 8, 0.6) 100%); }
+.cosmic-loader__nebula { position: absolute; inset: 0; }
+.cosmic-loader__nebula i { position: absolute; width: 90vmax; height: 60vmax; border-radius: 50%; opacity: 0.55; }
+.cosmic-loader__nebula i:first-child {
+  left: -30vmax;
+  top: -18vmax;
+  background: radial-gradient(closest-side, rgba(94, 234, 212, 0.13), rgba(94, 234, 212, 0.04) 55%, rgba(94, 234, 212, 0));
+  animation: cosmic-nebula-a 70s ease-in-out infinite alternate;
+}
+.cosmic-loader__nebula i:last-child {
+  right: -34vmax;
+  top: 4vmax;
+  background: radial-gradient(closest-side, rgba(150, 110, 255, 0.14), rgba(110, 80, 220, 0.05) 55%, rgba(110, 80, 220, 0));
+  animation: cosmic-nebula-b 90s ease-in-out infinite alternate;
+}
+@keyframes cosmic-nebula-a { to { transform: translate3d(8vmax, 5vmax, 0) scale(1.12); } }
+@keyframes cosmic-nebula-b { to { transform: translate3d(-10vmax, 4vmax, 0) scale(0.92); } }
+.cosmic-loader__stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  border-radius: 50%;
+  animation: cosmic-twinkle 5.5s ease-in-out infinite alternate, cosmic-drift 70s ease-in-out infinite alternate;
+}
+.cosmic-loader__stars--near {
+  width: 2px;
+  height: 2px;
+  animation-duration: 3.8s, 38s;
+  animation-delay: -1.7s, -9s;
+}
+.cosmic-loader__stage { position: relative; display: grid; place-items: center; min-height: 230px; }
+
+/* ── A photographed world: the map scrolls behind a round window; the
+   night side, the limb darkening and the sunlit highlight sit on top. ── */
+.cosmic-globe {
+  position: absolute;
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #1a1d24;
+  isolation: isolate;
+}
+.cosmic-globe__map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400%;
+  height: 100%;
+  /* Two tiles of an equirectangular map, each twice the globe's width:
+     sliding one tile along is a whole turn, and it joins seamlessly. */
+  background-size: 50% 100%;
+  background-repeat: repeat-x;
+  animation: cosmic-spin 48s linear infinite;
+}
+.cosmic-globe__shade {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 250, 240, 0.2) 0, rgba(255, 250, 240, 0) 34%),
+    radial-gradient(circle at 36% 32%, rgba(2, 4, 10, 0) 36%, rgba(2, 4, 10, 0.5) 60%, rgba(2, 4, 10, 0.93) 78%);
+  box-shadow: inset -6px -5px 14px rgba(0, 0, 0, 0.55), inset 2px 2px 5px rgba(255, 255, 255, 0.07);
+}
+.cosmic-globe[data-body='earth'] { box-shadow: 0 0 0 1px rgba(120, 175, 255, 0.2), 0 0 22px rgba(80, 150, 255, 0.16); }
+.cosmic-globe[data-body='mars'] { box-shadow: 0 0 0 1px rgba(255, 170, 130, 0.14); }
+/* No photograph of Proxima b exists: the Earth's oceans turned rose and its land teal. */
+.cosmic-globe[data-body='proximaB'] .cosmic-globe__map { filter: hue-rotate(120deg) saturate(1.1); }
+.cosmic-globe[data-body='proximaB'] { box-shadow: 0 0 0 1px rgba(255, 150, 200, 0.18), 0 0 22px rgba(255, 120, 180, 0.12); }
+
+/* ── The orrery: a world, and the Moon round it on a tilted orbit. The
+   system is one 3D context, so the Moon really passes behind the world. ── */
+.cosmic-loader__system {
+  position: relative;
+  width: 228px;
+  height: 228px;
+  perspective: 720px;
+  transform-style: preserve-3d;
+}
+.cosmic-loader__world { left: 50%; top: 50%; width: 116px; height: 116px; margin: -58px 0 0 -58px; }
+.cosmic-loader__orbit {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 216px;
+  height: 216px;
+  margin: -108px 0 0 -108px;
+  border: 1px solid rgba(168, 180, 200, 0.24);
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  transform: rotateX(74deg) rotateZ(0deg);
+  animation: cosmic-orbit 13s linear infinite;
+}
+.cosmic-loader__carrier { position: absolute; left: 50%; top: 0; width: 0; height: 0; transform-style: preserve-3d; }
+/* Turned back against the orbit every frame, so the Moon always faces the glass. */
+.cosmic-loader__satellite {
+  left: -13px;
+  top: -13px;
+  width: 26px;
+  height: 26px;
+  transform: rotateZ(0deg) rotateX(-74deg);
+  animation: cosmic-billboard 13s linear infinite;
+}
+.cosmic-loader__satellite .cosmic-globe__map { animation-duration: 90s; }
+
+/* ── The way down (or up): a world's limb, and a lander flown onto it. ── */
+.cosmic-loader__approach {
+  position: relative;
+  width: min(420px, 86vw);
+  height: 230px;
+  overflow: hidden;
+  /* The world runs on below the frame: its curve fades out rather than stopping on a line. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent);
+}
+.cosmic-loader__limb { left: 50%; top: 148px; width: 560px; height: 560px; margin-left: -280px; }
+.cosmic-loader__limb .cosmic-globe__map {
+  /* The top of a map is its pole; the horizon should show the latitudes a lander comes down on. */
+  background-size: 50% 170%;
+  background-position: 0 42%;
+  animation-duration: 160s;
+}
+.cosmic-loader__limb .cosmic-globe__shade {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 250, 240, 0.1) 0, rgba(255, 250, 240, 0) 30%),
+    radial-gradient(circle at 50% 50%, rgba(2, 4, 10, 0) 50%, rgba(2, 4, 10, 0.75) 72%);
+}
+.cosmic-loader__craft {
+  position: absolute;
+  left: 50%;
+  top: -12px;
+  width: 52px;
+  height: 57px;
+  margin-left: -26px;
+  animation: cosmic-descend 4.6s cubic-bezier(0.25, 0.1, 0.3, 1) infinite;
+}
+.cosmic-loader__lander { position: relative; display: block; width: 52px; height: 57px; }
+.cosmic-loader__flame {
+  position: absolute;
+  left: 50%;
+  top: 35px;
+  width: 9px;
+  height: 22px;
+  margin-left: -4.5px;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(#fff4dc, var(--terracotta, #ffb347) 45%, rgba(255, 179, 71, 0));
+  transform-origin: 50% 0;
+  animation: cosmic-flicker 0.13s ease-in-out infinite alternate, cosmic-burn 4.6s linear infinite;
+}
+.cosmic-loader__dust {
+  position: absolute;
+  left: 50%;
+  top: 138px;
+  width: 150px;
+  height: 18px;
+  margin-left: -75px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(214, 208, 198, 0.55), rgba(214, 208, 198, 0) 70%);
+  opacity: 0;
+  animation: cosmic-dust 4.6s ease-out infinite;
+}
+.cosmic-loader[data-variant='ascent'] .cosmic-loader__craft,
+.cosmic-loader[data-variant='ascent'] .cosmic-loader__dust { animation-direction: reverse; }
+.cosmic-loader[data-variant='ascent'] .cosmic-loader__flame { animation-direction: alternate, reverse; }
+
+/* ── The star streaks of a ship getting under way. ── */
+.cosmic-loader__streaks { position: relative; width: min(560px, 92vw); height: 230px; }
+.cosmic-loader__streaks span {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  transform-origin: 0 50%;
+  transform: rotate(calc(var(--i) * 15deg + 4deg));
+}
+.cosmic-loader__streaks span:nth-child(3n) { height: 1px; }
+.cosmic-loader__streaks span::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(220, 232, 255, 0), rgba(220, 232, 255, 0.95));
+  transform-origin: 0 50%;
+  opacity: 0;
+  animation: cosmic-streak 1.15s cubic-bezier(0.55, 0, 1, 1) infinite;
+  animation-delay: calc(var(--i) * -0.29s);
+}
+.cosmic-loader__streaks span:nth-child(4n)::before { background: linear-gradient(90deg, rgba(94, 234, 212, 0), rgba(94, 234, 212, 0.9)); }
+.cosmic-loader__streaks b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 14px 4px rgba(190, 215, 255, 0.4);
+  animation: cosmic-core 1.15s ease-in-out infinite alternate;
+}
+
+/* ── The words, and the bar under them. ── */
+.cosmic-loader__copy { position: relative; display: grid; justify-items: center; gap: 10px; max-width: 36ch; }
+.cosmic-loader__label {
+  margin: 0;
+  font: 500 16px/1.35 var(--font-body, system-ui), sans-serif;
+  letter-spacing: 0.02em;
+}
+.cosmic-loader__detail {
+  display: inline-flex;
+  gap: 10px;
+  margin: 0;
+  font: 500 12px/1.4 var(--font-mono, ui-monospace), monospace;
+  letter-spacing: 0.03em;
+  color: rgba(168, 180, 200, 0.85);
+}
+.cosmic-loader__pct { font-weight: 500; color: var(--terracotta, #ffb347); }
+.cosmic-loader__bar {
+  position: relative;
+  width: min(240px, 70vw);
+  height: 3px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgba(168, 180, 200, 0.16);
+  box-shadow: 0 0 0 1px rgba(168, 180, 200, 0.06);
+  overflow: hidden;
+}
+.cosmic-loader__bar i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 150, 60, 0.85), var(--terracotta, #ffb347) 70%, #fff1d6);
+  box-shadow: 0 0 10px rgba(255, 170, 70, 0.6);
+  animation: cosmic-sweep 1.6s ease-in-out infinite;
+}
+.cosmic-loader__bar[data-determinate] i {
+  width: 100%;
+  transform-origin: 0 50%;
+  animation: none;
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+/* A glint along a known bar, so a long stage still reads as working. */
+.cosmic-loader__bar[data-determinate]::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
+  animation: cosmic-glint 1.9s ease-in-out infinite;
+}
+/* A line to read while the scene comes up; each one fades in as it arrives. */
+.cosmic-loader__tip {
+  max-width: 34ch;
+  min-height: 2.8em;
+  margin: 8px 0 0;
+  font: 500 12px/1.45 var(--font-body, system-ui), sans-serif;
+  color: rgba(200, 210, 228, 0.78);
+  animation: cosmic-tip-in 0.7s ease both;
+}
+@keyframes cosmic-twinkle { from { opacity: 0.5; } to { opacity: 1; } }
+@keyframes cosmic-drift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-1.6vw, 0.8vh, 0); } }
+@keyframes cosmic-spin { to { transform: translate3d(-50%, 0, 0); } }
+@keyframes cosmic-orbit { to { transform: rotateX(74deg) rotateZ(360deg); } }
+@keyframes cosmic-billboard { to { transform: rotateZ(-360deg) rotateX(-74deg); } }
+@keyframes cosmic-descend {
+  0% { transform: translate3d(-34px, -8px, 0) rotate(-9deg); opacity: 0; }
+  10% { opacity: 1; }
+  66% { transform: translate3d(0, 100px, 0) rotate(0deg); }
+  86% { transform: translate3d(0, 100px, 0); opacity: 1; }
+  100% { transform: translate3d(0, 100px, 0); opacity: 0; }
+}
+@keyframes cosmic-burn { 0%, 64% { opacity: 1; } 67%, 100% { opacity: 0; } }
+@keyframes cosmic-flicker { from { transform: scaleY(0.7); } to { transform: scaleY(1.15); } }
+@keyframes cosmic-dust {
+  0%, 58% { opacity: 0; transform: scaleX(0.3); }
+  68% { opacity: 0.9; transform: scaleX(1); }
+  100% { opacity: 0; transform: scaleX(1.5); }
+}
+@keyframes cosmic-streak {
+  0% { transform: translateX(6%) scaleX(0.05); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateX(70%) scaleX(1); opacity: 0; }
+}
+@keyframes cosmic-core { from { opacity: 0.75; transform: scale(0.85); } to { opacity: 1; transform: scale(1.15); } }
+@keyframes cosmic-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes cosmic-glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@keyframes cosmic-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .cosmic-loader__stars, .cosmic-loader__nebula i, .cosmic-globe__map, .cosmic-loader__orbit, .cosmic-loader__satellite, .cosmic-loader__craft,
+  .cosmic-loader__flame, .cosmic-loader__dust, .cosmic-loader__streaks span::before, .cosmic-loader__streaks b,
+  .cosmic-loader__bar i, .cosmic-loader__bar::after, .cosmic-loader__tip { animation: none; }
+  .cosmic-loader__craft { transform: translate3d(0, 100px, 0); }
+  .cosmic-loader__streaks span::before { opacity: 0.6; }
+}
+/* The launch screen over the deck: above every key, under nothing. */
+.flight-hud__launching { z-index: 80; }
+.flight-hud__launching.is-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0s linear 0.6s;
+}
+/* The route and chunk screens sit over everything until the explorer takes over. */
+.solar-system--loading .cosmic-loader { z-index: 1000; }
+.solar-system__loader { z-index: 70; }
+.solar-system__loader.is-done,
+.moon-surface[data-ready='true'] .moon-surface__loader:not(.is-forced) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.6s ease, visibility 0s linear 0.6s;
+}
+.moon-surface__loader { z-index: 30; }
+
+/* ═══════════ Underground: the fall, the Backrooms ═══════════ */
+.moon-hud__black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: var(--black, 0);
+  pointer-events: none;
+}
+.moon-hud__crack {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  fill: none;
+  stroke: rgba(235, 240, 245, 0.55);
+  stroke-width: 2.2;
+  stroke-linejoin: bevel;
+  transition: opacity 0.08s linear;
+}
+.moon-hud__crack circle { fill: rgba(235, 240, 245, 0.18); stroke-width: 1.5; }
+.moon-hud__crack .moon-hud__crack-fine { stroke-width: 1; stroke: rgba(235, 240, 245, 0.35); }
+.moon-hud__crack[data-on='true'] { opacity: 1; }
+/* Helmet off, nothing between the eye and the room. */
+.moon-surface[data-backrooms]:not([data-backrooms='']):not([data-backrooms='fall'])[data-helmet-on='false'] .moon-hud__crack,
+.moon-surface[data-backrooms]:not([data-backrooms='']):not([data-backrooms='fall'])[data-helmet-on='false'] .moon-hud__visor { display: none; }
+/* Nor is there a visor to look through when the camera is behind the crew
+   rather than inside their helmet. */
+.moon-surface:not([data-view='helmet']) .moon-hud__crack { display: none; }
+
+.moon-hud__br {
+  position: absolute;
+  top: var(--edge-top);
+  left: var(--edge-left);
+  display: grid;
+  gap: 4px;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--hud-glass);
+  color: var(--hud-ink);
+  font-size: 12px;
+  opacity: calc(1 - var(--glitch, 0) * 0.55);
+}
+.moon-hud__br[hidden] { display: none; }
+.moon-hud__br-place { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud-dim); }
+.moon-hud__br-grav { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.moon-hud__br-grav[data-earth='true'] { color: var(--hud-warm); }
+.moon-hud__br-read { color: var(--hud-ink); }
+.moon-hud__br-read[hidden] { display: none; }
+.moon-hud__br-carrier { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--hud-dim); animation: moon-carrier 1.7s steps(2, end) infinite; }
+@keyframes moon-carrier { 0% { opacity: 0.35; } 50% { opacity: 0.8; } }
+/* With the helmet on the glass flickers, the way a HUD does when it is reading nonsense. */
+.moon-surface[data-helmet-on='true'] .moon-hud__br { animation: moon-hud-flicker 0.9s steps(3, end) infinite; }
+@keyframes moon-hud-flicker { 0%, 100% { transform: translateX(0); } 33% { transform: translateX(1px); } 66% { transform: translateX(-1px); } }
+.moon-hud__radio[data-static='true'] { color: var(--hud-warm); font-family: var(--font-mono); font-size: 12px; }
+
+/* Underground, the surface instruments have nothing to say. */
+.moon-surface:not([data-backrooms='']):not([data-backrooms='fall'])[data-backrooms] :is(
+  .moon-hud__compass, .moon-hud__meter, .moon-hud__head, .moon-hud__topleft, .moon-hud__suit, .moon-hud__hands,
+  .moon-hud__objective,
+  .moon-hud__impact, .moon-hud__banner, .moon-hud__poi, .moon-hud__hint, .moon-hud__airlock, .moon-hud__stance-keys
+) { display: none; }
+.moon-surface[data-backrooms='fall'] .moon-hud__foot,
+.moon-surface[data-backrooms='fall'] .moon-hud__move,
+.moon-surface[data-backrooms='fall'] .moon-hud__thumb,
+.moon-surface[data-backrooms='wake'] .moon-hud__move,
+.moon-surface[data-backrooms='door'] .moon-hud__move,
+.moon-surface[data-backrooms='climb'] .moon-hud__move,
+.moon-surface[data-backrooms='fall'] :is(.moon-hud__compass, .moon-hud__head, .moon-hud__topleft, .moon-hud__suit, .moon-hud__hands, .moon-hud__objective, .moon-hud__radio) { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .moon-hud__br, .moon-hud__br-carrier { animation: none; }
+}
+
+/* ═══════════ Earth: Tbilisi ═══════════ */
+.moon-surface--earth { background: var(--canvas); }
+.moon-surface--earth .moon-hud { --hud-warm: var(--terracotta); --hud-accent: var(--seafoam); }
+.moon-surface--earth .moon-hud__objective { top: calc(var(--edge-top) + 112px); }
+.earth-hud__credits {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 320px));
+  bottom: calc(var(--edge-bottom) + 58px);
+  margin: 0;
+  font: 400 12px/1.35 var(--font-body), system-ui, sans-serif;
+  letter-spacing: 0;
+  color: var(--text-muted);
+  opacity: 0.7;
+  text-align: center;
+  pointer-events: none;
+}
+.moon-surface:not([data-phase='surface']) .earth-hud__credits,
+.moon-surface[data-immersive='true'] .earth-hud__credits { display: none; }
+.earth-hud__retry {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 48px);
+  transform: translateX(-50%);
+  z-index: 30;
+  pointer-events: auto;
+}
+
+/* The rooftop telescope's eyepiece: the field stop, and the numbers beside it. */
+.earth-eyepiece {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  background: color-mix(in oklab, var(--canvas) 30%, black 70%);
+  animation: earth-eyepiece-in 0.5s ease-out both;
+}
+.earth-eyepiece__field {
+  width: min(520px, 78vmin);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.earth-eyepiece__canvas { display: block; width: 100%; height: 100%; }
+.earth-eyepiece__card {
+  display: grid;
+  gap: 8px;
+  min-width: 220px;
+  max-width: 280px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-panel);
+  color: var(--text);
+  font: 500 14px/1.4 var(--font-body), system-ui, sans-serif;
+}
+.earth-eyepiece__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.earth-eyepiece__name { font-size: 18px; }
+.earth-eyepiece__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.earth-eyepiece__tag { font: 400 12px var(--font-mono), monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--terracotta); }
+.earth-eyepiece__rows { display: grid; gap: 4px; margin: 0; }
+.earth-eyepiece__rows > div { display: flex; justify-content: space-between; gap: 12px; }
+.earth-eyepiece__rows dt { color: var(--text-muted); font-size: 12px; }
+.earth-eyepiece__rows dd { margin: 0; font: 400 13px var(--font-mono), monospace; font-variant-numeric: tabular-nums; }
+.earth-eyepiece__note { margin: 0; font-size: 12px; color: var(--text-muted); }
+@keyframes earth-eyepiece-in { from { opacity: 0; } to { opacity: 1; } }
+@media (max-width: 720px) {
+  .earth-eyepiece { flex-direction: column; gap: 12px; }
+  .earth-eyepiece__card { max-width: none; width: min(520px, 100%); }
+}
+
+/* ── Multiplayer rooms: the panel, and the badge that follows the explorer
+   into flight and onto the surfaces. Both sit outside the viewport, above
+   the deck and the surface HUDs and below the loaders. ── */
+.room-panel {
+  position: absolute;
+  z-index: 45;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-height: min(78dvh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(6, 9, 14, 0.92);
+  border: 0.5px solid rgba(248, 244, 236, 0.14);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: rgba(240, 244, 252, 0.94);
+  font-family: var(--font-body, "Geist"), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (min-width: 680px) {
+  .room-panel {
+    left: auto;
+    bottom: auto;
+    top: max(66px, calc(env(safe-area-inset-top) + 56px));
+    width: 360px;
+  }
+}
+.room-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.room-panel__title { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 500; }
+.room-panel__sub { margin: 4px 0 0; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 214, 156, 0.85); }
+.room-panel__note { margin: 0; font-size: 13px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__error { margin: 0; font-size: 13px; color: var(--error); }
+.room-panel__label { font-size: 12px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__icon {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 0; background: transparent; color: inherit; cursor: pointer;
+}
+.room-panel__primary, .room-panel__secondary, .room-panel__leave {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+  font: inherit; font-weight: 500;
+}
+.room-panel__primary { border: 0; background: var(--terracotta, #FFB347); color: #1a1206; }
+.room-panel__secondary { border: 0.5px solid rgba(248, 244, 236, 0.22); background: rgba(255, 255, 255, 0.05); color: inherit; white-space: nowrap; }
+.room-panel__secondary:disabled { opacity: 0.45; cursor: default; }
+.room-panel__leave { border: 0.5px solid var(--error); background: transparent; color: var(--error); }
+.room-panel__join { display: flex; flex-direction: column; gap: 6px; }
+.room-panel__row { display: flex; gap: 8px; }
+.room-panel__input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 12px;
+  border: 0.5px solid rgba(248, 244, 236, 0.22); background: rgba(0, 0, 0, 0.35); color: inherit;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace; font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase;
+}
+.room-panel__input[aria-invalid='true'] { border-color: var(--error); }
+.room-panel__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.room-panel__item {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 4px 4px 12px;
+  border-radius: 12px; background: rgba(255, 255, 255, 0.04);
+}
+.room-panel__code, .room-panel__count, .room-panel__bigcode { font-family: var(--font-mono, 'JetBrains Mono'), monospace; }
+.room-panel__code { letter-spacing: 0.12em; color: var(--seafoam, #5EEAD4); }
+.room-panel__who, .room-panel__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-panel__count { font-size: 12px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__where { padding-right: 8px; font-size: 12px; color: rgba(220, 228, 240, 0.72); white-space: nowrap; }
+.room-panel__invite { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
+.room-panel__invite .room-panel__label { grid-column: 1; }
+.room-panel__bigcode { grid-column: 1; font-size: 28px; letter-spacing: 0.2em; color: var(--seafoam, #5EEAD4); }
+.room-panel__invite .room-panel__secondary { grid-column: 2; grid-row: 1 / span 2; }
+
+.room-badge {
+  position: absolute;
+  z-index: 40;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.room-badge__chip {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 36px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  border: 0.5px solid rgba(94, 234, 212, 0.35);
+  background: rgba(6, 9, 14, 0.82);
+  color: var(--seafoam, #5EEAD4);
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace; font-size: 12px; letter-spacing: 0.1em;
+}
+.room-badge__count { color: rgba(240, 244, 252, 0.9); }
+.room-badge__toasts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.room-badge__toast {
+  padding: 6px 12px; border-radius: 10px; max-width: calc(100vw - 32px);
+  background: rgba(6, 9, 14, 0.82); color: rgba(240, 244, 252, 0.94);
+  font-family: var(--font-body, "Geist"), system-ui, sans-serif; font-size: 13px;
+  animation: room-toast-in 240ms ease-out;
+}
+@keyframes room-toast-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .room-badge__toast { animation: none; } }
+/* ── The way in, on the guide page ── */
+.solar-system__launch {
+  position: absolute;
+  left: 50%;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px 10px 16px;
+  border: 1px solid var(--terracotta, #ffb347);
+  border-radius: 999px;
+  background: rgba(6, 9, 14, 0.86);
+  color: #fff;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.solar-system__launch:hover, .solar-system__launch:focus-visible { background: rgba(48, 32, 12, 0.8); outline: none; }
+.solar-system__launch svg { color: var(--terracotta, #ffb347); flex: none; }
+.solar-system__launch-text { display: grid; gap: 1px; }
+.solar-system__launch-title { font: 600 14px/1.2 var(--font-body, system-ui), sans-serif; }
+.solar-system__launch-sub { font: 500 11px/1.3 var(--font-mono, ui-monospace), monospace; color: rgba(255, 214, 156, 0.85); }
+
+/* ── The arrival ──
+   The ship has the con: the deck's own controls fade out of the way, and
+   what is left is where the crew are in the sequence, what has come down
+   for the surface at the end of it, and the way to skip it. */
+.flight-hud[data-arrival='true'] > :not(.flight-arrival, .flight-hud__warp, .flight-hud__flash, .flight-hud__launching) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.flight-arrival {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--edge-bottom) + 6px);
+  z-index: 9;
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  width: min(420px, calc(100% - 2 * var(--edge-right)));
+  transform: translateX(-50%);
+  pointer-events: none;
+  text-align: center;
+  animation: flight-arrival-in 0.6s ease both;
+}
+/* A world in the windscreen is the brightest thing on the screen; the
+   caption needs its own ground to stand on. */
+.flight-arrival::before {
+  content: '';
+  position: absolute;
+  inset: -30px -50vw -60px;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(4, 9, 22, 0.72) 0%, rgba(4, 9, 22, 0.52) 45%, rgba(4, 9, 22, 0) 100%);
+}
+@keyframes flight-arrival-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.flight-arrival__head { display: grid; gap: 3px; margin: 0; }
+.flight-arrival__phase {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--hud-ink);
+}
+.flight-arrival__place { font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--hud-dim); }
+.flight-arrival__bar {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: rgba(166, 190, 220, 0.22);
+  overflow: hidden;
+}
+.flight-arrival__bar > i {
+  display: block;
+  width: calc(var(--t, 0) * 100%);
+  height: 100%;
+  background: var(--hud-accent);
+}
+.flight-arrival__list {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flight-arrival__list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-dim);
+  opacity: 0.55;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+.flight-arrival__list li[data-done='true'] { opacity: 1; color: var(--hud-accent); }
+.flight-arrival__list li svg { opacity: 0; transition: opacity 0.3s ease; }
+.flight-arrival__list li[data-done='true'] svg { opacity: 1; }
+.flight-arrival__skip { margin: 0; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hud-dim); }
+
+/* ── Touch: every key a thumb can reach is at least 44 px, and no label on
+   the flight deck is smaller than 10 px (Georgian at 8–9 px is unreadable). */
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__round { width: max(44px, var(--hud-round)); height: max(44px, var(--hud-round)); }
+  .flight-hud .flight-hud__radar { min-width: 44px; min-height: 44px; }
+  .flight-hud .flight-hud__key,
+  .flight-hud .flight-drive__gear,
+  .flight-hud .flight-hud__card { min-height: 44px; min-width: 44px; }
+  .solar-system__dockbtn { min-width: 44px; min-height: 44px; }
+  .solar-system__chip.solar-system__ratebtn { min-height: 44px; }
+}
+/* The small-phone block above takes these to 8–9 px to fit the dial; 10 px
+   still fits, and reads. */
+.flight-hud .flight-hud__console-label,
+.flight-hud .flight-hud__speed .flight-hud__console-label,
+.flight-hud .flight-hud__speed small,
+.flight-hud .flight-hud__sys-name,
+.flight-hud .flight-drive__gear kbd { font-size: 10px; }
+/* ── Phones: the glass stays light, every key is a thumb, nothing hides ── */
+/* The stick's four marks on every deck, not only the flight deck's. */
+.game-stick__pad { position: absolute; inset: 0; color: var(--hud-dim, rgba(186, 212, 240, 0.7)); pointer-events: none; }
+.game-stick__pad svg { position: absolute; }
+.game-stick__pad svg:nth-child(1) { top: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(2) { right: 7%; top: 50%; transform: translateY(-50%); }
+.game-stick__pad svg:nth-child(3) { bottom: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(4) { left: 7%; top: 50%; transform: translateY(-50%); }
+.moon-hud .game-stick__axis { display: none; }
+.game-stick { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
+.game-stick[data-active='true'] { box-shadow: 0 0 0 1px var(--seafoam), 0 0 22px rgba(94, 234, 212, 0.28); }
+.game-stick__thumb { will-change: transform; }
+
+/* The controls card scrolls inside the deck instead of running under it. */
+.flight-hud__help {
+  gap: 4px;
+  top: var(--edge-top);
+  max-height: calc(100cqh - var(--edge-top) - var(--edge-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.flight-hud__help button, .flight-hud__menu button, .flight-drive__menu button { touch-action: pan-y; }
+
+/* Words in a key stay inside the key. */
+.moon-hud .moon-hud__key { width: auto; min-width: 54px; padding: 0 9px; white-space: nowrap; }
+.moon-hud .moon-hud__objective { min-width: 0; padding: 8px 12px; overflow-wrap: anywhere; }
+.moon-hud__objective-text { overflow-wrap: anywhere; }
+
+/* Panels that scroll keep the scroll; nothing else may be pinched. */
+.moon-hud__log, .moon-hud__help, .room-panel { touch-action: pan-y; overscroll-behavior: contain; }
+.moon-hud__log button, .moon-hud__help button { touch-action: pan-y; }
+.moon-hud__help, .moon-hud__log { max-height: min(70dvh, 560px); }
+
+@media (pointer: coarse) {
+  .solar-system__dockbtn { width: 44px; height: 44px; }
+  .solar-system__ratebtn { min-height: 44px; }
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+  .flight-hud .flight-hud__editor-bar button { min-height: 44px; }
+  /* Every blurred layer resamples the live canvas each frame; on a phone
+     GPU that is time the scene needs. A deeper glass reads the same. */
+  .flight-hud button, .flight-hud .flight-hud__card, .flight-hud__console, .flight-hud .game-stick,
+  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .flight-hud { --hud-glass: rgba(6, 10, 20, 0.72); }
+  .moon-hud { --hud-glass: rgba(6, 10, 20, 0.66); }
+  .moon-surface--mars .moon-hud { --hud-glass: rgba(28, 10, 4, 0.66); }
+  .moon-surface--proximaB .moon-hud { --hud-glass: rgba(14, 6, 24, 0.68); }
+}
+
+/* A short landscape phone: the loader keeps its words. */
+@media (max-height: 440px) {
+  .cosmic-loader__stage { min-height: 0; transform: scale(0.66); margin: -36px 0; }
+  .cosmic-loader__tip { display: none; }
+}
+
+/* A key answers the thumb the instant it lands: no hover on glass, so the
+   press itself is the feedback. Colour only — the flight deck's keys carry
+   their placement in their transform. */
+.moon-hud button:active:not(:disabled),
+.flight-hud button:active:not(:disabled) {
+  border-color: var(--hud-accent);
+  background-color: rgba(94, 234, 212, 0.2);
+  transition: none;
+}
+/* On a phone the card keeps clear of the key column down the right edge. */
+@container viewport (max-width: 599px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    transform: none;
+    width: calc(100% - var(--edge-left) - var(--edge-right) - var(--hud-round) - 10px);
+    padding: 12px 12px 14px;
+  }
+}
+/* The open menu lies over the dock: the keys' placement transform makes the
+   top keys their own stacking context, so the menu's own z-index stays inside it. */
+.flight-hud__top-keys:has(.flight-hud__menu) { z-index: 8; }

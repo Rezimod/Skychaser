@@ -1,0 +1,95 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# security audit reports (may detail live vulnerabilities — keep out of the repo)
+.superstack/
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.next-*/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# playwright auth session (contains real tokens — never commit)
+stellar-toolkit/auth.json
+
+# playwright test results
+test-results/
+
+# Claude Code runtime state
+.claude/scheduled_tasks.lock
+
+# Stellar Field transient debug artifacts (audit/eval JSONs ARE committed)
+apps/field/artifacts/current-screen.png
+
+# duplicate of .claude/skills generated for other agent tools
+.agents/
+
+# Editor and installer backups. The solana-ai-kit installer writes
+# CLAUDE.md.bak, and this repository is public.
+*.bak
+
+# transient audit/debug scripts and shots
+*.tmp.mjs
+*.tmp.png
+
+# Internal working docs — kept local, mirrored to the private stellar-internal
+# repo. Grant applications, security audit reports and agent instruction files
+# are business/ops material, not part of the public codebase.
+/CLAUDE.md
+/AGENTS.md
+/.claude/
+/.impeccable.md
+/PROMPTS_STELLAR_FIXES.md
+/STELLAR_UI_PLAYBOOK.md
+/UX_UI_AUDIT_STELLAR.md
+/SECURITY_MAINNET_AUDIT.md
+/audit/
+docs/dependency-security.md
+docs/grant-applications.md
+docs/gita-grant-application.md
+docs/solana-foundation-georgia-grant-application.md
+docs/stellar-superteamgeo-grant-application-*.md
+docs/tether-grant-*.md
+
+# Explore asset pipeline: raw Blender exports and baked textures
+/assets-src/build/
+assets-src/renders/**/view-*.png
+
+# Blender lib bytecode
+assets-src/blender/**/__pycache__/

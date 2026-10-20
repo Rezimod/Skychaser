@@ -1,0 +1,38 @@
+{
+  "id": "/play",
+  "name": "Stellar Explore",
+  "short_name": "Explore",
+  "description": "Fly from orbit to the ground of the Moon, Mars and Earth, walk out as a cosmonaut, and earn Stars. A space game from Georgia, inside the Stellar astronomy platform.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/play",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#050812",
+  "theme_color": "#050812",
+  "categories": ["games", "education"],
+  "prefer_related_applications": false,
+  "launch_handler": { "client_mode": ["navigate-existing", "auto"] },
+  "icons": [
+    { "src": "/explore/site/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/explore/site/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/explore/site/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/explore/site/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/explore/site/screens/wide-entry.jpg", "sizes": "1280x720", "type": "image/jpeg", "form_factor": "wide", "label": "Atmospheric entry over Earth" },
+    { "src": "/explore/site/screens/wide-jetpack.jpg", "sizes": "1280x720", "type": "image/jpeg", "form_factor": "wide", "label": "Jetpack over Stellar Base on the Moon" },
+    { "src": "/explore/site/screens/wide-mars.jpg", "sizes": "1280x720", "type": "image/jpeg", "form_factor": "wide", "label": "A cosmonaut at Mars Base, Jezero" },
+    { "src": "/explore/site/screens/narrow-mars.jpg", "sizes": "450x800", "type": "image/jpeg", "form_factor": "narrow", "label": "Walk out at Mars Base" },
+    { "src": "/explore/site/screens/narrow-moon.jpg", "sizes": "450x800", "type": "image/jpeg", "form_factor": "narrow", "label": "On the Moon, by Stellar Base" },
+    { "src": "/explore/site/screens/narrow-proxima.jpg", "sizes": "450x800", "type": "image/jpeg", "form_factor": "narrow", "label": "Glowing crystals on Proxima b" }
+  ],
+  "shortcuts": [
+    { "name": "Play", "short_name": "Play", "description": "Pick up where you left off", "url": "/play", "icons": [{ "src": "/explore/site/icons/shortcut-96.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Land on the Moon", "short_name": "Moon", "description": "Straight to Stellar Base on the Moon", "url": "/play?moon=1", "icons": [{ "src": "/explore/site/icons/shortcut-96.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Land on Mars", "short_name": "Mars", "description": "Straight to Mars Base, Jezero", "url": "/play?land=mars", "icons": [{ "src": "/explore/site/icons/shortcut-96.png", "sizes": "96x96", "type": "image/png" }] },
+    { "name": "Land on Earth", "short_name": "Earth", "description": "Straight down to Tbilisi", "url": "/play?land=earth", "icons": [{ "src": "/explore/site/icons/shortcut-96.png", "sizes": "96x96", "type": "image/png" }] }
+  ]
+}

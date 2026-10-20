@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#0B0E17"/>
+  <rect width="600" height="600" fill="url(#grad)"/>
+  <defs>
+    <radialGradient id="grad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1a1f2e"/>
+      <stop offset="100%" stop-color="#070B14"/>
+    </radialGradient>
+  </defs>
+  <circle cx="300" cy="280" r="60" fill="none" stroke="rgba(56,240,255,0.15)" stroke-width="1.5"/>
+  <circle cx="300" cy="280" r="40" fill="none" stroke="rgba(56,240,255,0.1)" stroke-width="1"/>
+  <line x1="260" y1="280" x2="340" y2="280" stroke="rgba(56,240,255,0.15)" stroke-width="1"/>
+  <line x1="300" y1="240" x2="300" y2="320" stroke="rgba(56,240,255,0.15)" stroke-width="1"/>
+  <text x="300" y="370" text-anchor="middle" font-family="monospace" font-size="12" fill="rgba(255,255,255,0.2)">stellar observation</text>
+</svg>

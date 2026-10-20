@@ -1,0 +1,1691 @@
+@import "tailwindcss";
+
+:root {
+  /* === Unified token system ===
+     Deep midnight canvas, vivid terracotta, mint seafoam.
+     Cards/surfaces are tinted-white overlays so they stay legible on the dark base.
+
+     Design-system role map (use these in components):
+       page bg          → --canvas
+       card bg          → --surface         (hover: --surface-hover)
+       border           → --border
+       primary text     → --text-primary    (alias of --text)
+       secondary text   → --text-secondary  (alias of --text-muted)
+       primary accent   → --accent          (alias of --terracotta)  — orange, used sparingly
+       secondary accent → --accent-teal     (alias of --seafoam)     — for "visible / available"
+       error / negative → --negative
+       Markets Yes/No   → --yes / --no      (binary outcome ONLY, never decorative)
+  */
+  --canvas: #0A1735;
+  --terracotta: #FFB347;    /* unified to missions-page orange (was #FFD166) */
+  --orange: #FFB347;        /* alias of terracotta — kept for explicit "orange" semantics */
+  --seafoam: #5EEAD4;
+  --negative: #FB7185;
+  --text: #F8F4EC;
+  --text-muted: #A8B4C8;
+  --border: rgba(255, 255, 255, 0.08);
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+
+  /* Ink triplet — rgba(var(--ink), X) keeps the exact night-mode opacity ramp
+     and flips white → slate ink in day mode. Use in inline styles instead of
+     rgba(255,255,255,X). */
+  --ink: 255, 255, 255;
+  --ink-warm: 232, 230, 221; /* E8E6DD family used on landing surfaces */
+  /* Accent-as-TEXT — brand accents are too light to read on the day canvas.
+     Backgrounds/glows keep --terracotta / --seafoam; text uses these. */
+  --accent-text: var(--terracotta);
+  --teal-text: var(--seafoam);
+
+  /* Binary yes/no indicators — positive / negative outcome accents */
+  --yes: #34D399;
+  --yes-dim: rgba(52, 211, 153, 0.10);
+  --yes-border: rgba(52, 211, 153, 0.35);
+  --no: #F87171;
+  --no-dim: rgba(248, 113, 113, 0.10);
+  --no-border: rgba(248, 113, 113, 0.35);
+
+  /* Backgrounds — all map to single canvas */
+  --bg-void: var(--canvas);
+  --bg-cosmos: var(--canvas);
+  --bg-deep: var(--canvas);
+  --bg-base: var(--canvas);
+  --bg-surface: var(--surface);
+  --bg-card: var(--surface);
+  --bg-card-hover: var(--surface-hover);
+  --bg-elevated: var(--surface-hover);
+  --bg-panel: #0D1321; /* solid elevated panel (modals, dropdowns) */
+
+  /* Borders */
+  --border-glass: var(--border);
+  --border-glow: var(--border);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: var(--border);
+  --border-strong: var(--border);
+
+  /* Text */
+  --text-primary: var(--text);
+  --text-secondary: var(--text-muted);
+  --text-dim: var(--text-muted);
+  --text-faint: rgba(255, 255, 255, 0.18);
+
+  /* PRIMARY ACCENT — terracotta (badges, Stars, gold highlights) */
+  --accent: var(--terracotta);
+  --accent-dim: rgba(255, 179, 71, 0.10);
+  --accent-glow: rgba(255, 179, 71, 0.20);
+  --accent-border: rgba(255, 179, 71, 0.25);
+
+  /* TERTIARY ACCENT — light orange (missions, bets, event highlights) */
+  --orange-dim: rgba(255, 179, 71, 0.10);
+  --orange-glow: rgba(255, 179, 71, 0.20);
+  --orange-border: rgba(255, 179, 71, 0.25);
+
+  /* Legacy accent aliases (kept for backward compat) */
+  --accent-cyan: var(--seafoam);
+  --accent-cyan-dim: rgba(94, 234, 212, 0.10);
+  --accent-teal: var(--seafoam);
+  --accent-teal-dim: rgba(94, 234, 212, 0.10);
+  --accent-teal-glow: rgba(94, 234, 212, 0.20);
+  --accent-emerald: var(--seafoam);
+  --accent-amber: var(--orange);
+  --accent-red: var(--negative);
+
+  /* Stars token — terracotta */
+  --stars: var(--terracotta);
+  --stars-dim: rgba(255, 179, 71, 0.12);
+  --stars-border: rgba(255, 179, 71, 0.20);
+  --accent-gold: var(--terracotta);
+  --accent-gold-light: var(--terracotta);
+  --accent-gold-dim: rgba(255, 179, 71, 0.12);
+
+  /* Status colors — functional only */
+  --success: var(--seafoam);
+  --success-dim: rgba(94, 234, 212, 0.12);
+  --warning: var(--orange);
+  --warning-dim: rgba(255, 179, 71, 0.12);
+  --error: var(--negative);
+  --error-dim: rgba(251, 113, 133, 0.12);
+
+  /* Gradients — flattened to solid terracotta */
+  --gradient-accent: var(--terracotta);
+  --gradient-stars: var(--terracotta);
+  --gradient-score: var(--seafoam);
+  --gradient-gold: var(--terracotta);
+  --gradient-card: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+  --gradient-rank-observer: var(--terracotta);
+  --gradient-rank-pathfinder: var(--terracotta);
+  --gradient-rank-celestial: var(--terracotta);
+
+  /* Stellar design tokens — observatory palette */
+  --stellar-void: var(--canvas);
+  --stellar-night: var(--canvas);
+  --stellar-surface: var(--surface);
+  --stellar-border: var(--border);
+  --stellar-border-hover: rgba(255, 179, 71, 0.20);
+  --stellar-teal: var(--seafoam);
+  --stellar-teal-glow: rgba(94, 234, 212, 0.15);
+  --stellar-brass: var(--text);
+  --stellar-sol-purple: rgba(255, 179, 71, 0.08);
+  --stellar-sol-green: rgba(94, 234, 212, 0.06);
+  --stellar-gradient-sol: linear-gradient(135deg, rgba(255, 179, 71, 0.04) 0%, rgba(255, 179, 71, 0.06) 50%, rgba(255, 179, 71, 0.03) 100%);
+
+  /* Shadows — globals-only. Card / hover / teal / gold live in design-tokens.css */
+  --shadow-elevated: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-glow-accent: 0 0 20px rgba(255, 179, 71, 0.25);
+  --shadow-glow-stars: 0 0 20px rgba(255, 179, 71, 0.20);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Typography — values come from next/font on <html> in layout.tsx
+     (Orbitron / Geist / JetBrains Mono / Noto Sans Georgian).
+     Fallbacks live in the @theme block below. */
+
+  /* Motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 500ms;
+}
+
+/* ── Light / Day mode ──
+   Overrides the BASE tokens (--canvas, --text, --surface, --border, ...) so
+   anything that reads them via var() flips automatically. The alias overrides
+   below stay for components that still read --bg-card / --text-primary. */
+[data-theme="light"] {
+  /* Base tokens — these cascade to everything that reads var(--canvas) /
+     var(--text) / var(--surface) / var(--border) directly. */
+  --canvas: #EDF0F7;
+  --text: #0F172A;
+  --text-muted: #475569;
+  --surface: rgba(15, 23, 42, 0.04);
+  --surface-hover: rgba(15, 23, 42, 0.07);
+  --border: rgba(15, 23, 42, 0.10);
+  --negative: #DC2626;
+
+  --ink: 15, 23, 42;
+  --ink-warm: 15, 23, 42;
+  --accent-text: #B45309;
+  --teal-text: #0F766E;
+  --success: #059669;
+  --warning: #B45309;
+
+  --bg-void: #EDF0F7;
+  --bg-cosmos: #E2E8F5;
+  --bg-deep: #F5F7FD;
+  --bg-base: #EDF0F7;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F4F7FF;
+  --bg-elevated: #F0F4FF;
+  --bg-panel: #FFFFFF;
+
+  --border-glass: rgba(15, 23, 42, 0.10);
+  --border-glow: rgba(15, 23, 42, 0.14);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-default: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.18);
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-dim: #64748B;
+  --text-faint: rgba(15, 23, 42, 0.35);
+
+  --accent-dim: rgba(255, 179, 71, 0.1);
+  --accent-glow: rgba(255, 179, 71, 0.18);
+  --accent-border: rgba(255, 179, 71, 0.3);
+
+  --stars-dim: rgba(202, 138, 4, 0.12);
+  --stars-border: rgba(202, 138, 4, 0.25);
+  --accent-gold: #B45309;
+  --accent-gold-dim: rgba(180, 83, 9, 0.1);
+
+  --success-dim: rgba(5, 150, 105, 0.1);
+  --warning-dim: rgba(217, 119, 6, 0.1);
+  --error-dim: rgba(220, 38, 38, 0.1);
+
+  /* Markets Yes/No — darker tones for light theme contrast */
+  --yes: #059669;
+  --yes-dim: rgba(5, 150, 105, 0.10);
+  --yes-border: rgba(5, 150, 105, 0.35);
+  --no: #DC2626;
+  --no-dim: rgba(220, 38, 38, 0.10);
+  --no-border: rgba(220, 38, 38, 0.35);
+
+  --shadow-card: 0 1px 4px rgba(15,23,42,0.08), 0 0 0 1px rgba(15,23,42,0.06);
+  --shadow-card-hover: 0 4px 16px rgba(15,23,42,0.12), 0 0 0 1px rgba(255,179,71,0.15);
+  --shadow-elevated: 0 8px 32px rgba(15,23,42,0.12), 0 0 0 1px rgba(15,23,42,0.06);
+
+  --stellar-void: #EDF0F7;
+  --stellar-night: #E2E8F5;
+  --stellar-surface: #FFFFFF;
+  --stellar-border: rgba(15, 23, 42, 0.08);
+  --stellar-border-hover: rgba(255, 179, 71, 0.20);
+  --stellar-teal-glow: rgba(94, 234, 212, 0.12);
+  --stellar-brass: #0A0E1A;
+}
+
+[data-theme="light"] html,
+[data-theme="light"] body {
+  background: #EDF0F7;
+}
+
+[data-theme="light"] body::before { display: none; }
+[data-theme="light"] body::after { display: none; }
+
+[data-theme="light"] .card-base {
+  background: #FFFFFF;
+  border-color: rgba(15,23,42,0.1);
+  box-shadow: 0 1px 4px rgba(15,23,42,0.07);
+}
+[data-theme="light"] .card-base:hover {
+  background: #F4F7FF;
+  border-color: rgba(6,182,212,0.2);
+}
+
+[data-theme="light"] .glass-nav {
+  background: rgba(237, 240, 247, 0.97);
+  border-color: rgba(15,23,42,0.08);
+}
+
+/* design-tokens.css text/surface scale flip for light mode */
+[data-theme="light"] {
+  --color-space-black:  #EDF0F7;
+  --color-panel-dark:   #FFFFFF;
+  --color-card-surface: rgba(15, 23, 42, 0.04);
+  --color-card-hover:   rgba(15, 23, 42, 0.07);
+  --color-surface-mid:  rgba(15, 23, 42, 0.06);
+  --color-text-primary:   rgba(15, 23, 42, 0.92);
+  --color-text-secondary: rgba(15, 23, 42, 0.65);
+  --color-text-muted:     rgba(15, 23, 42, 0.45);
+  --color-text-disabled:  rgba(15, 23, 42, 0.25);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+}
+
+/* Stars / cosmic backdrop are dark-mode-only — hide in light mode,
+   except inside .stay-dark scopes (night-scene heroes keep their sky). */
+[data-theme="light"] .star:not(.stay-dark, .stay-dark *) { display: none; }
+[data-theme="light"] .hero-starfield:not(.stay-dark *),
+[data-theme="light"] .hero-starfield:not(.stay-dark *)::before,
+[data-theme="light"] .hero-starfield:not(.stay-dark *)::after { display: none; }
+
+/* Partner / achievement logos are inverted-to-white for the dark canvas;
+   flatten them to dark silhouettes on the light canvas. */
+[data-theme="light"] .partner-logo,
+[data-theme="light"] .home-achievement-image {
+  filter: brightness(0) opacity(0.72) !important;
+}
+
+/* Selection color flips to terracotta-on-dark-text */
+[data-theme="light"] ::selection {
+  background: rgba(255, 179, 71, 0.35);
+  color: #0F172A;
+}
+
+/* Buttons that hardcoded a dark navy bg need a light counterpart so labels
+   stay readable. .btn-ghost / .btn-stellar-ghost use --cta-secondary-bg. */
+[data-theme="light"] {
+  --cta-secondary-bg:     #FFFFFF;
+  --cta-secondary-hover:  #F4F7FF;
+  --cta-secondary-border: rgba(15, 23, 42, 0.12);
+}
+
+/* Inline-styled white-overlay surfaces (rgba(255,255,255,0.04)…) read fine on
+   the dark canvas but vanish on white. Overlay them with a faint dark tint
+   instead via a class wrapper isn't viable — components apply colors inline.
+   The base-token flip above (--surface, --border, --text) covers most cases.
+   This block patches a handful of common literals used across nav/cards. */
+[data-theme="light"] .glass-card {
+  background: rgba(15, 23, 42, 0.025);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+}
+[data-theme="light"] .glass-card:hover {
+  background: rgba(15, 23, 42, 0.05);
+  border-color: rgba(255, 179, 71, 0.30);
+}
+
+/* ── Light-mode remap of dark-only Tailwind utilities ──
+   Many surfaces hardcode white-on-dark utility classes (text-white/55,
+   bg-white/[0.04], border-white/10, text-[#F8F4EC], bg-[#0A1735], ...).
+   Rather than forking every component, remap the finite set of variants in
+   use onto the theme tokens. These rules are unlayered, so they win over
+   Tailwind's @layer utilities in light mode only. Anything inside a
+   `.stay-dark` scope (device mockups, night-sky art, photo scrims) keeps
+   its dark-mode colors in both themes. */
+[data-theme="light"] :is(.text-white, .text-white\/95, .text-white\/90,
+  .text-white\/85, .text-white\/80, .text-\[\#F8F4EC\],
+  .hover\:text-white:hover, .hover\:text-\[\#F8F4EC\]:hover):not(.stay-dark, .stay-dark *),
+[data-theme="light"] .group:hover :is(.group-hover\:text-white, .group-hover\:text-white\/90):not(.stay-dark, .stay-dark *) {
+  color: var(--text-primary);
+}
+[data-theme="light"] :is(.text-white\/70, .text-white\/60, .text-white\/55,
+  .text-white\/50, .text-\[\#F8F4EC\]\/80, .text-\[\#F8F4EC\]\/70):not(.stay-dark, .stay-dark *),
+[data-theme="light"] .group:hover .group-hover\:text-white\/50:not(.stay-dark, .stay-dark *) {
+  color: var(--text-secondary);
+}
+[data-theme="light"] :is(.text-white\/45, .text-white\/40, .text-white\/35,
+  .text-white\/30):not(.stay-dark, .stay-dark *) {
+  color: var(--text-dim);
+}
+[data-theme="light"] :is(.text-white\/25, .text-white\/20):not(.stay-dark, .stay-dark *) {
+  color: var(--text-faint);
+}
+[data-theme="light"] :is(.bg-white\/\[0\.012\], .bg-white\/\[0\.015\],
+  .bg-white\/\[0\.02\], .bg-white\/\[0\.025\], .bg-white\/\[0\.03\],
+  .bg-white\/\[0\.035\], .bg-white\/\[0\.04\], .bg-white\/\[0\.05\],
+  .bg-white\/\[0\.06\], .bg-white\/\[0\.08\], .bg-white\/10):not(.stay-dark, .stay-dark *) {
+  background-color: var(--surface);
+}
+[data-theme="light"] :is(.bg-white\/\[0\.1\], .hover\:bg-white\/\[0\.04\]:hover,
+  .hover\:bg-white\/\[0\.05\]:hover, .hover\:bg-white\/\[0\.06\]:hover,
+  .hover\:bg-white\/\[0\.1\]:hover):not(.stay-dark, .stay-dark *) {
+  background-color: var(--surface-hover);
+}
+[data-theme="light"] :is(.border-white\/\[0\.04\], .border-white\/\[0\.05\],
+  .border-white\/\[0\.06\], .border-white\/\[0\.07\], .border-white\/\[0\.08\],
+  .border-white\/\[0\.10\], .border-white\/10, .border-white\/\[0\.16\],
+  .border-white\/20, .hover\:border-white\/\[0\.16\]:hover):not(.stay-dark, .stay-dark *) {
+  border-color: var(--border);
+}
+[data-theme="light"] :is(.border-white\/55, .border-white\/60,
+  .hover\:border-white\/60:hover):not(.stay-dark, .stay-dark *) {
+  border-color: rgba(15, 23, 42, 0.40);
+}
+[data-theme="light"] :is(.divide-white\/10, .divide-white\/\[0\.05\],
+  .divide-white\/\[0\.06\]):not(.stay-dark, .stay-dark *) > * {
+  border-color: var(--border);
+}
+[data-theme="light"] :is(.ring-white\/60, .focus-visible\:ring-white\/60:focus-visible):not(.stay-dark, .stay-dark *) {
+  --tw-ring-color: rgba(15, 23, 42, 0.40);
+}
+/* Solid dark card/page backgrounds */
+[data-theme="light"] .bg-\[\#0A1735\]:not(.stay-dark, .stay-dark *) { background-color: var(--canvas); }
+[data-theme="light"] :is(.bg-\[\#0F1422\], .bg-\[\#071126\]):not(.stay-dark, .stay-dark *) { background-color: var(--bg-card); }
+/* Dark hero gradients → light equivalents */
+[data-theme="light"] .from-\[\#0A1735\]:not(.stay-dark, .stay-dark *) { --tw-gradient-from: #EDF0F7; }
+[data-theme="light"] .to-\[\#0F1424\]:not(.stay-dark, .stay-dark *) { --tw-gradient-to: #E2E8F5; }
+[data-theme="light"] .from-\[\#0a1430\]:not(.stay-dark, .stay-dark *) { --tw-gradient-from: #EDF0F7; }
+[data-theme="light"] .via-\[\#0f1a40\]:not(.stay-dark, .stay-dark *) { --tw-gradient-via: #E7ECF7; }
+[data-theme="light"] .to-\[\#1a1030\]:not(.stay-dark, .stay-dark *) { --tw-gradient-to: #E2E8F5; }
+/* Near-white arbitrary hex text → primary ink */
+[data-theme="light"] :is(.text-\[\#f6f8ff\], .text-\[\#f4f7ff\],
+  .text-\[\#e7ecfb\]):not(.stay-dark, .stay-dark *) {
+  color: var(--text-primary);
+}
+/* Muted blue-gray hex text (readable at night, weak on day canvas) → secondary */
+[data-theme="light"] :is(.text-\[\#A8B4C8\], .text-\[\#9aa6c8\], .text-\[\#9BA3B4\],
+  .text-\[\#8d99bd\], .text-\[\#7f8cad\]):not(.stay-dark, .stay-dark *) {
+  color: var(--text-secondary);
+}
+/* Amber accent text is ~1.9:1 on the day canvas — darken to readable amber */
+[data-theme="light"] :is(.text-terracotta, .text-accent, .text-amber-300,
+  .text-\[\#FFB347\], .text-\[\#FFB347\]\/80, .text-\[\#ffc877\],
+  .text-\[\#f5a83d\], .text-\[\#FFD166\]):not(.stay-dark, .stay-dark *),
+[data-theme="light"] .group:hover .group-hover\:text-\[\#FFB347\]\/80:not(.stay-dark, .stay-dark *) {
+  color: var(--accent-text);
+}
+/* Seafoam text is ~1.4:1 on the day canvas — darken to deep teal */
+[data-theme="light"] :is(.text-seafoam, .text-\[\#5EEAD4\]):not(.stay-dark, .stay-dark *) {
+  color: var(--teal-text);
+}
+[data-theme="light"] .border-\[\#5EEAD4\]\/40:not(.stay-dark, .stay-dark *) {
+  border-color: rgba(13, 148, 136, 0.45);
+}
+/* stay-dark scopes keep the night palette for inline-styled colors too */
+[data-theme="light"] .stay-dark {
+  --ink: 255, 255, 255;
+  --ink-warm: 232, 230, 221;
+  --accent-text: var(--terracotta);
+  --teal-text: var(--seafoam);
+}
+
+@theme inline {
+  --color-background: var(--canvas);
+  --color-foreground: var(--text);
+
+  /* Unified palette — Tailwind utilities: bg-canvas / text-terracotta / etc. */
+  --color-canvas: var(--canvas);
+  --color-terracotta: var(--terracotta);
+  --color-orange: var(--orange);
+  --color-seafoam: var(--seafoam);
+  --color-negative: var(--negative);
+  --color-text-primary: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+
+  /* Legacy names — all map onto new palette */
+  --color-void: var(--canvas);
+  --color-cosmos: var(--canvas);
+  --color-brass: var(--text);
+  --color-cyan: var(--seafoam);
+  --color-purple: var(--terracotta);
+  --color-solana-purple: var(--terracotta);
+  --color-solana-green: var(--seafoam);
+  --color-card: var(--surface);
+  --color-stellar-bg: var(--canvas);
+  --color-stellar-base: var(--canvas);
+  --color-stellar-surface: var(--surface);
+  --color-stellar-card: var(--surface);
+  --color-stellar-card-hover: var(--surface-hover);
+  --color-stellar-elevated: var(--surface-hover);
+  --color-accent: var(--terracotta);
+  --color-accent-dim: rgba(255, 179, 71, 0.10);
+  --color-accent-glow: rgba(255, 179, 71, 0.20);
+  --color-accent-border: rgba(255, 179, 71, 0.25);
+  --color-stars: var(--terracotta);
+  --color-stars-dim: rgba(255, 179, 71, 0.12);
+  --color-success: var(--seafoam);
+  --color-warning: var(--terracotta);
+  --color-error: var(--negative);
+  --color-yes: var(--yes);
+  --color-no: var(--no);
+
+  /* Fonts — Orbitron for hero titles + headings, Geist for body / paragraphs,
+     JetBrains Mono for numbers, Noto Sans Georgian for KA. */
+  --font-display:  var(--font-orbitron), var(--font-georgian, 'Noto Sans Georgian'), system-ui, -apple-system, sans-serif;
+  --font-body:     var(--font-geist), var(--font-georgian, 'Noto Sans Georgian'), system-ui, -apple-system, sans-serif;
+  --font-cta:      var(--font-geist), var(--font-georgian, 'Noto Sans Georgian'), system-ui, -apple-system, sans-serif;
+  --font-mono:     var(--font-mono, 'JetBrains Mono', ui-monospace, monospace);
+  --font-georgian: var(--font-georgian, 'Noto Sans Georgian', system-ui, sans-serif);
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+html { min-height: 100%; }
+body { overscroll-behavior-y: none; }
+.page-shell { min-height: 100dvh; width: 100%; display: flex; flex-direction: column; }
+
+/* Smooth transitions only on interactive elements */
+a, button, input, select, textarea,
+[class*="btn-"], [class*="glass-card"], [class*="glow-"] {
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s, opacity 0.2s, transform 0.2s, color 0.2s;
+}
+
+html { background: var(--canvas); scroll-behavior: smooth; transition: background 0.3s; }
+
+body {
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 500; /* Geist Medium — global default body weight */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: none;
+}
+
+/* Paragraphs — Geist Medium across the app */
+p {
+  font-family: var(--font-body);
+  font-weight: 500;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -2;
+  background:
+    radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 25% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 55% 20%, rgba(255,255,255,0.35) 0%, transparent 100%),
+    radial-gradient(1px 1px at 70% 65%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 45%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 15% 60%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 50%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 90%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 10%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 85%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 95% 30%, rgba(255,255,255,0.25) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 50%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(2px 2px at 45% 40%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 75%, rgba(255,255,255,0.2) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 480px 360px at 50% 20%, rgba(255, 179, 71, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse 420px 320px at 50% 70%, rgba(255, 179, 71, 0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* Headings — Geist Medium across the whole app (matches the homepage).
+   Per Nika's request the site no longer uses Orbitron for headings; every
+   header level uses the body font for one consistent voice. */
+h1, h2, h3, h4, h5, h6, .display {
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+/* `.home-font` is now a no-op alias (headings are already Geist globally),
+   kept so existing markup that sets it keeps working. */
+.home-font :is(h1, h2, h3, h4, h5, h6, .display) {
+  font-family: var(--font-body);
+}
+
+code, pre, .mono, [class*="font-mono"] {
+  font-family: var(--font-mono);
+}
+
+/* Monospace for hashes/addresses */
+.font-hash {
+  font-family: var(--font-mono);
+}
+
+/* Typography utilities — Orbitron for display, Geist for body */
+.font-display  { font-family: var(--font-display); }
+.font-body     { font-family: var(--font-body); }
+.font-georgian { font-family: var(--font-georgian); }
+
+/* Card base */
+.card-base {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: background var(--duration-normal) var(--ease-out-expo),
+              border-color var(--duration-normal) var(--ease-out-expo),
+              box-shadow var(--duration-normal) var(--ease-out-expo),
+              transform var(--duration-normal) var(--ease-out-expo);
+}
+.card-base:hover {
+  background: var(--bg-card-hover);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+.card-base.card-interactive {
+  cursor: pointer;
+}
+
+/* Stagger animation utility */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+
+/* Glass card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.glass-card:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255, 179, 71, 0.20);
+}
+@media (min-width: 640px) {
+  .glass-card:hover {
+    transform: translateY(-1px);
+  }
+}
+/* will-change set only during hover, not always — a permanent will-change
+   keeps a compositor layer alive for every product card forever, which
+   adds up across a long marketplace grid. */
+@media (min-width: 640px) {
+  .product-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 179, 71, 0.35);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.35);
+    will-change: transform;
+  }
+}
+
+.glass-card:active {
+  background: var(--surface-hover);
+  border-color: rgba(255, 179, 71, 0.25);
+  transform: scale(0.985);
+  transition-duration: 0.1s;
+}
+
+/* Glass nav */
+.glass-nav {
+  background: rgba(15, 19, 32, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* === CTA tokens ===
+   Solid orange primary, dark navy secondary. Rectangular with subtle
+   rounding. No gradients, no glow. Used by .btn-primary, .btn-ghost,
+   .btn-stellar*, and .icon-badge-gradient. */
+:root {
+  --cta-orange:       #FFB347;
+  --cta-orange-hover: #FFC36B;
+  --cta-orange-from:  #FFB347;
+  --cta-orange-to:    #FFB347;
+  --cta-gradient:        var(--cta-orange);
+  --cta-gradient-orange: var(--cta-orange);
+  --cta-glow:        none;
+  --cta-glow-strong: none;
+  --cta-secondary-bg:     #1A2540;
+  --cta-secondary-hover:  #223054;
+  --cta-secondary-border: rgba(255,255,255,0.06);
+  --cta-radius: 8px;
+}
+
+/* Button styles — solid orange primary, dark navy secondary, rectangular */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--cta-orange);
+  color: #0A1735;
+  font-family: var(--font-cta, var(--font-body));
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.005em;
+  border: none;
+  border-radius: var(--cta-radius);
+  padding: 12px 22px;
+  min-height: 48px;
+  cursor: pointer;
+  box-shadow: none;
+  transition: background var(--duration-fast), filter var(--duration-fast);
+}
+.btn-primary:hover:not(:disabled)  { background: var(--cta-orange-hover); }
+.btn-primary:active:not(:disabled) { filter: brightness(0.96); }
+.btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--cta-secondary-bg);
+  border: 1px solid var(--cta-secondary-border);
+  color: var(--text-primary);
+  font-family: var(--font-cta, var(--font-display));
+  font-weight: 500;
+  font-size: 14px;
+  border-radius: var(--cta-radius);
+  padding: 12px 22px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+.btn-ghost:hover:not(:disabled)  { background: var(--cta-secondary-hover); }
+.btn-ghost:active:not(:disabled) { filter: brightness(0.96); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Aliases — same orange / navy treatment */
+.btn-stellar {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  background: var(--cta-orange); color: #FFFFFF;
+  font-family: var(--font-cta, var(--font-body)); font-weight: 600; font-size: 14px;
+  letter-spacing: 0.005em; border: none; border-radius: var(--cta-radius);
+  padding: 12px 22px; min-height: 48px; cursor: pointer; box-shadow: none;
+  transition: background var(--duration-fast), filter var(--duration-fast);
+}
+.btn-stellar:hover:not(:disabled)  { background: var(--cta-orange-hover); }
+.btn-stellar:active:not(:disabled) { filter: brightness(0.96); }
+
+.btn-stellar-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--cta-secondary-bg); border: 1px solid var(--cta-secondary-border);
+  color: var(--text-primary); font-family: var(--font-cta, var(--font-display));
+  font-weight: 500; font-size: 14px; border-radius: var(--cta-radius);
+  padding: 12px 22px; min-height: 48px; cursor: pointer;
+  transition: background var(--duration-fast), border-color var(--duration-fast);
+}
+.btn-stellar-ghost:hover:not(:disabled)  { background: var(--cta-secondary-hover); }
+.btn-stellar-ghost:active:not(:disabled) { filter: brightness(0.96); }
+
+/* Home hero CTAs */
+.hero-cta-primary:hover   { background: #FFC36B !important; }
+.hero-cta-secondary:hover { background: #223054 !important; }
+
+/* Live indicator dot in the hero console header */
+.hero-live-dot {
+  width: 7px; height: 7px; border-radius: 9999px;
+  background: #4ADE80;
+  box-shadow: 0 0 0 0 rgba(74,222,128,0.55);
+  animation: hero-live-pulse 2.4s ease-out infinite;
+}
+@keyframes hero-live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(74,222,128,0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(74,222,128,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,222,128,0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-live-dot { animation: none; }
+}
+
+/* === Hero starfield ===
+   Layered radial gradients paint hundreds of pinpoint stars, then two
+   keyframe animations gently fade alternating layers in/out for a slow
+   twinkle. Sits behind the WebGL Saturn canvas. */
+.hero-starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 4% 12%,  rgba(255,255,255,0.85) 50%, transparent 100%),
+    radial-gradient(1px 1px at 11% 78%, rgba(255,250,235,0.7)  50%, transparent 100%),
+    radial-gradient(1px 1px at 17% 32%, rgba(220,230,255,0.85) 50%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 23% 64%, rgba(255,255,255,0.9) 50%, transparent 100%),
+    radial-gradient(1px 1px at 29% 18%, rgba(255,240,210,0.6)  50%, transparent 100%),
+    radial-gradient(1px 1px at 36% 88%, rgba(255,255,255,0.75) 50%, transparent 100%),
+    radial-gradient(1px 1px at 41% 44%, rgba(200,220,255,0.7)  50%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 47% 22%, rgba(255,255,255,0.95) 50%, transparent 100%),
+    radial-gradient(1px 1px at 53% 70%, rgba(255,240,220,0.55) 50%, transparent 100%),
+    radial-gradient(1px 1px at 60% 8%,  rgba(255,255,255,0.7)  50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 66% 56%, rgba(220,235,255,0.85) 50%, transparent 100%),
+    radial-gradient(1px 1px at 73% 30%, rgba(255,255,255,0.6)  50%, transparent 100%),
+    radial-gradient(1px 1px at 79% 84%, rgba(255,235,205,0.7)  50%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 86% 14%, rgba(255,255,255,0.85) 50%, transparent 100%),
+    radial-gradient(1px 1px at 92% 48%, rgba(220,230,255,0.65) 50%, transparent 100%),
+    radial-gradient(1px 1px at 96% 92%, rgba(255,255,255,0.55) 50%, transparent 100%);
+}
+.hero-starfield::before,
+.hero-starfield::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hero-starfield::before {
+  background-image:
+    radial-gradient(1px 1px at 7% 38%,  rgba(255,255,255,0.7)  50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 14% 6%, rgba(255,245,220,0.85) 50%, transparent 100%),
+    radial-gradient(1px 1px at 21% 92%, rgba(220,230,255,0.6)  50%, transparent 100%),
+    radial-gradient(1px 1px at 27% 50%, rgba(255,255,255,0.5)  50%, transparent 100%),
+    radial-gradient(1.6px 1.6px at 33% 26%, rgba(255,255,255,0.95) 50%, transparent 100%),
+    radial-gradient(1px 1px at 39% 72%, rgba(255,240,210,0.65) 50%, transparent 100%),
+    radial-gradient(1px 1px at 44% 4%,  rgba(255,255,255,0.6)  50%, transparent 100%),
+    radial-gradient(1px 1px at 50% 56%, rgba(220,230,255,0.7)  50%, transparent 100%),
+    radial-gradient(1.4px 1.4px at 56% 84%, rgba(255,255,255,0.8) 50%, transparent 100%),
+    radial-gradient(1px 1px at 63% 38%, rgba(255,235,200,0.55) 50%, transparent 100%),
+    radial-gradient(1px 1px at 70% 12%, rgba(255,255,255,0.7)  50%, transparent 100%),
+    radial-gradient(1.2px 1.2px at 76% 64%, rgba(220,230,255,0.8) 50%, transparent 100%),
+    radial-gradient(1px 1px at 83% 40%, rgba(255,250,230,0.6)  50%, transparent 100%),
+    radial-gradient(1px 1px at 89% 78%, rgba(255,255,255,0.55) 50%, transparent 100%);
+}
+.hero-starfield::after {
+  /* Big rare bright stars with a soft halo */
+  background-image:
+    radial-gradient(2px 2px at 19% 24%, rgba(255,255,255,1) 30%, rgba(255,255,255,0.25) 60%, transparent 100%),
+    radial-gradient(2px 2px at 58% 14%, rgba(255,240,210,1) 30%, rgba(255,240,210,0.2) 60%, transparent 100%),
+    radial-gradient(2px 2px at 12% 70%, rgba(220,235,255,1) 30%, rgba(220,235,255,0.2) 60%, transparent 100%),
+    radial-gradient(2.4px 2.4px at 44% 86%, rgba(255,255,255,1) 30%, rgba(255,255,255,0.25) 60%, transparent 100%),
+    radial-gradient(2px 2px at 8% 50%, rgba(255,250,235,1) 30%, rgba(255,250,235,0.18) 60%, transparent 100%);
+}
+
+/* === Dense fine starfield ===
+   A tiled sprinkle of faint stars so the whole hero — not just around the
+   galaxy — reads as a night sky. Static; single cheap repeating paint. */
+.hero-stars-fine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 24px 38px, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1px 1px at 152px 96px, rgba(220,230,255,0.6), transparent),
+    radial-gradient(1.4px 1.4px at 96px 188px, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1px 1px at 244px 54px, rgba(255,245,220,0.55), transparent),
+    radial-gradient(1px 1px at 300px 220px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 60px 300px, rgba(210,225,255,0.5), transparent),
+    radial-gradient(1px 1px at 360px 140px, rgba(255,255,255,0.5), transparent);
+  background-size: 380px 360px;
+  background-repeat: repeat;
+  opacity: 0.85;
+}
+.hero-stars-fine[data-paused='true'] { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-stars-fine { animation: none; }
+}
+
+/* === Hero card content swap ===
+   Each time a card cycles to the next night / mission, the new content
+   fades + slides in. GPU-only transform + opacity, runs once per swap. */
+.hero-card-swap {
+  animation: heroCardSwap 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.hero-card-swap.d1 { animation-delay: 90ms; animation-fill-mode: both; }
+@keyframes heroCardSwap {
+  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  60%  { opacity: 1; filter: blur(0); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-card-swap { animation: none; }
+}
+
+/* === Hero sky-calendar ticker ===
+   Two identical event rows scroll left as one; when the first row has moved
+   exactly its own width (-50%), the loop restarts seamlessly. */
+.hero-ticker-track {
+  display: flex;
+  width: max-content;
+  animation: hero-ticker 72s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+@keyframes hero-ticker {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.hero-ticker-track:hover { animation-play-state: paused; }
+/* Soft fade at both edges so events drift in and out instead of hard-clipping. */
+.hero-ticker-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-ticker-track { animation: none; }
+}
+
+/* === Hero horizon glow — soft blue light that breathes above the earth limb === */
+.hero-horizon-glow { animation: hero-horizon-glow 8s ease-in-out infinite; }
+@keyframes hero-horizon-glow {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-horizon-glow { animation: none; }
+}
+
+/* === Hero CTA button (amber gradient) === */
+.hero-pill-primary { transition: transform 150ms ease, box-shadow 200ms ease; }
+.hero-pill-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255,240,210,0.8), inset 0 -2px 0 rgba(120,60,0,0.35), 0 14px 36px rgba(245,158,46,0.5);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-pill-primary:hover { transform: none; }
+}
+.hero-pill-explore { transition: transform 150ms ease, box-shadow 200ms ease, border-color 200ms ease; }
+.hero-pill-explore:hover {
+  transform: translateY(-2px);
+  border-color: rgba(160,190,255,0.6);
+  box-shadow: inset 0 1px 0 rgba(180,200,255,0.24), 0 14px 36px rgba(40,70,160,0.5);
+}
+/* The Explore card: a slow lift and a brighter edge under the pointer. */
+.home-explore { transition: transform 220ms ease, box-shadow 260ms ease, border-color 220ms ease; }
+.home-explore:hover { transform: translateY(-3px); border-color: rgba(160,190,255,0.4); box-shadow: 0 36px 90px rgba(0,0,0,0.55), 0 0 0 1px rgba(140,165,235,0.12), inset 0 1px 0 rgba(255,255,255,0.08); }
+.home-explore:focus-visible { outline: 2px solid #ffb347; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-pill-explore:hover, .home-explore:hover { transform: none; }
+}
+
+/* Circular gradient icon badge — mirror of the rocket/cart/sparkle circles
+   on club.astroman.ge. Use .icon-badge-gradient.is-orange for the third
+   accent color (sparkle step). */
+.icon-badge-gradient {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 9999px;
+  background: var(--cta-gradient);
+  color: #FFFFFF;
+  box-shadow: 0 16px 40px rgba(91, 108, 255, 0.35), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.icon-badge-gradient.is-orange {
+  background: var(--orange);
+  box-shadow: 0 16px 40px rgba(255, 179, 71, 0.35), inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.icon-badge-gradient svg { width: 32px; height: 32px; }
+
+/* Small "01 / 02 / 03" step pill that sits below an icon badge. */
+.step-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(22, 26, 40, 0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.btn-accent-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background var(--duration-fast), filter var(--duration-fast), transform var(--duration-fast);
+}
+.btn-accent-ghost:hover:not(:disabled) { filter: brightness(1.15); transform: translateY(-1px); }
+
+/* Star animation — opacity-only, no transform, no will-change.
+   Animating transform/will-change on 60+ elements creates a compositor layer
+   per star and pegs the GPU. Pure opacity is paint-only and ~free. */
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle 5s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.star--static {
+  animation: none;
+  opacity: 0.32;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.08; }
+  50%      { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star { animation: none; opacity: 0.35; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mint-success {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes word-reveal {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-success {
+  0% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(94, 234, 212, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(94, 234, 212, 0); }
+}
+
+.animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+.animate-mint-success { animation: mint-success 0.5s ease-out forwards; }
+.animate-spin-slow { animation: spin-slow 2s linear infinite; }
+.animate-page-enter { animation: page-enter 0.35s ease-out forwards; }
+.animate-word { opacity: 0; animation: word-reveal 0.5s ease-out forwards; }
+.animate-pulse-success { animation: pulse-success 1s ease-out; }
+.page-enter { animation: pageEnter var(--duration-normal) var(--ease-out-expo) forwards; }
+@keyframes pageEnter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.07) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.06) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.loading-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.loading-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: fade-in 0.3s ease-out both;
+}
+
+.stagger-in > * {
+  animation: fade-in 0.3s ease-out both;
+}
+.stagger-in > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-in > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-in > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-in > *:nth-child(4) { animation-delay: 0.20s; }
+.stagger-in > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-in > *:nth-child(6) { animation-delay: 0.30s; }
+.stagger-in > *:nth-child(7) { animation-delay: 0.35s; }
+
+/* Glow effects */
+.glow-gold { box-shadow: var(--shadow-glow-stars); }
+.glow-teal { box-shadow: 0 0 20px rgba(94, 234, 212, 0.25); }
+.glow-emerald { box-shadow: 0 0 20px rgba(94, 234, 212, 0.25); }
+.glow-cyan { box-shadow: 0 0 20px rgba(94, 234, 212, 0.30); }
+.glow-purple { box-shadow: 0 0 20px rgba(255, 179, 71, 0.30); }
+.glow-accent { box-shadow: var(--shadow-glow-accent); }
+.glow-stars { box-shadow: var(--shadow-glow-stars); }
+
+.btn-glow-cyan:hover:not(:disabled) { box-shadow: 0 0 16px rgba(255, 179, 71, 0.35); }
+.btn-glow-gold:hover:not(:disabled) { box-shadow: 0 0 16px rgba(255, 179, 71, 0.3); }
+/* Hover-only styles via pointer:fine so iOS touch never triggers hover state */
+@media (hover: hover) and (pointer: fine) {
+  .solana-explorer-link:hover { background: rgba(255, 179, 71, 0.12) !important; }
+}
+
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/* Horizontal scroll container that works even when ancestor has overflow-x:clip */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  position: relative; /* establishes own stacking context */
+}
+
+/* Reward progress bar */
+.reward-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(148, 163, 184, 0.15);
+  overflow: hidden;
+}
+.reward-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+/* Prevent horizontal scroll + hide scrollbar globally */
+/* NOTE: overflow-x must NOT be set on html — it breaks vertical scroll in Safari */
+body {
+  overflow-x: clip;
+  width: 100%;
+  max-width: 100vw;
+  /* Lock mobile touch to vertical-only panning — prevents left/right page slide */
+  touch-action: pan-y;
+}
+/* Re-enable horizontal touch scroll inside designated scroll containers */
+.scroll-x {
+  touch-action: pan-x pan-y;
+}
+html, body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar { display: none; }
+
+/* Prevent iOS zoom on input focus (needs font-size >= 16px) */
+input, select, textarea { font-size: 16px !important; }
+
+/* Mobile */
+@media (max-width: 640px) {
+  body { font-size: 14px; }
+  button, a[role="button"], select, input { min-height: 44px; }
+}
+
+/* === MOBILE-ONLY POLISH (max-width: 767px) ===
+   This block is mobile-only and must not affect tablet/desktop. */
+@media (max-width: 767px) {
+  /* Long unbreakable strings (wallet addresses, tx hashes, NFT IDs) */
+  .font-mono, code, pre, [class*="font-mono"] {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Slow + dim the global cosmic glow on mobile (cheaper paint) */
+  body::after {
+    opacity: 0.55;
+  }
+
+  /* Reduce expensive backdrop-filters on common surfaces */
+  .glass-nav,
+  .reaction-picker,
+  .media-badge,
+  .media-coords,
+  .post-menu-dropdown,
+  .share-sheet {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+  }
+
+  /* Top safe-area awareness for fixed nav bars */
+  nav.fixed.top-0 {
+    top: env(safe-area-inset-top);
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  body::after { animation: none !important; }
+}
+
+/* Desktop readability — scale rem base. Page width is owned by PageContainer. */
+@media (min-width: 1024px) {
+  html { font-size: 17px; }
+}
+@media (min-width: 1280px) {
+  html { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-word,
+  .animate-page-enter,
+  .animate-slide-up,
+  .animate-mint-success {
+    opacity: 1;
+    animation: none !important;
+  }
+  .star {
+    animation: none !important;
+    opacity: 0.25;
+  }
+}
+
+/* Ornamental border lines */
+.ornament-line {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 179, 71, 0.18) 20%,
+    rgba(255, 179, 71, 0.35) 45%,
+    rgba(255, 179, 71, 0.35) 55%,
+    rgba(255, 179, 71, 0.18) 80%,
+    transparent 100%
+  );
+}
+.ornament-line::before {
+  content: '◆';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 7px;
+  color: rgba(255, 179, 71, 0.55);
+  background: var(--canvas);
+  padding: 0 10px;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+/* Elite gradient border wrapper */
+.elite-border {
+  background:
+    linear-gradient(var(--canvas), var(--canvas)) padding-box,
+    linear-gradient(135deg, rgba(255, 179, 71, 0.6), rgba(94, 234, 212, 0.5), rgba(255, 179, 71, 0.6)) border-box;
+  border: 1px solid transparent;
+  border-radius: 14px;
+}
+
+/* Wallet adapter */
+.wallet-adapter-button {
+  font-family: inherit !important;
+  border-radius: 10px !important;
+}
+
+/* --- Badge pills (from DRiP/Phantom pattern) --- */
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+.badge-accent  { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-border); }
+.badge-stars   { background: var(--stars-dim); color: var(--stars); border: 1px solid var(--stars-border); }
+.badge-success { background: var(--success-dim); color: var(--success); }
+.badge-warning { background: var(--warning-dim); color: var(--warning); }
+.badge-error   { background: var(--error-dim); color: var(--error); }
+.badge-muted   { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+
+/* --- Keyframes: U1 design system additions --- */
+@keyframes fadeIn {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  0%   { opacity: 0; transform: scale(0.94); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(255, 179, 71, 0.2); }
+  50%       { box-shadow: 0 0 20px rgba(255, 179, 71, 0.5), 0 0 40px rgba(255, 179, 71, 0.15); }
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+@keyframes bounceDot {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%           { transform: translateY(-6px); }
+}
+
+/* --- Animation utility classes --- */
+.animate-fade-in  { animation: fadeIn 400ms var(--ease-out-expo) forwards; }
+.animate-scale-in { animation: scaleIn 300ms var(--ease-out-expo) forwards; }
+.animate-glow-pulse { animation: glowPulse 2.5s ease-in-out infinite; }
+
+@keyframes confettiBurst {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0) rotate(var(--rot)); opacity: 0; }
+}
+
+@keyframes hiwSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes barGrow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+@keyframes planetSlideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Extended stagger delays */
+.stagger-6 { animation-delay: 360ms; }
+
+/* --- Live pulsing dot (for "Live on Solana" badge) --- */
+.live-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+
+/* --- Selection color --- */
+::selection { background: rgba(255, 179, 71, 0.25); color: var(--text); }
+
+/* ===== Game mechanics animations ===== */
+
+@keyframes starlightFlicker {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 4px rgba(255, 179, 71, 0.5); }
+  50%      { opacity: 0.85; box-shadow: 0 0 10px rgba(255, 179, 71, 0.85), 0 0 18px rgba(255, 179, 71, 0.25); }
+}
+
+@keyframes rarityShimmer {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+
+@keyframes cosmicReveal {
+  0%   { opacity: 0; transform: scale(0.85) translateY(6px); }
+  55%  { opacity: 1; transform: scale(1.06) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+@keyframes rarityPulseBorder {
+  0%, 100% { box-shadow: 0 0 20px var(--rarity-glow-weak),  0 0 0 0 var(--rarity-glow-weak); }
+  50%      { box-shadow: 0 0 32px var(--rarity-glow-strong), 0 0 0 2px var(--rarity-glow-weak); }
+}
+
+@keyframes challengePulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+@keyframes multiplierRise {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+@keyframes moonFill {
+  0%   { clip-path: inset(100% 0 0 0); }
+  100% { clip-path: inset(0 0 0 0); }
+}
+
+.animate-starlight        { animation: starlightFlicker 2.2s ease-in-out infinite; }
+.animate-rarity-shimmer   {
+  background-size: 200% 100%;
+  animation: rarityShimmer 2.8s linear infinite;
+}
+.animate-cosmic-reveal    { animation: cosmicReveal 520ms var(--ease-out-expo) forwards; }
+.animate-rarity-pulse     { animation: rarityPulseBorder 2.4s ease-in-out infinite; }
+.animate-challenge-pulse  { animation: challengePulse 2s ease-in-out infinite; }
+.animate-multiplier-rise  { animation: multiplierRise 400ms var(--ease-out-expo) forwards; }
+.animate-moon-fill        { animation: moonFill 500ms var(--ease-out-expo) forwards; }
+
+/* Extend stagger */
+.stagger-7 { animation-delay: 360ms; }
+.stagger-8 { animation-delay: 420ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-starlight,
+  .animate-rarity-shimmer,
+  .animate-cosmic-reveal,
+  .animate-rarity-pulse,
+  .animate-challenge-pulse,
+  .animate-multiplier-rise,
+  .animate-moon-fill {
+    animation: none;
+  }
+}
+
+/* Marketplace mono-magazine layout — single static cosmic overlay at top of page */
+.marketplace-page-bg { position: relative; }
+.marketplace-page-bg::before {
+  content: "";
+  position: absolute;
+  top: -100px;
+  left: -10%;
+  right: -10%;
+  height: 320px;
+  background:
+    radial-gradient(ellipse 60% 100% at 30% 0%, rgba(255, 179, 71, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 100% at 80% 0%, rgba(255, 179, 71, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Marketplace cards / buying guides — hover and keyboard focus share one style */
+.mkt-card {
+  background: rgba(232, 230, 221, 0.045);
+  border: 1px solid rgba(232, 230, 221, 0.10);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.2s ease;
+}
+.mkt-card:hover,
+.mkt-card:focus-within {
+  background: rgba(232, 230, 221, 0.075);
+  border-color: rgba(232, 230, 221, 0.22);
+}
+.mkt-guide {
+  background: rgba(232, 230, 221, 0.035);
+  border: 1px solid rgba(232, 230, 221, 0.10);
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.mkt-guide:hover,
+.mkt-guide:focus-visible {
+  background: rgba(232, 230, 221, 0.06);
+  border-color: rgba(255, 179, 71, 0.32);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mkt-card, .mkt-guide { transition: none; }
+  .mkt-card:hover, .mkt-guide:hover { transform: none; }
+}
+
+/* Solar system immersive: no rubber-band / pull-to-refresh gesture bleed */
+html:has(body[data-solar-immersive="1"]),
+body[data-solar-immersive="1"] {
+  overscroll-behavior-y: none;
+  overscroll-behavior: none;
+}
+
+/* Solar system immersive: hide global chrome while /solar-system is active */
+body[data-solar-immersive="1"] [data-stellar-chrome="top"],
+body[data-solar-immersive="1"] [data-stellar-chrome="bottom"],
+body[data-solar-immersive="1"] [data-stellar-chrome="footer"],
+body[data-solar-immersive="1"] [data-stellar-chrome="starfield"] {
+  display: none !important;
+}
+
+body[data-solar-immersive="1"] #stellar-main {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  /* Main is z-10 by default; nav/bottom nav are z-50. Lift the page subtree so the
+     fixed solar layer paints above global chrome. */
+  position: relative;
+  z-index: 100 !important;
+}
+
+/* ── Field mode — red-on-black night-vision ───────────────────────────────
+   A fixed multiply overlay tints the ENTIRE rendered UI red, crushing the blue
+   and green channels to protect dark-adapted vision at the eyepiece. Works
+   over hardcoded colors, gradients and photos alike — no per-component theming
+   needed. Real astronomers use exactly this kind of red filter. */
+html[data-field="on"] {
+  background: #000 !important;
+}
+html[data-field="on"] body {
+  background: #060000 !important;
+}
+html[data-field="on"]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2147483646;
+  background: #ff1a05;
+  mix-blend-mode: multiply;
+}
+
+/* ── Profile dashboard (scoped to /profile only) ─────────────────────────── */
+.profile-page .pf-hero-stats { flex: 0 0 auto; }
+
+@media (max-width: 900px) {
+  /* Stats drop below the identity and span full width before mobile. */
+  .profile-page .pf-hero-stats { width: 100%; }
+}
+
+@media (max-width: 640px) {
+  .profile-page .pf-hero { padding: 18px !important; }
+  .profile-page .pf-card { padding: 16px !important; }
+  .profile-page .pf-hero-left { gap: 14px !important; }
+}
+
+/* ── a11y: skip-to-content link ─────────────────────────────────────────────
+   Visually hidden until keyboard-focused, then it slides into view. */
+.skip-link {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  transform: translateY(-130%);
+  padding: 10px 18px;
+  background: #6ea8ff;
+  color: #050812;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 0 0 10px 0;
+  transition: transform 140ms ease-out;
+}
+.skip-link:focus {
+  transform: translateY(0);
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+
+/* ── a11y: visible keyboard focus for every interactive element ─────────────
+   Only shows on keyboard nav (:focus-visible), never on mouse click. */
+:focus-visible {
+  outline: 2px solid #6ea8ff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── a11y: global reduced-motion catch-all ─────────────────────────────────
+   Components already honour this individually; this guarantees the rest. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HOMEPAGE — cosmic backdrop + scroll-reveal choreography
+   Premium, restrained, brand-safe. Motion is opt-in and reduced-motion aware.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root { --reveal-ease: cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* ── Continuous cosmos: a fixed nebula + drifting starfield that sits behind
+   every section below the hero, so scrolling feels like moving through space.
+   Home is always dark, so this is intentionally dark-only. ─────────────── */
+.home-cosmos {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* The star layers below are inset -20%; without a clip they add that overhang
+     to the scrollable page whenever an ancestor transform makes this box the
+     containing block instead of the viewport. */
+  overflow: hidden;
+  background:
+    radial-gradient(78% 58% at 80% 6%, rgba(104, 68, 166, 0.16), transparent 60%),
+    radial-gradient(66% 52% at 10% 24%, rgba(38, 84, 168, 0.15), transparent 62%),
+    radial-gradient(58% 46% at 88% 62%, rgba(70, 120, 200, 0.10), transparent 60%),
+    radial-gradient(96% 70% at 50% 112%, rgba(255, 150, 74, 0.07), transparent 58%),
+    #0A1735;
+}
+.home-cosmos::before,
+.home-cosmos::after {
+  content: '';
+  position: absolute;
+  inset: -20% 0;
+  background-repeat: repeat;
+  will-change: transform;
+}
+/* Far, faint star layer */
+.home-cosmos::before {
+  background-image:
+    radial-gradient(1px 1px at 24px 42px, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1px 1px at 128px 96px, rgba(210, 224, 255, 0.40), transparent),
+    radial-gradient(1px 1px at 196px 28px, rgba(255, 255, 255, 0.35), transparent),
+    radial-gradient(1px 1px at 76px 168px, rgba(200, 216, 255, 0.45), transparent),
+    radial-gradient(1px 1px at 232px 132px, rgba(255, 255, 255, 0.30), transparent);
+  background-size: 260px 220px;
+  opacity: 0.5;
+  animation: cosmosDriftFar 140s linear infinite;
+}
+/* Near, slightly brighter layer for parallax depth */
+.home-cosmos::after {
+  background-image:
+    radial-gradient(1.4px 1.4px at 60px 60px, rgba(255, 255, 255, 0.75), transparent),
+    radial-gradient(1.4px 1.4px at 300px 200px, rgba(255, 236, 200, 0.55), transparent),
+    radial-gradient(1.6px 1.6px at 180px 300px, rgba(214, 228, 255, 0.60), transparent),
+    radial-gradient(1.2px 1.2px at 360px 90px, rgba(255, 255, 255, 0.50), transparent);
+  background-size: 420px 360px;
+  opacity: 0.45;
+  animation: cosmosDriftNear 90s linear infinite;
+}
+@keyframes cosmosDriftFar {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -220px, 0); }
+}
+@keyframes cosmosDriftNear {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -360px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-cosmos::before,
+  .home-cosmos::after { animation: none; }
+}
+
+/* ── Scroll reveal: elements enter with a soft rise. Base state is hidden;
+   ScrollReveals.tsx flips [data-reveal-in] on when the node scrolls in. ── */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition:
+    opacity 0.85s var(--reveal-ease),
+    transform 0.85s var(--reveal-ease);
+  will-change: opacity, transform;
+}
+[data-reveal][data-reveal-in] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered variant — children cascade once the container enters view. */
+[data-reveal-stagger] > * {
+  opacity: 0;
+  transform: translateY(26px);
+  transition:
+    opacity 0.72s var(--reveal-ease),
+    transform 0.72s var(--reveal-ease);
+  will-change: opacity, transform;
+}
+[data-reveal-stagger][data-reveal-in] > * {
+  opacity: 1;
+  transform: none;
+}
+[data-reveal-stagger][data-reveal-in] > *:nth-child(1) { transition-delay: 0.04s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(2) { transition-delay: 0.10s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(3) { transition-delay: 0.16s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(4) { transition-delay: 0.22s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(5) { transition-delay: 0.28s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(6) { transition-delay: 0.34s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(7) { transition-delay: 0.40s; }
+[data-reveal-stagger][data-reveal-in] > *:nth-child(8) { transition-delay: 0.46s; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal],
+  [data-reveal-stagger] > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Image polish: gentle zoom on marketplace product shots, float on the
+   phone mockups. Presents the existing imagery richer without new assets. ── */
+.home-shot {
+  transition: transform 0.6s var(--reveal-ease);
+}
+.group:hover .home-shot { transform: scale(1.045); }
+
+.home-float {
+  transition: transform 0.5s var(--reveal-ease), filter 0.5s var(--reveal-ease);
+}
+.home-float:hover { transform: translateY(-6px); }
+@media (prefers-reduced-motion: reduce) {
+  .home-shot,
+  .home-float { transition: none; }
+  .home-float:hover { transform: none; }
+  .group:hover .home-shot { transform: none; }
+}

@@ -1,0 +1,4679 @@
+{
+  "common": {
+    "appName": "STELLAR",
+    "tagline": "Your default astronomy app",
+    "taglineDesc": "Photograph the night sky with whatever camera you have and earn real rewards from the Astroman store.",
+    "startObserving": "See Tonight's Sky →",
+    "startEarning": "Start Earning →",
+    "visitStore": "Visit →",
+    "launch": "Launch →"
+  },
+  "nav": {
+    "club": "Club",
+    "missions": "Missions",
+    "gallery": "My Discoveries",
+    "myDiscoveries": "My discoveries",
+    "profile": "Profile",
+    "sky": "Sky",
+    "home": "Home",
+    "feed": "Feed",
+    "chat": "AI Chat",
+    "learn": "Learning",
+    "marketplace": "Shop",
+    "observe": "Observe",
+    "search": "Search",
+    "hub": "Hub",
+    "openProfileMenu": "Open profile menu",
+    "signIn": "Sign in",
+    "signOutShort": "Sign out",
+    "signOut": "Sign out & clear data"
+  },
+  "home": {
+    "hero": {
+      "headlineLead": "Find every",
+      "headlineAccent": "planet",
+      "headlineTrail": ". Earn rewards.",
+      "subtitle": "Real-time sky positions from your location. Photograph what you find, redeem Stars for telescopes.",
+      "ctaPrimary": "Start observing",
+      "ctaSecondary": "See tonight's sky",
+      "stats": {
+        "missionsValue": "7",
+        "missionsLabel": "Sky missions",
+        "positionsValue": "Real-time",
+        "positionsLabel": "Planet positions",
+        "brandsValue": "3 brands",
+        "brandsLabel": "Bresser · Levenhuk · Celestron",
+        "walletValue": "Free",
+        "walletLabel": "No wallet needed"
+      }
+    },
+    "howItWorks": "How It Works",
+    "tonightTargets": "Tonight's Targets",
+    "missions": "Missions",
+    "leaderboard": "Top Observers This Week",
+    "explorePlatform": "Explore the Platform",
+    "observeEarn": "Observe & Earn",
+    "observeEarnDesc": "Complete missions to unlock real rewards from the Astroman store.",
+    "steps": {
+      "observe": "Observe",
+      "observeDesc": "Step outside, find tonight's target",
+      "capture": "Capture",
+      "captureDesc": "Photograph it with your phone or telescope",
+      "verify": "Verify",
+      "verifyDesc": "AI verifies your sky conditions",
+      "mint": "Collect",
+      "mintDesc": "Your discovery is saved permanently to your profile"
+    },
+    "trust": {
+      "astronomers": "Trusted by amateur astronomers",
+      "rewards": "Real rewards from Astroman"
+    },
+    "explore": {
+      "eyebrow": "Explore Mode · 3D",
+      "title": "Fly to the planets. Land on the Moon.",
+      "subtitle": "Take the ship out yourself: light-speed jumps between the planets, a real landing, and a walk on the surface in a Georgian suit. Your sky, in 3D.",
+      "chipsLabel": "What you can do",
+      "chips": {
+        "fly": "Fly the ship",
+        "land": "Land on the Moon",
+        "find": "Find what’s in the crater"
+      },
+      "cta": "Launch Explore Mode",
+      "note": "Works on your phone — two thumbs are enough"
+    }
+  },
+  "sky": {
+    "auth": {
+      "title": "Sign in to open the sky",
+      "body": "See tonight's targets, planet positions, and your 7-night forecast — then earn Stars for every object you find.",
+      "signIn": "Sign in",
+      "sub": "Email or Google — takes 10 seconds"
+    },
+    "title": "Sky Forecast",
+    "today": "Today",
+    "cloudCover": "Cloud Cover",
+    "visibility": "Visibility",
+    "go": "Go",
+    "maybe": "Maybe",
+    "skip": "Skip",
+    "bestHours": "Best hours",
+    "loadingForecast": "Loading forecast…",
+    "forecastError": "Could not load forecast",
+    "retry": "Retry",
+    "tonightHighlight": "Tonight's Sky",
+    "noPlanets": "No planet data available",
+    "planets": "Planets Tonight",
+    "sunRises": "Rises",
+    "sunSets": "Sets",
+    "planetHint": "Tap any planet for rise / transit / set details",
+    "next7": "Next 7 nights",
+    "page": {
+      "title": "Find it in your sky",
+      "subtitle": "Stand outside and follow the directions below.",
+      "horizonLabel": "Your horizon — looking around",
+      "scrollHint": "Scroll to pan →",
+      "altitudeScale": {
+        "horizon": "0° horizon",
+        "zenith": "60° straight up →"
+      },
+      "startObserving": "Start observing →",
+      "openArFinder": "Open AR finder",
+      "autoToggle": "Auto",
+      "detectingLocation": "Detecting your location…",
+      "visibleTonight": "Visible tonight",
+      "tonightTimeline": "Tonight's observation timeline",
+      "darkWindow": "Dark window",
+      "noVisible": "No bright objects above the horizon right now.",
+      "extendedForecast": "Extended forecast"
+    },
+    "hero": {
+      "face": "Face",
+      "thenLook": ", then look",
+      "aboveHorizon": "above the horizon.",
+      "visibleNow": "Visible now",
+      "belowHorizon": "Below horizon",
+      "rises": "Rises",
+      "nakedEye": "Naked eye",
+      "binoculars": "Binoculars",
+      "telescope": "Telescope",
+      "magnitude": "Mag",
+      "bearing": "Bearing",
+      "altitude": "Altitude",
+      "setsAt": "Sets at",
+      "staysUpAllNight": "Stays up all night",
+      "tail": {
+        "sun": "Our nearest star — a 1.4-million-km plasma furnace, fusing 600 million tons of hydrogen every second.",
+        "moon": "Drifting 3.8 cm farther from Earth every year — slowly stretching the length of our day.",
+        "jupiter": "So massive it could swallow every other planet in the solar system combined — and its Great Red Spot has been raging for at least 350 years.",
+        "saturn": "Less dense than water — if you could find an ocean big enough, Saturn would float.",
+        "mars": "Home to Olympus Mons, a volcano nearly three times the height of Mount Everest.",
+        "venus": "The hottest world in the solar system — its CO₂ atmosphere traps heat at 465 °C, day and night.",
+        "mercury": "The smallest planet — its surface swings from 430 °C in sunlight to −180 °C at night.",
+        "uranus": "Tipped on its side — it rolls around the Sun instead of spinning upright.",
+        "neptune": "The windiest planet — supersonic storms tear across it at over 2,000 km/h."
+      },
+      "tailType": {
+        "star": "A bright point of light — steady to the naked eye.",
+        "starWithConstellation": "The brightest point in {constellation} — steady to the naked eye.",
+        "double": "Looks like a single star to the naked eye — separates in a small telescope.",
+        "doubleWithConstellation": "A double in {constellation} — splits cleanly through a small telescope.",
+        "cluster": "A faint smudge to the eye — binoculars resolve it into many stars.",
+        "clusterWithConstellation": "A glittering knot of stars in {constellation} — binoculars are ideal.",
+        "nebula": "A soft, hazy patch — best in dark skies through binoculars or a small scope.",
+        "nebulaWithConstellation": "A hazy patch in {constellation} — best under dark skies.",
+        "galaxy": "A pale ghost of light — needs a dark sky and patient eyes.",
+        "galaxyWithConstellation": "A faint glow in {constellation} — needs a dark sky and patience.",
+        "moon": "Look for the bright disc.",
+        "sun": "The Sun — never observe directly without a solar filter."
+      },
+      "type": {
+        "planet": "Planet",
+        "star": "Star",
+        "double": "Double star",
+        "cluster": "Star cluster",
+        "nebula": "Nebula",
+        "galaxy": "Galaxy",
+        "moon": "Moon",
+        "sun": "Sun"
+      },
+      "difficulty": {
+        "easy": "Easy",
+        "medium": "Medium",
+        "hard": "Hard"
+      },
+      "circumpolar": "Up all night",
+      "belowSentenceA": "is below the horizon. It will rise in the",
+      "belowSentenceB": "at"
+    },
+    "directions": {
+      "fists": {
+        "half": "half a fist",
+        "one": "one fist",
+        "oneAndHalf": "one and a half fists",
+        "two": "two fists",
+        "twoAndHalf": "two and a half fists",
+        "three": "three fists",
+        "threeAndHalf": "three and a half fists",
+        "four": "four fists",
+        "fourAndHalf": "four and a half fists",
+        "five": "five fists",
+        "many": "{n} fists"
+      },
+      "compass": {
+        "N": "north",
+        "NE": "northeast",
+        "E": "east",
+        "SE": "southeast",
+        "S": "south",
+        "SW": "southwest",
+        "W": "west",
+        "NW": "northwest"
+      },
+      "compassShort": {
+        "N": "N",
+        "NE": "NE",
+        "E": "E",
+        "SE": "SE",
+        "S": "S",
+        "SW": "SW",
+        "W": "W",
+        "NW": "NW"
+      }
+    },
+    "moonPhase": {
+      "new": "new",
+      "thinCrescent": "thin crescent",
+      "firstQuarter": "first quarter",
+      "waxingGibbous": "waxing gibbous",
+      "full": "full",
+      "waningGibbous": "waning gibbous",
+      "lastQuarter": "last quarter",
+      "thinWaning": "thin waning crescent"
+    },
+    "hints": {
+      "fistTrick": {
+        "label": "Fist trick",
+        "body": "One closed fist held at arm's length is roughly 10° of sky."
+      },
+      "recognize": {
+        "label": "How to recognize",
+        "sun": "The brightest object in the sky — observe only with a certified solar filter.",
+        "moon": "{phase} disc — easy to spot.",
+        "jupiter": "Steady, golden-white. Doesn't twinkle the way stars do.",
+        "saturn": "Pale yellow. Steady. Through binoculars you might glimpse the rings.",
+        "mars": "Distinctly red-orange. Brighter than nearby stars.",
+        "venus": "Brighter than every star. Often called the evening or morning star.",
+        "mercury": "A bright point near the horizon, low in twilight.",
+        "uranus": "Pale blue-green dot — needs binoculars and a star chart.",
+        "neptune": "Pale blue dot — needs a telescope and patience."
+      },
+      "recognizeType": {
+        "star": "A steady, sharp point of light. Pierces straight through.",
+        "starWithConstellation": "A steady, sharp point — the brightest in {constellation}.",
+        "double": "Looks like one star until magnified — then two appear close together.",
+        "doubleWithConstellation": "A double in {constellation} — one star to the eye, two through a small scope.",
+        "cluster": "A soft glow that breaks into many tiny stars in binoculars.",
+        "clusterWithConstellation": "A soft glow in {constellation} — binoculars resolve dozens of stars.",
+        "nebula": "A faint smear of light — soft edges, no sharp point.",
+        "nebulaWithConstellation": "A faint hazy patch in {constellation} — soft, no twinkle.",
+        "galaxy": "A pale, oval glow — easy to mistake for a smudge on the lens.",
+        "galaxyWithConstellation": "A faint oval glow in {constellation} — best with averted vision."
+      },
+      "bestWindow": {
+        "label": "Best window",
+        "untilSet": "Until {time} — sets in the {direction}.",
+        "untilRise": "Rises at {time} in the {direction}.",
+        "allNight": "Up all night."
+      },
+      "hop": {
+        "label": "Star-hop",
+        "body": "Find {anchor} first — bright and easy. From there, hop {distance} to land on this target."
+      }
+    },
+    "errors": {
+      "locationFallback": "We couldn't determine your location — showing tonight's sky from Tbilisi instead.",
+      "useMyLocation": "Use my location",
+      "fetchFailed": "Couldn't load tonight's sky data.",
+      "retry": "Retry"
+    },
+    "pointId": {
+      "aria": "Point and identify what you're aiming at",
+      "eyebrow": "Reverse compass",
+      "title": "Point & Identify",
+      "subtitle": "Lift your phone toward any patch of sky. We'll tell you what's there.",
+      "enable": "Enable",
+      "placeholder": "Tap Enable, then aim the back of your phone at the sky.",
+      "feature1": "Pan the back of your phone — labels follow the brightest body in view.",
+      "feature2": "Hold steady to lock the identification. Works for planets, bright stars, and deep-sky objects.",
+      "feature3": "Uses the same calibrated compass as the dome above — calibrate once, both stay accurate.",
+      "aimingAt": "Aiming",
+      "empty": "Looking into empty sky.",
+      "emptyHint": "Pan slowly — the closest bright body will appear here.",
+      "away": "away",
+      "identified": "Identified",
+      "azimuth": "Bearing",
+      "altitude": "Altitude",
+      "nearby": "Also nearby",
+      "stop": "Stop",
+      "alignStart": "Align to {name}",
+      "alignCancel": "Cancel align",
+      "alignHint": "Tap exactly where you see {name} in the camera view. We'll absorb the compass offset.",
+      "alignDone": "Calibrated by {deg}°",
+      "kind": {
+        "planet": "Planet",
+        "moon": "Moon",
+        "sun": "Sun",
+        "star": "Star",
+        "dso": "Deep sky"
+      }
+    },
+    "timeline": {
+      "aria": "Tonight's drag-to-scrub timeline",
+      "eyebrow": "Tonight at a glance",
+      "title": "Drag through the night",
+      "subtitle": "See exactly when each body climbs and peaks. Snaps to peak times.",
+      "atThisMoment": "At this moment",
+      "noneUp": "Nothing above the horizon at this time.",
+      "peak": "Peak",
+      "noWindow": "No astronomical dark window tonight.",
+      "error": "Couldn't load the timeline.",
+      "chartAria": "Altitude curves over the night, drag to pick a time",
+      "legend": {
+        "scrub": "Drag the chart to pick a time",
+        "snap": "Magnetic snap to peaks"
+      }
+    },
+    "events": {
+      "aria": "Sky events of 2026",
+      "eyebrow": "Year in the sky",
+      "title": "2026's biggest sky events",
+      "subtitle": "Mark your calendar. Tap any card to see how to observe.",
+      "close": "Close",
+      "peak": "Peak",
+      "moon": "Moon",
+      "gear": "Gear",
+      "notVisibleGeorgia": "Not visible from Georgia",
+      "notVisibleGeorgiaLong": "This one isn't visible from Georgia — it plays out below our horizon. Listed as a major 2026 event for travelers and remote viewers.",
+      "names": {
+        "lunar_eclipse_mar3": "Total Lunar Eclipse",
+        "lyrids": "Lyrid Meteor Shower",
+        "mars_saturn_conj": "Mars meets Saturn",
+        "perseids": "Perseid Meteor Shower",
+        "solar_eclipse_aug12": "Total Solar Eclipse",
+        "saturn_opp": "Saturn at Opposition",
+        "geminids": "Geminid Meteor Shower"
+      },
+      "details": {
+        "lunar_eclipse_mar3": {
+          "body": "The full Moon drifts through Earth's umbra and glows deep copper-red. Totality lasts 58 minutes; the full event runs about 3.5 hours from first to last contact.",
+          "peak": "Mid-totality 11:33 UTC (visible from Asia, Australia, the Pacific)",
+          "moon": "Full Moon — and the eclipse star itself",
+          "gear": "Naked eye; binoculars sharpen the colour",
+          "tip": "No filters needed. Find a clear horizon and start watching as the Moon enters the penumbra — the dimming begins subtly, then accelerates into umbral contact."
+        },
+        "lyrids": {
+          "body": "A steady spring shower with a Zenithal Hourly Rate near 18, and occasional outbursts that triple it. Streaks are bright, fast, and often leave persistent trains.",
+          "peak": "02:00–04:00 local time, April 23",
+          "moon": "Waxing crescent — sets mid-evening, dark for the post-midnight peak",
+          "gear": "Naked eye; reclining chair beats craning your neck",
+          "tip": "Look up once the radiant in Lyra is high (after midnight). Let your eyes adapt for 20 minutes — no phone screens, no flashlights."
+        },
+        "mars_saturn_conj": {
+          "body": "Mars and Saturn pass about 1.3° apart — close enough to share one binocular field. Mars glows steady red; Saturn shows pale gold with rings barely tilted. Both sit very low in bright dawn twilight, so this one rewards effort.",
+          "peak": "Pre-dawn April 20, in the last hour before sunrise, very low in the east",
+          "moon": "Waxing crescent — sets in the evening, no interference at dawn",
+          "gear": "10×50 binoculars frame both; a small scope shows Saturn's rings",
+          "tip": "Be set up an hour before sunrise. Mars is the redder, steady dot; Saturn the steadier gold. Both ride low — an unobstructed eastern horizon makes or breaks the view."
+        },
+        "perseids": {
+          "body": "The summer classic — peak Zenithal Hourly Rate of 100, with bright fireballs that often leave smoke trains lasting several seconds.",
+          "peak": "00:30 to dawn, August 13",
+          "moon": "New Moon — the darkest possible sky",
+          "gear": "Naked eye only; cameras with 24mm+ wide lenses catch the bright ones",
+          "tip": "Drive 30+ minutes out of city light. Lie back, face northeast where Perseus rises, and just watch. Counting meteors keeps you alert."
+        },
+        "solar_eclipse_aug12": {
+          "body": "The path of totality crosses Greenland, Iceland, and northern Spain — about 2 minutes 18 seconds of full darkness. Across the rest of Europe and North Africa it's a deep partial.",
+          "peak": "Greatest eclipse 17:46 UTC — early evening across Europe",
+          "moon": "New Moon — the occulting body",
+          "gear": "ISO-12312-2 solar filters or eclipse glasses, always",
+          "tip": "Never look directly without certified protection. If you lack filters, build a pinhole projector — a single hole in card stock projects a crescent Sun onto any flat surface."
+        },
+        "saturn_opp": {
+          "body": "Saturn rises as the Sun sets and shines all night, at its brightest (mag +0.4) and biggest of the year. Rings are tilted a few degrees — slowly reopening after the 2025 edge-on event.",
+          "peak": "Rises at sunset; transits highest around local midnight",
+          "moon": "Last quarter — rises near midnight; early-evening hours stay dark",
+          "gear": "Telescope at 80×+ to split the rings; even a 60mm achromat shows them clearly",
+          "tip": "Wait until Saturn climbs above 30° altitude — atmospheric turbulence smears the view at low angles. Use medium magnification first; push higher only when the seeing is steady."
+        },
+        "geminids": {
+          "body": "The most reliable shower of the year — slow, colour-tinted meteors at a Zenithal Hourly Rate near 120. Often produces bright multicoloured fireballs.",
+          "peak": "02:00 local time, December 14, with the radiant nearly overhead",
+          "moon": "Waxing crescent (~25%) — sets by mid-evening, leaving prime hours dark",
+          "gear": "Naked eye; serious thermal layers (this is winter)",
+          "tip": "Once the crescent Moon sets in mid-evening, face anywhere — the radiant in Gemini climbs overhead, so meteors fall in every direction."
+        }
+      }
+    },
+    "header": {
+      "eyebrow": "Live sky",
+      "title": "Tonight",
+      "clouds": "clouds",
+      "openAr": "Open AR finder",
+      "mapCaption": "Center is straight up · ring is the horizon · tap a body for details",
+      "conditions": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "fair": "Fair",
+        "poor": "Poor"
+      },
+      "oneStandout": "{count} bodies above the horizon. {object} is highest at {alt}° in the {compass}.",
+      "twoStandouts": "{count} bodies up. {bright} is brightest, {high} is highest at {alt}°.",
+      "nextRise": "Nothing bright above the horizon yet. {object} rises at {time}.",
+      "nothingUp": "Nothing bright above the horizon right now."
+    },
+    "bodyTable": {
+      "label": "Visible bodies",
+      "cols": {
+        "body": "Body",
+        "bearing": "Bearing",
+        "altitude": "Altitude",
+        "mag": "Mag",
+        "event": "Tonight"
+      },
+      "tier": {
+        "eye": "Naked eye",
+        "binocs": "Binoculars",
+        "scope": "Telescope"
+      },
+      "below": "below",
+      "setsAt": "Sets {time}",
+      "risesAt": "Rises {time}",
+      "upAllNight": "Up all night"
+    },
+    "ar": {
+      "title": "Immersive Sky",
+      "permissionBody": "Stellar uses your motion sensors to render a live dark-sky view for your location.",
+      "permissionInstructions": "Hold your phone up and pan around — the Sun, Moon, planets, and constellations appear in the right place.",
+      "permissionItems": {
+        "motion": "Motion sensors (to track which way you face)",
+        "location": "Location (already enabled)"
+      },
+      "enable": "Enable Sky View",
+      "cancel": "Cancel",
+      "denied": {
+        "title": "Permission denied",
+        "body": "Stellar needs motion access to render the live sky.",
+        "tryAgain": "Try again",
+        "useHorizonInstead": "Back to horizon view"
+      },
+      "browseSky": "All objects are live",
+      "browseSkyBody": "Tap any object or choose one to start guidance",
+      "found": "Found {object}",
+      "almostThere": "Almost on {object} — hold steady",
+      "centerTarget": "Center {object}",
+      "guideTo": "Guide to {object}",
+      "holdSteady": "Hold steady",
+      "turnLeft": "{deg}° left",
+      "turnRight": "{deg}° right",
+      "tiltUp": "{deg}° up",
+      "tiltDown": "{deg}° down",
+      "panTo": "Pan {deg}° toward {object}",
+      "panToward": "toward {object}",
+      "panAround": "Pan around to see the planets",
+      "liftPhone": "Lift your phone toward the sky",
+      "openAr": "Immersive sky view",
+      "poorAccuracy": "Compass uncertain — wave phone in a figure-8",
+      "targetLabel": "Target",
+      "showAll": "Show all objects",
+      "guidanceOff": "No active guidance",
+      "visibleNow": "Visible now",
+      "belowHorizon": "Below horizon",
+      "align": "Align",
+      "alignment": "AR alignment",
+      "alignmentBody": "Fine-tune the overlay if your phone's compass sits slightly off-center.",
+      "setFromTarget": "Match {object} to center",
+      "resetAlignment": "Reset alignment",
+      "yaw": "Yaw",
+      "pitch": "Pitch",
+      "left": "Left",
+      "right": "Right",
+      "up": "Up",
+      "down": "Down",
+      "targetEmpty": "Pick a target",
+      "noVisibleBodies": "Nothing visible right now",
+      "horizon": "HORIZON",
+      "centeredOn": "Centered on",
+      "off": "off",
+      "fallbacks": {
+        "noSensors": "Live sky works on a phone with motion sensors. On desktop, use the horizon view instead."
+      },
+      "close": "Close"
+    },
+    "solarFromSky": {
+      "short": "3D",
+      "label": "Solar system",
+      "title": "Open 3D solar system explorer"
+    },
+    "picker": {
+      "header": "Tonight's sky · {count} visible now",
+      "auto": "AUTO",
+      "autoToggle": "Auto-rotate",
+      "risesAt": "Rises {time}",
+      "setsAt": "Sets {time}",
+      "upAllNight": "Up all night",
+      "belowHorizon": "Below horizon",
+      "circumpolar": "always up",
+      "tierAria": "Filter by difficulty",
+      "emptyTier": "No targets in this tier right now",
+      "tier": {
+        "all": "All",
+        "easy": "Easy",
+        "medium": "Medium",
+        "hard": "Hard"
+      }
+    },
+    "forecast7": {
+      "label": "7-Day Sky Outlook",
+      "today": "Tonight",
+      "empty": "Forecast unavailable.",
+      "clouds": "clouds",
+      "hi": "high",
+      "lo": "low",
+      "howItWorks": "How it works",
+      "howNote": "Each score blends tonight's cloud cover with moonlight — higher means clearer, darker skies for observing.",
+      "sky": {
+        "clear": "Clear",
+        "few": "Few clouds",
+        "scattered": "Scattered clouds",
+        "broken": "Broken clouds",
+        "mostly": "Mostly cloudy",
+        "cloudy": "Cloudy"
+      },
+      "badge": {
+        "go": "Go",
+        "maybe": "Maybe",
+        "skip": "Skip"
+      },
+      "bestLine": "Best — {day} · <b>{score}/100</b> · {sky}",
+      "todayShort": "Now"
+    },
+    "strip": {
+      "a11y": "Live sky state",
+      "labels": {
+        "location": "Location",
+        "sky": "Sky",
+        "moon": "Moon",
+        "clouds": "Clouds",
+        "time": "Local time"
+      },
+      "phase": {
+        "day": "Daylight",
+        "civil": "Civil twilight",
+        "nautical": "Nautical twilight",
+        "astronomical": "Astronomical twilight",
+        "dark": "Dark sky"
+      },
+      "setsAt": "Sets {time}",
+      "darkIn": "Dark in {dur}",
+      "dawnAt": "Dawn at {time}",
+      "dawnIn": "Dawn in {dur}",
+      "moonAbove": "{illum}% · {alt}° up",
+      "moonBelow": "{illum}% · below horizon",
+      "clouds": {
+        "clear": "Clear",
+        "partly": "Partly cloudy",
+        "overcast": "Overcast"
+      },
+      "locationFallback": "Default — set your own"
+    },
+    "horizon": {
+      "label": "Your horizon — looking around",
+      "refresh": "Updates every minute",
+      "zenith": "ZENITH",
+      "below": "below"
+    },
+    "skymap": {
+      "mapAria": "Sky map showing visible bodies",
+      "belowHorizon": "BELOW HORIZON",
+      "calibrate": "Calibrate compass",
+      "facing": "Facing",
+      "compassDenied": "Compass denied",
+      "compassUnavailable": "No compass on this device",
+      "onTarget": "On target",
+      "away": "away",
+      "poorAccuracy": "Compass uncertain — wave phone in a figure-8",
+      "turnLeft": "Turn left {deg}°",
+      "turnRight": "Turn right {deg}°",
+      "tiltUp": "Tilt up {deg}°",
+      "tiltDown": "Tilt down {deg}°",
+      "nudgeAria": "Compass calibration",
+      "nudgeLeft": "Nudge compass left",
+      "nudgeRight": "Nudge compass right",
+      "nudgeNeutral": "Aligned",
+      "lockTo": "Aim at {name}, tap to lock",
+      "calReady": "Point at the real {name} → tap",
+      "calRecal": "Re-calibrate to {name}",
+      "calMeta": "expects {deg}° · alt {alt}°",
+      "calLocked": "Compass aligned to {name} ({deg}°)",
+      "calPick": "Calibrate using:",
+      "visible": "{count} visible",
+      "northPending": "Hold the phone level to find north"
+    },
+    "tour": {
+      "aria": "How to find a target",
+      "step1": "Tap Calibrate compass",
+      "step2": "Pick a target",
+      "step3": "Swing your phone until lock",
+      "dismiss": "Got it"
+    },
+    "posture": {
+      "aria": "How to calibrate the compass",
+      "step1": "Find the {name} in the sky with your eyes — that's the reference point.",
+      "step2": "Hold the phone vertical, screen toward you, and aim the back camera at the {name}.",
+      "overhead": "{name} is high overhead — tilt the phone backward until the back lens looks straight up at it.",
+      "step3": "Tap the green button. The compass snaps to wherever you're aimed.",
+      "dismiss": "Got it"
+    }
+  },
+  "planets": {
+    "moon": "Moon",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "visibleNow": "Visible Now",
+    "risesAt": "Rises at",
+    "rise": "Rise",
+    "transit": "Transit",
+    "set": "Set",
+    "status": "Status",
+    "altitudeLabel": "Altitude",
+    "azimuthLabel": "Azimuth",
+    "magnitudeLabel": "Magnitude",
+    "highestAt": "Highest at",
+    "setsAt": "Sets at",
+    "constellation": "Constellation",
+    "viewingTip": "Viewing tip",
+    "noPlanets": "No planet data available"
+  },
+  "chat": {
+    "title": "AI Companion",
+    "subtitle": "AI Astronomer · Online",
+    "emptyHint": "Ask anything about the night sky.",
+    "askAstra": "Ask ASTRA",
+    "fieldLink": "Field",
+    "fieldLinkAria": "Field Mode — offline AI",
+    "signInPrompt": "Sign in to chat with ASTRA",
+    "welcome": "Hello! I'm ASTRA, your personal astronomer. Ask me anything about tonight's sky, your telescope, or astronomy in general.",
+    "placeholder": "Ask about tonight's sky…",
+    "send": "Send",
+    "thinking": "ASTRA is thinking…",
+    "clearChat": "Clear conversation",
+    "errorReply": "Sorry, I couldn't reach ASTRA. Try again.",
+    "suggestions": {
+      "night_1": "What can I observe right now?",
+      "night_3_beginner": "What's the easiest target for a beginner?",
+      "night_3_next": "What should I observe next?",
+      "night_4": "How do I photograph through an eyepiece?",
+      "morning_1": "What will be visible tonight?",
+      "morning_2": "How do I prepare my telescope during the day?",
+      "morning_3": "What is the Orion Nebula?",
+      "morning_4": "How do I read a star map?",
+      "day_1": "What planets are visible tonight?",
+      "day_2": "How do I collimate a reflector telescope?",
+      "day_3": "What is the Andromeda Galaxy?",
+      "day_4": "How do I photograph the Moon?",
+      "setup_no_brand": "How do I set up my telescope?",
+      "page_1": "What's visible tonight? 🌙",
+      "page_2": "Best telescope for beginners? 🔭",
+      "page_3": "Explain the Bortle scale",
+      "page_4": "Why is the sky dark at night?"
+    },
+    "fieldBanner": {
+      "label": "Going off-grid?",
+      "body": "Get Astra Field Mode — runs on the phone, no signal needed.",
+      "cta": "Get Field Mode"
+    }
+  },
+  "field": {
+    "back": "Back to Astra",
+    "winnerBadge": "Tether Frontier Track Winner",
+    "winnerDetail": "Superteam Earn · Frontier Hackathon 2026 · Revaz Modebadze",
+    "poweredBy": "Powered by Tether QVAC",
+    "eyebrow": "Stellar Field — Android preview",
+    "title": "Astra. On the phone. Offline.",
+    "lede": "Astronomers travel to dark-sky sites with no cell signal — exactly where the cloud AI fails. Field Mode runs Astra entirely on your phone, so the answers keep coming when the bars don't.",
+    "online": {
+      "label": "Online · this app",
+      "title": "Cloud Astra",
+      "body": "Cloud AI, fast and broad. Best for planning a session at home or in the car."
+    },
+    "offline": {
+      "label": "Offline · Field Mode",
+      "title": "On-device Astra",
+      "body": "Llama 3.2 1B + an astronomy RAG corpus, running on the phone. Free per call. Works in airplane mode."
+    },
+    "capabilities": {
+      "heading": "What runs on the phone",
+      "llm": {
+        "title": "Local LLM with RAG",
+        "body": "@qvac/llm-llamacpp + @qvac/embed-llamacpp. Llama 3.2 1B Q4_0 over 72 chunks of Messier, constellation, and telescope reference data. Cited answers, no server."
+      },
+      "whisper": {
+        "title": "Voice notes at the eyepiece",
+        "body": "@qvac/transcription-whispercpp. Press, speak the observation, release. Whisper transcribes locally and saves it as a structured record — even with the phone in airplane mode."
+      },
+      "background": {
+        "title": "Background sky checker",
+        "body": "While you're under the scope, a local QVAC loop watches planet positions and surfaces alerts ('Saturn is now above 30 degrees') without a server round-trip."
+      }
+    },
+    "cta": {
+      "title": "Field Mode preview",
+      "download": "Download APK",
+      "soon": "Available shortly",
+      "platform": "Android · physical device · ~700MB first-launch model download"
+    },
+    "credit": "Tether Frontier Track Winner · Powered by QVAC · verified sky proof"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "buyNow": "Buy Now",
+    "payCard": "Pay with Card",
+    "paySol": "Pay with SOL",
+    "aiPick": "AI Pick",
+    "outOfStock": "Out of Stock",
+    "loading": "Loading products…",
+    "filterAll": "All",
+    "filterTelescopes": "Telescopes",
+    "filterMoonLamps": "Moon Lamps",
+    "filterDigital": "Digital",
+    "contactPrompt": "Contact Astroman to complete your order",
+    "solComingSoon": "SOL payment coming soon",
+    "errorLoad": "Could not load products"
+  },
+  "profile": {
+    "title": "Profile",
+    "overview": "Overview",
+    "history": "History",
+    "stargazerProgress": "Stargazer Progress",
+    "stargazerStatus": "Stargazer Status",
+    "tagline": "Exploring the universe, one observation at a time.",
+    "totalStars": "Total Stars",
+    "viewGifts": "View Gifts",
+    "startObserving": "Start Observing",
+    "goToShop": "Go to Shop",
+    "noGiftsReach": "No gifts within reach",
+    "giftsHint": "Complete missions to unlock rewards.",
+    "purchasesHint": "Your purchase history will appear here.",
+    "discoveriesHint": "Start observing to unlock discoveries.",
+    "progressHint": "Complete missions to become {rank}",
+    "missionsOf": "{done} of {total} missions",
+    "signUpPrompt": "Sign up to explore the cosmos",
+    "signUpCta": "Create Account",
+    "walletAddress": "Wallet Address",
+    "copyAddress": "Copy",
+    "copied": "Copied!",
+    "balance": "Balance",
+    "observations": "Observations",
+    "rank": "Rank",
+    "discoveries": "Discoveries",
+    "signOut": "Sign Out",
+    "viewOnExplorer": "View Certificate ↗",
+    "noDiscoveries": "No discoveries yet — start observing!",
+    "accountLabel": "Account",
+    "missionHistory": "Mission History",
+    "purchaseHistory": "Purchase History",
+    "addViaCard": "Add via Card",
+    "sendCrypto": "Transfer from Wallet",
+    "noMissionsYet": "No missions completed yet",
+    "startFirstMission": "Start your first mission →",
+    "noPurchasesYet": "No purchases yet",
+    "browseCta": "Browse telescopes & accessories →",
+    "statMissions": "Missions",
+    "statStars": "Stars",
+    "lifetimeEarned": "Earned",
+    "lifetimeBurned": "Burned",
+    "devnet": "Test Mode",
+    "goToMissions": "Go to Missions",
+    "signInSubtitle": "Your cosmic identity awaits",
+    "viewAll": "View all",
+    "earnStars": "Earn Stars",
+    "shop": "Shop",
+    "gifts": "Gifts",
+    "giftsReach": "{count} within reach",
+    "browse": "Browse",
+    "nextRank": "Next: {rank}",
+    "maxRank": "Top rank",
+    "settingsTitle": "Settings",
+    "allSettings": "All settings",
+    "darkMode": "Dark Mode",
+    "dayMode": "Day Mode",
+    "themeSubDark": "Deep space theme",
+    "themeSubDay": "Bright daytime theme",
+    "notifications": "Notifications",
+    "notificationsSub": "Planets, sky events, weather",
+    "language": "Language",
+    "privacy": "Privacy & Data",
+    "privacySub": "Policy, terms, your data",
+    "accountActions": "Account Actions",
+    "confirmSignOutQ": "Confirm sign out?",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "paid": "Paid",
+    "pending": "Pending"
+  },
+  "observe": {
+    "hero": "Observe & Earn",
+    "heroDesc": "Photograph the night sky with whatever camera you have — phone, telescope, DSLR. Every verified observation earns real rewards from your local astronomy partner.",
+    "signIn": "Sign In to Start Observing →",
+    "signInSub": "Free forever · Just email or Google"
+  },
+  "club": {
+    "title": "Join the Club",
+    "connectWallet": "Connect Wallet",
+    "walletConnected": "Account connected",
+    "continueEmail": "Continue with Email",
+    "continueEmailDesc": "We set up your account automatically. No app needed.",
+    "emailPlaceholder": "your@email.com",
+    "activatingWallet": "Setting up your account…",
+    "walletActivated": "Account ready",
+    "viewOnExplorer": "View Certificate ↗"
+  },
+  "missions": {
+    "title": "Sky Missions",
+    "subtitle": "Observe the Moon, Jupiter, Saturn and more. Earn Stars and collect discoveries.",
+    "signIn": "Sign In →",
+    "availableMissions": "Available Missions",
+    "tonightsSky": "Tonight's Sky",
+    "goodConditions": "Good for observing tonight",
+    "cloudyTonight": "Cloudy tonight",
+    "knowledgeQuizzes": "Knowledge Quizzes",
+    "approximateLocation": "Using approximate location — tap to set yours",
+    "briefs": {
+      "demo": {
+        "name": "Demo Observation",
+        "hint": "Uses a pre-generated sky photo. Perfect for demos and presentations."
+      },
+      "quick-jupiter": {
+        "name": "Jupiter",
+        "hint": "Upload a photo of Jupiter or the night sky. Sky conditions are ignored — you'll still get credit."
+      },
+      "quick-saturn": {
+        "name": "Saturn",
+        "hint": "Upload a photo of Saturn or the night sky. Sky conditions are ignored — you'll still get credit."
+      },
+      "free-observation": {
+        "name": "Tonight's Sky",
+        "hint": "Find a spot away from bright lights. Point your camera straight up or at the brightest thing you see."
+      },
+      "moon": {
+        "name": "The Moon",
+        "hint": "Best viewed during first/last quarter for crater shadow detail."
+      },
+      "mercury": {
+        "name": "Mercury",
+        "hint": "Always near the Sun — look just after sunset or before sunrise, low to the horizon."
+      },
+      "venus": {
+        "name": "Venus",
+        "hint": "Brighter than any star and doesn't twinkle. West after sunset, or east before dawn."
+      },
+      "mars": {
+        "name": "Mars",
+        "hint": "Distinctly orange-red. Doesn't twinkle. Best near opposition."
+      },
+      "jupiter": {
+        "name": "Jupiter",
+        "hint": "Look for the bright 'star' that doesn't twinkle."
+      },
+      "orion": {
+        "name": "Orion Nebula",
+        "hint": "Below the three belt stars — middle 'star' of the sword."
+      },
+      "saturn": {
+        "name": "Saturn",
+        "hint": "Even a small telescope shows rings. Yellowish 'star'."
+      },
+      "pleiades": {
+        "name": "Pleiades (M45)",
+        "hint": "Fuzzy patch to naked eye. Binoculars show dozens of stars."
+      },
+      "andromeda": {
+        "name": "Andromeda Galaxy",
+        "hint": "Find the Great Square of Pegasus, then hop two stars north-east. Dark skies required."
+      },
+      "crab": {
+        "name": "Crab Nebula",
+        "hint": "Requires at least 8\" aperture and dark skies. Located 1° NW of ζ Tauri."
+      },
+      "day-sky": {
+        "name": "Today's Sky",
+        "hint": "Point the camera up and include plenty of sky. We check it against the live weather over your coordinates, so shoot what is actually there."
+      },
+      "daytime-moon": {
+        "name": "Daytime Moon",
+        "hint": "Best in the afternoon around first quarter, or the morning around last quarter. Look for a pale chalk mark high up."
+      },
+      "sky-optics": {
+        "name": "Halos & Sundogs",
+        "hint": "Thin high cirrus is what makes halos and sundogs. Block the Sun with your hand or a building and look either side of it."
+      },
+      "sunset": {
+        "name": "Sunset & Blue Hour",
+        "hint": "The best colour is usually 10–20 minutes after the Sun drops below the horizon. Keep the horizon in frame."
+      },
+      "the-sun": {
+        "name": "The Sun",
+        "hint": "Never look at the Sun through a telescope, binoculars or a viewfinder without a certified solar filter. A phone at arm's length, pointed at a low or veiled Sun, is what this mission is for."
+      },
+      "perseids": {
+        "name": "Perseid Meteor Shower",
+        "hint": "Face away from the Moon and city lights any time after 10 PM. Meteors streak across the whole sky, so you don't need to aim at Perseus."
+      }
+    },
+    "difficultyLabels": {
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "hard": "Hard",
+      "expert": "Expert"
+    }
+  },
+  "dashboard": {
+    "greeting": {
+      "morning": "Good morning",
+      "afternoon": "Good afternoon",
+      "evening": "Good evening",
+      "night": "Good night"
+    },
+    "rank": {
+      "observer": "Observer",
+      "pathfinder": "Pathfinder",
+      "celestial": "Celestial",
+      "stellar": "Stellar"
+    }
+  },
+  "authModal": {
+    "aria": "Sign in to Stellar",
+    "close": "Close",
+    "welcome": "Welcome to Stellar",
+    "subtitle": "Sign in to start observing the night sky.",
+    "continueEmail": "Continue with email",
+    "emailHelp": "Sign up free with email, Google, or X",
+    "or": "or",
+    "connectWallet": "Connect wallet"
+  },
+  "onboarding": {
+    "step1Title": "What do you observe with?",
+    "step2Title": "Where do you observe from?",
+    "step3Title": "What excites you most?",
+    "chooseOne": "Choose one to continue",
+    "pickMultiple": "Pick one or more",
+    "building": "Building your sky profile…",
+    "continue": "Continue →",
+    "startExploring": "Start exploring →",
+    "useLocation": "Use my location",
+    "locationReason": "So we can show what's visible from where you are tonight.",
+    "locating": "Finding you…",
+    "locationDetected": "Location detected",
+    "equipment": {
+      "naked-eye": {
+        "label": "Naked eye",
+        "desc": "No equipment"
+      },
+      "binoculars": {
+        "label": "Binoculars",
+        "desc": "7×50 or similar"
+      },
+      "small-telescope": {
+        "label": "Small telescope",
+        "desc": "Under 5-inch"
+      },
+      "large-telescope": {
+        "label": "Large telescope",
+        "desc": "5-inch or bigger"
+      }
+    },
+    "environment": {
+      "city": {
+        "label": "City",
+        "desc": "Bright skies"
+      },
+      "suburb": {
+        "label": "Suburb",
+        "desc": "Some stars"
+      },
+      "rural": {
+        "label": "Rural",
+        "desc": "Dark skies"
+      },
+      "remote": {
+        "label": "Remote",
+        "desc": "Pristine dark"
+      }
+    },
+    "interests": {
+      "planets": "Planets",
+      "moon": "The Moon",
+      "deep-sky": "Deep sky",
+      "astrophotography": "Astrophotography",
+      "learning": "Learning"
+    }
+  },
+  "searchModal": {
+    "placeholder": "Search missions, telescopes, planets...",
+    "noResults": "No results for “{query}”",
+    "groupMissions": "MISSIONS",
+    "groupPages": "PAGES",
+    "groupObjects": "CELESTIAL OBJECTS",
+    "qSky": "Sky",
+    "qMissions": "Missions",
+    "qAstra": "ASTRA",
+    "qShop": "Shop",
+    "skyForecast": "Sky Forecast",
+    "skyForecastSub": "7-day cloud cover and seeing",
+    "planetTracker": "Planet Tracker",
+    "planetTrackerSub": "Mercury to Saturn + Moon",
+    "solarSystem3d": "3D Solar system",
+    "solarSystem3dSub": "Live orbits, time control, realistic planets",
+    "astraAi": "ASTRA AI",
+    "astraAiSub": "Chat with your AI astronomer",
+    "astroGuide": "Astronomy Guide",
+    "astroGuideSub": "Planets, deep sky, quizzes, events",
+    "nftGallery": "My Discoveries",
+    "nftGallerySub": "Your certified sky observations",
+    "moon": "Moon",
+    "moonSub": "Earth's natural satellite, brightest object at night",
+    "jupiter": "Jupiter",
+    "jupiterSub": "Largest planet, visible to naked eye",
+    "saturn": "Saturn",
+    "saturnSub": "Ringed gas giant",
+    "mars": "Mars",
+    "marsSub": "The Red Planet",
+    "orion": "Orion Nebula",
+    "orionSub": "M42 — stunning emission nebula in Orion's sword",
+    "pleiades": "Pleiades",
+    "pleiadesSub": "M45 — Seven Sisters open cluster",
+    "andromeda": "Andromeda Galaxy",
+    "andromedaSub": "M31 — nearest large galaxy, 2.5M light years"
+  },
+  "solarSystem": {
+    "title": "Solar system",
+    "subtitle": "Live positions from Astronomy Engine — drag to orbit, scroll to zoom, tap a body for facts.",
+    "immersive": {
+      "exit": "Exit solar system"
+    },
+    "time": {
+      "title": "Time",
+      "scrub": "Simulation date",
+      "play": "Play",
+      "pause": "Pause",
+      "now": "Now",
+      "speed": {
+        "realtime": "Live",
+        "10m": "+10 m/s",
+        "1h": "+1 h/s",
+        "1d": "+1 d/s"
+      },
+      "speedAria": "Time rate"
+    },
+    "view": {
+      "title": "View",
+      "scale": "Distance scale",
+      "orrery": "Orrery",
+      "linear": "True scale",
+      "pluto": "Show Pluto & dwarf belt context"
+    },
+    "detail": {
+      "title": "Selected body",
+      "placeholder": "Tap a planet or the Sun in the viewport.",
+      "diameter": "Diameter",
+      "gravity": "Surface gravity",
+      "meanTemp": "Mean surface temp",
+      "dayLength": "Day length",
+      "moons": "Number of moons",
+      "orbitalPeriod": "Orbital period",
+      "atmosphere": "Atmosphere",
+      "physicalData": "Physical data",
+      "visibleTonight": "Visible tonight?",
+      "loading": "Computing visibility…",
+      "rises": "Rises",
+      "peaks": "Peaks",
+      "sets": "Sets",
+      "maxAltitude": "Max altitude",
+      "askTheSky": "Ask the Sky",
+      "gearRecommender": "What gear?",
+      "clear": "Clear selection",
+      "closeSheet": "Close details — camera stays on this body; zoom out to pick another"
+    },
+    "bodies": {
+      "sun": {
+        "name": "Sun",
+        "blurb": "G-type main-sequence star — light-time in this view is not corrected; geometry is for orientation."
+      },
+      "mercury": {
+        "name": "Mercury",
+        "blurb": "Smallest planet, fastest orbit, extreme day-night swings and no substantial atmosphere."
+      },
+      "venus": {
+        "name": "Venus",
+        "blurb": "Thick CO₂ atmosphere, runaway greenhouse, retrograde spin — brightest planet after the Moon."
+      },
+      "earth": {
+        "name": "Earth",
+        "blurb": "Only known habitable surface — liquid water, active geology, protective magnetic field."
+      },
+      "mars": {
+        "name": "Mars",
+        "blurb": "Rust-colored desert world with polar caps, ancient river beds, and the highest volcano in the Solar System."
+      },
+      "jupiter": {
+        "name": "Jupiter",
+        "blurb": "Gas giant and gravitational hub — more mass than all other planets combined; shepherds many small bodies."
+      },
+      "saturn": {
+        "name": "Saturn",
+        "blurb": "Ringed ice-and-rock giant with a lower mean density than water; hundreds of structured ring features."
+      },
+      "uranus": {
+        "name": "Uranus",
+        "blurb": "Ice giant on its side — extreme axial tilt produces exotic seasonal lighting at the poles."
+      },
+      "neptune": {
+        "name": "Neptune",
+        "blurb": "Windiest planet — deep blue methane absorption and a system of faint rings and small moons."
+      },
+      "pluto": {
+        "name": "Pluto",
+        "blurb": "Kuiper Belt dwarf with a binary companion (Charon) — representative of the third zone of the Solar System."
+      }
+    },
+    "flight": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "explore": "Explore",
+      "exit": "Exit flight mode",
+      "launch": "Launch",
+      "speed": "Speed",
+      "kills": "Kills",
+      "hull": "Hull",
+      "hint": "W S thrust · mouse steer · A D yaw · Q E roll · Space fire · Shift boost · 1 2 3 regime · H jump · T target · G align · Z assist · F wings · V eject · C view · Esc exit",
+      "view": "View",
+      "camera": "Camera",
+      "camIn": "Camera closer",
+      "camOut": "Camera farther",
+      "odometer": "Odometer",
+      "shield": "Shield",
+      "energy": "Energy",
+      "altShort": "Alt",
+      "commsHeader": "Incoming transmission · {from}",
+      "comms": {
+        "centauriPrime": {
+          "l1": "Unknown craft, this is Kaelith Harbour Control. We read your drive signature. You are welcome here.",
+          "l2": "Hold your course above the cloud line. Our freighters keep the lower lanes.",
+          "l3": "Your tanks read low from here. Stay inside the hail and the harbour will pass you fuel, stores and shield charge — no charge to a first visitor.",
+          "l4": "Take what you need, traveller. Transmission ends. Safe orbits."
+        }
+      },
+      "hangar": "Hangar",
+      "ships": {
+        "kestrel": "Kestrel",
+        "xfoil": "Magpie",
+        "cruiser": "Meridian",
+        "endurance": "Endurance"
+      },
+      "eject": "Eject",
+      "board": "Board",
+      "evaOut": "EVA — suit jets",
+      "evaBoardTouch": "EVA — tap Board",
+      "fire": "Fire",
+      "boost": "Boost",
+      "brake": "Brake",
+      "move": "Thrust and turn",
+      "look": "Pitch and yaw",
+      "speedMode": "Speed mode",
+      "modes": {
+        "cruise": "Cruise",
+        "fast": "Fast",
+        "ultra": "Ultra",
+        "jump": "Light speed",
+        "eva": "EVA suit"
+      },
+      "kmS": "km/s",
+      "c": "c",
+      "ly": "ly",
+      "near": "Near",
+      "alt": "Altitude",
+      "distance": "Distance",
+      "system": "System",
+      "orbit": "Orbit",
+      "target": "Target",
+      "foils": "Wings",
+      "foilsOpen": "Open",
+      "alerts": {
+        "proximity": "Collision — pull up",
+        "entry": "Atmospheric entry",
+        "masslock": "Mass lock — too close to jump",
+        "charging": "Hyperdrive charging → {target}",
+        "jump": "Light speed → {target}",
+        "arrived": "Arrived: {system}",
+        "solar": "Solar proximity — hull heating",
+        "gravity": "Gravity well — the drive is throttled",
+        "jumpready": "Jump ready",
+        "hostile": "Hostile contact",
+        "contact": "Unknown contact — scanning",
+        "lowshield": "Low shield",
+        "shielddown": "Shields down",
+        "hullcritical": "Hull critical",
+        "docked": "Docked — hull, shields and banks restored",
+        "undocked": "Released — you have the con",
+        "horizon": "Event horizon — tidal forces rising"
+      },
+      "respawn": "Respawn in {n}",
+      "systems": {
+        "sol": "Solar System",
+        "alphaCentauri": "Alpha Centauri",
+        "gargantua": "Black hole"
+      },
+      "bodies": {
+        "alphaCenA": "Alpha Centauri A",
+        "alphaCenB": "Alpha Centauri B",
+        "proxima": "Proxima Centauri",
+        "proximaB": "Proxima b",
+        "proximaD": "Proxima d",
+        "alphaCenAc": "Alpha Centauri A c",
+        "centauriPrime": "Centauri Prime",
+        "moon": "Moon",
+        "iss": "ISS",
+        "ceres": "Ceres",
+        "vesta": "Vesta",
+        "phobos": "Phobos",
+        "deimos": "Deimos",
+        "io": "Io",
+        "europa": "Europa",
+        "ganymede": "Ganymede",
+        "callisto": "Callisto",
+        "titan": "Titan",
+        "rhea": "Rhea",
+        "titania": "Titania",
+        "oberon": "Oberon",
+        "triton": "Triton",
+        "charon": "Charon",
+        "voyager1": "Voyager 1",
+        "voyager2": "Voyager 2",
+        "pioneer10": "Pioneer 10",
+        "pioneer11": "Pioneer 11",
+        "newHorizons": "New Horizons",
+        "gargantua": "Black hole",
+        "millersPlanet": "Miller's planet",
+        "mannsPlanet": "Mann's planet",
+        "edmundsPlanet": "Edmunds' planet",
+        "endurance": "Endurance"
+      },
+      "groups": {
+        "planets": "Planets",
+        "stars": "Stars"
+      },
+      "launchSub": "Launch sequence",
+      "shipRoles": {
+        "kestrel": "Survey ship",
+        "xfoil": "Starfighter",
+        "endurance": "Interstellar explorer"
+      },
+      "driveReady": "Drive ready",
+      "driveLocked": "Mass locked",
+      "targets": "Targets",
+      "targetClear": "Clear target",
+      "align": "Align",
+      "heat": "Heat",
+      "log": "Log",
+      "contacts": "{n} contacts",
+      "region": "Approaching {body}",
+      "discovery": "Discovery",
+      "navKinds": {
+        "star": "Star",
+        "planet": "Planet",
+        "moon": "Moon",
+        "station": "Station",
+        "probe": "Probe",
+        "contact": "Contact",
+        "jump": "Jump",
+        "blackhole": "Black hole"
+      },
+      "discoveries": {
+        "moonPass": {
+          "title": "Lunar low pass",
+          "fact": "The Moon drifts 3.8 cm farther from Earth every year."
+        },
+        "earthOrbit": {
+          "title": "Earth orbit",
+          "fact": "The ISS crosses this altitude sixteen times a day at 7.66 km/s."
+        },
+        "issFlyby": {
+          "title": "Station flyby",
+          "fact": "The ISS is the size of a football field and weighs 420 tonnes."
+        },
+        "marsVisit": {
+          "title": "Mars",
+          "fact": "Olympus Mons stands 21 km high, nearly three Everests."
+        },
+        "venusClouds": {
+          "title": "Venus cloud deck",
+          "fact": "Venus's clouds are sulphuric acid; the surface below is 465 °C."
+        },
+        "mercuryDawn": {
+          "title": "Mercury",
+          "fact": "A day on Mercury lasts 176 Earth days, twice its year."
+        },
+        "beltCrossing": {
+          "title": "Asteroid belt",
+          "fact": "The whole belt weighs less than 4% of the Moon."
+        },
+        "jupiterApproach": {
+          "title": "Jupiter",
+          "fact": "Jupiter has 2.5 times the mass of every other planet combined."
+        },
+        "greatRedSpot": {
+          "title": "Great Red Spot",
+          "fact": "A storm wider than Earth, blowing for at least 190 years."
+        },
+        "europaScan": {
+          "title": "Europa",
+          "fact": "Under Europa's ice lies an ocean with twice Earth's water."
+        },
+        "saturnRings": {
+          "title": "Saturn's rings",
+          "fact": "The rings are 280,000 km across and mostly under 100 m thick."
+        },
+        "titanHaze": {
+          "title": "Titan",
+          "fact": "Titan has rivers and seas of liquid methane under an orange haze."
+        },
+        "uranusTilt": {
+          "title": "Uranus",
+          "fact": "Uranus rolls on its side: its axis is tilted 98 degrees."
+        },
+        "neptuneWinds": {
+          "title": "Neptune",
+          "fact": "Neptune's winds reach 2,100 km/h, the fastest in the solar system."
+        },
+        "plutoHeart": {
+          "title": "Pluto",
+          "fact": "Pluto's heart, Sputnik Planitia, is a nitrogen-ice glacier."
+        },
+        "solarCorona": {
+          "title": "Solar corona",
+          "fact": "The corona is over a million degrees, hotter than the surface."
+        },
+        "probeFound": {
+          "title": "Deep-space probe",
+          "fact": "Voyager 1 is the most distant human-made object, past 160 AU."
+        },
+        "heliopause": {
+          "title": "Heliopause",
+          "fact": "Here the solar wind yields to interstellar space; Voyager 1 crossed it in 2012."
+        },
+        "anomaly": {
+          "title": "Anomalous signal",
+          "fact": "Something scanned the ship. Nothing in the catalogue matches."
+        },
+        "firstBlood": {
+          "title": "First contact, resolved",
+          "fact": "Unknown craft destroyed. Expect company."
+        },
+        "lightSpeed": {
+          "title": "Light speed",
+          "fact": "At c, Alpha Centauri is 4.37 years away. The drive cheats."
+        },
+        "alphaCentauri": {
+          "title": "Alpha Centauri",
+          "fact": "The nearest star system: three suns, 4.37 light years out."
+        },
+        "centauriPrime": {
+          "title": "Centauri Prime",
+          "fact": "An inhabited world. Its harbour control speaks first."
+        },
+        "proximaB": {
+          "title": "Proxima b",
+          "fact": "A rocky world in Proxima's habitable zone, found in 2016."
+        },
+        "gargantua": {
+          "title": "The black hole",
+          "fact": "In Interstellar, an hour on Miller's planet cost seven years on Earth."
+        },
+        "millersPlanet": {
+          "title": "Miller's planet",
+          "fact": "So close to the black hole that its tides raise waves a kilometre high."
+        }
+      },
+      "help": "Controls",
+      "keys": {
+        "r1": "W / S — thrust and brake",
+        "r2": "A / D — turn left and right",
+        "r3": "Mouse — steer",
+        "r4": "Q / E — roll",
+        "r5": "Shift — boost · Space — fire",
+        "r6": "1 / 2 / 3 — cruise, fast, ultra · or the gear key on the deck",
+        "r7": "T — next target · G — hold to align",
+        "r8": "F — wings · C — cockpit · Esc — pause",
+        "t1": "Left stick — thrust and turn; release to coast",
+        "t2": "Right of the screen — drag anywhere to look and steer, like a mouse",
+        "t3": "Gear key — cruise → fast → ultra, then round again",
+        "t4": "Tap the compass — next target",
+        "t5": "Pause — top right",
+        "r9": "Right mouse — hold and drag for a 360° look at the ship",
+        "r10": "H — light-year jump · J — change destination",
+        "t6": "Jump card, top right — pick a star and cross the light years",
+        "t7": "Rail on the left — lock the Moon, a planet, the ISS, a star",
+        "t8": "+ / − pull the camera; 3D drops you into the cockpit",
+        "t9": "Eye key — the deck goes, the view stays; the pads still steer where they were",
+        "t10": "Phone key — turn the whole deck to landscape and back",
+        "r11": "I — hide the deck for the view alone",
+        "t11": "Fire, boost, brake and the gear sit under the right thumb",
+        "t12": "Menu, top right — targets, camera, landscape, and Customize the deck: drag every control where you want it, size it, save",
+        "r12": "K — docking computer: bring the ship in to a station nearby",
+        "t13": "Dock key — near a station it appears; tap and the computer brings you in. Push forward to leave.",
+        "r13": "L — down to the surface. The landing card comes up over Earth, the Moon, Mars and Proxima b, and lights when you are low enough.",
+        "r14": "M — sound on and off",
+        "t14": "Sound — on and off in the menu",
+        "r15": "Z — flight assist · V — step out in the suit, and back aboard · R — clear the target",
+        "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
+        "t15": "Fly low over the Moon, Mars or Proxima b — the amber key by the stick takes you down"
+      },
+      "dockedAt": "Docked at {body} — push forward to leave",
+      "supplying": "Taking on fuel and stores",
+      "order": "Destroy {body}",
+      "orderTitle": "Standing order",
+      "orderDone": "Objective complete",
+      "landOn": {
+        "moon": "Land on the Moon",
+        "mars": "Land at Mars Base",
+        "proximaB": "Land on Proxima b",
+        "earth": "Land in Tbilisi"
+      },
+      "jumpLabel": "Light-year jump",
+      "jumpShort": "Jump",
+      "jumpMenu": "Choose a destination",
+      "lyLeft": "ly to go",
+      "hudHide": "Hide the deck",
+      "hudShow": "Show the deck",
+      "landscape": "Turn to landscape",
+      "portrait": "Turn to portrait",
+      "menu": "Menu",
+      "nextTarget": "Next target",
+      "customize": "Customize the deck",
+      "layoutHint": "Drag any control where you want it",
+      "layoutSave": "Save",
+      "layoutCancel": "Cancel",
+      "layoutReset": "Reset to default",
+      "sizeUp": "Bigger",
+      "sizeDown": "Smaller",
+      "places": {
+        "head": "Readouts",
+        "topkeys": "Menu keys",
+        "side": "Cards",
+        "move": "Move stick",
+        "fire": "Fire",
+        "boost": "Boost",
+        "brake": "Brake",
+        "gear": "Gear",
+        "console": "Console bar"
+      },
+      "dock": "Dock",
+      "docking": "Docking… tap to cancel",
+      "soundOn": "Sound on",
+      "soundOff": "Sound off",
+      "landReady": "Ready to land",
+      "landDescend": "Descend below {n} km",
+      "arrival": {
+        "transit": "Transit",
+        "approach": "Approach",
+        "pitchover": "Powered descent",
+        "entry": "Atmospheric entry",
+        "burn": "Descent burn",
+        "glide": "Final approach",
+        "orbit": "Orbit insertion",
+        "skip": "Press any key to skip",
+        "load": {
+          "habitat": "Habitat",
+          "vehicle": "Vehicles",
+          "crew": "Crew"
+        }
+      },
+      "worlds": {
+        "moon": {
+          "name": "Moon",
+          "descriptors": "Airless moon · Grey craters · Vacuum",
+          "temp": "−170 °C"
+        },
+        "mars": {
+          "name": "Mars",
+          "descriptors": "Cold desert · Rust plains · Thin CO₂ air",
+          "temp": "−63 °C"
+        },
+        "proximaB": {
+          "name": "Proxima b",
+          "descriptors": "Tidally locked · Red twilight · Living shore",
+          "temp": "4 °C"
+        },
+        "earth": {
+          "name": "Earth",
+          "descriptors": "Blue world · Tbilisi · Breathable air",
+          "temp": "18 °C"
+        }
+      }
+    },
+    "moon": {
+      "place": "Stellar Base · Moon",
+      "descending": "Descending to Stellar Base",
+      "touchdown": "Touchdown in {n} s",
+      "returnOrbit": "Return to orbit",
+      "gravity": "Gravity",
+      "altitude": "Height",
+      "speed": "Speed",
+      "craters": "Craters",
+      "jump": "Jump",
+      "run": "Lope",
+      "move": "Move astronaut",
+      "help": "Surface controls",
+      "close": "Close",
+      "impact": "Meteoroid impact — {n} m away",
+      "hints": {
+        "walk": "W A S D — jog. Shift to sprint, Alt to walk.",
+        "jump": "Space — jump. One sixth g: you will be up there a while.",
+        "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+        "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while."
+      },
+      "keys": {
+        "r7": "Meteoroids land now and then. They never land on you.",
+        "t5": "Meteoroids land now and then. They never land on you.",
+        "r8": "The habitats: up a ramp, cycle the airlock with E, and you are in",
+        "t6": "The habitats: up a ramp, cycle the airlock with the amber key, and you are in",
+        "r10": "V in the rover: chase, the driver's seat, the mast camera",
+        "t7": "Hold the engine key on the way down. Leave it too late and guidance takes over.",
+        "r13": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
+        "t10": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
+        "r16": "The rover: E to climb in · hold E at a roll to bail out · Space is the handbrake",
+        "r17": "The jetpack: hold Space in the air, or J. It burns for a few seconds and refills on the ground.",
+        "t11": "The jetpack: keep the jump key held in the air, or hold the jet key beside it. It refills on the ground."
+      },
+      "pois": {
+        "habitatA": "Habitat A — crew quarters",
+        "habitatB": "OPS-B — command and the mission computer",
+        "habitatC": "Habitat C — medical bay and gym",
+        "greenhouse": "Greenhouse tunnel — lettuce, radish, wheat",
+        "tanks": "Life support — oxygen out of regolith",
+        "solar": "Power — vertical tracking arrays, 31 kW",
+        "dish": "Comms — high-gain dish on Earth",
+        "rover": "Rover LTV-01",
+        "lander": "Descent stage of the first crew",
+        "flag": "Flag of Georgia",
+        "seismometer": "Passive seismometer",
+        "sign": "Stellar Base — founded by Astroman, Tbilisi",
+        "ourLander": "Your descent vehicle",
+        "science": "Geology lab — bench and sample store",
+        "logistics": "Rover bay and charger",
+        "landingZone": "Landing zone — keep clear",
+        "sinkhole": "Collapsed lava tube — keep back",
+        "hatch": "Maintenance hatch",
+        "telescope": "Telescope station — on the ridge",
+        "colonySite": "Stellar Colony — the shared build site"
+      },
+      "eva": "EVA",
+      "pulse": "Pulse",
+      "suitTemp": "Suit",
+      "distance": "Walked",
+      "crouch": "Crouch",
+      "camera": "Camera",
+      "menu": "Menu",
+      "hudHide": "Hide the glass",
+      "hudShow": "Show the glass",
+      "stance": {
+        "fallen": "Down — push the stick or jump to get up",
+        "fallenTouch": "Down — push the stick or tap jump to get up",
+        "crouch": "Crouched",
+        "slide": "Sliding — that slope will not hold boots",
+        "stumble": "Stumbling — get the feet back under you"
+      },
+      "grades": {
+        "feather": "Feather touchdown",
+        "good": "Good touchdown",
+        "firm": "Firm touchdown",
+        "hard": "Hard touchdown"
+      },
+      "landing": {
+        "title": "Powered descent",
+        "rate": "Rate",
+        "offset": "Off pad",
+        "fuel": "Descent fuel",
+        "assist": "Guidance has the stick",
+        "throttle": "Engine",
+        "touchdown": "{n} m/s at contact",
+        "drift": "Drift",
+        "ascent": "Take-off",
+        "exit": "Exit ship",
+        "orbital": {
+          "phases": {
+            "orbit": "Orbit",
+            "deorbit": "Deorbit burn",
+            "entry": "Atmospheric entry",
+            "braking": "Braking burn",
+            "glide": "Glide",
+            "approach": "Approach",
+            "climb": "Lift-off",
+            "ascent": "Ascent",
+            "done": "Powered descent"
+          },
+          "altitude": "Altitude",
+          "speed": "Speed",
+          "vertical": "Vertical",
+          "heat": "Heat",
+          "toSite": "To site",
+          "downrange": "Downrange",
+          "warp": "Time ×{n}",
+          "realTime": "Real time",
+          "mach": "Mach {n}",
+          "skip": "Skip to landing",
+          "skipTouch": "Tap to skip to landing"
+        }
+      },
+      "gears": {
+        "creep": "Creep",
+        "cruise": "Cruise",
+        "sprint": "Sprint",
+        "ion": "Ion"
+      },
+      "mission": {
+        "title": "Objective",
+        "log": "Expedition log",
+        "brief": "The mission computer in OPS-B has a magnetic anomaly on the survey map, a hundred metres out, that has no business being there. Pin it with the scanner, drill it, follow what the core tells you, and find out what is under the regolith.",
+        "none": "Nothing earned yet. The mission computer is in OPS-B, the middle dome, through its airlock.",
+        "obj": {
+          "survey": "Head for the survey area",
+          "drill": "Start the drill",
+          "trace": "Follow the core’s signature across the mare",
+          "excavate": "Clear the regolith off the hull, patch by patch",
+          "contact": "Step through the open seam",
+          "done": "First contact. The craft is yours to visit.",
+          "brief": "Collect the survey at the mission computer — OPS-B, through the airlock",
+          "scan": "Sweep the area — the scanner peaks over the anomaly",
+          "drillFeed": "Feed the drill — keep the load in the green",
+          "collect": "Take the core from the tray",
+          "contactWait": "Stand by — the seam is waking",
+          "open": "Open the hatch",
+          "enter": "Step through the hatch"
+        },
+        "banner": {
+          "survey": "Anomaly 3 — drill site",
+          "drill": "Anomaly pinned — the drill is deploying",
+          "trace": "Core out — metal at 4.6 m, and it points across the mare",
+          "excavate": "The crater. Something is under this.",
+          "contact": "The hull is clear — and the seam has power",
+          "done": "First contact — the ion gear is unlocked",
+          "brief": "Survey received — anomaly 3 is on your compass"
+        },
+        "rewards": {
+          "core": "Deep Core — a metre of the Moon in a tube, with metal in it",
+          "hull": "Excavation — the first hull raised on another world",
+          "contact": "First Contact — the rover’s ion gear is unlocked",
+          "firstSteps": "First Steps — the first Georgian bootprints on the Moon",
+          "power": "Power Restored — the base has its lights back",
+          "telescope": "First Light — the platform is calibrated and observing",
+          "comms": "Link Restored — Earth is back on the line",
+          "expedition": "Far Side Sample — regolith nobody had walked on"
+        },
+        "scanner": "Scanner",
+        "scanLock": "Locking — {n}%",
+        "patches": "{n} of {total} patches clear",
+        "radio": {
+          "rover": "Base: it is two hundred metres out — take the rover.",
+          "half": "Base: impact flash on the mare ahead of you. Keep clear of it.",
+          "close": "Base: we are reading you right over it now."
+        },
+        "drill": {
+          "depth": "Depth",
+          "load": "Load",
+          "temp": "Heat",
+          "stalled": "Overheated — let it cool",
+          "ready": "Core out — take it",
+          "hard": "Basalt layer — ease off"
+        }
+      },
+      "hold": "Hold",
+      "act": {
+        "terminal": "Read the survey",
+        "drillStart": "Start drill",
+        "drillFeed": "Feed drill",
+        "collectCore": "Take core",
+        "clear": "Clear regolith",
+        "openHatch": "Open hatch",
+        "jobBoard": "Job board",
+        "resetBreaker": "Reset breaker",
+        "holdReset": "Hold reset",
+        "alignArray": "Turn array",
+        "collectSample": "Collect sample",
+        "depositSamples": "Store samples",
+        "openPanel": "Open panel",
+        "alignDish": "Turn dish",
+        "serviceWheel": "Service wheel",
+        "takePackage": "Take package",
+        "placePackage": "Set down",
+        "levelPackage": "Level it",
+        "activate": "Switch on",
+        "read": {
+          "isru": "Plant status",
+          "power": "Power status",
+          "comms": "Link status",
+          "charger": "Charger"
+        },
+        "placeBeacon": "Set up the beacon",
+        "logSinkhole": "Log the sinkhole",
+        "boardLander": "Board ship — Take off",
+        "enterAirlock": "Enter the airlock",
+        "exitAirlock": "Leave through the airlock",
+        "getIn": "Get in",
+        "getOut": "Get out",
+        "bailOut": "Hold to bail out",
+        "suitCheck": "Suit check",
+        "earthShot": "Frame the shot",
+        "deadCable": "Inspect cable",
+        "takeCoupling": "Take coupling",
+        "fitCoupling": "Fit coupling",
+        "breaker": "Reset the breaker",
+        "mountPower": "Power the mount",
+        "mountAlign": "Align the mount",
+        "scopeObserve": "Observe",
+        "dishInspect": "Inspect the feed",
+        "takeFeed": "Take feed horn",
+        "fitFeed": "Fit feed horn",
+        "dishAlign": "Realign to Earth",
+        "roverCharge": "Charge the rover",
+        "craterScan": "Sweep the scanner",
+        "takeSample": "Collect sample",
+        "storeSample": "Store the sample"
+      },
+      "airlock": {
+        "cycling": "Equalising — {n}%",
+        "open": "Airlock open — go through"
+      },
+      "rover": {
+        "fault": "Wheel sensor fault — Cruise at most",
+        "charging": "Charging — {n}%"
+      },
+      "readout": {
+        "isru": "ISRU-1 · 1.8 kg of oxygen a day from 160 kg of regolith · furnace 1,050 °C · O₂ tank 74 %",
+        "power": "PCU-1 · arrays A B C · 31 kW in · batteries 88 % · bus 120 V",
+        "comms": "Earth link · Ka band · 42 Mbit/s · 2.6 s round trip",
+        "charger": "Charger 2 · rover battery {n}% · park inside the marks to charge"
+      },
+      "jobs": {
+        "title": "Job",
+        "meter": "Alignment",
+        "names": {
+          "solar": "Array B brought back onto the sun",
+          "samples": "Two samples returned to the store",
+          "comms": "Earth link realigned",
+          "rover": "Rover wheel serviced",
+          "seismo": "Seismometer deployed",
+          "sinkhole": "Sinkhole marked with a beacon"
+        },
+        "start": {
+          "solar": "Job — array B string is offline",
+          "samples": "Job — two tagged samples to bring in",
+          "comms": "Job — the Earth link has degraded",
+          "rover": "Job — a rover wheel sensor has faulted",
+          "seismo": "Job — deploy a seismometer",
+          "sinkhole": "Job — mark the sinkhole before someone else walks into it"
+        },
+        "done": {
+          "solar": "Array B back on the sun — full power",
+          "samples": "Samples sealed in the store",
+          "comms": "Dish on Earth — link restored",
+          "rover": "Wheel serviced — all gears back",
+          "seismo": "Seismometer listening",
+          "sinkhole": "Beacon at the sinkhole — logged"
+        },
+        "steps": {
+          "solar": {
+            "go": "Go to the power cabinet",
+            "breaker": "Reset the array B breaker",
+            "reset": "Hold the reset until the string comes up",
+            "align": "Turn array B onto the sun — let go on the peak"
+          },
+          "samples": {
+            "collect": "Collect the two tagged rock samples",
+            "return": "Put the samples in the sealed store"
+          },
+          "comms": {
+            "go": "Go to the comms enclosure",
+            "panel": "Open the dish control panel",
+            "align": "Bring the dish round to Earth — let go on the peak"
+          },
+          "rover": {
+            "bring": "Drive the rover into the service bay",
+            "wheel": "Service the rear left wheel"
+          },
+          "seismo": {
+            "take": "Take the seismometer package from the sample store",
+            "go": "Carry it to the marked geology point",
+            "place": "Set it down",
+            "level": "Level it — let go when the bubble centres",
+            "activate": "Switch it on"
+          },
+          "sinkhole": {
+            "go": "Go to the sinkhole — stay back from the rim",
+            "place": "Set up the warning beacon",
+            "log": "Log the sinkhole at the mission computer"
+          }
+        }
+      },
+      "soundOn": "Sound on",
+      "soundOff": "Sound off",
+      "backrooms": {
+        "place": "Level 0",
+        "gravityRead": "Gravity {n} m/s² · {g} g",
+        "air": "Outside air",
+        "noCarrier": "No carrier",
+        "elapsed": "Off comms",
+        "log": "Came back out of the Backrooms — {time}",
+        "act": {
+          "removeHelmet": "Take the helmet off",
+          "openDoor": "Open the door",
+          "climb": "Climb"
+        },
+        "radio": {
+          "hint": "…base to EVA… there is a hum on channel two… out past the comms mast… say again…",
+          "static": "No carrier. The set is searching.",
+          "guide": "The panels ahead are coming on, one after another.",
+          "back": "Where were you? You were off comms for 47 minutes."
+        },
+        "readout": {
+          "air": "External atmosphere: 20.9% O₂ · 101 kPa · 23 °C",
+          "gravity": "Gravity 9.81 m/s² — one full g. This is not the Moon.",
+          "repress": "Helmet sealed — suit repressurising"
+        },
+        "wake": "Get up.",
+        "crack": "Visor cracked"
+      },
+      "missions": {
+        "title": "Missions",
+        "none": "Nothing in hand",
+        "objective": "Objective",
+        "rewards": "Earned",
+        "map": "Base map",
+        "you": "You",
+        "status": {
+          "done": "Done",
+          "active": "In hand",
+          "open": "Available",
+          "locked": "Locked"
+        },
+        "observed": {
+          "line": "{target} · {alt}° above the horizon",
+          "earth": "Earth never sets over Stellar Base: the near side always faces home.",
+          "jupiter": "Jupiter turns once in under ten hours — the fastest day of any planet.",
+          "saturn": "Saturn's rings are mostly water ice, and only tens of metres thick.",
+          "mars": "Mars has two moons, Phobos and Deimos, both likely captured asteroids.",
+          "venus": "Venus turns backwards, and one of its days is longer than its year.",
+          "m42": "The Orion Nebula is a nursery 1,344 light-years off, forming stars now.",
+          "m31": "Andromeda is 2.5 million light-years away, and closing on us.",
+          "names": {
+            "earth": "Earth",
+            "jupiter": "Jupiter",
+            "saturn": "Saturn",
+            "mars": "Mars",
+            "venus": "Venus",
+            "m42": "M42 · Orion Nebula",
+            "m31": "M31 · Andromeda"
+          }
+        },
+        "firstSteps": {
+          "title": "First Steps",
+          "brief": "You are down, the lander is cooling, and nobody has walked here. Check the suit, get out to the ridge, take the shot home, and come back in through the airlock.",
+          "suit": "Check the suit at the lander",
+          "ridge": "Walk out to the ridge",
+          "earthrise": "Frame Earth and take the shot",
+          "airlock": "Cycle the airlock",
+          "done": "First Steps — the flag is up"
+        },
+        "power": {
+          "title": "Restore Power",
+          "brief": "The base is dim. The middle array is off the sun and something has cut its feed. Trace it, fetch a coupling from the bench, fit it, and throw the breaker.",
+          "trace": "Inspect the severed cable",
+          "part": "Fetch a coupling from the bench",
+          "fit": "Fit the coupling at the array",
+          "breaker": "Reset the breaker",
+          "done": "Power restored — the lights are back"
+        },
+        "telescope": {
+          "title": "Telescope Calibration",
+          "brief": "The platform on the western ridge has never been calibrated. Power the mount, align it, and observe whatever is really above the horizon tonight.",
+          "power": "Power the mount",
+          "align": "Align the mount",
+          "observe": "Observe what is up",
+          "done": "First light — the platform is calibrated"
+        },
+        "comms": {
+          "title": "Comms Failure",
+          "brief": "Earth has gone quiet. The high-gain dish is off its bearing and its feed is damaged. Inspect it, fit the spare horn, and bring the dish back round to Earth.",
+          "inspect": "Inspect the damaged feed",
+          "feed": "Fetch the spare feed horn",
+          "fit": "Fit the feed horn",
+          "realign": "Realign the dish to Earth",
+          "done": "Link restored — Earth is back"
+        },
+        "expedition": {
+          "title": "Rover Expedition",
+          "brief": "There is a crater to the north-west nobody has walked. Charge the rover, drive out, sweep for the sample, bring it back and store it in the lab.",
+          "charge": "Charge the rover",
+          "board": "Board the rover",
+          "drive": "Drive out to the crater",
+          "scan": "Sweep for the sample",
+          "collect": "Collect the sample",
+          "store": "Store it in the lab",
+          "done": "Sample stored — the expedition is home"
+        },
+        "records": {
+          "title": "Records",
+          "note": "Kept on this device. Signed in, each record is credited to your account as Stars.",
+          "tonight": "See {target} over your sky tonight",
+          "first_steps": "First bootprints at Stellar Base",
+          "earthrise_photo": "Earthrise photographed from the ridge",
+          "power_restored": "Base power restored",
+          "telescope_calibrated": "Telescope platform calibrated",
+          "comms_restored": "Link to Earth restored",
+          "lunar_geology": "Regolith sample returned from the crater"
+        }
+      },
+      "suitPower": "Power",
+      "jetpack": "Jetpack",
+      "jet": "Jet",
+      "items": {
+        "coupling": "Cable coupling",
+        "feed": "Feed horn",
+        "sample": "Regolith sample"
+      }
+    },
+    "loading": {
+      "title": "Opening the solar system",
+      "detail": "Charting every orbit for today",
+      "moon": "Descending to Stellar Base",
+      "moonDetail": "Preparing the surface",
+      "gpu": "The graphics card reset — rebuilding the scene",
+      "preflight": "Preflight",
+      "preflightDetail": "Powering up the {ship}",
+      "ascent": "Climbing back to orbit",
+      "tips": {
+        "t1": "Light from the Sun takes 8 minutes 20 seconds to reach Earth.",
+        "t2": "The Moon drifts 3.8 cm farther from Earth every year.",
+        "t3": "Jupiter's Great Red Spot has been blowing for at least 190 years.",
+        "t4": "Saturn's rings are mostly water ice; some pieces are the size of a house.",
+        "t5": "Alpha Centauri is 4.37 light years away — 300,000 years at highway speed.",
+        "t6": "A day on Venus lasts longer than its year.",
+        "t7": "Close to a black hole time runs slow: an hour there is years back home.",
+        "t8": "Proxima Centauri b sits in its star's habitable zone, 4.24 light years from here."
+      }
+    },
+    "worlds": {
+      "mars": {
+        "place": "Mars Base · Jezero",
+        "loading": "Descending to Mars Base",
+        "loadingDetail": "Preparing the plain — 0.38 g, thin air, dust in it",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Mars holds you down twice as hard as the Moon.",
+          "jump": "Space — jump. A metre, no more: this is a real planet.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. A metre, no more: this is a real planet."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "The base is north of the pad: habitats, greenhouse, the plant, the reactors",
+          "r7": "Dust devils cross the plain. They will not come near the base.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "The base is north of the pad: habitats, greenhouse, the plant, the reactors"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters, under two metres of regolith",
+          "habitat1": "Habitat 2 — lab, galley and the medical bay",
+          "habitat2": "Habitat 3 — workshop and suit maintenance",
+          "greenhouse": "Greenhouse — potatoes, wheat, and the first Martian tomatoes",
+          "isru": "Sabatier plant — methane and oxygen out of the air",
+          "power": "Kilopower — two 10 kW fission units",
+          "solar": "Solar field — 28 panels, dusted every sol",
+          "dish": "Comms — high-gain dish on Earth, 4 to 24 minutes away",
+          "weather": "Weather mast — wind, pressure, dust opacity",
+          "flag": "Flag of Georgia",
+          "sign": "Mars Base — founded by Astroman, Tbilisi",
+          "cargoShip": "Cargo ship — everything here came down in it",
+          "rover": "Pressurised rover — 200 km on a charge",
+          "landingZone": "Landing zone — keep clear",
+          "ourLander": "Your descent vehicle",
+          "colonySite": "Stellar Colony — the shared build site"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "greenhouse": "Crop status",
+            "isru": "Plant status",
+            "power": "Reactor status"
+          },
+          "collectCrystal": "Collect the crystals",
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 21 °C · CO₂ 0.4 % · shielding 2.1 m regolith · 4 crew asleep",
+          "greenhouse": "GH-1 · 6 beds · wheat day 58, potatoes day 41, tomatoes flowering · 320 g O₂ a day",
+          "isru": "SABATIER-1 · CO₂ in 2.6 kg/h · CH₄ 0.9 kg/h · O₂ 1.8 kg/h · tanks 74 % · return fuel by sol 410",
+          "power": "KRUSTY-1 and 2 · 20 kWe · core 800 °C · radiators nominal · 11 years of fuel"
+        },
+        "banner": {
+          "arrived": "Mars Base — sol 1,214 · welcome down"
+        },
+        "dialog": {
+          "who": ""
+        }
+      },
+      "proximaB": {
+        "place": "Proxima b · the terminator",
+        "loading": "Descending to Proxima b",
+        "loadingDetail": "A red dwarf's day side — 1.1 g, warm, and something is alive",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. The ground pulls harder than home.",
+          "jump": "Space — jump. Not far: this is 1.1 g.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. Not far: this is 1.1 g."
+        },
+        "keys": {
+          "r5": "E — greet a villager who has come to meet you",
+          "r6": "The settlement is by the lake, east of the pad. They will find you first.",
+          "r7": "Greet them three times and one of them will lead you somewhere.",
+          "t5": "The amber key greets a villager who has come to meet you",
+          "t6": "The settlement is by the lake, east of the pad. Greet them three times and one will lead you somewhere."
+        },
+        "pois": {
+          "lake": "The lake — still, and lit from below",
+          "village": "The settlement — seven grown pods",
+          "stone": "The council stone — their script, lit into it",
+          "ourLander": "Your descent vehicle"
+        },
+        "act": {
+          "greet": "Greet",
+          "collectCrystal": "Collect the crystals",
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "none": ""
+        },
+        "banner": {
+          "arrived": "Proxima b — the star never moves here",
+          "noticed": "They have seen you",
+          "firstContact": "First contact — recorded on the stone"
+        },
+        "dialog": {
+          "who": "Villager {n} · Astra translation",
+          "hello": "A pattern of greeting, held long. Roughly: you are new, and you are welcome.",
+          "peace": "Both hands open, every band lit slowly. This is what they do when nothing is wrong.",
+          "welcome": "They are naming the place. The word for it is the same as the word for the lake.",
+          "suit": "They are asking about the suit. They think it is your skin, and that it does not glow.",
+          "star": "They are pointing at the star. It has never moved, and they do not understand a sky that turns.",
+          "light": "The colours are a question: which is yours? Astra has answered teal, on your behalf.",
+          "water": "They are offering water from the lake. It is safe to carry; Astra advises not to drink it.",
+          "friend": "That was understood. The whole group answered at once.",
+          "stone": "This one wants you to follow. It keeps looking toward the stone.",
+          "gift": "They have added a mark to the stone: a suit, standing next to one of them. You are in their record now."
+        }
+      },
+      "earth": {
+        "place": "Tbilisi · Rike Park",
+        "loading": "Descending to Tbilisi",
+        "loadingDetail": "Loading the Mtkvari valley — 34,000 buildings, the Caucasus on the horizon",
+        "loadError": "Tbilisi's map did not load. Check the connection and land again.",
+        "outside": "Outside",
+        "localTime": "Tbilisi",
+        "run": "Run",
+        "credits": "Map data © OpenStreetMap contributors (ODbL) · Terrain: SRTM and GMTED2010 (USGS), ETOPO1 (NOAA), via AWS Terrain Tiles · Weather: Open-Meteo.com (CC BY 4.0)",
+        "hints": {
+          "walk": "W A S D — jog. Shift — sprint. The red car by the pad is yours: E to get in.",
+          "jump": "Space — jump. The red car by the pad is yours: E to get in.",
+          "walkTouch": "Left stick — jog; push it to the rim to sprint. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. The red car by the pad: the amber key gets you in.",
+          "drive": "W / S — drive and brake (reverse when stopped) · A / D — steer · Space — handbrake · E — get out",
+          "driveTouch": "Stick up and down — drive and brake · left and right — steer · Jump key — handbrake"
+        },
+        "keys": {
+          "r5": "E — the thing in front of you: the car, the lander, the cable car, the roof, the telescope",
+          "r6": "The Bridge of Peace is west of the pad; the cable car starts beside it",
+          "r7": "Hold E in the cable car to ride six times as fast",
+          "t5": "The amber key does the thing in front of you",
+          "t6": "The Bridge of Peace is west of the pad; the cable car starts beside it"
+        },
+        "pois": {
+          "narikala": "Narikala — the fortress on the Sololaki ridge, from the 4th century",
+          "kartlisDeda": "Kartlis Deda — Mother of Georgia, 20 m, 1958",
+          "sameba": "Sameba — the Holy Trinity Cathedral, 87 m",
+          "bridgeOfPeace": "Bridge of Peace — 150 m of steel and glass over the Mtkvari, 2010",
+          "rikeTubes": "Rike Park Music Theatre and Exhibition Hall — the two tubes",
+          "abanotubani": "Abanotubani — the sulphur baths under their brick domes",
+          "ourLander": "Your descent vehicle"
+        },
+        "act": {
+          "board": "Board the cable car",
+          "climb": "Up to the roof",
+          "descend": "Down the stairwell",
+          "part": {
+            "tripod": "Set up the tripod",
+            "mount": "Fit the mount",
+            "tube": "Mount the telescope"
+          },
+          "align": "Align on north",
+          "faceNorth": "Face north to align",
+          "slew": "Slew to the target",
+          "eyepiece": "Look through the eyepiece",
+          "closeEyepiece": "Close the eyepiece",
+          "boardLander": "Board ship — Take off",
+          "drive": "Get in the car",
+          "getOut": "Get out",
+          "stopToExit": "Stop to get out"
+        },
+        "readout": {
+          "none": ""
+        },
+        "banner": {
+          "arrived": "Tbilisi — welcome home",
+          "bridge": "Act 1 — Cross the Bridge of Peace",
+          "cable": "Act 2 — Ride up to Narikala",
+          "overlook": "Act 3 — Read the city from the walls",
+          "rooftop": "Act 4 — A telescope on an Avlabari roof",
+          "firstLight": "Act 5 — First light",
+          "done": "First light — Tbilisi, tonight",
+          "welcome": "Tbilisi comes out to meet you"
+        },
+        "dialog": {
+          "who": ""
+        },
+        "expedition": {
+          "title": "Expedition",
+          "obj": {
+            "bridge": "Cross the Bridge of Peace into the Old Town",
+            "cable": "Walk to the Rike cable car station and board",
+            "riding": "Riding up to Narikala — three minutes",
+            "overlook": "From the walls, find Sameba, the TV tower and the Bridge of Peace — look straight at each",
+            "rooftop": "Find the stairwell of the flat-roofed building in Avlabari",
+            "assemble": "Put the telescope together",
+            "align": "Face north and align the mount",
+            "backToRoof": "Back up to the roof — it is dusk",
+            "slew": "Slew the telescope to tonight's target",
+            "look": "Look",
+            "done": "Expedition complete — come back at dusk any day",
+            "doneRoof": "The eyepiece is yours: tonight's sky over Tbilisi"
+          },
+          "spot": "Looking for {name}",
+          "found": "{n} of 3 found",
+          "names": {
+            "sameba": "Sameba",
+            "tvTower": "the TV tower",
+            "bridgeOfPeace": "the Bridge of Peace"
+          }
+        },
+        "eyepiece": {
+          "title": "Eyepiece · {mag}×",
+          "close": "Close",
+          "alt": "Altitude",
+          "az": "Azimuth",
+          "brightness": "Magnitude",
+          "size": "Size",
+          "phase": "Lit",
+          "time": "Tbilisi",
+          "note": "Positions for Tbilisi from astronomy-engine",
+          "targets": {
+            "saturn": "Saturn",
+            "jupiter": "Jupiter",
+            "moon": "The Moon",
+            "mars": "Mars",
+            "venus": "Venus",
+            "mercury": "Mercury",
+            "star": "{name}"
+          }
+        },
+        "entry": "Entry interface",
+        "crystals": "Crystals"
+      }
+    },
+    "room": {
+      "title": "Explore together",
+      "open": "Play together",
+      "close": "Close",
+      "unconfigured": "Multiplayer is not switched on for this site yet.",
+      "signInPrompt": "Sign in to open a room or join friends. Everyone in a room sees each other in flight and on the same world.",
+      "signIn": "Sign in",
+      "create": "Create a room",
+      "joinLabel": "Join with a code",
+      "codePlaceholder": "e.g. K7M2Q",
+      "join": "Join",
+      "badCode": "A room code is {n} letters and digits.",
+      "full": "That room is full — {max} explorers at most.",
+      "openRooms": "Open rooms",
+      "noRooms": "No open rooms right now. Create one and send the code to a friend.",
+      "hostedBy": "{name}'s room",
+      "joining": "Joining room {code}…",
+      "roomCode": "Room code",
+      "copyInvite": "Copy invite link",
+      "copied": "Link copied",
+      "howItWorks": "Launch or land anywhere — the others see your ship in flight and your suit on the same world. Friends sign in and open the link, or type the code.",
+      "explorers": "Explorers {n}/{max}",
+      "you": "{name} (you)",
+      "leave": "Leave room",
+      "defaultName": "Explorer {tag}",
+      "badgeAria": "Room {code}, {n} explorers — open room",
+      "places": {
+        "orbit": "System view",
+        "flight": "Flying",
+        "surface": "On a surface",
+        "moon": "On the Moon",
+        "mars": "On Mars",
+        "proximaB": "On Proxima b",
+        "earth": "In Tbilisi",
+        "backrooms": "In the Backrooms"
+      },
+      "toast": {
+        "joined": "{name} joined the room",
+        "left": "{name} left the room",
+        "landed": "{name}: {place}",
+        "launched": "{name} lifted off"
+      }
+    },
+    "launch": "Launch Stellar Explore",
+    "launchSub": "Land at Stellar Base on the Moon",
+    "controls": {
+      "keys": {
+        "mouse": "Mouse",
+        "wheel": "Wheel"
+      },
+      "move": "walk; how far you push picks walk, jog or run",
+      "look": "look around (click once to take the mouse; Esc lets go and pauses)",
+      "zoom": "zoom; out past the far stop is the wide view",
+      "jump": "jump; on the way down, the descent engine",
+      "jet": "the jetpack: hold in the air to climb; the jump key held does the same. A few seconds of burn, refilled on the ground",
+      "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound",
+      "walk": "walk on purpose",
+      "crouch": "crouch: slow, low and steady",
+      "interact": "the thing in front of you: tap to use, hold to work",
+      "headlamp": "headlamp on and off",
+      "view": "in and out of the helmet",
+      "shoulder": "look over the other shoulder",
+      "map": "the expedition log",
+      "gears": "the rover's gears",
+      "sound": "sound on and off",
+      "touch": {
+        "move": "Left stick — walk; push it to the rim to lope",
+        "look": "Right half — drag to look around",
+        "jump": "Jump — bottom right; on the way down, hold the engine key",
+        "jet": "Jet — beside Jump; hold it in the air, or keep holding Jump",
+        "sprint": "Lope — the key beside the stick",
+        "crouch": "Crouch — beside the stick",
+        "interact": "The amber key — tap to use, hold to work",
+        "view": "Camera — top right: shoulder, helmet, wide",
+        "map": "The objective card — tap it for the expedition log",
+        "gears": "The gear key — the rover's speed"
+      },
+      "lampOn": "Headlamp on"
+    },
+    "build": {
+      "title": "Build",
+      "toggle": "Build mode",
+      "close": "Leave build mode",
+      "worldMoon": "Moon",
+      "worldMars": "Mars",
+      "scopePrivate": "My base",
+      "scopeColony": "Colony",
+      "scopeHint": "Build where",
+      "modules": {
+        "habitat": "Habitat",
+        "corridor": "Corridor",
+        "solar": "Solar array",
+        "battery": "Battery",
+        "pad": "Landing pad",
+        "rocketStand": "Rocket stand"
+      },
+      "size": "{w}×{d} m",
+      "count": "Mine here: {n} / {cap}",
+      "colonyCount": "Colony: {n} pieces",
+      "loading": "Loading bases…",
+      "offline": "Saving unavailable — pieces stay for this session",
+      "saved": "Saved to your account",
+      "ready": "Ready to place",
+      "signIn": "Sign in to build — your pieces are kept on your account",
+      "signInButton": "Sign in",
+      "colonyAway": "Colony site {n} m away, bearing {deg}°",
+      "hoverMine": "Your {name} — X to remove",
+      "hoverOther": "{name} — built by another player",
+      "problem": {
+        "sitePrivate": "Too close to Stellar Base, a site or the colony",
+        "siteColony": "Outside the colony ring",
+        "overlap": "Something is already there",
+        "blocked": "Blocked",
+        "slope": "Ground too steep",
+        "cap": "Piece limit reached",
+        "signIn": "Sign in to build"
+      },
+      "refused": {
+        "signIn": "Sign in to build",
+        "tooFast": "Building too fast — wait a moment",
+        "notYours": "That piece is not yours",
+        "site": "The server refused that spot",
+        "overlap": "Someone built there first",
+        "coords": "The server refused that spot",
+        "module": "Unknown module",
+        "cap": "Piece limit reached",
+        "error": "Could not save — try again"
+      },
+      "place": "Place",
+      "rotate": "Rotate",
+      "remove": "Remove",
+      "keys": "E or click: place · R: rotate · 1–6: module · T: my base / colony · X: remove · B or Esc: leave"
+    }
+  },
+  "missionsPage": {
+    "auth": {
+      "title": "Sign in to start observing",
+      "body": "Complete sky missions, earn Stars, and collect certified discoveries.",
+      "signIn": "Sign in",
+      "sub": "Email or Google — takes 10 seconds"
+    },
+    "sections": {
+      "tonight": "Missions tonight",
+      "tonightMeta": "{count} targets visible",
+      "tonightCount": "{total} targets · {visible} visible tonight",
+      "earnMeta": "{count} actions",
+      "quizzesMetaShort": "earn while you wait",
+      "upcoming": "Upcoming events this month",
+      "eventsCount": "{count, plural, one {# event} other {# events}}",
+      "rare": "Rare events in {year}",
+      "rareMeta": "{count} once-a-year",
+      "quizzes": "Knowledge quizzes",
+      "quizzesMeta": "{count} quizzes · earn while you wait",
+      "scope": "Using your telescope",
+      "scopeMeta": "4 quick rules",
+      "observer": "Before you step out",
+      "observerMeta": "field checklist",
+      "earn": "Ways to earn",
+      "daytime": "Daytime missions",
+      "daytimeNow": "observable right now",
+      "daytimeLater": "after sunrise"
+    },
+    "filters": {
+      "all": "All",
+      "visible": "Visible now",
+      "naked": "Naked eye",
+      "telescope": "Telescope",
+      "binoculars": "Binoculars",
+      "rare": "Rare",
+      "deep": "Deep sky"
+    },
+    "progress": {
+      "title": "Tonight",
+      "complete": "Complete",
+      "starsEarned": "Stars earned",
+      "upNow": "Up now",
+      "ofTargets": "of {total} targets",
+      "nextReward": "Next reward",
+      "coupon": "Astroman coupon",
+      "maxReward": "Top tier reached",
+      "continue": "Continue mission",
+      "start": "Start tonight's sweep",
+      "allDone": "All targets observed"
+    },
+    "iss": {
+      "name": "ISS pass",
+      "loading": "Checking",
+      "none": "No pass",
+      "peak": "Max {deg}°"
+    },
+    "global": {
+      "title": "Global mission",
+      "heading": "Observe {target} tonight",
+      "observers": "observers",
+      "reward": "+{n} bonus Stars",
+      "loading": "Loading community goal…"
+    },
+    "perseidsEvent": {
+      "badge": "Special edition",
+      "title": "Perseid Meteor Shower",
+      "rate": "~{zhr}/hr · peak {peak}",
+      "peakToday": "Peak night — tonight",
+      "peakTomorrow": "Peak night tomorrow",
+      "peakInDays": "Peak in {n} days",
+      "active": "Still active",
+      "reward": "Reward",
+      "bonus": "2x near peak",
+      "observe": "Observe →"
+    },
+    "quest": {
+      "badge": "Tonight's main quest",
+      "bestViewing": "Best viewing",
+      "reward": "Reward",
+      "visibility": "Visibility",
+      "observe": "Observe",
+      "anytime": "All night",
+      "comingLater": "Rises {time}"
+    },
+    "nearby": {
+      "title": "Nearby sky events",
+      "viewAll": "View all",
+      "now": "Now",
+      "after": "After {time}",
+      "empty": "Nothing above the horizon right now"
+    },
+    "list": {
+      "min": "{n} min",
+      "visibleNow": "Visible now",
+      "after": "After {time}",
+      "comingLater": "Coming later",
+      "observe": "Observe",
+      "viewAll": "View all missions",
+      "showLess": "Show less"
+    },
+    "weather": {
+      "title": "Weather",
+      "clear": "Clear",
+      "partly": "Partly cloudy",
+      "cloudy": "Cloudy",
+      "cloudCover": "Cloud cover",
+      "seeing": "Seeing",
+      "good": "Great night for observing",
+      "poor": "Poor conditions tonight",
+      "unknown": "—"
+    },
+    "tipTitle": "Tonight tip",
+    "streakTitle": "Streak",
+    "resetsMidnight": "Resets at midnight",
+    "quickObserve": "Quick observe",
+    "glance": {
+      "title": "Tonight at a glance",
+      "dark": "Astronomical dark",
+      "noDark": "No full darkness",
+      "moon": "Moon",
+      "best": "Best target",
+      "darkest": "Darkest at",
+      "visible": "Targets up",
+      "conditions": "Conditions",
+      "clear": "Clear skies",
+      "cloud": "{pct}% cloud",
+      "lit": "{pct}% lit",
+      "unknown": "—"
+    },
+    "primeBadge": "Prime target tonight",
+    "observe": "Observe",
+    "scopeName": "Celestron AstroMaster 70AZ",
+    "whyHard": "Why {name} is hard",
+    "tile": {
+      "rises": "Rises",
+      "belowHorizon": "Below horizon",
+      "visibleAfter": "Visible after",
+      "notTonight": "Not visible tonight — set a reminder?",
+      "remind": "Remind me",
+      "reminderOn": "Reminder on — we'll ping you when it's up",
+      "reminderRemove": "Remove",
+      "reminderSet": "Reminder set",
+      "reminderBlocked": "Notifications blocked — enable in browser settings"
+    },
+    "liveStatus": {
+      "daytime": "Daylight — sky too bright",
+      "cloudy": "Overcast — nothing observable",
+      "takeQuiz": "Take a quiz",
+      "nothingUp": "Nothing above the horizon",
+      "aria": "Live sky status",
+      "listAria": "Live visible targets",
+      "live": "LIVE",
+      "alt": "alt",
+      "mag": "mag"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "med": "Medium",
+      "hard": "Hard",
+      "expert": "Expert"
+    },
+    "equip": {
+      "naked": "Naked eye",
+      "telescope": "Telescope",
+      "binoculars": "Binoculars"
+    },
+    "grid": {
+      "moon": {
+        "name": "The Moon",
+        "desc": "Craters, seas, and the terminator line"
+      },
+      "mercury": {
+        "name": "Mercury",
+        "desc": "Swiftest planet — catch it low at twilight"
+      },
+      "jupiter": {
+        "name": "Jupiter",
+        "desc": "Spot the four Galilean moons"
+      },
+      "pleiades": {
+        "name": "Pleiades (M45)",
+        "desc": "Seven sisters — naked eye showpiece"
+      },
+      "venus": {
+        "name": "Venus",
+        "desc": "Brightest planet — the evening star"
+      },
+      "saturn": {
+        "name": "Saturn",
+        "desc": "The rings are unmistakable"
+      },
+      "mars": {
+        "name": "Mars",
+        "desc": "Look for the polar ice cap"
+      },
+      "orion": {
+        "name": "Orion Nebula (M42)",
+        "desc": "A stellar nursery — glows in any scope"
+      },
+      "andromeda": {
+        "name": "Andromeda (M31)",
+        "desc": "2.5 million light-years — nearest spiral"
+      },
+      "crab": {
+        "name": "Crab Nebula (M1)",
+        "desc": "Supernova remnant from 1054 AD"
+      },
+      "day-sky": {
+        "name": "Today's Sky",
+        "desc": "Photograph the sky above you right now — clouds, blue, storm front, whatever it is doing."
+      },
+      "daytime-moon": {
+        "name": "Daytime Moon",
+        "desc": "Catch the Moon in a blue daylight sky — most people never notice it is there."
+      },
+      "sky-optics": {
+        "name": "Halos & Sundogs",
+        "desc": "Photograph a real atmospheric optic: a 22° halo, a sundog, a rainbow, crepuscular rays, iridescent cloud."
+      },
+      "sunset": {
+        "name": "Sunset & Blue Hour",
+        "desc": "Photograph the colour of the sky as the Sun goes down — the start of every observing night."
+      },
+      "the-sun": {
+        "name": "The Sun",
+        "desc": "Photograph the Sun itself — low over the horizon, through cloud, or behind a building."
+      },
+      "perseids": {
+        "name": "Perseid Meteor Shower",
+        "desc": "Up to 100 meteors/hr — peak tonight"
+      }
+    },
+    "tips": {
+      "cool": {
+        "title": "Let it cool",
+        "body": "Set it outside 30 min before viewing."
+      },
+      "zoom": {
+        "title": "Start zoomed out",
+        "body": "Use the lowest power eyepiece first."
+      },
+      "align": {
+        "title": "Align finder by day",
+        "body": "Aim at a distant tree or sign."
+      },
+      "eyes": {
+        "title": "Let your eyes adjust",
+        "body": "20 min in the dark. No phone screens."
+      }
+    },
+    "observer": {
+      "dark": {
+        "label": "Best dark hours",
+        "body": "The sky is darkest now. Arrive 15 min early so your eyes adjust."
+      },
+      "moon": {
+        "label": "Moonlight",
+        "value": "{pct}% lit",
+        "body": "A bright Moon hides faint stars. Keep it behind you."
+      },
+      "target": {
+        "label": "How high to look",
+        "value": "{deg}° up",
+        "body": "Your target sits this high up. Pick a spot with open sky."
+      },
+      "comfort": {
+        "label": "Clouds",
+        "value": "{pct}% cloud",
+        "body": "Clouds block the view — wait for clear gaps. Dress warm."
+      },
+      "phone": {
+        "label": "Screen brightness",
+        "value": "Dim screen",
+        "body": "Turn brightness down to protect your night vision."
+      }
+    },
+    "eventType": {
+      "eclipse-lunar": "Lunar eclipse",
+      "eclipse-solar": "Solar eclipse",
+      "conjunction": "Conjunction",
+      "comet": "Comet",
+      "opposition": "Opposition",
+      "meteor-shower": "Meteor shower"
+    },
+    "eventDiff": {
+      "naked-eye": "Naked eye",
+      "binoculars": "Binoculars",
+      "telescope": "Telescope",
+      "expert": "Expert"
+    },
+    "countdown": {
+      "today": "today",
+      "tomorrow": "tomorrow",
+      "past": "past",
+      "inDays": "in {n}d",
+      "inMonths": "in {n}mo"
+    },
+    "eventSheet": {
+      "where": "Where to see it",
+      "tip": "Tip"
+    }
+  },
+  "checkout": {
+    "back": "Back",
+    "title": "Checkout",
+    "noProduct": "No product selected.",
+    "productNotFound": "Product not found.",
+    "backToMarketplace": "Back to marketplace",
+    "deliveryDetails": "Delivery details",
+    "fieldName": "Full name",
+    "fieldPhone": "Phone",
+    "fieldCountry": "Country",
+    "fieldCity": "City",
+    "fieldAddress": "Street address",
+    "fieldNotes": "Delivery notes (optional)",
+    "phName": "Jane Doe",
+    "phPhone": "+995 5XX XX XX XX",
+    "phCountry": "Georgia",
+    "phCity": "Tbilisi",
+    "phAddress": "123 Galaxy Ave, Apt 4",
+    "phNotes": "Buzz code, doorman, leave at door, etc.",
+    "shipsTo": "{dealer} ships to:",
+    "starsShort": "You have ✦ {balance} — {short} more Stars needed.",
+    "earnMore": "Earn Stars",
+    "burnTitle": "Redeem Stars · up to {pct}% off",
+    "burnBalance": "Balance",
+    "burningLabel": "redeeming",
+    "newTotal": "New total",
+    "burnConfirmed": "Redeemed → view certificate",
+    "burningStars": "Redeeming Stars…",
+    "creatingOrder": "Creating order…",
+    "preparingWallet": "Preparing your order…",
+    "redeemStars": "Redeem {stars} stars",
+    "paySolAmount": "Pay {sol} SOL",
+    "payWithSol": "Pay with SOL",
+    "signInNote": "You'll sign in first — payment continues automatically.",
+    "scanToPay": "Scan to pay",
+    "scanHelp": "Open any Solana wallet (Phantom, Solflare, Backpack) and scan this code, or tap below to open your wallet directly.",
+    "openWallet": "Open in wallet app",
+    "waiting": "Waiting for confirmation…",
+    "stillWaiting": "Still not confirmed. If you already paid, it can take a minute — check again.",
+    "checkAgain": "Check again",
+    "cancelEdit": "Cancel and edit details",
+    "doneStars": "Stars redeemed",
+    "donePaid": "Payment confirmed",
+    "doneStarsBody": "{stars} stars redeemed. {dealer} will reach out by phone to confirm shipping.",
+    "donePaidBody": "Your order is on its way. {dealer} will reach out by phone to confirm shipping.",
+    "theDealer": "The dealer",
+    "viewTx": "View transaction",
+    "orderHistory": "Order history",
+    "keepShopping": "Keep shopping",
+    "summary": "Order summary",
+    "price": "Price",
+    "starsBurned": "Stars redeemed",
+    "discount": "Discount",
+    "stars": "Stars",
+    "order": "Order",
+    "suggested": "Suggested telescopes",
+    "seeAll": "See all",
+    "errGeneric": "Could not create order"
+  },
+  "marketplacePage": {
+    "all": "All",
+    "telescopes": "Telescopes",
+    "eyepieces": "Eyepieces",
+    "binoculars": "Binoculars",
+    "accessories": "Accessories",
+    "skillBeginner": "Beginner",
+    "skillIntermediate": "Mid",
+    "skillAdvanced": "Advanced",
+    "bal": "Bal",
+    "yourBalance": "Your Balance",
+    "starsLabel": "Stars",
+    "signInToEarn": "Sign in to earn Stars",
+    "redeemStars": "Redeem · {stars} Stars",
+    "payWithSol": "Pay with SOL",
+    "starsToGo": "{stars} Stars to go",
+    "orStars": "or {stars} Stars",
+    "sortDefault": "Beginner first",
+    "sortPriceAsc": "Price ↑",
+    "sortPriceDesc": "Price ↓",
+    "clearFilters": "Clear",
+    "resetFilters": "Reset filters",
+    "detailBack": "Back to shop",
+    "detailNotFound": "Product not found.",
+    "detailSpecs": "Specifications",
+    "viewOnDealer": "View on {dealer}",
+    "redeemStarsCopy": "Spend Stars on gear discounts and Astroman till codes.",
+    "redeemStarsCta": "Open Stars →",
+    "trustShippingTitle": "Free Shipping",
+    "trustShippingSub": "Over $100",
+    "trustPaymentTitle": "Secure Payment",
+    "trustPaymentSub": "Cards Accepted",
+    "trustProtectionTitle": "Buyer Protection",
+    "trustProtectionSub": "30-day guarantee",
+    "trustBrandsTitle": "Authentic Brands",
+    "trustBrandsSub": "Celestron · Levenhuk",
+    "heroTitleLead": "Gear for your",
+    "heroTitleAccent": "stargazing journey.",
+    "heroSubtitle": "Quality telescopes, optics and accessories for every explorer.",
+    "heroShopTelescopes": "Shop Telescopes",
+    "heroShopDeals": "Shop Deals",
+    "heroTelescopeAlt": "Telescope",
+    "allCategory": "All",
+    "earnStarsTitle": "Earn Stars on every purchase",
+    "earnStarsSub": "Collect Stars to redeem on future gear and discounts.",
+    "earnStarsCta": "Learn more",
+    "featuredTitle": "Featured Picks",
+    "viewAll": "View all",
+    "allGear": "All Gear",
+    "shopByCategory": "Shop by Category",
+    "itemsLabel": "items",
+    "infoEarnTitle": "Earn Stars",
+    "infoEarnSub": "Get Stars back on every purchase",
+    "infoRedeemTitle": "Redeem",
+    "infoRedeemSub": "Use Stars for discounts",
+    "infoPicksTitle": "Community Picks",
+    "infoPicksSub": "Top gear chosen by observers",
+    "recommendedTitle": "Recommended for You",
+    "helpTitle": "Need help choosing?",
+    "helpSub": "ASTRA can match gear to your budget and observing goals.",
+    "helpCta": "Chat with Expert",
+    "noItems": "No items match these filters",
+    "guideTitle": "Not sure where to start?",
+    "guideSubtitle": "Pick a goal · we narrow the shop",
+    "browsePicks": "Browse picks →",
+    "guides": {
+      "moonPlanets": {
+        "title": "Moon & planets",
+        "copy": "Bright, dependable targets. A small refractor and an alt-az mount get you craters and Saturn's rings on night one."
+      },
+      "deepSky": {
+        "title": "Galaxies & nebulae",
+        "copy": "Deeper sky needs more aperture and a darker site. Step up to a Dobsonian or a mid Newtonian on an EQ mount."
+      },
+      "astrophoto": {
+        "title": "Astrophotography",
+        "copy": "Tracking mount, long exposures, patient framing. Specialised optics and accessories — start with a sturdy GoTo."
+      }
+    }
+  },
+  "hub": {
+    "search": "Search",
+    "openSearch": "Open search",
+    "soon": "Soon",
+    "explore": "Explore",
+    "you": "You",
+    "skyWatcher": "Sky Watcher",
+    "solarSystem3d": "Solar system 3D",
+    "missions": "Missions",
+    "markets": "Sky Markets",
+    "marketplace": "Marketplace",
+    "astraAi": "ASTRA AI",
+    "learning": "Learning",
+    "feed": "Feed",
+    "leaderboard": "Leaderboard",
+    "profile": "Profile",
+    "discoveries": "Discoveries"
+  },
+  "footer": {
+    "tagline": "The night-sky companion for anyone with a smartphone. Forecast, photograph, earn real optics.",
+    "colProduct": "Product",
+    "colCompany": "Company",
+    "colLegal": "Legal",
+    "sky": "Sky",
+    "missions": "Missions",
+    "learning": "Learning",
+    "shop": "Shop",
+    "observatory": "Observatory",
+    "faq": "FAQ",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "cookies": "Cookie policy",
+    "accessibility": "Accessibility",
+    "returns": "Returns",
+    "contact": "Contact",
+    "rights": "© {year} Stellar. All rights reserved.",
+    "builtIn": "Built in Tbilisi"
+  },
+  "homepage": {
+    "homeTabLabel": "Home",
+    "hero": {
+      "headline1": "Is tonight",
+      "headline2": "a telescope night?",
+      "subtitle": "Live sky conditions for your location — and Stars rewards for what you observe.",
+      "ctaPrimary": "Start tonight's mission",
+      "ctaSecondary": "Start Observing",
+      "cards": {
+        "consoleTitle": "Sky tonight",
+        "today": "Tonight",
+        "tomorrow": "Tomorrow",
+        "cloud": "cloud",
+        "tempLabel": "temp",
+        "moonLabel": "moon",
+        "planetsUp": "planets up",
+        "visibleNow": "Visible now",
+        "noneUp": "No planets up right now",
+        "skyScore": "Sky score",
+        "verdict": {
+          "go": "Go",
+          "maybe": "Maybe",
+          "skip": "Skip"
+        },
+        "missionsLabel": "Tonight's mission"
+      },
+      "features": {
+        "track": {
+          "title": "Track",
+          "desc": "Real-time sky conditions"
+        },
+        "find": {
+          "title": "Find",
+          "desc": "Objects visible tonight"
+        },
+        "earn": {
+          "title": "Earn",
+          "desc": "Complete missions to earn rewards"
+        }
+      },
+      "ctaExplore": "Explore in 3D"
+    },
+    "partners": "Partner brands",
+    "achievements": {
+      "eyebrow": "Recognition",
+      "items": {
+        "tether": {
+          "label": "Tether Frontier",
+          "rank": "1st place",
+          "date": "May 2026",
+          "linkLabel": "View Tether Frontier Hackathon track on Superteam Earn"
+        },
+        "superteam": {
+          "label": "Superteam",
+          "rank": "Grant",
+          "date": "2026",
+          "linkLabel": "View Solana Foundation Georgia Grants on Superteam Earn"
+        }
+      }
+    },
+    "howItWorks": {
+      "eyebrow": "How it works",
+      "step1": "Sign in",
+      "step2": "Find a target",
+      "step3": "Earn Stars",
+      "cta": "Start observing →",
+      "signIn": {
+        "title": "Welcome",
+        "subtitle": "Free account · auto wallet",
+        "email": "you@email.com",
+        "cta": "Continue"
+      },
+      "earn": {
+        "sealed": "Discovery sealed",
+        "stars": "+75 ✦"
+      }
+    },
+    "missions": {
+      "eyebrow": "Missions",
+      "title": "Complete missions. Earn rewards.",
+      "step1": "Pick a target",
+      "step2": "Photograph it",
+      "step3": "Save forever.",
+      "cta": "See all missions →",
+      "screenLabel": "Missions",
+      "screenTitle": "Seven targets.",
+      "screenSub": "Finish all seven → free telescope"
+    },
+    "learn": {
+      "eyebrow": "Learn",
+      "title": "Know what you're looking at.",
+      "step1": "Tap an object",
+      "step2": "Read the guide",
+      "step3": "Take the quiz",
+      "cta": "Open the field guide →",
+      "screenLabel": "Field guide",
+      "screenTitle": "Solar System",
+      "screenSub": "Tap a planet · take a quiz",
+      "featured": "Featured",
+      "upTonight": "Up tonight · 38°",
+      "quizLabel": "Quiz",
+      "quizSubject": "Constellations · 10 Q",
+      "uranus": "Uranus"
+    },
+    "skyPage": {
+      "eyebrow": "The Sky page",
+      "title": "Tonight, in three screens.",
+      "livePlanetMap": "Live planet map",
+      "arFinder": "AR finder",
+      "events": "Rare events calendar",
+      "cta": "Open the Sky page →",
+      "mapLocation": "Tbilisi",
+      "mapVisible": "7 visible",
+      "mapTitle": "Sky map",
+      "arLabel": "AR",
+      "eventsLabel": "Events",
+      "eventsNext": "Next: May 12",
+      "eventsTitle": "Sky calendar 2026",
+      "colDate": "Date",
+      "colType": "Type",
+      "colMoon": "Moon",
+      "typeConj": "Conj.",
+      "eventNames": {
+        "lunar": "Lunar Eclipse",
+        "lyrids": "Lyrids",
+        "conj": "Mars × Saturn",
+        "perseids": "Perseids",
+        "solar": "Solar Eclipse",
+        "saturnOpp": "Saturn Opp.",
+        "geminids": "Geminids"
+      }
+    },
+    "marketplace": {
+      "eyebrow": "Marketplace",
+      "title": "The shop is in the app.",
+      "cta": "Open the marketplace →"
+    },
+    "vision": {
+      "eyebrow": "Vision",
+      "title1": "An app for stargazers.",
+      "title2": "Built around community."
+    },
+    "comparison": {
+      "eyebrow": "Comparison",
+      "title1": "What sets Stellar apart",
+      "title2": "from other astronomy apps.",
+      "otherApps": "Other apps",
+      "stellar": "Stellar",
+      "footnote": "Reflects features commonly available across leading astronomy apps, May 2026.",
+      "features": {
+        "skyMap": "Sky map & planet tracker",
+        "forecast": "7-day clear-sky forecast",
+        "astra": "AI astronomer companion",
+        "rewards": "Verified observations & rewards",
+        "marketplace": "Built-in telescope marketplace"
+      }
+    },
+    "community": {
+      "eyebrow": "Community",
+      "title": "Looking up, together.",
+      "cta": "Open the feed"
+    }
+  },
+  "observeFlow": {
+    "target": {
+      "eyebrow": "Tonight's Target",
+      "beginner": "Beginner",
+      "begin": "Begin Observation",
+      "demo": "Demo mode — upload any photo to try the flow"
+    },
+    "notFound": {
+      "title": "Mission not found",
+      "desc": "The mission you're looking for doesn't exist.",
+      "back": "Back to missions"
+    },
+    "tonight": {
+      "title": "Tonight's Targets",
+      "dayStreak": "{count} day streak",
+      "bonus": "bonus",
+      "belowHorizon": "Below horizon",
+      "observeNow": "Observe Now"
+    },
+    "capture": {
+      "title": "Capture your observation",
+      "tooDark": "Frame too dark — please point at the sky and try again",
+      "previewAlt": "Observation preview",
+      "uploaded": "UPLOADED",
+      "captured": "CAPTURED",
+      "submit": "Submit for Verification",
+      "retake": "Retake",
+      "cameraRequired": "Camera access required",
+      "cameraHelp": "Allow camera access in your browser settings, or upload a saved sky photo.",
+      "uploadDevice": "Upload from Device",
+      "uploadTitle": "Upload from device",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "howTo": "How to capture",
+      "tip1": "Point your telescope at the target object",
+      "tip2": "Hold your phone camera to the eyepiece",
+      "tip3": "Center the object and press shutter — or tap the upload icon",
+      "phoneCameraTitle": "Shoot with your phone's camera",
+      "usePhoneCamera": "Use phone camera",
+      "phoneCameraHint": "For the sharpest shot, tap the phone icon — it opens your own camera app, so you get Night mode, HDR and full resolution."
+    },
+    "verify": {
+      "close": "Close",
+      "keepAnyway": "Keep it anyway",
+      "aiConfidence": "AI: {object} · {confidence} confidence",
+      "notVerifiedLabel": "Not verified",
+      "keepsakeNote": "saved as a keepsake · +10 ✦ (max 25 a day)",
+      "uploadHalfNote": "Uploaded photo · earns half the Stars of an in-app capture",
+      "keepsakeLimit": "Daily keepsake limit reached — photo saved to your gallery, no Stars this time.",
+      "checkForecast": "Check sky forecast",
+      "stage": {
+        "photoTitle": "Verifying Photo",
+        "doneTitle": "Finishing Up",
+        "skyTitle": "Analyzing Sky",
+        "photoSub": "Checking your photo",
+        "doneSub": "Almost there",
+        "skySub": "Reading tonight's conditions"
+      },
+      "error": {
+        "offline": "No internet connection — try again when back online",
+        "skyUnavailable": "Sky data unavailable — proceeding with estimated conditions.",
+        "cloudy": "Cloudy sky — observation logged with 0 stars. You can still save it.",
+        "photoUnverified": "Couldn't verify this photo — no Stars. You can still keep it as a record.",
+        "skyOffline": "Sky check offline — proceeding with estimated conditions.",
+        "tooMany": "Too many at once right now — try again in a minute.",
+        "saveFailed": "Couldn't save your record — please retry.",
+        "network": "Network error — please retry."
+      },
+      "panel": {
+        "captured": "Observation Captured",
+        "photoAlt": "Observation photo",
+        "clearSky": "Clear sky",
+        "cloudy": "Cloudy",
+        "skyData": "Sky Data",
+        "cloud": "Cloud",
+        "visibility": "Visibility",
+        "temp": "Temp",
+        "humidity": "Humidity",
+        "wind": "Wind",
+        "kmh": "km/h",
+        "signature": "Signature",
+        "oracle": "Sky Check",
+        "createNft": "Certify Discovery  +{stars} Stars",
+        "logCloudy": "Log Cloudy Observation",
+        "quality": {
+          "Exceptional": "Exceptional",
+          "Excellent": "Excellent",
+          "Good": "Good",
+          "Fair": "Fair",
+          "Poor": "Poor"
+        }
+      },
+      "rejection": {
+        "duplicate_image": "Someone already submitted this photo — no Stars. You can keep it anyway.",
+        "gps_mismatch": "Location doesn't match — no Stars. You can keep it anyway.",
+        "photo_too_old": "Photo is over 24h old — no Stars tonight. You can keep it anyway.",
+        "stock_image_detected": "Found elsewhere online — no Stars. You can keep it anyway.",
+        "verification_unavailable": "Couldn't analyze this photo — no Stars. Keep it anyway, or try again.",
+        "ai_generated": "Looks AI-generated — no Stars. You can keep it anyway.",
+        "screenshot_detected": "Looks like a screenshot — no Stars. You can keep it anyway.",
+        "too_cloudy": "Too cloudy to verify — no Stars. Keep it, or try again on a clearer night.",
+        "timestamp_invalid": "The capture time isn't plausible — no Stars. You can keep it anyway."
+      }
+    },
+    "result": {
+      "starClaimError": "Could not claim star",
+      "shareObserved": "I just observed {name} on Stellar",
+      "shareSealed": "Certified.",
+      "shareTitle": "I sealed {name} on Stellar",
+      "feedBody": "Sealed {name} on Stellar",
+      "cosmicBonus": "Cosmic Bonus",
+      "weeklyChallenge": "Weekly Challenge",
+      "claimed": "Claimed",
+      "streakMultiplier": "{multiplier}× streak multiplier",
+      "nameStar": "Name a star",
+      "starIn": "in {constellation}",
+      "starMagnitude": "magnitude {mag}",
+      "inscribeNote": "Your name will be inscribed on your discovery certificate.",
+      "starPlaceholder": "e.g. Nino's Star, Tbilisi",
+      "inscribe": "Inscribe",
+      "skip": "Skip",
+      "starNamed": "Your star is named.",
+      "viewProof": "View proof page",
+      "sealed": {
+        "keepsakeMinted": "KEEPSAKE SAVED",
+        "discoverySealed": "DISCOVERY SEALED",
+        "kept": "kept",
+        "sealed": "sealed",
+        "certificate": "CERTIFICATE",
+        "observationTitle": "Stellar Observation",
+        "viewOnSolana": "View Certificate",
+        "viewInCollection": "View in collection",
+        "share": "Share",
+        "post": "Post",
+        "save": "Save",
+        "next": "Next",
+        "unverifiedFallback": "This photo couldn't be certified as taken tonight on this object, so it earned no Stars — but it's yours to keep as a personal record.",
+        "scoreLabel": {
+          "exceptional": "EXCEPTIONAL",
+          "good": "GOOD",
+          "fair": "FAIR",
+          "poor": "POOR"
+        },
+        "taglines": {
+          "fallback": "Certified",
+          "jupiter": "Four Galilean moons, captured",
+          "quick-jupiter": "Four Galilean moons, captured",
+          "saturn": "Rings at their widest",
+          "quick-saturn": "Rings at their widest",
+          "moon": "Craters sharp at the terminator",
+          "venus": "The evening star, claimed",
+          "mars": "Rust-red and unmistakable",
+          "mercury": "Caught the fleeting one",
+          "pleiades": "Seven sisters, one glance",
+          "orion": "A stellar nursery, 1,344 ly close",
+          "andromeda": "A trillion suns",
+          "crab": "Ghost of a 1054 AD supernova"
+        },
+        "metaLines": {
+          "fallback": "CELESTIAL",
+          "jupiter": "GAS GIANT",
+          "quick-jupiter": "GAS GIANT",
+          "saturn": "RINGED PLANET",
+          "quick-saturn": "RINGED PLANET",
+          "moon": "SATELLITE · EARTH",
+          "venus": "EVENING STAR",
+          "mars": "TERRESTRIAL",
+          "mercury": "INNER PLANET",
+          "pleiades": "M45 · CLUSTER",
+          "orion": "M42 · NEBULA",
+          "andromeda": "M31 · GALAXY",
+          "crab": "M1 · REMNANT"
+        }
+      }
+    },
+    "toast": {
+      "copied": "Copied to clipboard",
+      "shareUnavailable": "Share unavailable",
+      "saved": "Saved to your collection",
+      "posted": "Posted to your feed",
+      "postFailed": "Could not post — try again"
+    }
+  },
+  "profileUi": {
+    "avatar": {
+      "close": "Close",
+      "pick": "Select avatar",
+      "heading": "Choose your way",
+      "change": "Change avatar"
+    },
+    "hero": {
+      "explorer": "Certificate"
+    },
+    "target": {
+      "moon": "Moon",
+      "planet": "Planet",
+      "stars": "Stars",
+      "constellation": "Constellation",
+      "deepSky": "Deep sky",
+      "unknown": "Unknown"
+    },
+    "quality": {
+      "rejected": "Rejected",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    },
+    "onchain": {
+      "title": "Verified Record · Proof of Observation",
+      "reading": "Loading record…",
+      "verifiedOnSolana": "verified",
+      "observerAccount": "Observer ID",
+      "starsMultiplier": "Stars",
+      "progressToNext": "{count} more to {tier}",
+      "telescopePassport": "Telescope Passport",
+      "soulbound": "permanent",
+      "revoked": "revoked"
+    },
+    "username": {
+      "saveFailed": "Save failed",
+      "validation": "2–24 chars · letters, numbers, _ . -",
+      "edit": "Edit username",
+      "field": "Username",
+      "save": "Save username",
+      "cancel": "Cancel"
+    }
+  },
+  "nftsPage": {
+    "title": "My Observations",
+    "collection": "Your collection",
+    "signInDesc": "Sign in to view your observations.",
+    "signIn": "Sign In →",
+    "exampleObservations": "Example Observations",
+    "signInToView": "Sign in to view",
+    "observationFallback": "Stellar Observation",
+    "unknown": "Unknown",
+    "error": "Could not load — try again",
+    "retry": "Retry",
+    "removeConfirm": "Remove this observation from your gallery?",
+    "totalBalance": "Total balance: ✦ {balance} Stars",
+    "progress": {
+      "celestial": "Celestial"
+    },
+    "stats": {
+      "nfts": "Discoveries",
+      "stars": "Stars",
+      "clear": "Clear",
+      "bestNight": "Best night"
+    },
+    "sort": {
+      "recent": "Recent",
+      "stars": "Stars"
+    },
+    "cloud": {
+      "clear": "Clear",
+      "partial": "Partial",
+      "cloudy": "Cloudy"
+    },
+    "empty": {
+      "title": "Your observatory awaits",
+      "desc": "Complete a sky mission to record your first discovery.",
+      "cta": "Start a mission →"
+    },
+    "demo": {
+      "o1": {
+        "name": "Stellar Observation #001",
+        "target": "Moon"
+      },
+      "o2": {
+        "name": "Stellar Observation #002",
+        "target": "Jupiter"
+      },
+      "o3": {
+        "name": "Stellar Observation #003",
+        "target": "Orion Nebula"
+      }
+    },
+    "detail": {
+      "close": "Close",
+      "photoAlt": "Your observation",
+      "share": "Share",
+      "farcaster": "Farcaster",
+      "syncing": "Saving your discovery…",
+      "seal": "Certify →",
+      "demoLocal": "Demo · local proof only",
+      "viewExplorer": "View Certificate",
+      "removeFromGallery": "Remove from gallery",
+      "confirmDeleteLocal": "Permanently delete this local observation?",
+      "confirmHide": "Hide from your gallery? This won't delete your certified record.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "hide": "Hide",
+      "shareTweet": "I observed {target} and certified it with @StellarClub26 ✦ #Astronomy #Stellar",
+      "shareFarcaster": "Observed {target} and certified it with @StellarClub26 ✦",
+      "fields": {
+        "target": "Target",
+        "date": "Date",
+        "cloudCover": "Cloud Cover",
+        "starsEarned": "Stars Earned",
+        "location": "Location",
+        "oracleHash": "Verification ID"
+      }
+    },
+    "keepsakeName": "Stellar Keepsake: {target}",
+    "keepsakeTarget": "Unverified observation"
+  },
+  "leaderboardPage": {
+    "title": "Leaderboard",
+    "liveNotice": "Leaderboard updates with real observer data as missions are completed",
+    "error": "Couldn't load the leaderboard.",
+    "tryAgain": "Try again",
+    "obs": "{count} obs",
+    "rankings": "Rankings",
+    "you": "You",
+    "yourRank": "Your Rank: #{rank}",
+    "footer": "Updated every 5 minutes · Observations certified in real time",
+    "tabs": {
+      "week": "This Week",
+      "month": "This Month",
+      "all": "All Time"
+    },
+    "empty": {
+      "title": "Be the first on the board",
+      "desc": "Complete a mission to appear here.",
+      "cta": "Go to Missions →"
+    },
+    "rank": {
+      "Celestial": "Celestial",
+      "Pathfinder": "Pathfinder",
+      "Observer": "Observer",
+      "Stargazer": "Stargazer"
+    },
+    "cta": {
+      "title": "Complete missions to climb the leaderboard",
+      "desc": "Each verified observation earns Stars and moves you up the ranks",
+      "button": "Start Observing →"
+    }
+  },
+  "settingsUi": {
+    "title": "Settings",
+    "back": "Back",
+    "signInPrompt": "Sign in to access settings.",
+    "backToProfile": "← Back to Profile",
+    "accountTitle": "Account",
+    "addEmail": "Add Email",
+    "primaryEmail": "Primary email",
+    "linkEmail": "Link an email address",
+    "remove": "Remove",
+    "googleAccount": "Google Account",
+    "connected": "Connected",
+    "notificationsTitle": "Notifications",
+    "notifBlocked": "Notifications are blocked. Enable them for this site in your browser settings to receive alerts.",
+    "notifUnsupported": "Push notifications aren't supported on this device.",
+    "iosNeedsInstall": "On iPhone, add Stellar to your Home Screen first (Share → Add to Home Screen) to receive alerts.",
+    "visiblePlanets": "Visible Planets",
+    "visiblePlanetsSub": "Alert when Mars, Jupiter or Saturn rises tonight",
+    "skyEvents": "Sky Events",
+    "skyEventsSub": "Eclipses, meteor showers, ISS passes",
+    "weatherAlerts": "Weather Alerts",
+    "weatherAlertsSub": "When tonight clears for observing",
+    "appearanceTitle": "Appearance",
+    "darkMode": "Dark Mode",
+    "dayMode": "Day Mode",
+    "darkModeSub": "Deep space theme",
+    "dayModeSub": "Bright daytime theme",
+    "fieldMode": "Field Mode",
+    "fieldModeSub": "Red-on-black to protect your night vision at the eyepiece",
+    "walletTitle": "Wallet",
+    "noWallet": "No wallet yet",
+    "walletSub": "Your account · view certificate",
+    "walletSignInSub": "Sign in to create your wallet",
+    "privacyTitle": "Privacy & Data",
+    "privacyPolicy": "Privacy Policy",
+    "privacyPolicySub": "How we handle your data",
+    "terms": "Terms of Service",
+    "termsSub": "Usage rules and disclaimers",
+    "languageTitle": "Language",
+    "accountActionsTitle": "Account Actions",
+    "resetObservations": "Reset Observations",
+    "confirmReset": "Confirm reset?",
+    "resetSub": "Clears local mission data",
+    "signOut": "Sign Out",
+    "confirmSignOut": "Confirm sign out?",
+    "cancel": "Cancel"
+  },
+  "skyUi": {
+    "eventBanner": {
+      "openDetails": "{name} — open details",
+      "dismiss": "Dismiss",
+      "today": "Tonight",
+      "tomorrow": "Tomorrow",
+      "inDays": "In {days} days",
+      "tip": "Tip: {tip}",
+      "difficulty": {
+        "naked-eye": "naked eye",
+        "binoculars": "binoculars",
+        "telescope": "telescope",
+        "expert": "expert"
+      }
+    },
+    "locModal": {
+      "aria": "Choose your observing location",
+      "close": "Close",
+      "observingFrom": "Observing from",
+      "title": "Where are you tonight?",
+      "sub": "We use your location to show accurate rise/set times, the sky map, and a personalized forecast.",
+      "gpsDetecting": "Detecting your location…",
+      "gpsUse": "Use my GPS location",
+      "or": "OR",
+      "searchPlaceholder": "Search if your city is not shown…",
+      "cityLabel": "City",
+      "recent": "Recent",
+      "empty": "No cities found",
+      "privacy": "Your location is private and never shared."
+    },
+    "gallery": {
+      "aria": "Daily telescope images",
+      "eyebrow": "Captured by real telescopes",
+      "title": "Today in deep space",
+      "sub": "NASA · ESA · Webb · updated daily",
+      "close": "Close",
+      "viewOn": "View on {source}"
+    },
+    "skyTonight": "Sky Tonight",
+    "changeLocation": "Change observing location",
+    "tonightAtGlance": "Tonight at a glance",
+    "visibleNow": "Visible now",
+    "bestTargetsToSee": "Best targets to see",
+    "illuminationDetails": "Illumination · details",
+    "skyQuality": "Sky quality",
+    "sunset": "Sunset",
+    "sunrise": "Sunrise",
+    "solarSystem3d": "3D solar system",
+    "view3d": "3D View",
+    "nightModeRedLight": "Night mode — red light",
+    "night": "Night",
+    "nextBestTime": "Next best time",
+    "darkWindow": "Dark window",
+    "windowWord": "window",
+    "whatToLookFor": "What to look for",
+    "nothingUpYet": "Nothing up yet",
+    "darkSkyOpensAround": "dark sky opens around",
+    "tryAQuiz": "Try a quiz",
+    "whileYouWait": "while you wait.",
+    "viewAll": "View all",
+    "nothingAboveHorizon": "Nothing above the horizon yet",
+    "nextDarkWindow": "next dark window ~",
+    "quizTime": "quiz time",
+    "untilThen": "until then.",
+    "tonightOverview": "Tonight overview",
+    "bestWindow": "Best window",
+    "tipsForTonight": "Tips for tonight",
+    "tipN": "Tip {n}",
+    "threeSteps": "3 STEPS",
+    "moonAria": "{name}, {pct}% illuminated — open Moon details",
+    "moon": {
+      "new": "New Moon",
+      "thinCrescent": "Waxing Crescent",
+      "firstQuarter": "First Quarter",
+      "waxingGibbous": "Waxing Gibbous",
+      "full": "Full Moon",
+      "waningGibbous": "Waning Gibbous",
+      "lastQuarter": "Last Quarter",
+      "thinWaning": "Waning Crescent"
+    },
+    "quality": {
+      "excellent": "Excellent",
+      "veryGood": "Very good",
+      "fair": "Fair",
+      "poor": "Poor"
+    },
+    "darkNote": {
+      "milkyWay": "Milky Way visible",
+      "someMoon": "Some moonlight",
+      "brightMoon": "Bright moon tonight"
+    },
+    "tip": {
+      "planet": "Look {dir} after dark for bright {name}, about {deg}° up.",
+      "newMoon": "Near-new Moon — faint nebulae and the Milky Way are at their best. Let your eyes adapt for 20 minutes.",
+      "brightMoon": "A {moon} lights the sky — favour the Moon, planets, and bright double stars tonight.",
+      "scope": "Aim a telescope {dir}, about {deg}° up, to catch {name}.",
+      "cloud": "{pct}% cloud cover tonight — watch for clear gaps and keep your gear covered.",
+      "fallback": "Clear skies make all the difference — find a spot away from direct lights and let your eyes adapt."
+    },
+    "toast": {
+      "found": "Found {name}",
+      "foundSignIn": "Found {name} — sign in to earn Stars"
+    },
+    "instrument": {
+      "telescope": "Telescope",
+      "binoculars": "Binoculars"
+    },
+    "pos": {
+      "high": "High in the {dir}",
+      "mid": "In the {dir}",
+      "low": "Low in the {dir}"
+    },
+    "badge": {
+      "later": "Later",
+      "bestNow": "Best now",
+      "good": "Good"
+    }
+  },
+  "feedUi": {
+    "overview": {
+      "ariaLabel": "Tonight feed overview",
+      "title": "Tonight Overview",
+      "viewSky": "View sky now",
+      "moon": "Moon",
+      "moonValue": "Waning Gibbous, 92%",
+      "bestTargets": "Best targets",
+      "skyQuality": "Sky quality",
+      "sunset": "Sunset"
+    },
+    "trending": {
+      "ariaLabel": "Trending topics",
+      "title": "Trending Topics",
+      "posts": "posts"
+    }
+  },
+  "offlineBanner": {
+    "offline": "Offline — observations will queue and sync when you reconnect",
+    "backOnline": "Back online — syncing queued observations…"
+  },
+  "games": {
+    "upNow": {
+      "title": "Up Now?",
+      "tagline": "{n} objects. One question each: is it above the horizon right now?",
+      "shareTitle": "Up Now?",
+      "loading": "Loading tonight's sky…",
+      "error": "Couldn't load today's round.",
+      "retry": "Try again",
+      "submitting": "Recording your score…",
+      "locationFallback": "Answers computed for {city} — location unavailable",
+      "missionsCardDesc": "12 objects, one question each — is it up right now?",
+      "missionsCardScored": "Today: {score}/12",
+      "intro": {
+        "play": "Play",
+        "streakHint": "Play daily — a {n}-day streak earns bonus Stars.",
+        "nextRound": "Next round opens at 4am."
+      },
+      "round": {
+        "progress": "Round {n} of {total}",
+        "question": "Is it above the horizon right now?",
+        "identify": {
+          "question": "What are you looking at?",
+          "correct": "Correct",
+          "incorrect": "Not quite — this is",
+          "continue": "Continue"
+        },
+        "above": "Above horizon",
+        "below": "Below horizon",
+        "correct": "Correct",
+        "incorrect": "Not quite",
+        "next": "Next",
+        "seeResults": "See results",
+        "hint": {
+          "rise": "Rises at {time}",
+          "set": "Sets at {time}",
+          "circumpolarAlways": "Always above the horizon from here",
+          "circumpolarNever": "Never rises from here"
+        }
+      },
+      "result": {
+        "title": "Result",
+        "score": "Score",
+        "streak": "Streak",
+        "starsAwarded": "Stars",
+        "streakValue": "{n}-day streak",
+        "starsValue": "+{n} Stars",
+        "copy": "Copy result",
+        "copied": "Copied",
+        "viewSky": "Tonight's sky",
+        "startMission": "Start a mission"
+      },
+      "kind": {
+        "sun": "Sun",
+        "moon": "Moon",
+        "planet": "Planet",
+        "star": "Star",
+        "nebula": "Nebula",
+        "cluster": "Cluster",
+        "galaxy": "Galaxy"
+      },
+      "objects": {
+        "sun": {
+          "name": "Sun"
+        },
+        "moon": {
+          "name": "Moon"
+        },
+        "mercury": {
+          "name": "Mercury"
+        },
+        "venus": {
+          "name": "Venus"
+        },
+        "mars": {
+          "name": "Mars"
+        },
+        "jupiter": {
+          "name": "Jupiter"
+        },
+        "saturn": {
+          "name": "Saturn"
+        },
+        "uranus": {
+          "name": "Uranus"
+        },
+        "neptune": {
+          "name": "Neptune"
+        },
+        "sirius": {
+          "name": "Sirius"
+        },
+        "vega": {
+          "name": "Vega"
+        },
+        "deneb": {
+          "name": "Deneb"
+        },
+        "altair": {
+          "name": "Altair"
+        },
+        "arcturus": {
+          "name": "Arcturus"
+        },
+        "capella": {
+          "name": "Capella"
+        },
+        "rigel": {
+          "name": "Rigel"
+        },
+        "betelgeuse": {
+          "name": "Betelgeuse"
+        },
+        "aldebaran": {
+          "name": "Aldebaran"
+        },
+        "antares": {
+          "name": "Antares"
+        },
+        "spica": {
+          "name": "Spica"
+        },
+        "regulus": {
+          "name": "Regulus"
+        },
+        "procyon": {
+          "name": "Procyon"
+        },
+        "polaris": {
+          "name": "Polaris"
+        },
+        "fomalhaut": {
+          "name": "Fomalhaut"
+        },
+        "castor": {
+          "name": "Castor"
+        },
+        "pollux": {
+          "name": "Pollux"
+        },
+        "m42": {
+          "name": "Orion Nebula"
+        },
+        "m45": {
+          "name": "Pleiades"
+        },
+        "m31": {
+          "name": "Andromeda Galaxy"
+        },
+        "m13": {
+          "name": "Hercules Cluster"
+        },
+        "m57": {
+          "name": "Ring Nebula"
+        },
+        "m51": {
+          "name": "Whirlpool Galaxy"
+        },
+        "m8": {
+          "name": "Lagoon Nebula"
+        },
+        "m1": {
+          "name": "Crab Nebula"
+        },
+        "ngc869": {
+          "name": "Double Cluster"
+        }
+      }
+    },
+    "shootingStars": {
+      "title": "Shooting Stars",
+      "tagline": "Tap the shooting stars before they disappear. 30 seconds. Any time of day.",
+      "scoreLabel": "Catch",
+      "play": "Play",
+      "oncePerDay": "Earn Stars once per day",
+      "tapHint": "Tap the streaks of light",
+      "catchLabel": "Catch shooting star",
+      "caught": "caught",
+      "outOf": "out of {total} possible",
+      "saving": "Recording…",
+      "starsEarned": "Stars added to your wallet",
+      "noCatch": "Catch at least 1 next time",
+      "alreadyPlayed": "Already played today — come back tomorrow",
+      "missions": "Missions",
+      "tryAgain": "Try Again",
+      "back": "Back",
+      "missionsCardDesc": "30-second sky game — tap shooting stars",
+      "missionsCardScored": "Today: {score} caught"
+    },
+    "explore": {
+      "title": "Stellar Explore",
+      "missionsCardDesc": "Land at Stellar Base on the Moon — every mission finished is credited as Stars",
+      "missionsCardProgress": "{stars} of {max} Stars credited"
+    }
+  },
+  "observatory": {
+    "network": {
+      "title": "Observatory",
+      "lead": "Book time on a real telescope and watch a real object, live. When your sky is clouded over, someone else’s is not.",
+      "proofLink": "How a capture is proved",
+      "capturesLink": "What the network has photographed",
+      "requestsLink": "Ask for a photograph",
+      "firstLightLink": "First Light — the sky on a night that mattered",
+      "instrumentCount": "{count, plural, one {# instrument} other {# instruments}} on the network",
+      "observableNow": "{count} observable right now",
+      "empty": "No instruments are listed yet. The first node comes online with the beta.",
+      "tryTitle": "Try the instrument before you book it",
+      "tryLead": "A simulator of the same telescope, with the real field of view, the real slew times and the real safety envelope. It will refuse the same targets the instrument would, for the same reasons.",
+      "tryCta": "Open the simulator",
+      "ownerTitle": "Own a telescope that sits idle?",
+      "ownerLead": "Most instruments are used a handful of nights a year. Put yours on the network and it earns on the clear nights you are not out with it — the software connects the mount and camera you already own.",
+      "ownerCta": "What an operator earns",
+      "heroCredit": "NASA · illustrative, not a network capture",
+      "heroBook": "Hold a slot",
+      "plateCredit": "Moon: Gregory H. Revera · sensor and Jupiter drawn to scale",
+      "tonightTitle": "Tonight at the site",
+      "boardSiteTime": "{site} · site time",
+      "boardInstrument": "Instrument",
+      "boardCloud": "Cloud",
+      "boardDark": "Next dark window",
+      "boardDarkNow": "Now",
+      "instrumentsTitle": "The instruments",
+      "waysTitle": "Three ways to use it",
+      "waysNote": "No account needed for the first",
+      "way1Title": "Drive the simulator",
+      "way1Body": "The same optical train, the real slew times and the same safety envelope. It refuses the targets the instrument would refuse, for the same reasons.",
+      "way1Cta": "Open the simulator",
+      "way2Title": "Hold a slot",
+      "way2Body": "Twenty minutes of the instrument on a night the sky over the site is dark. Only the hours the operator takes work are offered.",
+      "way2Cta": "See the timetable",
+      "way3Title": "Ask for a photograph",
+      "way3Body": "Name the object and how long you will wait. The instrument works your request on the first clear night, between booked sessions.",
+      "way3Cta": "Join the queue",
+      "ownerEyebrow": "For telescope owners",
+      "ownerFrom": "from the first session",
+      "ownerTo": "once the instrument has earned it",
+      "moreTitle": "Also here"
+    },
+    "routing": {
+      "here": "{cloud}% cloud where you are.",
+      "under": "{name} in {site} is under {cloud}%.",
+      "openNow": "{name} in {site} is open right now.",
+      "nextSlot": "Its next free slot is {time} in your time, {minutes} minutes for {price} ₾.",
+      "full": "Its timetable is full tonight.",
+      "book": "Book {name}",
+      "askInstead": "Or ask for a photograph instead",
+      "sameSky": "{cloud}% cloud where you are — and the only instrument on the network is under the same weather. More telescopes in more places is the whole fix.",
+      "registered": "{count, plural, one {# owner has} other {# owners have}} registered one, not yet online.",
+      "putOnNetwork": "Put a telescope on the network"
+    },
+    "requests": {
+      "title": "Ask for a photograph",
+      "lead": "You do not have to be awake. Name an object and how long you are willing to wait, and the instrument works your request on the first night the sky allows it.",
+      "object": "object",
+      "wait": "willing to wait",
+      "nights3": "3 nights",
+      "week": "a week",
+      "fortnight": "a fortnight",
+      "priceNote": "{cls} · {price} ₾ · nothing is charged while the network is a dry run, and a window that closes without a photograph costs nothing at all.",
+      "join": "Join the queue",
+      "signIn": "Sign in to request",
+      "placing": "Placing…",
+      "failed": "That did not go through.",
+      "network": "Network error — try again.",
+      "yours": "Your requests",
+      "withdraw": "withdraw",
+      "waiting": "waiting for a clear night before {date}",
+      "scheduled": "scheduled for {date}",
+      "scheduledPlain": "scheduled",
+      "delivered": "delivered",
+      "expired": "the window closed without a clear night — nothing charged",
+      "cancelled": "withdrawn",
+      "footer": "A request is worked between booked sessions, so it never takes a slot from someone driving the telescope themselves.",
+      "classBright": "Bright",
+      "classDeepShort": "Deep sky",
+      "classDeepLong": "Deep sky, long"
+    },
+    "readiness": {
+      "sunAbove": "Sun is {deg}° above the horizon at {site}.",
+      "twilight": "Twilight at {site} — the sky is not dark enough yet.",
+      "cloud": "{pct}% cloud over {site}.",
+      "cloudy": "Cloud over {site}.",
+      "commissioning": "Built and under commissioning — not yet taking bookings.",
+      "noAgent": "No agent connection at {site}.",
+      "heartbeatLate": "Heartbeat is late at {site}.",
+      "weatherHold": "The operator has held {site} for weather.",
+      "operatorNote": "{note}",
+      "missionRunning": "A mission is running.",
+      "simulatorMode": "Connected, and running its own simulator — frames are not evidence.",
+      "nextWindow": "Next dark window at {time} site time."
+    },
+    "howItWorks": {
+      "title": "How a capture is proved",
+      "intro": "What happens between a mount slewing and a record on chain — and, more usefully, what the system refuses to do. Each step below names the code that enforces it.",
+      "step1Title": "The mount says where it pointed",
+      "step1Where": "node agent",
+      "step1Body": "A phone photograph of the sky proves very little about where the camera was aimed — which is why verifying one takes a vision model, EXIF, a dedup hash, a reverse-image lookup and a visibility cross-check, and still returns a confidence rather than a fact. A node capture starts from the other end. The mount reports the coordinates it slewed to from its own encoders, and the agent records them beside the frame. The pointing is not a claim anyone made about the picture; it is what the instrument did.",
+      "step2Title": "The frame is signed where it was taken",
+      "step2Where": "node agent",
+      "step2Body": "The agent signs the capture at the node, before it leaves the owner’s network. Stellar never receives node credentials and never addresses a mount or a camera: every command travels through the adapter, expires, is idempotent by command id, and is re-validated locally by the node against its own altitude envelope, horizon mask and Sun avoidance. A command the cloud approved and the node considers unsafe does not move the telescope.",
+      "step3Title": "Provenance is declared by the adapter, never by the client",
+      "step3Where": "adapter.ts · capture route",
+      "step3Body": "The capture endpoint asks adapterFor(node) what a frame taken this second is worth, and ignores the request body entirely — there is no field a client could set. It is asked at the moment of capture rather than read off the adapter once, because a node platform can be connected and still running its own simulator, and being wired to a telescope is not the same as that telescope being the thing that took the picture. Every uncertainty resolves downward: an unreachable node, a late heartbeat, a reply we do not recognise, all mean simulated.",
+      "step4Title": "One gate decides what a frame is worth",
+      "step4Where": "provenance.ts",
+      "step4Body": "admitToCollection() admits a capture only when its provenance is exactly \"instrument\", and returns the reason when it refuses. Minting, awarding Stars and writing an observation all pass through that one function rather than each surface remembering to check. A rule enforced in six places is a rule that will eventually be enforced in five.",
+      "step5Title": "An admitted capture becomes an ordinary observation",
+      "step5Where": "observation_log",
+      "step5Body": "Nothing about the record is special-cased. An admitted capture is written to the same observation log a phone photograph writes to, with the same verification columns and the same chain references — so the gallery, the feed, the passport and the share images keep working with no change at all. A stronger input, in the same shape.",
+      "step6Title": "The oracle records it on chain",
+      "step6Where": "stellar_observations",
+      "step6Body": "The Proof-of-Observation program stores each observation as its own account, seeded by the hash of the frame — which means re-recording the same image fails at account creation, and dedup is a property of the chain rather than a query we remember to run. Attestations are oracle-signed and written gaslessly on the user’s behalf. The user signed up with an email and never touches a key.",
+      "refusalsTitle": "What a simulated frame cannot do",
+      "refusalsIntro": "The simulator is open to everyone and needs no account. It models the real optical train, the real slew times and the real safety envelope, and it refuses the same targets the instrument would, for the same reasons. What it produces is a teaching tool, not evidence.",
+      "refusalNo": "no",
+      "refusalMint": "Mint a Discovery Attestation",
+      "refusalStar": "Award a single Star",
+      "refusalLog": "Be written to the observation log",
+      "refusalSell": "Be sold, printed, or delivered as a photograph",
+      "refusalsNote": "Simulated captures are stored and shown, always labelled. They are never quietly mixed in with instrument frames.",
+      "whyTitle": "Why the rail exists before the telescope does",
+      "whyP1": "In July 2026 a certify-all window put fourteen compressed NFTs on Solana mainnet carrying <m>Verified: yes</m> for observations that nothing had verified. They are still there; they cannot be unwritten, and the honest count of genuinely verified mints from that period is zero.",
+      "whyP2": "A simulator that could mint would be that same mistake, made deliberately and at scale. So the gate was built before the first instrument was wired, while it was still cheap to be strict — and the network was designed so that the only way to produce a record is to actually point a telescope at the sky.",
+      "tonightTitle": "Where this stands tonight",
+      "tonightCount": "<n>{live}</n> of <n>{total}</n> {total, plural, one {instrument is} other {instruments are}} wired to real hardware.",
+      "tonightWaiting": "Until that number moves, every frame the network produces is simulated and is marked as such everywhere it appears — including here. The steps above are built and enforced; what they are waiting for is first light.",
+      "tonightMixed": "The rest run on the simulator and are labelled wherever they appear.",
+      "simulator": "Open the simulator",
+      "network": "See the network",
+      "captures": "Every capture so far"
+    },
+    "captures": {
+      "title": "Captures",
+      "intro": "Every frame the network has taken, with the instrument that took it and what it is worth. Simulated frames are shown and labelled; they are never mixed in quietly.",
+      "howLink": "How a capture is proved",
+      "count": "<n>{count}</n> {count, plural, one {frame} other {frames}} · <n>{instrument}</n> from an instrument",
+      "emptyTitle": "No frames yet",
+      "emptyWhy": "Nothing has been captured through a booked session. The simulator keeps its frames in your browser on purpose — a sandbox that filed its output would fill this page with pictures no telescope took.",
+      "emptyNext": "The first node is under commissioning. From its first light, every frame appears here with its instrument, its integration and its provenance.",
+      "book": "Book a session",
+      "simulator": "Open the simulator",
+      "alt": "{target} from {site}",
+      "noFrame": "no frame stored",
+      "instrument": "instrument",
+      "aperture": "aperture",
+      "integration": "integration",
+      "subs": "subs",
+      "site": "site",
+      "night": "night",
+      "provenanceInstrument": "instrument",
+      "provenanceSimulated": "simulated"
+    },
+    "slots": {
+      "loading": "Working out when the sky is dark over the site…",
+      "terms": "<n>{minutes}</n> minutes on the instrument · <n>{price}</n> ₾ when sessions open. Holding a slot costs nothing today — no card, no payment.",
+      "holdsOffline": "Bookings are offline, so which slots are already taken is unknown. The nights below are still the real ones.",
+      "loadFailed": "The timetable could not be loaded. Try again in a moment.",
+      "actionFailed": "That did not work. Try again.",
+      "networkError": "Network error — try again.",
+      "empty": "No slots in the next few nights — the operator’s hours and the dark window do not overlap yet. Check back tomorrow.",
+      "nightHeading": "{night} · site time",
+      "openSession": "Open session",
+      "release": "Release",
+      "releasing": "Releasing…",
+      "taken": "Taken",
+      "holding": "Holding…",
+      "free": "Free",
+      "cloud": "{percent}% cloud",
+      "likelyClouded": "Likely clouded",
+      "clearest": "Clearest",
+      "avgCloud": "avg {percent}% cloud"
+    },
+    "node": {
+      "instrumentTitle": "The instrument",
+      "focalRatio": "Focal ratio",
+      "fieldOfView": "Field of view",
+      "plateScale": "Plate scale",
+      "resolvesTo": "Resolves to",
+      "mount": "Mount",
+      "header": "{site} · Bortle {bortle} · {timezone}",
+      "bestForLong": "Best for {targets}. The full Moon does not fit this field; planets sit inside a few percent of it.",
+      "holdTitle": "Hold a slot",
+      "holdIntro": "Only the hours when the sky is dark over {site} and the operator is taking work are shown.",
+      "commissioning": "{name} is still being commissioned, so a held slot is a place in the queue rather than a confirmed session — you will be told before anything is charged.",
+      "simTitle": "See what it would show you",
+      "simBody": "The simulator drives this same optical train — the field of view above, the real slew times, and the same safety envelope that will refuse a target too low or too close to the Sun.",
+      "simCta": "Open the simulator",
+      "requestTitle": "Not awake at three in the morning?",
+      "requestBody": "Ask for the object instead of the hour. Name what you want photographed and how long you will wait, and the instrument works your request on the first night the sky allows it — between the sessions people booked to drive themselves.",
+      "requestCta": "Ask for a photograph",
+      "targetMoon": "the Moon",
+      "targetPlanets": "planets",
+      "targetBrightDeepSky": "bright deep sky",
+      "tierFirstParty": "Stellar-operated",
+      "tierKitted": "Partner · Node Kit",
+      "tierByo": "Partner · own rig",
+      "optics": "Optics",
+      "aperture": "Aperture",
+      "focalLength": "Focal length",
+      "camera": "Camera",
+      "bestFor": "Best for {targets}",
+      "price": "{price} ₾ per {minutes} min",
+      "open": "Instrument and availability",
+      "session": "Session",
+      "code": "Instrument {code}",
+      "siteTime": "Site time"
+    },
+    "state": {
+      "online": "Observable now",
+      "busy": "Session in progress",
+      "weather": "Clouded out",
+      "daylight": "Daylight",
+      "offline": "Offline"
+    },
+    "firstLight": {
+      "title": "First Light",
+      "lead": "The sky on somebody’s night, and a photograph of one thing in it. Two true things on one sheet, each carrying its own date.",
+      "for": "for",
+      "occasion": "occasion",
+      "night": "the night",
+      "hour": "the hour (UTC)",
+      "place": "place",
+      "object": "object",
+      "skyTitle": "the sky that night",
+      "moon": "Moon",
+      "moonValue": "{phase} · {pct}% lit",
+      "alsoUp": "Also up",
+      "aboveHorizon": "{deg}° above the horizon, {compass}",
+      "belowHorizon": "below the horizon that hour — try another time of night",
+      "noPlanets": "no planets above the horizon",
+      "notComputed": "position not computed",
+      "better": "{name} was highest that night at {time} UTC, {deg}° up — use that hour",
+      "computed": "Computed sky positions for your selected moment and place. Weather and local obstructions are not reconstructed; being above the horizon does not guarantee visibility.",
+      "photoTitle": "the photograph",
+      "commission": "Photograph it for this poster, on the first clear night after the order.",
+      "commissionNote": "The certificate names that night and the instrument. +{price} ₾",
+      "archiveNote": "Without a commission, this is a computed sky sheet only. No archive photograph is attached. A commissioned photograph carries its own capture date when an instrument delivers it.",
+      "whatYouGet": "what you get",
+      "tierDigital": "Digital file",
+      "tierDigitalNote": "Delivered as a file, to print or keep.",
+      "tierPrint": "A3 print",
+      "tierPrintNote": "Printed in Tbilisi and posted.",
+      "tierFramed": "A3 framed",
+      "tierFramedNote": "Framed in Tbilisi, collected or couriered.",
+      "order": "Order",
+      "signIn": "Sign in to order",
+      "ordering": "Ordering…",
+      "done": "Request recorded. No payment has been taken. Photograph delivery is not yet available while the observatory is commissioning.",
+      "dryRun": "Nothing is charged while the network is a dry run.",
+      "sheet": "the sheet",
+      "failed": "That did not go through.",
+      "network": "Network error — try again.",
+      "footer": "A commissioned photograph joins the same queue anyone else’s request does, and is worked between booked sessions.",
+      "skyConditions": "Night-sky window",
+      "darkSky": "Sun at least 6° below the horizon; weather unknown",
+      "daylightSky": "Daylight or bright twilight — above the horizon does not mean visible",
+      "noNightWindow": "No suitable night-time window was found for this object on this UTC date. Try another object or date; you can still keep this computed sky record.",
+      "invalidDate": "Choose a valid date between 1900 and 2100 and an hour in UTC.",
+      "previewLoading": "Preparing your sky sheet…",
+      "previewAlt": "First Light preview showing computed sky positions and an empty photograph frame",
+      "previewFailed": "The preview could not load. Wait a moment, then try again.",
+      "previewRetry": "Try preview again",
+      "downloadPreview": "Download preview PNG",
+      "previewNote": "Preview only, 1000 × 1414 pixels. Includes computed positions; no telescope photograph or observation certificate."
+    },
+    "operator": {
+      "title": "Put your telescope to work",
+      "lead": "Most instruments are used a handful of nights a year. On the clear nights you are not out with yours, someone else can be — and you are paid for it.",
+      "keepTitle": "What you keep",
+      "keepLead": "Your share rises with hours actually delivered — not nights listed, not a subscription. An instrument that has run 150 hours of other people’s sessions has been aligned, cleaned and unparked 150 hours’ worth, and that is the only number worth paying for.",
+      "colTier": "Tier",
+      "colHours": "Delivered hours",
+      "colKeep": "You keep",
+      "colPerSession": "Per 40 ₾ session",
+      "keepNote": "At three sessions a night on a hundred clear nights, a season pays for the effort. A session that clouds out refunds the customer in full and costs you nothing.",
+      "needsTitle": "What a node needs",
+      "needs1": "A computerised GoTo mount, and somewhere it can stay set up.",
+      "needs2": "A camera and a mini-PC to run the agent on.",
+      "needs3": "A network connection, and a horizon you would observe from yourself.",
+      "needsNote": "There is no box to buy. If you already run ASCOM, Alpaca or INDI, the software installs on what you have.",
+      "earnedMonth": "earned this month",
+      "lifetime": "{amount} ₾ in total",
+      "hoursDelivered": "{hours} hours delivered",
+      "toNext": "{hours} hours to {tier}, which keeps {pct}%.",
+      "dryRunNote": "Nothing has settled yet. {name} runs on the simulator until the instrument is wired, and simulated sessions pay nothing and count for nothing — the figures above start moving the night it goes live.",
+      "formTitle": "Register your telescope",
+      "formLead": "No commitment, and nothing to install yet. Listing opens as the first partner nodes come online, oldest registrations first.",
+      "email": "Email",
+      "city": "City",
+      "telescope": "Telescope",
+      "mount": "Mount",
+      "camera": "Camera",
+      "note": "Anything else",
+      "mountHint": "GoTo, EQ, none",
+      "register": "Register",
+      "sending": "Sending…",
+      "doneTitle": "Your telescope is on the list",
+      "doneLead": "We will write when the first partner nodes are commissioned, and we will tell you plainly what your rig needs.",
+      "formFailed": "That did not send. Try again.",
+      "network": "Network error — try again.",
+      "simFooter": "Want to see what a session looks like from the customer’s side first?",
+      "simLink": "The simulator is open.",
+      "proofFooter": "What the network does with a frame your instrument takes is written out in",
+      "proofLink": "how a capture is proved"
+    },
+    "tiers": {
+      "night_assistant": "Night Assistant",
+      "telescope_operator": "Telescope Operator",
+      "support_astronomer": "Support Astronomer",
+      "staff_astronomer": "Staff Astronomer",
+      "observatory_director": "Observatory Director"
+    },
+    "plate": {
+      "aria": "The Moon tonight with the instrument's sensor drawn over it to scale",
+      "sensor": "sensor",
+      "moon": "the Moon tonight",
+      "jupiter": "Jupiter, to scale",
+      "resolves": "plate scale · resolves {arcsec}″"
+    },
+    "console": {
+      "audio": "Audio",
+      "camera": "Camera",
+      "capture": "Capture",
+      "capturesNote": "{count} simulated captures — not saved, never minted",
+      "chooseTarget": "Choose an object to point at",
+      "conditions": "Viewing conditions",
+      "conditionsFair": "Fair",
+      "conditionsGood": "Good",
+      "conditionsPoor": "Poor",
+      "events": "Events",
+      "exposure": "Exposure",
+      "following": "Following {target}",
+      "handControl": "Hand control",
+      "jumpToNight": "Jump to tonight",
+      "lastCapture": "Last capture saved",
+      "log": "Log",
+      "manual": "Hand control",
+      "manualLine": "Steered by hand, tracking off",
+      "nextTarget": "Next available target",
+      "now": "Now",
+      "park": "Park",
+      "parked": "Parked",
+      "parkedLine": "Mount at home, camera idle",
+      "rawSub": "1 sub",
+      "remaining": "remaining",
+      "session": "Your observing session",
+      "simulated": "Simulated",
+      "simulatedForward": "Simulated forward",
+      "siteTime": "Site time",
+      "slot": "Slot {from}–{to}",
+      "slotLeft": "{time} left",
+      "stacked": "{count} stacked",
+      "startedAt": "Started at {time}",
+      "tabs": "Console panels",
+      "target": "Target",
+      "telemetry": "Telemetry",
+      "total": "{minutes} minutes total",
+      "tracking": "Tracking steadily",
+      "trackingOff": "Tracking off",
+      "warmingUp": "Warming up",
+      "zoom": "Zoom"
+    },
+    "nav": {
+      "aria": "Observatory",
+      "captures": "Captures",
+      "network": "Observatory",
+      "operator": "Operators",
+      "proof": "How it is proved",
+      "requests": "Requests",
+      "simulator": "Simulator",
+      "telescope": "Telescope"
+    },
+    "simulator": {
+      "hold": "Hold a slot on {name}",
+      "how1": "Public-domain NASA and ESA imagery supplies the content. Everything else is computed: the target is scaled to its true angular size at the current focal length, smeared by the seeing, shifted frame to frame by the same turbulence, lifted by the site’s sky glow and buried in sensor noise.",
+      "how2": "As the stack builds, the turbulence averages out and the image walks toward the aperture’s diffraction limit, which it never beats. This is a simulation of what a 150 mm telescope shows, not a claim about what it captured.",
+      "howTitle": "How the frame is built"
+    },
+    "telescope": {
+      "pageTitle": "Live telescope — Stellar Observatory",
+      "pageDescription": "Connect to a telescope, park, calibrate, choose a target, point, observe and capture. Simulated frames, real sky.",
+      "controls": "Controls",
+      "showControls": "Show controls",
+      "hideControls": "Hide controls",
+      "selectTelescope": "Select a telescope",
+      "pickHint": "Choose a station with a green dot — it is under a dark sky right now.",
+      "sky_night": "Night — available",
+      "sky_twilight": "Twilight",
+      "sky_day": "Daylight",
+      "disconnect": "Disconnect",
+      "statusObserving": "Observing…",
+      "statusSlewing": "Slewing…",
+      "framesCaptured": "{count, plural, one {# frame captured} other {# frames captured}}",
+      "timeLeft": "{time} left",
+      "legend": "Simulated session · captures are free",
+      "upload": "Upload observation",
+      "uploadHint": "Simulated frames are never filed",
+      "noTelescope": "No telescope connected",
+      "noTelescopeLead": "Select a telescope to start your observation and view the sky in real time.",
+      "selectButton": "Select a telescope",
+      "howObservation": "How to create an observation",
+      "howAstrophoto": "How to create an astrophoto in 10 minutes",
+      "location": "Telescope location",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "altitude": "Altitude",
+      "battery": "Battery",
+      "step1": "Step 1 — Park at zenith",
+      "park": "Park at zenith",
+      "parking": "Parking…",
+      "step2": "Step 2 — Calibrate",
+      "calibrate": "Calibrate",
+      "calibrating": "Calibrating…",
+      "recalibrate": "Re-calibrate",
+      "viewMode": "View mode",
+      "exploreMode": "Explore mode",
+      "dataMode": "Data mode",
+      "step3": "Step 3 — Choose target",
+      "pointToTarget": "Point to target",
+      "manualCoords": "Use manual coordinates",
+      "chooseTarget": "Choose target",
+      "observeTarget": "Observe {name}",
+      "ra": "RA (h/m/s)",
+      "dec": "DEC (d/m/s)",
+      "pointButton": "Point to target",
+      "goingTo": "Going to coordinates…",
+      "solving": "Plate-solving the field…",
+      "centring": "Centring the target…",
+      "cancelGoto": "Cancel GoTo",
+      "refused": "Refused — {reason}",
+      "badCoords": "Enter a right ascension as hh:mm:ss and a declination as ±dd:mm:ss.",
+      "manualControl": "Manual control",
+      "fineControl": "Fine control",
+      "padLeft": "Slew west",
+      "padUp": "Slew up",
+      "padDown": "Slew down",
+      "padRight": "Slew east",
+      "step4": "Step 4 — Start observation",
+      "settings": "Observation settings",
+      "modeAstrophoto": "Astrophoto mode",
+      "modePlanetary": "Planetary mode",
+      "modeLunar": "Lunar mode",
+      "startObservation": "Start observation",
+      "starting": "Starting…",
+      "stopObservation": "Stop observation",
+      "elapsed": "Elapsed",
+      "captureImage": "Capture current image",
+      "capturing": "Capturing…",
+      "captureCost": "1 frame",
+      "live": "Live",
+      "simulated": "Simulated",
+      "cameraIdle": "Camera idle — park and calibrate to start the feed.",
+      "onTarget": "On target — tracking",
+      "stackedLine": "{count, plural, one {# sub stacked} other {# subs stacked}}",
+      "capturesTitle": "Captured frames",
+      "simulatedNote": "Simulated · not filed",
+      "subsLine": "{count} subs · {seconds}s integration",
+      "open": "Open",
+      "copyHash": "Copy hash",
+      "modalTitle": "Choose target",
+      "close": "Close",
+      "search": "Search for target",
+      "type": "Type",
+      "type_all": "All",
+      "type_planets": "Planets & Moon",
+      "type_galaxies": "Galaxies",
+      "type_nebulae": "Nebulae",
+      "type_clusters": "Clusters",
+      "type_stars": "Stars",
+      "order": "Order",
+      "orderZenith": "Closest to zenith",
+      "orderBrightest": "Brightest",
+      "orderName": "Name",
+      "visibleOnly": "Visible in your sky",
+      "selectPrompt": "Select a target to observe",
+      "showing": "Showing {shown} of {total} targets",
+      "done": "Done",
+      "kind_planet": "Planet",
+      "kind_moon": "Moon",
+      "kind_galaxy": "Galaxy",
+      "kind_nebula": "Nebula",
+      "kind_cluster": "Cluster",
+      "kind_star": "Star",
+      "altitudeShort": "{alt}° up",
+      "belowLimit": "Below the limit",
+      "help": "Guide",
+      "systems": "All systems nominal",
+      "welcome": {
+        "title": "Welcome to the Stellar Observatory",
+        "lead": "Ready to connect with the sky? You have four ways to begin:",
+        "text": "Drive a telescope live in the console, request a capture from the network, reserve time on Tbilisi One, or browse what the network has photographed. Whether you plan it or pilot it, the sky is yours.",
+        "close": "Close",
+        "open": "Open",
+        "start": "Start here",
+        "liveTag": "Live telescope access",
+        "liveTitle": "Live console",
+        "liveText": "Control a telescope in real time — point, adjust settings, and capture frames instantly.",
+        "livePoints": "Best for real-time observing|Manual or guided control|Live view and instant capture|Fastest way to explore the sky",
+        "requestsTag": "Capture requests",
+        "requestsTitle": "Requests",
+        "requestsText": "Submit a capture request with target, timing and priority. The network schedules, executes and delivers the frame.",
+        "requestsPoints": "Built for planned captures|Priority-based scheduling|Routed across the network",
+        "reserveTag": "Reserved telescope time",
+        "reserveTitle": "Tbilisi One",
+        "reserveText": "Reserve a slot on the network's first instrument for a session of your own.",
+        "reservePoints": "Best for planned sessions|A telescope to yourself|Times in your local time",
+        "capturesTag": "The record",
+        "capturesTitle": "Captures",
+        "capturesText": "Every frame the network has photographed, with the instrument that took it and where it came from.",
+        "capturesPoints": "Browse past captures|Provenance on every frame|Simulated frames labelled as such"
+      },
+      "guide": {
+        "eyebrow": "Step-by-step guide",
+        "title": "How to create an astrophoto in 10 minutes",
+        "lead": "Seven steps from an empty console to a frame of your own.",
+        "close": "Close",
+        "cta": "Launch the console",
+        "s1Title": "Open the live console",
+        "s1Text": "You are here. No account is needed for the simulator — every frame is drawn by the sky model and labelled as such.",
+        "s2Title": "Connect to a telescope",
+        "s2Text": "Open the telescope list and choose a station with a green dot: it is under a dark sky right now. Once connected, the controls appear on the left.",
+        "s3Title": "Park and calibrate",
+        "s3Text": "Park at zenith, then calibrate. The camera starts during calibration and you should see live stars in the frame.",
+        "s4Title": "Choose a target",
+        "s4Text": "Open the target picker, keep \"Visible in your sky\" on, and pick something high up. Its coordinates fill in.",
+        "s5Title": "Point and observe",
+        "s5Text": "Point to target and watch the field stream past as the mount slews. Once it is tracking, start the observation — the stack builds and the image sharpens.",
+        "s6Title": "Capture frames",
+        "s6Text": "Capture the current image whenever the view looks right. Each frame is fingerprinted and listed under the view.",
+        "s7Title": "Find your frames",
+        "s7Text": "Simulated frames stay in this session. Real captures from the network are filed under Captures with their provenance."
+      }
+    }
+  },
+  "play": {
+    "title": "Stellar Explore",
+    "tagline": "A lunar expedition from Georgia",
+    "enter": "Enter the solar system",
+    "enterSub": "Look around, then Explore to fly",
+    "continue": "Continue",
+    "continueSub": "Back where you left off — {place}",
+    "missions": "Missions",
+    "settings": "Settings",
+    "controls": "Controls",
+    "exit": "Exit to Stellar",
+    "paused": "Paused",
+    "resume": "Resume",
+    "pauseHint": "Esc — resume",
+    "restart": "Restart checkpoint",
+    "back": "Back",
+    "loading": {
+      "module": "Loading the game",
+      "build": "Building the surface",
+      "compile": "Compiling the shaders",
+      "buildOrbit": "Building the solar system",
+      "ready": "Ready",
+      "scene": {
+        "orbit": "Charting the orbits",
+        "moon": "Descending to Stellar Base",
+        "mars": "Descending to Mars",
+        "proximaB": "Descending to Proxima b",
+        "earth": "Descending to Tbilisi"
+      },
+      "insertion": {
+        "moon": "Orbit insertion — the Moon",
+        "mars": "Orbit insertion — Mars",
+        "earth": "Orbit insertion — Earth"
+      }
+    },
+    "settingsPanel": {
+      "quality": "Quality",
+      "qualityAuto": "Automatic",
+      "qualityPerformance": "Performance",
+      "qualityBalanced": "Balanced",
+      "qualityHigh": "High",
+      "qualityUltra": "Ultra",
+      "qualityUltraNote": "Ultra is for a desktop with a discrete GPU: 4K shadows, 8× anti-aliasing, lens flare and light shafts. Star and rock counts take effect on the next landing.",
+      "qualityNote": "Automatic picks a preset from your device. Star and rock counts take effect on the next landing.",
+      "sensitivity": "Look sensitivity",
+      "invertY": "Invert vertical look",
+      "fov": "Field of view",
+      "volume": "Volume",
+      "language": "Language",
+      "en": "English",
+      "ka": "ქართული",
+      "reset": "Reset to defaults",
+      "qualityGoverned": "Lowered to {level} to hold the frame rate. Pick a preset to keep your own."
+    },
+    "controlsPanel": {
+      "surface": "On the surface",
+      "ship": "In the ship",
+      "shell": "Esc — pause · Tab — mission panel (coming) · M — sound",
+      "shellKeys": "Esc — pause · Tab — mission panel on the Moon · M — sound"
+    },
+    "missionsPanel": {
+      "moon": "Stellar Base expedition",
+      "stage": {
+        "survey": "Survey the mare",
+        "drill": "Take the core",
+        "trace": "Trace the signal",
+        "excavate": "Clear the anomaly",
+        "contact": "Make contact",
+        "done": "Complete"
+      },
+      "jobs": "{n} of {total} base jobs done",
+      "discoveries": "{n} of {total} discoveries logged",
+      "empty": "Nothing logged yet. Land at Stellar Base to begin.",
+      "count": "{n} of {total} done",
+      "state": {
+        "done": "Done",
+        "next": "Up next",
+        "open": "Open",
+        "locked": "Locked",
+        "lesson": "Learn it first"
+      },
+      "academy": "In children's mode, each mission opens after its lesson in Stellar Academy.",
+      "academyAction": "Open Stellar Academy"
+    },
+    "qualityDrop": "Detail reduced to hold the frame rate — change it in Settings.",
+    "stars": {
+      "awarded": "+{n} Stars — {name}",
+      "credited": "{n} of {max} Stars credited to your account",
+      "signIn": "Sign in and each mission you finish is credited as Stars — up to {max} for the expedition.",
+      "signInAction": "Sign in"
+    }
+  },
+  "exploreSite": {
+    "meta": {
+      "title": "Stellar Explore — fly from orbit to the surface",
+      "description": "A free space game in your browser: fly from orbit to the ground of the Moon, Mars and Earth, walk out as a cosmonaut, fly the jetpack, land with friends and earn Stars. Install it on iPhone, Android or a computer.",
+      "ogAlt": "Stellar Explore — a ship in atmospheric entry over Earth"
+    },
+    "nav": {
+      "home": "Stellar Explore home",
+      "worlds": "Worlds",
+      "features": "Features",
+      "gallery": "Gallery",
+      "install": "Install",
+      "requirements": "Requirements",
+      "play": "Play",
+      "language": "Language",
+      "byStellar": "by Stellar",
+      "academy": "Academy"
+    },
+    "hero": {
+      "eyebrow": "A space game from Georgia · Free to play",
+      "titleA": "From orbit",
+      "titleB": "to footprints.",
+      "lede": "Fly the whole descent — orbit, atmospheric entry, powered landing — to the ground of the Moon, Mars and Earth. Then open the hatch and walk out.",
+      "play": "Play now",
+      "note": "Runs in your browser. No store, no download wait, no account needed to fly.",
+      "reelLabel": "Moments from the game, captured as it runs",
+      "body": "Body",
+      "phase": "Phase",
+      "altitude": "Altitude",
+      "pause": "Pause the reel",
+      "resume": "Play the reel",
+      "scroll": "Scroll",
+      "phases": {
+        "orbit": "Orbit insertion",
+        "entry": "Atmospheric entry",
+        "descent": "Powered descent",
+        "jetpack": "Jetpack hop",
+        "eva": "Surface EVA"
+      },
+      "bodies": {
+        "moon": "Moon",
+        "earth": "Earth",
+        "mars": "Mars"
+      }
+    },
+    "flight": {
+      "kicker": "The descent",
+      "title": "Every landing is a flight.",
+      "lede": "No cutscene drops you on the ground. You bring the ship down yourself, from the first burn to the last metre.",
+      "steps": {
+        "orbit": {
+          "name": "Orbit",
+          "body": "Choose a world from the ship and line up the approach."
+        },
+        "entry": {
+          "name": "Entry",
+          "body": "Heat, plasma and Mach numbers as you fall into the atmosphere."
+        },
+        "descent": {
+          "name": "Powered descent",
+          "body": "Light the engines, kill the drift, read the altitude down."
+        },
+        "touchdown": {
+          "name": "Touchdown",
+          "body": "Set the lander on the pad — or skip straight to it when you just want to land."
+        },
+        "eva": {
+          "name": "Walk out",
+          "body": "Step onto the surface as a cosmonaut, footprints behind you."
+        }
+      }
+    },
+    "worlds": {
+      "kicker": "Where you land",
+      "title": "Three worlds. One ship.",
+      "cta": "Land here",
+      "moon": {
+        "name": "The Moon",
+        "place": "Stellar Base",
+        "body": "A lunar base flying the Georgian flag. Restore its power, bring the comms back, calibrate the telescope and take a core sample from the mare."
+      },
+      "mars": {
+        "name": "Mars",
+        "place": "Mars Base · Jezero",
+        "body": "Domes, dunes and rock arches under a butterscotch sky. Mars holds you down twice as hard as the Moon — the jetpack works for its fuel here."
+      },
+      "earth": {
+        "name": "Earth",
+        "place": "Tbilisi",
+        "body": "Come home at night: the city's lights rise to meet the ship. Land in the park and cross the Bridge of Peace into the Old Town."
+      },
+      "beyond": "And further out, for those who keep flying: Proxima b."
+    },
+    "features": {
+      "kicker": "What you do there",
+      "title": "A cosmonaut, a jetpack and a base full of work.",
+      "maxStars": "up to {max} Stars",
+      "items": {
+        "suit": {
+          "title": "Walk out as a cosmonaut",
+          "body": "Third-person EVA with a helmet lamp, footprints in the regolith and the right gravity on every world."
+        },
+        "jetpack": {
+          "title": "Fly the jetpack",
+          "body": "Lift off the ground, hop the crater rims and race the fuel gauge back to the lander."
+        },
+        "missions": {
+          "title": "Missions",
+          "body": "Base jobs and discoveries: restore the power, fix the comms, calibrate the telescope, photograph the Earthrise."
+        },
+        "multiplayer": {
+          "title": "Multiplayer rooms",
+          "body": "Share a five-letter room code and land together — you see each other's ships in orbit and suits on the ground."
+        },
+        "stars": {
+          "title": "Earn Stars",
+          "body": "Sign in and every finished mission is credited to your Stellar account — up to {max} Stars on the Moon expedition."
+        },
+        "anywhere": {
+          "title": "Plays anywhere",
+          "body": "Touch controls on phones, upright or sideways; keyboard and mouse on a computer. Quality adapts to the device, from Performance to Ultra."
+        }
+      }
+    },
+    "gallery": {
+      "kicker": "Captured in game",
+      "title": "Nothing here is a render.",
+      "lede": "Every frame on this page is the browser build, captured while it runs — HUD and all.",
+      "open": "Open image: {label}",
+      "close": "Close",
+      "prev": "Previous image",
+      "next": "Next image",
+      "items": {
+        "entry": "Atmospheric entry over Earth",
+        "jetpack": "Jetpack over Stellar Base",
+        "marsSuit": "A cosmonaut at Mars Base, Jezero",
+        "tbilisi": "Powered descent onto Tbilisi at night",
+        "marsArch": "Under a rock arch on Mars",
+        "lander": "The lander, flying the Georgian flag",
+        "proximaCrystals": "Glowing crystals on Proxima b",
+        "proximaGiant": "A ringed giant over Proxima b",
+        "moonBraking": "Braking burn, twelve kilometres above the Moon",
+        "marsDomes": "The domes of Mars Base"
+      }
+    },
+    "install": {
+      "kicker": "Install",
+      "title": "Put it on your home screen.",
+      "lede": "Installed, Stellar Explore opens full screen like any other app, starts straight in the game, and keeps what it has loaded for when the signal drops.",
+      "button": "Install",
+      "buttonLong": "Install the app",
+      "how": "How to install",
+      "installed": "Installed — open it from your home screen.",
+      "installedDesktop": "Installed — open it from your apps.",
+      "inApp": "You're in the installed app.",
+      "accepted": "Installing… it will appear with your apps.",
+      "dismissed": "No problem — the button stays here when you want it.",
+      "detected": "Your device",
+      "sheetTitle": "Install Stellar Explore",
+      "close": "Close",
+      "openGame": "Open the game",
+      "copyLink": "Copy link",
+      "copied": "Link copied — paste it into Safari.",
+      "platforms": {
+        "ios-safari": "iPhone or iPad · Safari",
+        "ios-other": "iPhone or iPad · not Safari",
+        "android": "Android",
+        "android-firefox": "Android · Firefox",
+        "desktop-chromium": "Computer · Chrome or Edge",
+        "mac-safari": "Mac · Safari",
+        "desktop-other": "Computer · this browser can't install apps"
+      },
+      "tabs": {
+        "ios": "iPhone & iPad",
+        "android": "Android",
+        "desktop": "Chrome & Edge",
+        "mac": "Mac Safari"
+      },
+      "ios": {
+        "s1": "Open this page in Safari.",
+        "s2": "Tap Share — the square with the arrow — in the toolbar. On iOS 26, tap ••• first, then Share.",
+        "s3": "Scroll down and tap “Add to Home Screen”.",
+        "s4": "Tap “Add”. Stellar Explore lands among your apps and opens full screen.",
+        "otherBrowser": "You're in another browser or inside an app. Open this page in Safari to install it — some browsers on iOS 16.4 and later also offer Share → Add to Home Screen.",
+        "illoToolbar": "Safari toolbar with the Share button highlighted",
+        "illoSheet": "Share menu with Add to Home Screen highlighted",
+        "illoHome": "The Stellar Explore icon on the home screen",
+        "addToHome": "Add to Home Screen",
+        "share": "Share"
+      },
+      "android": {
+        "ready": "Tap Install above and confirm — that's all.",
+        "s1": "Open the browser menu ⋮ (top right in Chrome).",
+        "s2": "Tap “Install app” or “Add to Home screen”.",
+        "s3": "Confirm. Stellar Explore appears in your app drawer and on the home screen.",
+        "firefox": "In Firefox: open the menu ⋮ and tap “Install” (or “Add app to Home screen”)."
+      },
+      "desktop": {
+        "ready": "Click Install above and confirm.",
+        "s1": "Click the install icon at the right end of the address bar — or open the browser menu.",
+        "s2": "Choose “Install Stellar Explore”.",
+        "s3": "It opens in its own window and joins your Start menu, Dock or launcher."
+      },
+      "mac": {
+        "s1": "In Safari 17 or later (macOS Sonoma and newer), open the File menu — or click Share.",
+        "s2": "Choose “Add to Dock”.",
+        "s3": "Click “Add”. Stellar Explore opens in its own window from the Dock."
+      },
+      "other": "This browser can't install web apps. Play right here — or open the page in Chrome, Edge or Safari to install it."
+    },
+    "requirements": {
+      "kicker": "System requirements",
+      "title": "It runs in the browser you already have.",
+      "rows": {
+        "phones": {
+          "label": "Phones & tablets",
+          "value": "iPhone or iPad with iOS 16.4 or later (Safari) · Android 10 or later with Chrome, Edge or Samsung Internet"
+        },
+        "computers": {
+          "label": "Computers",
+          "value": "Windows, macOS or Linux with a current Chrome, Edge, Firefox or Safari"
+        },
+        "graphics": {
+          "label": "Graphics",
+          "value": "WebGL 2. Quality picks itself, from Performance to High; a discrete GPU unlocks Ultra — 4K shadows, 8× anti-aliasing and light shafts."
+        },
+        "controls": {
+          "label": "Controls",
+          "value": "Touch, or keyboard and mouse"
+        },
+        "network": {
+          "label": "Internet",
+          "value": "Needed for the first launch, multiplayer and Earth's map tiles. The installed app keeps what it has loaded."
+        },
+        "account": {
+          "label": "Account",
+          "value": "None needed to fly. Sign in with Stellar to keep your Stars."
+        }
+      }
+    },
+    "finale": {
+      "title": "The pad is clear.",
+      "body": "Free, in your browser, on any screen.",
+      "play": "Launch"
+    },
+    "footer": {
+      "made": "Made in Tbilisi by Stellar",
+      "site": "Stellar — astronomy platform",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    }
+  },
+  "academy": {
+    "meta": {
+      "title": "Stellar Academy: learn space, fly the Moon",
+      "description": "Short space lessons in Georgian and English. Every lesson finished opens a mission on the Moon in Stellar Explore."
+    },
+    "brand": "Stellar Academy",
+    "onboarding": {
+      "welcome": "Welcome, cadet!",
+      "lead": "Learn about space in a few minutes a day, then fly the missions you learned about.",
+      "nameLabel": "What should we call you?",
+      "namePlaceholder": "Your name or a nickname",
+      "avatarLabel": "Pick your badge",
+      "ageLabel": "How old are you?",
+      "start": "Start learning",
+      "privacy": "Your progress stays on this device. Nothing about you is sent anywhere."
+    },
+    "avatars": {
+      "astronaut": "Astronaut",
+      "rocket": "Rocket",
+      "moon": "Moon",
+      "saturn": "Saturn",
+      "comet": "Comet",
+      "robot": "Robot"
+    },
+    "nav": {
+      "path": "Learn",
+      "cards": "Cards",
+      "parents": "Parents"
+    },
+    "home": {
+      "hello": "Hi, {name}!",
+      "streak": "{n}-day streak",
+      "streakNone": "Start a streak today",
+      "xp": "{n} XP",
+      "goal": "Today {done} of {goal} XP",
+      "goalMet": "Daily goal reached!",
+      "unitProgress": "{done} of {total} lessons",
+      "locked": "Finish the lesson before this one to open it",
+      "start": "Start",
+      "again": "Practise again",
+      "missionOpen": "Mission unlocked in Stellar Explore",
+      "missionLocked": "Opens a mission in Stellar Explore",
+      "play": "Play the mission",
+      "allDone": "You finished the Moon! More worlds are on their way.",
+      "capsules": "Capsules to open: {n}",
+      "openCapsules": "Open"
+    },
+    "lesson": {
+      "check": "Check",
+      "continue": "Continue",
+      "right": "Great!",
+      "wrong": "Almost!",
+      "answerWas": "The answer:",
+      "true": "True",
+      "false": "False",
+      "orderHint": "Tap the items in the right order",
+      "matchHint": "Tap a word on the left, then its pair on the right",
+      "chooseHint": "Choose one answer",
+      "again": "One more try",
+      "leave": "Leave the lesson?",
+      "leaveBody": "Your progress in this lesson will be lost.",
+      "stay": "Keep learning",
+      "quit": "Leave",
+      "begin": "Let's go",
+      "close": "Close"
+    },
+    "result": {
+      "title": "Lesson complete!",
+      "xp": "+{n} XP",
+      "accuracy": "{n}% right first time",
+      "perfect": "Perfect lesson!",
+      "streak": "{n}-day streak",
+      "goal": "Daily goal reached!",
+      "capsule": "You earned a capsule",
+      "contains": "Inside: {name}",
+      "open": "Open the capsule",
+      "newCard": "New card!",
+      "mission": "A new mission is open in Stellar Explore",
+      "play": "Play the mission",
+      "next": "Next lesson",
+      "home": "Back to the path"
+    },
+    "cards": {
+      "title": "Your cards",
+      "count": "{have} of {total}",
+      "locked": "Finish “{lesson}” to earn this card",
+      "empty": "Finish a lesson to earn your first card."
+    },
+    "parents": {
+      "gateTitle": "For grown-ups",
+      "gateQuestion": "To continue, answer: {a} × {b}",
+      "gateWrong": "That's not it. Ask a grown-up to help.",
+      "title": "Parents and teachers",
+      "kidsMode": "Children's mode",
+      "kidsModeBody": "Moon missions in the game open only after the lesson that teaches them.",
+      "goal": "Daily goal",
+      "goalValue": "{n} XP",
+      "language": "Language",
+      "sound": "Sounds",
+      "reset": "Start over",
+      "resetConfirm": "Erase all progress on this device?",
+      "resetYes": "Erase",
+      "cancel": "Cancel",
+      "privacyTitle": "Privacy",
+      "privacyBody": "Stellar Academy keeps progress on this device only. It has no ads, no chat, no purchases and no tracking.",
+      "prizesTitle": "Prizes from Astroman",
+      "prizesBody": "Coming soon: prizes for finished worlds, claimed by a parent.",
+      "back": "Back",
+      "on": "On",
+      "off": "Off"
+    }
+  }
+}
