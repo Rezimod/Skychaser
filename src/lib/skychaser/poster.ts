@@ -52,6 +52,8 @@ const ROWS: Record<string, Row> = {
   MARS: ['MARS', 'The red frontier', 'Once it had rivers and a sky that held rain.', 'A day nearly ours', 'The next world people will stand on'],
   'OLYMPUS-MONS': ['OLYMPUS\nMONS', 'The tallest mountain known', 'Two and a half Everests high, as wide as Arizona.', 'A volcano gone quiet', 'Its summit rises above most of the Martian air'],
   'VALLES-MARINERIS': ['VALLES\nMARINERIS', 'The great rift of Mars', 'Laid across America, it would reach coast to coast.', 'Seven kilometres deep', 'Morning fog still pools along its floor'],
+  PHOBOS: ['PHOBOS', 'The falling moon', 'From Mars it rises in the west and sets in the east.', 'Three orbits a day', 'Too fast for its own planet, it is slowly spiralling in'],
+  ROADSTER: ['THE\nROADSTER', 'The car with thrusters', 'Ten jets of compressed air, fired on demand.', 'Zero to sixty in a second', 'It cleared five cars at its reveal'],
   JUPITER: ['JUPITER', 'King of the planets', 'A thousand Earths would fit inside.', 'A day of ten hours', 'Its great red spot, watched since 1831'],
   IO: ['IO', 'The burning moon', 'Squeezed by Jupiter, it never cools.', 'Four hundred volcanoes', 'Fountains of sulfur rise hundreds of kilometres'],
   EUROPA: ['EUROPA', 'The cracked moon', 'Under the ice, twice the water of Earth.', 'Smooth as a cue ball', 'The best place to look for life we have not met'],

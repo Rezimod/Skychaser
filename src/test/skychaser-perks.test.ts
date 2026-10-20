@@ -12,8 +12,8 @@ describe('the perk tiers', () => {
     expect(of('legendary')).toHaveLength(7);
   });
 
-  it('makes the eight planets, and only they, epic', () => {
-    expect(of('epic').sort()).toEqual(['EARTH', 'JUPITER', 'MARS', 'MERCURY', 'NEPTUNE', 'SATURN', 'URANUS', 'VENUS']);
+  it('makes the eight planets epic, and beside them Phobos, the one special moon, and the limited Roadster', () => {
+    expect(of('epic').sort()).toEqual(['EARTH', 'JUPITER', 'MARS', 'MERCURY', 'NEPTUNE', 'PHOBOS', 'ROADSTER', 'SATURN', 'URANUS', 'VENUS']);
   });
 
   it('makes rare what the telescope will point at beyond the planets, and leaves nothing it can photograph common', () => {
@@ -44,8 +44,8 @@ describe('the perk tiers', () => {
     expect(perkFor('HALLEY', 'common').short).toBe('Vote ×3');
   });
 
-  it('draws each tier at about its share of the supply', () => {
-    const supply = (r: Rarity) => SET_001_CARDS.filter((c) => c.seed.rarity === r).reduce((s, c) => s + c.seed.editionSize, 0);
+  it('draws each tier at about its share of what capsules can draw (limited cards are never drawn)', () => {
+    const supply = (r: Rarity) => SET_001_CARDS.filter((c) => c.seed.rarity === r && !c.record.directOnly).reduce((s, c) => s + c.seed.editionSize, 0);
     const total = RARITIES.reduce((s, r) => s + supply(r), 0);
     for (const r of RARITIES) expect(Math.abs(RARITY_ODDS_BPS[r] - (supply(r) / total) * 10_000), r).toBeLessThan(2);
   });

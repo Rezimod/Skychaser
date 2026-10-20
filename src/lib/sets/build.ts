@@ -34,7 +34,14 @@ export type CardRecord = {
   family: Family;
   /** An Almanac card's event, ISO 8601 UTC. Null for an object. */
   eventStartUtc: string | null;
+  /** When the card is sealed: an Almanac card's event ends, or a limited card's sale closes. Null if never. */
   eventEndUtc: string | null;
+  /**
+   * Sold on its own only, never drawn from a capsule. Its editions are kept out
+   * of every capsule reckoning (draws, sold-out tiers, what listing can count
+   * on), so adding one moves no capsule's odds.
+   */
+  directOnly: boolean;
   /** The designation of the card this one is paired with, if any. */
   pairsWith: string | null;
   /** Includes a physical fragment, redeemable later. */
@@ -71,6 +78,7 @@ const record = (extras: Extras, event: Pick<CardRecord, 'section' | 'eventStartU
   story: extras.story ?? null,
   glow: extras.glow ?? null,
   noun: extras.noun ?? null,
+  directOnly: false,
 });
 
 const OBJECT = { section: 'object', eventStartUtc: null, eventEndUtc: null } as const;
@@ -137,6 +145,24 @@ const unpointable = (facts: NoSky, targetId: string, reason: string, rec: CardRe
  */
 export function authorKept(facts: NoSky, reason: string, extras: Extras): AuthoredCard {
   return unpointable(facts, 'kept', reason, record(extras, OBJECT));
+}
+
+/** How a limited card is limited: its own edition count, and when its sale closes (ISO 8601 UTC). */
+export type Limit = { editions: number; saleEndsUtc: string };
+
+/**
+ * A limited card: a kept card with its own, smaller edition count, sold on its
+ * own until its sale closes (or it sells out), then sealed. Never in a capsule.
+ */
+export function authorLimited(facts: NoSky, reason: string, extras: Extras, limit: Limit): AuthoredCard {
+  if (!(Number.isInteger(limit.editions) && limit.editions > 0)) throw new Error(`${facts.designation}: a limited card needs a whole, positive edition count`);
+  if (Number.isNaN(Date.parse(limit.saleEndsUtc))) throw new Error(`${facts.designation}: saleEndsUtc is not a date`);
+  const kept = authorKept(facts, reason, extras);
+  return {
+    ...kept,
+    seed: { ...kept.seed, editionSize: limit.editions },
+    record: { ...kept.record, eventEndUtc: limit.saleEndsUtc, directOnly: true },
+  };
 }
 
 /**

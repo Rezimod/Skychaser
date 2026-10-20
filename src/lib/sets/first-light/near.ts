@@ -73,6 +73,7 @@ export const NEAR_CARDS: AuthoredCard[] = [
       story: ['Its red is rust in the dust.', 'A year there lasts 687 days.'],
       glow: '#ff8a5c',
       noun: 'Mars',
+      pairsWith: 'PHOBOS',
     },
   ),
   authorCard(
@@ -89,6 +90,24 @@ export const NEAR_CARDS: AuthoredCard[] = [
       story: ['Nearly ten times the length of the Grand Canyon.', 'Its walls show layers laid down over billions of years.'],
       glow: '#e8946a',
       noun: 'Valles Marineris',
+    },
+  ),
+  // The special card: the one moon promoted above its kind, added after the
+  // set was numbered, so it prints as No. 106 and no other card moves.
+  authorCard(
+    {
+      designation: 'PHOBOS', name: 'Phobos', objectType: 'moon of Mars', rarity: 'epic',
+      targetId: 'mars', catalogRef: 'JPL Horizons 401', ...NO_POSITION,
+      blurb: 'It circles Mars three times in a single Martian day.',
+    },
+    body(arcsecFromKmAtAu(22, 0.6)),
+    {
+      ...near,
+      stats: [['DIAMETER', '~22 km'], ['ORBIT', '7 h 39 m'], ['FOUND', '1877']],
+      line: 'It circles Mars three times in a single Martian day.',
+      story: ['Its name is Greek for fear; its sister Deimos is dread.', 'It falls a little closer every century, and one day it will break apart.'],
+      glow: '#c99a78',
+      pairsWith: 'MARS',
     },
   ),
   authorCard(

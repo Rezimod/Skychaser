@@ -21,7 +21,7 @@ import { and, desc, eq, gt, inArray, like, lt, sql } from 'drizzle-orm';
 import { card, edition, orders } from '@/lib/schema';
 import { priceToSol } from '@/lib/dealers';
 import { fetchSolPriceRates } from '@/lib/sol-price';
-import { isSealed } from './almanac';
+import { isDirectOnly, isSealed } from './almanac';
 import type { Db } from './attach';
 import { ORDER_WINDOW_MINUTES } from './economics';
 
@@ -429,9 +429,12 @@ export function orderHash(orderId: string): string {
 type Rows<T> = { rows: T[] };
 
 /**
- * Editions of a set that can never be drawn or sold: the unsold editions of
- * every Almanac card whose event has ended. Sealed cards neither sell nor
- * draw, so this number does not move between reading it and using it.
+ * Editions of a set that no capsule can ever be given: the unsold editions of
+ * every sealed card (an Almanac card whose event has ended, a limited card
+ * whose sale has closed) and of every limited card still on sale, which is
+ * sold on its own and never drawn. Sealed cards neither sell nor draw, so
+ * their part does not move between reading it and using it; a limited card's
+ * part only shrinks as it sells, which errs on the side of the capsules.
  */
 export async function retiredEditions(db: Db, setId: string, now: Date = new Date()): Promise<number> {
   const { rows } = (await db.execute(sql`
@@ -439,7 +442,7 @@ export async function retiredEditions(db: Db, setId: string, now: Date = new Dat
     FROM card k WHERE k.set_id = ${setId}::uuid
   `)) as Rows<{ designation: string; edition_size: number; allocated: number | string }>;
   return rows
-    .filter((r) => isSealed(r.designation, now))
+    .filter((r) => isSealed(r.designation, now) || isDirectOnly(r.designation))
     .reduce((n, r) => n + Math.max(0, Number(r.edition_size) - Number(r.allocated)), 0);
 }
 
@@ -464,6 +467,8 @@ export async function cardAvailability(db: Db, designation: string) {
   if (!r) return null;
   const released = r.set_status === 'released';
   const sealed = isSealed(designation);
+  // A limited card's editions are never owed to a capsule, so the set's reserve does not bind it.
+  const directOnly = isDirectOnly(designation);
   const spare = Number(r.spare) - (await retiredEditions(db, r.set_id));
   return {
     cardId: r.id,
@@ -475,7 +480,7 @@ export async function cardAvailability(db: Db, designation: string) {
     released,
     /** An Almanac card whose event has ended. Its unsold editions are retired. */
     sealed,
-    available: released && !sealed && Number(r.allocated) < Number(r.edition_size) && spare >= 1,
+    available: released && !sealed && Number(r.allocated) < Number(r.edition_size) && (directOnly || spare >= 1),
   };
 }
 
@@ -489,10 +494,12 @@ export async function cardAvailability(db: Db, designation: string) {
  */
 async function allocateCardSale(
   db: Db,
-  input: { cardId: string; setId: string; wallet: string; orderId: string },
+  input: { cardId: string; setId: string; wallet: string; orderId: string; directOnly?: boolean },
 ): Promise<{ editionNumber: number } | null> {
   // Retired editions can never be drawn, so they cannot stand in for one owed to a capsule.
   const retired = await retiredEditions(db, input.setId);
+  // A limited card is never drawn: selling one takes nothing a capsule is owed.
+  const directOnly = input.directOnly ?? false;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       // One sale per set at a time: two sales of different cards would each see
@@ -509,13 +516,13 @@ async function allocateCardSale(
           FROM edition x
           WHERE x.card_id = ${input.cardId}::uuid
           HAVING COALESCE(MAX(x.edition_number), 0) < (SELECT edition_size FROM card WHERE id = ${input.cardId}::uuid)
-            AND (SELECT SUM(s.edition_size) FROM card s WHERE s.set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid))
+            AND (${directOnly}::boolean OR (SELECT SUM(s.edition_size) FROM card s WHERE s.set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid))
               - (SELECT COUNT(*) FROM edition y JOIN card s ON s.id = y.card_id
                  WHERE s.set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid))
               - (SELECT COALESCE(SUM(cards_per_capsule), 0) FROM capsule
                  WHERE set_id = (SELECT set_id FROM card WHERE id = ${input.cardId}::uuid) AND state IN ('listed', 'purchased'))
               - ${retired}::int
-              >= 1
+              >= 1)
           RETURNING id, card_id, edition_number
         ),
         logged AS (
@@ -566,7 +573,7 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
   if (existing) return { ok: true, editionNumber: existing.editionNumber, editionSize: c.editionSize, designation };
 
   try {
-    const allocated = await allocateCardSale(db, { cardId: c.id, setId: c.setId, wallet: order.walletAddress, orderId: order.id });
+    const allocated = await allocateCardSale(db, { cardId: c.id, setId: c.setId, wallet: order.walletAddress, orderId: order.id, directOnly: isDirectOnly(designation) });
     if (!allocated) {
       const changed = await db
         .update(orders)

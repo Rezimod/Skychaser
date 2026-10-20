@@ -1041,5 +1041,15 @@
   "license": "CC BY 2.0",
   "url": "https://commons.wikimedia.org/wiki/File:Canyon_Diablo_meteorite_(26186838044).jpg",
   "focus": "50% 50%"
+ },
+ "ROADSTER": {
+  "file": "/cards/photo/ROADSTER.webp",
+  "kind": "impression",
+  "credit": "Skychaser",
+  "source": "Collector's render",
+  "year": "2026",
+  "license": "Skychaser",
+  "url": "https://skychaser.io/card/ROADSTER",
+  "focus": "50% 62%"
  }
 }

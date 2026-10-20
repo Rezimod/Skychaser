@@ -43,7 +43,7 @@ describe('the destination table', () => {
   });
 
   it('covers the cards the plan names, less the ones the game cannot reach', () => {
-    expect(entries).toHaveLength(37);
+    expect(entries).toHaveLength(38);
   });
 });
 
