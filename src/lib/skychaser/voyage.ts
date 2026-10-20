@@ -22,6 +22,7 @@ export const VOYAGE_DESTINATIONS: Readonly<Record<string, Destination>> = {
   URANUS: { kind: 'body', gameId: 'uranus' },
   NEPTUNE: { kind: 'body', gameId: 'neptune' },
   PLUTO: { kind: 'body', gameId: 'pluto' },
+  PHOBOS: { kind: 'body', gameId: 'phobos' },
   IO: { kind: 'body', gameId: 'io' },
   EUROPA: { kind: 'body', gameId: 'europa' },
   GANYMEDE: { kind: 'body', gameId: 'ganymede' },

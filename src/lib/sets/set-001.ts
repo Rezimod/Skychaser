@@ -1,14 +1,15 @@
 /**
  * First Light.
  *
- * A hundred and five cards in seven families, numbered outward from Earth: the Solar
+ * A hundred and six cards in seven families, numbered outward from Earth: the Solar
  * System (from the observatory's own first frame and two fragments held in
  * the hand, out to a visitor from another star), the Stars, the Deep Sky, the
  * Galaxies and the Extremes are real things, every one of them well known;
  * the Rare Sights are what the sky does now and then — eclipses, aurorae,
  * great comets; the Almanac is real dated events, each sold until its event
  * ends, then sealed. The first twenty-four are written here; the rest by
- * family in ./first-light/.
+ * family in ./first-light/. Phobos, the special card, came last of all and
+ * is numbered after the Almanac (No. 106) so no card that came before moved.
  *
  * Rarity is a decision made here and stored; it has nothing to do with whether
  * Live Telescope V1 can photograph the object — that is judged from the instrument and
@@ -338,6 +339,9 @@ const ORDER = [
   // The Almanac
   'ORIONIDS', 'HUNTERS-MOON', 'PLEIADES-OCCULTATION', 'GEMINIDS', 'CHRISTMAS-SUPERMOON', 'DOUBLE-OPPOSITION',
   'SNOW-MOON-ECLIPSE', 'GREAT-ECLIPSE',
+  // The special card, added after the set was numbered: last, so every card above keeps its number.
+  // It is filed with the Solar System on the shelf (its family), but prints as No. 106.
+  'PHOBOS',
 ];
 
 const AUTHORED = new Map(

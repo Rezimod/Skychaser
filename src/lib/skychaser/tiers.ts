@@ -8,8 +8,8 @@
  * row here changes only capsules listed after. Odds are parts per ten
  * thousand and each row sums to exactly 10,000.
  *
- * Genesis holds 21,600 common / 1,800 rare / 240 epic / 35 legendary editions
- * (checked 2026-10-11). The Legend capsule's 7% legendary alone would use the
+ * Genesis holds 21,600 common / 1,800 rare / 270 epic / 35 legendary editions
+ * (checked 2026-10-20, after Phobos joined as the ninth epic). The Legend capsule's 7% legendary alone would use the
  * 35 legendaries up in about 500 capsules at one card each. A capsule is not
  * sold once a rarity its odds promise has no edition left (goneRarities in
  * capsule.ts), so the published odds are never quietly redistributed at sale.

@@ -20,15 +20,19 @@ const pointable = objects.filter((c) => c.seed.targetId !== 'kept' && c.seed.tar
 const MOVING = new Set(['moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'halley']);
 
 describe('First Light', () => {
-  it('is a hundred and five cards in seven families, the Almanac last, each filed under its own designation', () => {
+  it('is a hundred and six cards in seven families, the Almanac after the objects and Phobos last, each filed under its own designation', () => {
     expect(SET_001.name).toBe('Genesis');
-    expect(seeds.length).toBe(105);
-    expect(objects).toHaveLength(97);
+    expect(seeds.length).toBe(106);
+    expect(objects).toHaveLength(98);
     expect(almanac).toHaveLength(8);
-    expect(SET_001_CARDS.slice(0, 97)).toEqual(objects);
+    // The original 105 keep their numbers: 97 objects, then the Almanac; Phobos was added after, as No. 106.
+    expect(SET_001_CARDS.slice(0, 97)).toEqual(objects.slice(0, 97));
+    expect(SET_001_CARDS.slice(97, 105)).toEqual(almanac);
+    expect(SET_001_CARDS[105].seed.designation).toBe('PHOBOS');
+    expect(plateFor('PHOBOS')!.num).toBe('106');
     const families = SET_GROUPS.map((g) => groupCards(SET_001_CARDS, g.key).length);
-    expect(families).toEqual([39, 16, 17, 12, 5, 8, 8]);
-    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(105);
+    expect(families).toEqual([40, 16, 17, 12, 5, 8, 8]);
+    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(106);
     expect(new Set(seeds.map((c) => c.designation)).size).toBe(seeds.length);
     for (const c of seeds) expect(c.designation).toMatch(/^[A-Z0-9-]+$/);
   });
@@ -70,9 +74,9 @@ describe('First Light', () => {
     });
   });
 
-  it('counts the tiers as the perks say: 7 legendary, 8 epic, 18 rare, 72 common', () => {
+  it('counts the tiers as the perks say: 7 legendary, 9 epic, 18 rare, 72 common', () => {
     const count = (r: string) => seeds.filter((c) => c.rarity === r).length;
-    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 8, 18, 72]);
+    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 9, 18, 72]);
   });
 
   it('never offers the telescope what it cannot point at, and says why', () => {

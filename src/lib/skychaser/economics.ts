@@ -27,15 +27,16 @@ export const CARDS_PER_CAPSULE = 1;
 /**
  * PROVISIONAL (Gate 2). Chance of each rarity on a single draw, in parts per
  * ten thousand. Integers so the draw is exact arithmetic that any verifier,
- * in any language, reproduces bit for bit. Set to Genesis's supply mix since
- * the perk tiers (2026-10-07): 21,600 common / 1,800 rare / 240 epic / 35
- * legendary editions, nudged by a part in ten thousand so the fractions sum
- * to exactly one in floating point.
+ * in any language, reproduces bit for bit. Set to Genesis's supply mix:
+ * 21,600 common / 1,800 rare / 270 epic / 35 legendary editions since Phobos
+ * joined as the ninth epic (2026-10-20; was 240 epic and 9123/760/101/16),
+ * nudged by a part in ten thousand so the fractions sum to exactly one in
+ * floating point.
  */
 export const RARITY_ODDS_BPS: Record<Rarity, number> = {
-  common: 9123,
-  rare: 760,
-  epic: 101,
+  common: 9112,
+  rare: 759,
+  epic: 113,
   legendary: 16,
 };
 

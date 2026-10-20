@@ -12,8 +12,8 @@ describe('the perk tiers', () => {
     expect(of('legendary')).toHaveLength(7);
   });
 
-  it('makes the eight planets, and only they, epic', () => {
-    expect(of('epic').sort()).toEqual(['EARTH', 'JUPITER', 'MARS', 'MERCURY', 'NEPTUNE', 'SATURN', 'URANUS', 'VENUS']);
+  it('makes the eight planets epic, and Phobos, the one special moon, beside them', () => {
+    expect(of('epic').sort()).toEqual(['EARTH', 'JUPITER', 'MARS', 'MERCURY', 'NEPTUNE', 'PHOBOS', 'SATURN', 'URANUS', 'VENUS']);
   });
 
   it('makes rare what the telescope will point at beyond the planets, and leaves nothing it can photograph common', () => {
