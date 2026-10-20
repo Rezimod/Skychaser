@@ -23,7 +23,8 @@ it('shows the observatory console live', async () => {
   expect(host.querySelector('.sdo-pill--demo')).toBeNull();
   expect(text).toContain('Live Telescope V1');
   expect(text).not.toContain('Demo');
-  expect(host.querySelector('a[href="/node"]')?.getAttribute('aria-current')).toBe('page');
+  expect(host.querySelector('nav a[href="/genesis"]')).not.toBeNull();
+  expect(host.querySelector('nav a[href="/collection"]')).not.toBeNull();
   await act(async () => root.unmount());
   host.remove();
 });
