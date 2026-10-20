@@ -22,6 +22,11 @@ export function isSealed(designation: string, now: Date = new Date()): boolean {
   return card ? cardStatus(card, now) === 'sealed' : false;
 }
 
+/** A limited card, sold on its own only and never drawn from a capsule. */
+export function isDirectOnly(designation: string): boolean {
+  return SET_001_CARD_BY_DESIGNATION.get(designation)?.record.directOnly ?? false;
+}
+
 const DAY = 86_400_000;
 
 /** "In 26 days", "Tonight", "Under way" or "Sealed". */

@@ -81,9 +81,14 @@ export const SPECIMEN_PRICE_USD: Record<string, number> = {
   ALLENDE: 85, // 1.5 g crusted fragment (1.48 g listing)
 };
 
-/** What one card costs bought on its own: its specimen's price, or its rarity's. */
+/** PROVISIONAL. Limited cards are priced on their own, not by their rarity. */
+export const LIMITED_PRICE_USD: Record<string, number> = {
+  ROADSTER: 55,
+};
+
+/** What one card costs bought on its own: its specimen's price, a limited card's own price, or its rarity's. */
 export function cardPriceUsd(designation: string, rarity: Rarity): number {
-  return SPECIMEN_PRICE_USD[designation] ?? DIRECT_CARD_PRICE_USD[rarity];
+  return SPECIMEN_PRICE_USD[designation] ?? LIMITED_PRICE_USD[designation] ?? DIRECT_CARD_PRICE_USD[rarity];
 }
 
 /** The cost base Gate 2 needs, per capsule sold, in US dollars. Unknowns are zero until supplied. */

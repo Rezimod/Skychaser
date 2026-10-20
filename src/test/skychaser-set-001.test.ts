@@ -6,7 +6,7 @@ import { isRarity, RARITIES, rarityInfo } from '@/lib/rarity';
 import { JUDGING_NODE_ID, subjectOf } from '@/lib/sets/build';
 import { SET_GROUPS, groupCards } from '@/lib/sets/groups';
 import { SET_001, SET_001_CARD_BY_DESIGNATION, SET_001_CARDS } from '@/lib/sets/set-001';
-import { cardStatus, eventLabel, isSealed } from '@/lib/skychaser/almanac';
+import { cardStatus, eventLabel, isDirectOnly, isSealed } from '@/lib/skychaser/almanac';
 import { EDITION_SIZE } from '@/lib/skychaser/economics';
 import { observability } from '@/lib/skychaser/observability';
 import { plateFor } from '@/lib/skychaser/plate';
@@ -20,19 +20,21 @@ const pointable = objects.filter((c) => c.seed.targetId !== 'kept' && c.seed.tar
 const MOVING = new Set(['moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'halley']);
 
 describe('First Light', () => {
-  it('is a hundred and six cards in seven families, the Almanac after the objects and Phobos last, each filed under its own designation', () => {
+  it('is a hundred and seven cards in seven families, the Almanac after the objects, then Phobos and the Roadster, each filed under its own designation', () => {
     expect(SET_001.name).toBe('Genesis');
-    expect(seeds.length).toBe(106);
-    expect(objects).toHaveLength(98);
+    expect(seeds.length).toBe(107);
+    expect(objects).toHaveLength(99);
     expect(almanac).toHaveLength(8);
     // The original 105 keep their numbers: 97 objects, then the Almanac; Phobos was added after, as No. 106.
     expect(SET_001_CARDS.slice(0, 97)).toEqual(objects.slice(0, 97));
     expect(SET_001_CARDS.slice(97, 105)).toEqual(almanac);
     expect(SET_001_CARDS[105].seed.designation).toBe('PHOBOS');
     expect(plateFor('PHOBOS')!.num).toBe('106');
+    expect(SET_001_CARDS[106].seed.designation).toBe('ROADSTER');
+    expect(plateFor('ROADSTER')!.num).toBe('107');
     const families = SET_GROUPS.map((g) => groupCards(SET_001_CARDS, g.key).length);
-    expect(families).toEqual([40, 16, 17, 12, 5, 8, 8]);
-    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(106);
+    expect(families).toEqual([41, 16, 17, 12, 5, 8, 8]);
+    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(107);
     expect(new Set(seeds.map((c) => c.designation)).size).toBe(seeds.length);
     for (const c of seeds) expect(c.designation).toMatch(/^[A-Z0-9-]+$/);
   });
@@ -74,9 +76,9 @@ describe('First Light', () => {
     });
   });
 
-  it('counts the tiers as the perks say: 7 legendary, 9 epic, 18 rare, 72 common', () => {
+  it('counts the tiers as the perks say: 7 legendary, 10 epic, 18 rare, 72 common', () => {
     const count = (r: string) => seeds.filter((c) => c.rarity === r).length;
-    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 9, 18, 72]);
+    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 10, 18, 72]);
   });
 
   it('never offers the telescope what it cannot point at, and says why', () => {
@@ -93,11 +95,14 @@ describe('First Light', () => {
     }
   });
 
-  it('sizes editions from the one economics constant, rarer being fewer', () => {
-    for (const c of seeds) {
+  it('sizes editions from the one economics constant, rarer being fewer; a limited card sets its own, smaller', () => {
+    for (const { seed: c, record } of SET_001_CARDS) {
       expect(isRarity(c.rarity)).toBe(true);
-      expect(c.editionSize).toBe(EDITION_SIZE[c.rarity as keyof typeof EDITION_SIZE]);
+      const tier = EDITION_SIZE[c.rarity as keyof typeof EDITION_SIZE];
+      if (record.directOnly) expect(c.editionSize, c.designation).toBeLessThan(tier);
+      else expect(c.editionSize, c.designation).toBe(tier);
     }
+    expect(byDesignation('ROADSTER').editionSize).toBe(25);
     const sizes = RARITIES.map((r) => EDITION_SIZE[r]);
     expect([...sizes].sort((a, b) => b - a)).toEqual(sizes);
   });
@@ -156,11 +161,24 @@ describe('First Light', () => {
       'ORIONIDS', 'HUNTERS-MOON', 'PLEIADES-OCCULTATION', 'GEMINIDS', 'CHRISTMAS-SUPERMOON', 'DOUBLE-OPPOSITION', 'SNOW-MOON-ECLIPSE', 'GREAT-ECLIPSE',
     ]);
     for (const c of dated) expect(Date.parse(c.record.eventEndUtc!)).toBeGreaterThan(Date.parse(c.record.eventStartUtc!));
-    for (const c of objects) expect(c.record.eventEndUtc).toBeNull();
+    // An object card has no event; only a limited card has a date, when its sale closes.
+    for (const c of objects) expect(c.record.eventStartUtc).toBeNull();
+    expect(objects.filter((c) => c.record.eventEndUtc !== null).map((c) => c.seed.designation)).toEqual(['ROADSTER']);
+    expect(SET_001_CARDS.filter((c) => c.record.directOnly).map((c) => c.seed.designation)).toEqual(['ROADSTER']);
   });
 });
 
 describe('sealing', () => {
+  it('seals a limited card when its sale closes, and keeps it out of capsules', () => {
+    const roadster = SET_001_CARD_BY_DESIGNATION.get('ROADSTER')!;
+    const closes = Date.parse(roadster.record.eventEndUtc!);
+    expect(cardStatus(roadster, new Date(closes - 60_000))).toBe('open');
+    expect(cardStatus(roadster, new Date(closes))).toBe('sealed');
+    expect(isDirectOnly('ROADSTER')).toBe(true);
+    expect(isDirectOnly('MARS')).toBe(false);
+    expect(isDirectOnly('NOT-A-CARD')).toBe(false);
+  });
+
   const orionids = SET_001_CARD_BY_DESIGNATION.get('ORIONIDS')!;
   const before = new Date('2026-09-26T12:00:00Z');
   const during = new Date('2026-10-21T20:00:00Z');

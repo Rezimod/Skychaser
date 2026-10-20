@@ -17,7 +17,7 @@ import { eq, sql, type SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { orders } from '@/lib/schema';
 import { RARITIES, isRarity, type Rarity } from '@/lib/rarity';
-import { isSealed } from './almanac';
+import { isDirectOnly, isSealed } from './almanac';
 import type { Db } from './attach';
 import type { LogRow } from './audit';
 import { CAPSULE_PRICE_USD, CARDS_PER_CAPSULE, RARITY_ODDS_BPS } from './economics';
@@ -109,10 +109,13 @@ function runBatch(db: Db, items: ReadonlyArray<BatchItem<'pg'>>): Promise<Array<
 export type SupplyRow = SupplyEntry & { cardId: string; editionSize: number };
 
 /**
- * Every card of the set, with how many editions are left. Edition numbers are
- * gapless from 1, so the highest number allocated is the number allocated.
+ * Every card of the set, with how many editions are left to capsules. Edition
+ * numbers are gapless from 1, so the highest number allocated is the number
+ * allocated. A limited (direct-only) card shows none left here, so no draw,
+ * sold-out tier or listing ever counts on it; `counts: true` gives its real
+ * remainder instead, for the public edition counts.
  */
-export async function readSupply(db: Db, setId: string, now: Date = new Date()): Promise<SupplyRow[]> {
+export async function readSupply(db: Db, setId: string, now: Date = new Date(), opts: { counts?: boolean } = {}): Promise<SupplyRow[]> {
   const { rows } = (await db.execute(sql`
     SELECT c.id, c.designation, c.rarity, c.edition_size,
       COALESCE((SELECT MAX(e.edition_number) FROM edition e WHERE e.card_id = c.id), 0) AS allocated
@@ -127,8 +130,12 @@ export async function readSupply(db: Db, setId: string, now: Date = new Date()):
       designation: r.designation,
       rarity: r.rarity as Rarity,
       editionSize: Number(r.edition_size),
-      // A sealed Almanac card's unsold editions are retired: nothing left to draw.
-      remaining: isSealed(r.designation, now) ? 0 : Number(r.edition_size) - Number(r.allocated),
+      // A sealed card's unsold editions are retired: nothing left to draw. A limited
+      // card is never drawn, so capsules see none of it.
+      remaining:
+        isSealed(r.designation, now) || (isDirectOnly(r.designation) && !opts.counts)
+          ? 0
+          : Number(r.edition_size) - Number(r.allocated),
     }));
 }
 
@@ -136,7 +143,7 @@ export async function readSupply(db: Db, setId: string, now: Date = new Date()):
 export async function readSetSupply(db: Db, code: string) {
   const { rows } = (await db.execute(sql`SELECT id, status FROM card_set WHERE code = ${code}`)) as Rows<{ id: string; status: string }>;
   if (!rows[0]) return null;
-  const supply = await readSupply(db, rows[0].id);
+  const supply = await readSupply(db, rows[0].id, new Date(), { counts: true });
   const { rows: owed } = (await db.execute(sql`
     SELECT COALESCE(SUM(cards_per_capsule), 0) AS draws FROM capsule
     WHERE set_id = ${rows[0].id}::uuid AND state IN ('listed', 'purchased')

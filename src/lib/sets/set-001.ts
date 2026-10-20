@@ -1,7 +1,7 @@
 /**
  * First Light.
  *
- * A hundred and six cards in seven families, numbered outward from Earth: the Solar
+ * A hundred and seven cards in seven families, numbered outward from Earth: the Solar
  * System (from the observatory's own first frame and two fragments held in
  * the hand, out to a visitor from another star), the Stars, the Deep Sky, the
  * Galaxies and the Extremes are real things, every one of them well known;
@@ -9,7 +9,8 @@
  * great comets; the Almanac is real dated events, each sold until its event
  * ends, then sealed. The first twenty-four are written here; the rest by
  * family in ./first-light/. Phobos, the special card, came last of all and
- * is numbered after the Almanac (No. 106) so no card that came before moved.
+ * is numbered after the Almanac (No. 106) so no card that came before moved;
+ * the Roadster, the first limited card, follows it (No. 107).
  *
  * Rarity is a decision made here and stored; it has nothing to do with whether
  * Live Telescope V1 can photograph the object — that is judged from the instrument and
@@ -20,7 +21,7 @@
  */
 
 import { arcsecFromKm, arcsecFromKmAtAu, MOON_DISTANCE_KM } from '@/lib/skychaser/observability';
-import { authorAlmanac, authorCard, authorKept, type AuthoredCard } from './build';
+import { authorAlmanac, authorCard, authorKept, authorLimited, type AuthoredCard } from './build';
 import { DEEP_CARDS } from './first-light/deep';
 import { EXTREME_CARDS } from './first-light/extremes';
 import { FAMOUS_CARDS } from './first-light/famous';
@@ -314,6 +315,30 @@ const SPECIMENS: AuthoredCard[] = [
   ),
 ];
 
+/**
+ * The limited cards: their own small edition count, sold on their own only
+ * (never in a capsule) until the sale closes, then sealed.
+ */
+const LIMITED: AuthoredCard[] = [
+  authorLimited(
+    {
+      designation: 'ROADSTER', name: 'The Roadster', objectType: 'thruster car', rarity: 'epic',
+      catalogRef: 'Revealed 15 Oct 2026',
+      blurb: 'Ten thrusters of compressed air, and a car that can leave the road.',
+    },
+    'Not in the sky: a car on the ground, with rocket thrusters it fires on demand.',
+    {
+      family: 'near',
+      stats: [['0–60 MPH', '~1 s'], ['THRUSTERS', '10, cold gas'], ['TOP SPEED', '230+ mph']],
+      line: 'Ten thrusters of compressed air, and a car that can leave the road.',
+      story: ['At its reveal it vaulted over five cars on its own thrust.', 'The first ones are to be built in 2028.'],
+      glow: '#e8463a',
+    },
+    // PROVISIONAL: 25 editions, sale closes two weeks after launch. Set the date when the card goes on sale.
+    { editions: 25, saleEndsUtc: '2026-11-05T20:00:00Z' },
+  ),
+];
+
 /** The set's order: each family outward from Earth, then the Rare Sights, then the Specimens, then the Almanac by date. */
 const ORDER = [
   // The Solar System
@@ -342,10 +367,12 @@ const ORDER = [
   // The special card, added after the set was numbered: last, so every card above keeps its number.
   // It is filed with the Solar System on the shelf (its family), but prints as No. 106.
   'PHOBOS',
+  // The first limited card, after Phobos: No. 107. On the Solar System shelf; never in a capsule.
+  'ROADSTER',
 ];
 
 const AUTHORED = new Map(
-  [...FIRST_24, ...NEAR_CARDS, ...STAR_CARDS, ...DEEP_CARDS, ...GALAXY_CARDS, ...EXTREME_CARDS, ...FAMOUS_CARDS, ...SPECIMENS].map((c) => [c.seed.designation, c]),
+  [...FIRST_24, ...NEAR_CARDS, ...STAR_CARDS, ...DEEP_CARDS, ...GALAXY_CARDS, ...EXTREME_CARDS, ...FAMOUS_CARDS, ...SPECIMENS, ...LIMITED].map((c) => [c.seed.designation, c]),
 );
 if (AUTHORED.size !== ORDER.length || ORDER.some((d) => !AUTHORED.has(d))) {
   throw new Error('First Light: ORDER and the authored cards disagree');
