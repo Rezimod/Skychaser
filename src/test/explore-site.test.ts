@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { config, EXPLORE_HOSTS, isExploreHost, middleware } from '@/middleware';
+import { ACADEMY_HOSTS, config, EXPLORE_HOSTS, isAcademyHost, isExploreHost, middleware } from '@/middleware';
 import { isGameScene } from '@/game/save';
 import { PWA_MANIFEST, SPLASH_SCREENS, splashPath, pwaMetadata } from '@/app/explore/pwa-meta';
 import { SHOTS, shotSrc, shotPortraitSrc } from '@/app/explore/shots';
@@ -81,6 +81,19 @@ describe('middleware: the game and its platform page are their own documents', (
     });
   }
 
+  it('gives Stellar Academy its own document at /academy, and at / on its own host', () => {
+    expect(outcome(middleware(req('/academy'))).gameHeader).toBe('academy');
+    for (const host of ACADEMY_HOSTS) {
+      const o = outcome(middleware(req('/', host)));
+      expect(o.gameHeader).toBe('academy');
+      expect(new URL(o.rewrite!).pathname).toBe('/academy');
+    }
+    // The website's own front page is untouched.
+    expect(outcome(middleware(req('/'))).gameHeader).toBeNull();
+    expect(isAcademyHost('Academy.Stellarr.Club:443')).toBe(true);
+    expect(isAcademyHost('stellarr.club')).toBe(false);
+  });
+
   it('matches hosts with a port, in any case, and only the listed ones', () => {
     expect(isExploreHost('Explore.Stellarr.Club:443')).toBe(true);
     expect(isExploreHost('explore.stellarr.club, proxy.internal')).toBe(true);
@@ -95,8 +108,8 @@ describe('middleware: the game and its platform page are their own documents', (
     expect(new URL(o.rewrite!).pathname).toBe('/explore');
   });
 
-  it('keeps its matcher to the four pages that need it (never _next, api or files)', () => {
-    expect(config.matcher).toEqual(['/', '/play', '/explore', '/solar-system']);
+  it('keeps its matcher to the five pages that need it (never _next, api or files)', () => {
+    expect(config.matcher).toEqual(['/', '/play', '/explore', '/academy', '/solar-system']);
     for (const m of config.matcher) {
       expect(m).not.toMatch(/_next|api|\.|\(|\*/);
     }

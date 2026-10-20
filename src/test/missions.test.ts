@@ -122,6 +122,19 @@ describe('the five Moon missions', () => {
     expect(e.telemetry.rewards).toHaveLength(MOON_MISSIONS.length);
   });
 
+  it('holds a mission behind an outside gate, asked fresh each time', () => {
+    const b = bus();
+    const open = new Set<string>();
+    const e = makeMissions({ missions: MOON_MISSIONS, bus: b, store: memoryMissionStore(), gate: (id) => open.has(id) });
+    expect(e.available()).not.toContain('firstSteps');
+    expect(e.statusOf('firstSteps')).toBe('locked');
+    expect(e.start('firstSteps')).toBeNull();
+    open.add('firstSteps');
+    expect(e.available()).toContain('firstSteps');
+    expect(e.statusOf('firstSteps')).toBe('open');
+    expect(e.start('firstSteps')).toBe('firstSteps');
+  });
+
   it('locks a mission until what it needs is done', () => {
     const b = bus();
     const e = makeMissions({ missions: MOON_MISSIONS, bus: b, store: memoryMissionStore() });

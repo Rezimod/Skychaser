@@ -26,6 +26,14 @@ describe('missions panel: the five Moon missions as the store has them', () => {
     expect(missionStates([], 'nonsense')[0]).toEqual({ id: 'firstSteps', state: 'next' });
   });
 
+  it('a mission waiting for its Academy lesson says so, and is never up next', () => {
+    const gate = (id: string) => id !== 'power';
+    const s = missionStates(['firstSteps'], 'power', gate);
+    expect(s[1]).toEqual({ id: 'power', state: 'lesson' });
+    expect(s.filter((m) => m.state === 'next')).toHaveLength(0);
+    expect(missionStates([], '', () => false)[0]).toEqual({ id: 'firstSteps', state: 'lesson' });
+  });
+
   it('everything done is five done', () => {
     expect(missionStates(['firstSteps', 'power', 'telescope', 'comms', 'expedition'], '').every((m) => m.state === 'done')).toBe(true);
   });

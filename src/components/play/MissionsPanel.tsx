@@ -8,6 +8,7 @@ import { localMissionStore } from '@/lib/solar-system/mission-store';
 import { MOON_MISSIONS } from '@/lib/solar-system/moon-missions';
 import { DISCOVERIES, readDiscoveryCount } from '@/lib/solar-system/flight-missions';
 import { localRewardSink } from '@/lib/solar-system/achievements';
+import { academyMissionGate } from '@/lib/academy/gates';
 import { EXPLORE_MAX_STARS, type ExploreProgress } from '@/lib/games/explore';
 import { GamePanel } from './GamePanel';
 
@@ -16,19 +17,21 @@ interface MissionsPanelProps {
 }
 
 /** Where a mission stands for this crew. */
-export type MissionState = 'done' | 'next' | 'open' | 'locked';
+export type MissionState = 'done' | 'next' | 'open' | 'locked' | 'lesson';
 
 interface Progress { missions: { id: string; state: MissionState }[]; discoveries: number; records: number }
 
 /** The five Moon missions as the store has them: done, the one being flown
- *  (or the first that can be), the others that could be taken on, and those
- *  still behind one that has not. Pure, so it is tested. */
-export function missionStates(done: readonly string[], active: string): { id: string; state: MissionState }[] {
-  let next = MOON_MISSIONS.find((m) => m.id === active && !done.includes(m.id))?.id ?? '';
+ *  (or the first that can be), the others that could be taken on, those
+ *  still behind one that has not, and (in Stellar Academy's children's mode)
+ *  those waiting for their lesson. Pure, so it is tested. */
+export function missionStates(done: readonly string[], active: string, gate: (id: string) => boolean = () => true): { id: string; state: MissionState }[] {
+  let next = MOON_MISSIONS.find((m) => m.id === active && !done.includes(m.id) && gate(m.id))?.id ?? '';
   return MOON_MISSIONS.map((m) => {
     if (done.includes(m.id)) return { id: m.id, state: 'done' as const };
     const open = (m.requires ?? []).every((r) => done.includes(r));
     if (!open) return { id: m.id, state: 'locked' as const };
+    if (!gate(m.id)) return { id: m.id, state: 'lesson' as const };
     if (!next) next = m.id;
     return { id: m.id, state: next === m.id ? 'next' as const : 'open' as const };
   });
@@ -46,7 +49,7 @@ export function MissionsPanel({ onClose }: MissionsPanelProps) {
   const [credited, setCredited] = useState<ExploreProgress | null>(null);
   useEffect(() => {
     const saved = localMissionStore(MOON_MISSIONS.map((m) => m.id)).load();
-    setP({ missions: missionStates(saved.done, saved.active), discoveries: readDiscoveryCount(), records: localRewardSink().list().length });
+    setP({ missions: missionStates(saved.done, saved.active, academyMissionGate()), discoveries: readDiscoveryCount(), records: localRewardSink().list().length });
   }, []);
   useEffect(() => {
     if (!ready || !authenticated) { setCredited(null); return; }
@@ -76,13 +79,18 @@ export function MissionsPanel({ onClose }: MissionsPanelProps) {
             {p.missions.map((m) => (
               <li key={m.id} className="game-missions__item" data-state={m.state}>
                 <span className="game-missions__mark" aria-hidden>
-                  {m.state === 'done' ? <Check size={14} /> : m.state === 'locked' ? <Lock size={12} /> : <Circle size={10} />}
+                  {m.state === 'done' ? <Check size={14} /> : m.state === 'locked' || m.state === 'lesson' ? <Lock size={12} /> : <Circle size={10} />}
                 </span>
                 <span className="game-missions__name">{tm(`${m.id}.title`)}</span>
                 <small className="game-missions__state">{t(`missionsPanel.state.${m.state}`)}</small>
               </li>
             ))}
           </ol>
+          {p.missions.some((m) => m.state === 'lesson') && (
+            <p className="game-missions__empty">
+              {t('missionsPanel.academy')} <a className="game-missions__signin-btn" href="/academy">{t('missionsPanel.academyAction')}</a>
+            </p>
+          )}
           {empty && <p className="game-missions__empty">{t('missionsPanel.empty')}</p>}
           <dl className="game-missions">
             <dt>{t('missionsPanel.discoveries', { n: p.discoveries, total: DISCOVERIES.length })}</dt>

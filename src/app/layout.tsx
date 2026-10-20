@@ -117,6 +117,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // chrome, no scroll, and only the providers it uses — auth and messages.
   // Its platform page (/explore, `site`) is the same document with messages only.
   const gameDocument = (await headers()).get('x-stellar-game');
+  if (gameDocument === 'academy') {
+    // Stellar Academy, for children: no sign-in, no wallet, no site chrome,
+    // and only its own messages in the page.
+    return (
+      <html lang={locale} className={fonts}>
+        <body className="academy-body">
+          <ErrorBoundary>
+            <NextIntlClientProvider locale={locale} messages={{ academy: messages.academy }}>{children}</NextIntlClientProvider>
+          </ErrorBoundary>
+        </body>
+      </html>
+    );
+  }
   if (gameDocument === 'site') {
     return (
       <html lang={locale} className={fonts}>

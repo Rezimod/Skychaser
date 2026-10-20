@@ -540,6 +540,8 @@
 .game-missions__item[data-state='next'] .game-missions__mark { border-color: var(--terracotta, #ffb347); color: var(--terracotta, #ffb347); }
 .game-missions__item[data-state='next'] .game-missions__state { color: var(--terracotta, #ffb347); }
 .game-missions__item[data-state='locked'] .game-missions__name { color: rgba(196, 210, 232, 0.72); }
+.game-missions__item[data-state='lesson'] .game-missions__name { color: rgba(196, 210, 232, 0.72); }
+.game-missions__item[data-state='lesson'] .game-missions__state { color: #9fd1ff; }
 /* The on-foot rows come from the surfaces' own help (moon-hud__bind): give
    them the sheet's type and spacing rather than the HUD's. */
 .game-controls__binds { display: grid; gap: 6px; }

@@ -9,17 +9,29 @@ export const EXPLORE_HOSTS: readonly string[] = ['explore.stellarr.club', 'play.
 export const EXPLORE_SITE_PATH = '/explore';
 /** The game itself. */
 export const GAME_PATH = '/play';
+/** Stellar Academy, the children's learning app, and the hosts that are its
+ *  own site (their front page is the Academy). */
+export const ACADEMY_PATH = '/academy';
+export const ACADEMY_HOSTS: readonly string[] = ['academy.stellarr.club'];
+
 /** Where the rest of Stellar lives, for links out of the game's own host. */
 export const MAIN_SITE_ORIGIN = 'https://stellarr.club';
 
-/** The value the root layout reads: `1` the game, `site` the platform page.
- *  Both are their own document, without the website's chrome. */
+/** The value the root layout reads: `1` the game, `site` the platform page,
+ *  `academy` the learning app. Each is its own document, without the
+ *  website's chrome. */
 export const GAME_HEADER = 'x-stellar-game';
 
 export function isExploreHost(host: string | null | undefined): boolean {
   if (!host) return false;
   const name = host.split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
   return EXPLORE_HOSTS.includes(name);
+}
+
+export function isAcademyHost(host: string | null | undefined): boolean {
+  if (!host) return false;
+  const name = host.split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+  return ACADEMY_HOSTS.includes(name);
 }
 
 function requestHost(req: NextRequest): string | null {
@@ -32,7 +44,7 @@ function onExploreSite(req: NextRequest): boolean {
   return process.env.NODE_ENV !== 'production' && req.nextUrl.searchParams.get('site') === 'explore';
 }
 
-function ownDocument(req: NextRequest, kind: '1' | 'site', rewriteTo?: string) {
+function ownDocument(req: NextRequest, kind: '1' | 'site' | 'academy', rewriteTo?: string) {
   const headers = new Headers(req.headers);
   headers.set(GAME_HEADER, kind);
   if (!rewriteTo) return NextResponse.next({ request: { headers } });
@@ -53,6 +65,8 @@ export function middleware(req: NextRequest) {
   }
   if (pathname === GAME_PATH) return ownDocument(req, '1');
   if (pathname === EXPLORE_SITE_PATH) return ownDocument(req, 'site');
+  if (pathname === ACADEMY_PATH) return ownDocument(req, 'academy');
+  if (pathname === '/' && isAcademyHost(requestHost(req))) return ownDocument(req, 'academy', ACADEMY_PATH);
   if (pathname === '/' && onExploreSite(req)) return ownDocument(req, 'site', EXPLORE_SITE_PATH);
   // Leaving the game on its own host ("Exit to Stellar") goes to the website proper.
   if (pathname === '/solar-system' && isExploreHost(requestHost(req))) {
@@ -62,4 +76,4 @@ export function middleware(req: NextRequest) {
 }
 
 // Only the pages that need a decision: never _next, the API or static files.
-export const config = { matcher: ['/', '/play', '/explore', '/solar-system'] };
+export const config = { matcher: ['/', '/play', '/explore', '/academy', '/solar-system'] };

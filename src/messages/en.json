@@ -4298,8 +4298,11 @@
         "done": "Done",
         "next": "Up next",
         "open": "Open",
-        "locked": "Locked"
-      }
+        "locked": "Locked",
+        "lesson": "Learn it first"
+      },
+      "academy": "In children's mode, each mission opens after its lesson in Stellar Academy.",
+      "academyAction": "Open Stellar Academy"
     },
     "qualityDrop": "Detail reduced to hold the frame rate — change it in Settings.",
     "stars": {
@@ -4558,6 +4561,118 @@
       "site": "Stellar — astronomy platform",
       "privacy": "Privacy",
       "terms": "Terms"
+    }
+  },
+  "academy": {
+    "meta": {
+      "title": "Stellar Academy: learn space, fly the Moon",
+      "description": "Short space lessons in Georgian and English. Every lesson finished opens a mission on the Moon in Stellar Explore."
+    },
+    "brand": "Stellar Academy",
+    "onboarding": {
+      "welcome": "Welcome, cadet!",
+      "lead": "Learn about space in a few minutes a day, then fly the missions you learned about.",
+      "nameLabel": "What should we call you?",
+      "namePlaceholder": "Your name or a nickname",
+      "avatarLabel": "Pick your badge",
+      "ageLabel": "How old are you?",
+      "start": "Start learning",
+      "privacy": "Your progress stays on this device. Nothing about you is sent anywhere."
+    },
+    "avatars": {
+      "astronaut": "Astronaut",
+      "rocket": "Rocket",
+      "moon": "Moon",
+      "saturn": "Saturn",
+      "comet": "Comet",
+      "robot": "Robot"
+    },
+    "nav": {
+      "path": "Learn",
+      "cards": "Cards",
+      "parents": "Parents"
+    },
+    "home": {
+      "hello": "Hi, {name}!",
+      "streak": "{n}-day streak",
+      "streakNone": "Start a streak today",
+      "xp": "{n} XP",
+      "goal": "Today {done} of {goal} XP",
+      "goalMet": "Daily goal reached!",
+      "unitProgress": "{done} of {total} lessons",
+      "locked": "Finish the lesson before this one to open it",
+      "start": "Start",
+      "again": "Practise again",
+      "missionOpen": "Mission unlocked in Stellar Explore",
+      "missionLocked": "Opens a mission in Stellar Explore",
+      "play": "Play the mission",
+      "allDone": "You finished the Moon! More worlds are on their way.",
+      "capsules": "Capsules to open: {n}",
+      "openCapsules": "Open"
+    },
+    "lesson": {
+      "check": "Check",
+      "continue": "Continue",
+      "right": "Great!",
+      "wrong": "Almost!",
+      "answerWas": "The answer:",
+      "true": "True",
+      "false": "False",
+      "orderHint": "Tap the items in the right order",
+      "matchHint": "Tap a word on the left, then its pair on the right",
+      "chooseHint": "Choose one answer",
+      "again": "One more try",
+      "leave": "Leave the lesson?",
+      "leaveBody": "Your progress in this lesson will be lost.",
+      "stay": "Keep learning",
+      "quit": "Leave",
+      "begin": "Let's go",
+      "close": "Close"
+    },
+    "result": {
+      "title": "Lesson complete!",
+      "xp": "+{n} XP",
+      "accuracy": "{n}% right first time",
+      "perfect": "Perfect lesson!",
+      "streak": "{n}-day streak",
+      "goal": "Daily goal reached!",
+      "capsule": "You earned a capsule",
+      "contains": "Inside: {name}",
+      "open": "Open the capsule",
+      "newCard": "New card!",
+      "mission": "A new mission is open in Stellar Explore",
+      "play": "Play the mission",
+      "next": "Next lesson",
+      "home": "Back to the path"
+    },
+    "cards": {
+      "title": "Your cards",
+      "count": "{have} of {total}",
+      "locked": "Finish “{lesson}” to earn this card",
+      "empty": "Finish a lesson to earn your first card."
+    },
+    "parents": {
+      "gateTitle": "For grown-ups",
+      "gateQuestion": "To continue, answer: {a} × {b}",
+      "gateWrong": "That's not it. Ask a grown-up to help.",
+      "title": "Parents and teachers",
+      "kidsMode": "Children's mode",
+      "kidsModeBody": "Moon missions in the game open only after the lesson that teaches them.",
+      "goal": "Daily goal",
+      "goalValue": "{n} XP",
+      "language": "Language",
+      "sound": "Sounds",
+      "reset": "Start over",
+      "resetConfirm": "Erase all progress on this device?",
+      "resetYes": "Erase",
+      "cancel": "Cancel",
+      "privacyTitle": "Privacy",
+      "privacyBody": "Stellar Academy keeps progress on this device only. It has no ads, no chat, no purchases and no tracking.",
+      "prizesTitle": "Prizes from Astroman",
+      "prizesBody": "Coming soon: prizes for finished worlds, claimed by a parent.",
+      "back": "Back",
+      "on": "On",
+      "off": "Off"
     }
   }
 }
