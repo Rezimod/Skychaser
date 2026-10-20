@@ -73,18 +73,11 @@ export default async function FirstLightPage() {
         <CapsuleCounter onSale={onSale} />
 
         <section className="sd-fl__set" aria-labelledby="fl-title">
-          <header className="sd-fl__head">
-            <div>
-              <h1 className="sd-fl__title" id="fl-title">
-                In this set
-              </h1>
-              <p className="sd-fl__meta">
-                {SET_001_CARDS.length} cards · rarest first
-                {status !== 'released' && ' · Pre-release'}
-              </p>
-            </div>
-            <ShelfFilter total={SET_001_CARDS.length} />
-          </header>
+          <ShelfFilter
+            title="In this set"
+            meta={`${SET_001_CARDS.length} cards · rarest first${status !== 'released' ? ' · Pre-release' : ''}`}
+            total={SET_001_CARDS.length}
+          />
 
           <ul className="sd-fl__grid">
             {sorted.map((c, i) => {

@@ -110,60 +110,210 @@
 /* ── The shelf ────────────────────────────────────────────────── */
 .skychaser .sd-tile:is(:hover, :focus-visible) .sd-thumb { box-shadow: 0 0 34px -8px color-mix(in srgb, var(--tile-glow) 75%, transparent), 0 20px 30px -18px #000; }
 
-/* ── The filter: a navigation console over the shelf ─────────── */
-.skychaser .sd-fl__head {
-  position: relative; z-index: 20; align-items: center; padding: 16px 18px; margin-bottom: 26px;
-  border: 1px solid var(--sd-line); border-radius: 14px; overflow: hidden; isolation: isolate;
-  background:
-    var(--sd-ticks),
-    var(--sd-stars) 0 0 / 240px 160px,
-    radial-gradient(80% 140% at 100% 0%, rgba(227, 72, 44, 0.16), transparent 60%),
-    radial-gradient(70% 140% at 0% 100%, rgba(76, 141, 255, 0.10), transparent 60%),
-    var(--sd-glass);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-}
 /* The capsule counter stays put beside the shelf; the filter scrolls with the cards. */
 @media (min-width: 1024px) {
   .skychaser .sd-counter { position: sticky; top: calc(var(--sd-bar-h) + 16px); max-height: calc(100dvh - var(--sd-bar-h) - 32px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #ffffff22 transparent; }
 }
-.skychaser .sd-fl__head::after {
-  content: ''; position: absolute; left: 18px; right: 18px; bottom: 0; height: 1px; z-index: -1;
-  background: linear-gradient(90deg, transparent, var(--sd-hal), transparent); opacity: 0.6;
+/* ── The shelf's head: title and status on the left, search and rarities on the right ──
+   One fixed layout. Choosing a rarity changes colours only: no size, no weight, no position. */
+.skychaser .sd-fl__head {
+  position: relative; z-index: 20; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px 20px;
+  padding: 16px 16px 16px 22px; margin-bottom: 26px;
+  border: 1px solid var(--sd-line); border-radius: 14px; overflow: hidden; isolation: isolate;
+  background:
+    var(--sd-stars) 0 0 / 240px 160px,
+    radial-gradient(80% 140% at 100% 0%, rgba(227, 72, 44, 0.10), transparent 60%),
+    var(--sd-glass);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
-.skychaser .sd-fl__meta { margin-top: 8px; color: var(--sd-ink-3); }
-.skychaser .sd-filter { gap: 10px; align-items: center; max-width: none; }
-.skychaser .sd-filter__search {
-  width: 210px; min-height: 42px; border-radius: 8px; border: 1px solid var(--sd-line-hi); background: rgba(0, 0, 0, 0.45); color: var(--sd-ink-3);
-  transition: border-color var(--sd-dur-fast), box-shadow var(--sd-dur-fast);
+.skychaser .sd-fl__heading { min-width: 0; }
+.skychaser .sd-fl__meta {
+  margin: 8px 0 0; min-height: 1.5em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 600 10.5px/1.5 var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sd-ink-small);
 }
-.skychaser .sd-filter__search:focus-within { border-color: var(--sd-hal); box-shadow: 0 0 0 3px rgba(227, 72, 44, 0.18), 0 0 24px -6px var(--sd-hal-glow); color: var(--sd-hal); }
-.skychaser .sd-filter__search input { font: 500 13px var(--sd-sans); letter-spacing: 0.02em; }
-.skychaser .sd-filter__search input::placeholder { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.22em; text-transform: uppercase; color: #8d8d95; }
-.skychaser .sd-filter__chips { gap: 3px; padding: 3px; border: 1px solid var(--sd-line); border-radius: 10px; background: rgba(0, 0, 0, 0.45); flex-wrap: nowrap; }
-.skychaser .sd-filter__chip {
-  min-height: 36px; padding: 6px 12px; border: 0; border-radius: 7px; gap: 7px;
-  font: 700 10.5px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: #b4b4bb;
-  transition: color var(--sd-dur-fast), background var(--sd-dur-fast), box-shadow var(--sd-dur-fast);
-}
-.skychaser .sd-filter__chip i { width: 6px; height: 6px; background: var(--rarity); box-shadow: 0 0 8px var(--rarity); }
-.skychaser .sd-filter__chip:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
-.skychaser .sd-filter__chip[aria-pressed='true'] {
-  color: #fff; background: linear-gradient(180deg, color-mix(in srgb, var(--rarity, #fff) 80%, #fff), var(--rarity, #fff) 55%, color-mix(in srgb, var(--rarity, #fff) 75%, #000));
-  box-shadow: 0 0 22px -4px color-mix(in srgb, var(--rarity, #fff) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-.skychaser .sd-filter__chip[aria-pressed='true'] i { background: #fff; box-shadow: 0 0 8px #fff; }
-.skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { color: #0b0b0d; background: #f2f2f0; box-shadow: 0 0 22px -6px rgba(255, 255, 255, 0.6); }
-.skychaser .sd-filter__chip[data-rarity='legendary'][aria-pressed='true'] { color: #1c1406; }
-.skychaser .sd-filter__chip[data-rarity='common'][aria-pressed='true'] { color: #032417; }
-.skychaser .sd-filter__count { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sd-hal); }
+body .skychaser .sd-fl__meta[data-filtered] { color: var(--sd-ink); }
 
-/* One row on a wide screen: the title, then the search and the chips. */
-@media (min-width: 1180px) {
-  .skychaser .sd-fl__head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 10px; padding: 12px 14px 12px 20px; }
-  .skychaser .sd-fl__head .sd-filter { display: contents; }
-  .skychaser .sd-fl__head .sd-filter__search, .skychaser .sd-fl__head .sd-filter__chips { grid-row: 1 / span 2; align-self: center; }
-  .skychaser .sd-fl__head .sd-filter__count { grid-column: 1; grid-row: 2; margin-top: 8px; }
-  .skychaser .sd-fl__head:has(.sd-filter__count:not(:empty)) .sd-fl__meta { display: none; }
+.skychaser .sd-filter { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.skychaser .sd-filter__search {
+  position: relative; display: flex; align-items: center; gap: 9px; width: 220px; height: 44px; padding: 0 12px 0 14px;
+  border: 1px solid var(--sd-line-hi); border-radius: 10px; background: rgba(0, 0, 0, 0.42); color: var(--sd-ink-3); cursor: text;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.skychaser .sd-filter__search:hover { border-color: rgba(255, 255, 255, 0.32); }
+.skychaser .sd-filter__search:focus-within { border-color: rgba(255, 255, 255, 0.55); background: rgba(0, 0, 0, 0.6); color: var(--sd-ink); }
+.skychaser .sd-filter__search svg { flex: none; }
+.skychaser .sd-filter__search input {
+  flex: 1; width: 100%; min-width: 0; height: 100%; padding: 0; border: 0; outline: none; background: transparent; color: var(--sd-ink);
+  font: 500 13px var(--sd-sans); letter-spacing: 0.01em;
+}
+.skychaser .sd-filter__search input::-webkit-search-cancel-button { display: none; }
+.skychaser .sd-filter__search input::placeholder { font: 600 10.5px var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: #8d8d95; }
+.skychaser .sd-filter__clear {
+  display: grid; place-items: center; flex: none; width: 24px; height: 24px; margin-right: -4px; padding: 0;
+  border: 0; border-radius: 6px; background: rgba(255, 255, 255, 0.08); color: var(--sd-ink-2); cursor: pointer;
+}
+.skychaser .sd-filter__clear:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+/* The rarities: a segmented strip. The chosen one is tinted in its colour with a hairline of it; nothing grows. */
+.skychaser .sd-filter__chips {
+  display: flex; flex-wrap: nowrap; gap: 2px; padding: 4px; min-width: 0;
+  border: 1px solid var(--sd-line); border-radius: 12px; background: rgba(0, 0, 0, 0.42);
+}
+.skychaser .sd-filter__chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: none; height: 34px; padding: 0 13px;
+  border: 0; border-radius: 8px; background: transparent; cursor: pointer; white-space: nowrap;
+  font: 600 10.5px/1 var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+.skychaser .sd-filter__chip[data-rarity='all'] { --rarity: #ffffff; padding: 0 15px; }
+.skychaser .sd-filter__chip i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--rarity); box-shadow: 0 0 6px color-mix(in srgb, var(--rarity) 70%, transparent); }
+.skychaser .sd-filter__chip:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.skychaser .sd-filter__chip:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+body .skychaser .sd-filter__chip[aria-pressed='true'] {
+  color: #fff; background: color-mix(in srgb, var(--rarity) 15%, rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rarity) 50%, transparent);
+}
+body .skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { background: rgba(255, 255, 255, 0.10); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22); }
+
+/* Narrower than the full row: the title on its own line, the controls under it. */
+@media (max-width: 1179px) {
+  .skychaser .sd-fl__head { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .skychaser .sd-filter__search { flex: 1; width: auto; }
+}
+/* A phone: the title with its status beside it, the search, then the five rarities sharing the width. */
+@media (max-width: 767px) {
+  .skychaser .sd-fl__head { gap: 12px; padding: 14px; margin-bottom: 16px; border-radius: 12px; }
+  .skychaser .sd-fl__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .skychaser .sd-fl__title { font-size: 26px; }
+  .skychaser .sd-fl__meta { margin: 0; font-size: 10px; letter-spacing: 0.14em; }
+  .skychaser .sd-filter { flex-direction: column; align-items: stretch; gap: 8px; }
+  .skychaser .sd-filter__search { flex: none; width: 100%; height: 46px; }
+  .skychaser .sd-filter__search input { font-size: 16px; }
+  .skychaser .sd-filter__chips { overflow-x: auto; scrollbar-width: none; }
+  .skychaser .sd-filter__chips::-webkit-scrollbar { display: none; }
+  .skychaser .sd-filter__chip, .skychaser .sd-filter__chip[data-rarity='all'] { flex: 1 0 auto; height: 38px; padding: 0 8px; gap: 6px; font-size: 10px; letter-spacing: 0.08em; }
+  .skychaser .sd-filter__chip i { width: 5px; height: 5px; }
+}
+/* ── The Collection ───────────────────────────────────────────────
+   One panel says whose it is and what it holds; the editions follow as the shelf does. */
+.skychaser .sd-coll { padding-bottom: 24px; }
+.skychaser :is(.sd-coll__hero, .sd-coll__gate, .sd-coll__empty) {
+  position: relative; isolation: isolate; overflow: hidden; border: 1px solid var(--sd-line); border-radius: 18px;
+  background:
+    var(--sd-stars) 0 0 / 240px 160px,
+    radial-gradient(70% 120% at 100% 0%, rgba(227, 72, 44, 0.12), transparent 60%),
+    radial-gradient(60% 120% at 0% 100%, rgba(91, 124, 255, 0.10), transparent 60%),
+    var(--sd-glass);
+}
+.skychaser .sd-coll__kicker { margin: 0 0 10px; font: 600 11px/1 var(--sd-spaced); letter-spacing: 0.3em; text-transform: uppercase; color: var(--sd-hal); }
+.skychaser .sd-coll__title { margin: 0; font: 400 clamp(36px, 4.4vw, 56px)/0.98 var(--sd-display); text-transform: uppercase; letter-spacing: 0.005em; }
+
+.skychaser .sd-coll__hero { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); align-items: center; gap: 32px 40px; padding: 32px; }
+.skychaser .sd-coll__addr {
+  display: inline-flex; align-items: center; gap: 10px; height: 36px; margin-top: 18px; padding: 0 14px;
+  border: 1px solid var(--sd-line-hi); border-radius: 99px; background: rgba(0, 0, 0, 0.4); color: var(--sd-ink-3); cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.skychaser .sd-coll__addr:hover { border-color: rgba(255, 255, 255, 0.4); color: var(--sd-ink); }
+.skychaser .sd-coll__addr-k { font: 600 10px/1 var(--sd-spaced); letter-spacing: 0.22em; text-transform: uppercase; }
+.skychaser .sd-coll__addr-v { font: 500 13px/1 var(--sd-mono); letter-spacing: 0.04em; color: var(--sd-ink); }
+.skychaser .sd-coll__share { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.skychaser .sd-coll__share .sd-btn { min-height: 40px; padding: 9px 15px; font-size: 11.5px; letter-spacing: 0.12em; }
+
+.skychaser .sd-coll__figures { display: grid; gap: 22px; min-width: 0; }
+.skychaser .sd-coll__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border: 1px solid var(--sd-line); border-radius: 14px; background: rgba(0, 0, 0, 0.38); }
+.skychaser .sd-coll__stats > div { position: relative; min-width: 0; padding: 16px 16px 18px; }
+.skychaser .sd-coll__stats > div + div { border-left: 1px solid var(--sd-line); }
+.skychaser .sd-coll__stats dt { font: 600 10px/1 var(--sd-spaced); letter-spacing: 0.2em; text-transform: uppercase; color: var(--sd-ink-small); white-space: nowrap; }
+.skychaser .sd-coll__stats dd { margin: 12px 0 0; font: 400 34px/1 var(--sd-display); color: var(--sd-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.skychaser .sd-coll__stats dd small { font-size: 0.5em; color: var(--sd-ink-3); }
+.skychaser .sd-coll__rarest { font-size: 24px !important; line-height: 34px !important; text-transform: uppercase; color: var(--rarity, var(--sd-ink)) !important; text-shadow: 0 0 18px color-mix(in srgb, var(--rarity, #fff) 45%, transparent); overflow: hidden; text-overflow: ellipsis; }
+.skychaser .sd-coll__meter { position: absolute; left: 16px; right: 16px; bottom: 10px; height: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
+.skychaser .sd-coll__meter i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--sd-hal), #ffb08f); }
+
+.skychaser .sd-coll__spreadbar { display: flex; gap: 3px; height: 8px; }
+.skychaser .sd-coll__spreadbar i { flex-basis: 0; min-width: 8px; border-radius: 99px; background: linear-gradient(180deg, color-mix(in srgb, var(--r) 70%, #fff), var(--r)); box-shadow: 0 0 12px -2px color-mix(in srgb, var(--r) 70%, transparent); }
+.skychaser .sd-coll__legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 12px 0 0; padding: 0; list-style: none; }
+.skychaser .sd-coll__legend li { display: inline-flex; align-items: center; gap: 8px; font: 600 10.5px/1 var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-small); }
+.skychaser .sd-coll__legend i { width: 7px; height: 7px; border-radius: 50%; background: var(--r); box-shadow: 0 0 8px var(--r); }
+.skychaser .sd-coll__legend b { font: 500 12px/1 var(--sd-mono); letter-spacing: 0; color: var(--sd-ink); }
+
+/* The editions: a heading with the count, the rarities to filter by, the shelf. */
+.skychaser .sd-coll__shelf { container-type: inline-size; margin-top: 44px; }
+.skychaser .sd-coll__bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 26px; }
+.skychaser .sd-coll__h { display: flex; align-items: baseline; gap: 12px; margin: 0; font: 400 30px/1 var(--sd-display); text-transform: uppercase; }
+.skychaser .sd-coll__h span { font: 500 14px/1 var(--sd-mono); color: var(--sd-ink-3); }
+.skychaser .sd-coll__bar .sd-filter__chip b { font: 500 11px/1 var(--sd-mono); letter-spacing: 0; color: var(--sd-ink-3); }
+.skychaser .sd-coll__bar .sd-filter__chip[aria-pressed='true'] b { color: var(--sd-ink-2); }
+.skychaser .sd-coll__grid > li { min-width: 0; }
+.skychaser .sd-coll__cap { display: flex; align-items: center; gap: 8px; margin: 12px 2px 0; font: 500 10.5px/1.35 var(--sd-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--sd-ink-small); }
+.skychaser .sd-coll__cap i { flex: none; width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--sd-ink-3); }
+.skychaser .sd-coll__cap[data-seen] { color: var(--sd-ink-2); }
+.skychaser .sd-coll__cap[data-seen] i { border: 0; background: #7cffb2; box-shadow: 0 0 8px #7cffb2; }
+.skychaser .sd-coll__blank { aspect-ratio: 630 / 880; border-radius: 5.5% / 3.9%; color: var(--sd-ink-3); text-align: center; }
+.skychaser .sd-coll__blank strong { font: 400 20px/1.1 var(--sd-display); text-transform: uppercase; color: var(--sd-ink-2); }
+
+.skychaser .sd-coll__empty { display: flex; align-items: center; gap: 32px; margin-top: 28px; padding: 28px 32px; }
+.skychaser .sd-coll__empty img { flex: none; width: 150px; height: auto; filter: drop-shadow(0 20px 40px rgba(227, 72, 44, 0.25)); }
+.skychaser .sd-coll__empty p { max-width: 46ch; margin: 12px 0 20px; color: var(--sd-ink-2); font: 400 15px/1.55 var(--sd-sans); }
+
+/* Not signed in: what the Collection is, the way in, and three cards fanned beside it. */
+.skychaser .sd-coll__gate { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; min-height: 480px; padding: 48px 56px; }
+.skychaser .sd-coll__lede { max-width: 44ch; margin: 18px 0 28px; color: var(--sd-ink-2); font: 400 16px/1.6 var(--sd-sans); }
+.skychaser .sd-coll__login { min-width: 220px; min-height: 52px; }
+.skychaser .sd-coll__lookup { max-width: 400px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--sd-line); }
+.skychaser .sd-coll__lookup-k { display: block; margin-bottom: 10px; font: 600 10.5px/1 var(--sd-spaced); letter-spacing: 0.22em; text-transform: uppercase; color: var(--sd-ink-small); }
+.skychaser .sd-coll__lookup-row { display: flex; height: 48px; border: 1px solid var(--sd-line-hi); border-radius: 10px; background: rgba(0, 0, 0, 0.45); overflow: hidden; transition: border-color 160ms ease; }
+.skychaser .sd-coll__lookup-row:focus-within { border-color: rgba(255, 255, 255, 0.55); }
+.skychaser .sd-coll__lookup-row input { flex: 1; min-width: 0; padding: 0 14px; border: 0; outline: none; background: transparent; color: var(--sd-ink); font: 500 13px var(--sd-mono); }
+.skychaser .sd-coll__lookup-row input::placeholder { color: #8d8d95; }
+.skychaser .sd-coll__lookup-row button { display: grid; place-items: center; width: 52px; border: 0; border-left: 1px solid var(--sd-line); background: rgba(255, 255, 255, 0.06); color: var(--sd-ink); cursor: pointer; transition: background-color 160ms ease; }
+.skychaser .sd-coll__lookup-row button:hover:not(:disabled) { background: var(--sd-hal); }
+.skychaser .sd-coll__lookup-row button:disabled { color: var(--sd-ink-4, #555); cursor: default; }
+.skychaser .sd-coll__fan { position: relative; height: 400px; }
+.skychaser .sd-coll__fancard { position: absolute; top: 50%; left: 50%; width: 210px; transform-origin: 50% 120%; filter: drop-shadow(0 26px 40px rgba(0, 0, 0, 0.7)); transition: transform 400ms var(--sd-ease); }
+.skychaser .sd-coll__fancard[data-i='0'] { transform: translate(-50%, -50%) translateX(-120px) rotate(-12deg); }
+.skychaser .sd-coll__fancard[data-i='1'] { z-index: 2; transform: translate(-50%, -54%); }
+.skychaser .sd-coll__fancard[data-i='2'] { transform: translate(-50%, -50%) translateX(120px) rotate(12deg); }
+@media (hover: hover) {
+  .skychaser .sd-coll__gate:hover .sd-coll__fancard[data-i='0'] { transform: translate(-50%, -50%) translateX(-140px) rotate(-15deg); }
+  .skychaser .sd-coll__gate:hover .sd-coll__fancard[data-i='2'] { transform: translate(-50%, -50%) translateX(140px) rotate(15deg); }
+}
+.skychaser .sd-coll__fancard .sd-thumb { display: block; }
+
+@media (max-width: 1023px) {
+  .skychaser .sd-coll__hero { grid-template-columns: minmax(0, 1fr); padding: 26px; }
+  .skychaser .sd-coll__gate { padding: 40px 32px; }
+  .skychaser .sd-coll__fancard { width: 170px; }
+}
+@media (max-width: 767px) {
+  .skychaser .sd-coll__hero { gap: 22px; padding: 20px 18px; border-radius: 14px; }
+  .skychaser .sd-coll__title { font-size: 38px; }
+  .skychaser .sd-coll__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .skychaser .sd-coll__stats > div:nth-child(3) { border-left: 0; }
+  .skychaser .sd-coll__stats > div:nth-child(n + 3) { border-top: 1px solid var(--sd-line); }
+  .skychaser .sd-coll__stats dd { font-size: 30px; }
+  .skychaser .sd-coll__shelf { margin-top: 32px; }
+  .skychaser .sd-coll__bar { margin-bottom: 18px; }
+  .skychaser .sd-coll__bar .sd-filter__chips { width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .skychaser .sd-coll__bar .sd-filter__chips::-webkit-scrollbar { display: none; }
+  .skychaser .sd-coll__cap { gap: 6px; font: 500 11px/1.35 var(--sd-sans); letter-spacing: 0; text-transform: none; }
+  .skychaser .sd-coll__empty { flex-direction: column; text-align: center; padding: 28px 20px; }
+  .skychaser .sd-coll__empty img { width: 120px; }
+  .skychaser .sd-coll__empty .sd-coll__h { justify-content: center; }
+  .skychaser .sd-coll__gate { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 8px; padding: 12px 20px 28px; border-radius: 14px; }
+  .skychaser .sd-coll__fan { order: -1; height: 230px; }
+  .skychaser .sd-coll__fancard { width: 118px; }
+  .skychaser .sd-coll__fancard[data-i='0'] { transform: translate(-50%, -50%) translateX(-66px) rotate(-10deg); }
+  .skychaser .sd-coll__fancard[data-i='2'] { transform: translate(-50%, -50%) translateX(66px) rotate(10deg); }
+  .skychaser .sd-coll__lede { margin: 14px 0 22px; font-size: 15px; }
+  .skychaser .sd-coll__login { width: 100%; }
+  .skychaser .sd-coll__lookup { max-width: none; margin-top: 24px; padding-top: 20px; }
+  .skychaser .sd-coll__lookup-row input { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skychaser .sd-coll__fancard { transition: none; }
 }
 /* ── The card page ────────────────────────────────────────────── */
 .skychaser .sd-cardhero .sd-eyebrow { letter-spacing: 0.2em; }
@@ -171,12 +321,6 @@
 
 /* ── Phones and tablets ───────────────────────────────────────── */
 @media (max-width: 1023px) {
-  .skychaser .sd-fl__head { flex-direction: column; align-items: stretch; gap: 14px; }
-  .skychaser .sd-filter { flex-direction: column; align-items: stretch; }
-  .skychaser .sd-filter__search { width: 100%; }
-  .skychaser .sd-filter__chips { overflow-x: auto; scrollbar-width: none; -webkit-mask-image: none; mask-image: none; }
-  .skychaser .sd-filter__chips::-webkit-scrollbar { display: none; }
-  .skychaser .sd-filter__chip { flex: 1 0 auto; justify-content: center; }
 }
 @media (max-width: 767px) {
   .skychaser .sd-home-sec { padding-top: 64px; }
@@ -186,10 +330,6 @@
   .skychaser .sd-counter__stage { height: 188px; }
   .skychaser .sd-counter__line { display: none; }
 
-  .skychaser .sd-fl__head { padding: 14px; margin-bottom: 18px; }
-  .skychaser .sd-filter__chip { padding-inline: 10px; font-size: 10px; letter-spacing: 0.12em; }
-  .skychaser .sd-filter__chips { -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); padding-right: 28px; }
-  .skychaser .sd-fl__meta { display: none; }
   .skychaser .sd-fl__grid { gap: 22px 12px; }
 
 

@@ -230,21 +230,8 @@
 }
 .skychaser:has(.sd-fl) .sd-backdrop::before, .skychaser:has(.sd-cardhero) .sd-backdrop::before { opacity: .035; }
 .sd-fl__set { min-width: 0; container-type: inline-size; }
-.sd-fl__head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
 .skychaser .sd-fl__title { margin: 0; font: 400 34px/1.05 var(--sd-display); letter-spacing: 0; text-transform: uppercase; }
 .sd-fl__meta { margin: 7px 0 0; font: 400 11px/1.5 var(--sd-sans); letter-spacing: 0; color: var(--sd-ink-3); }
-.sd-filter { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; max-width: 540px; }
-.sd-filter__chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.sd-filter__chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 12px; border: 1px solid #ffffff20; border-radius: 99px; color: #b9b9b5; background: transparent; font: 500 11px var(--sd-sans); cursor: pointer; transition: color .15s, background .15s; }
-.sd-filter__chip i { width: 5px; height: 5px; border-radius: 50%; background: var(--rarity); }
-.sd-filter__chip:hover { color: #fff; border-color: #ffffff55; }
-.sd-filter__chip[aria-pressed='true'] { color: #121212; background: #f4f4f2; border-color: #f4f4f2; }
-.sd-filter__search { display: flex; align-items: center; gap: 8px; width: 170px; min-height: 44px; padding: 0 12px; border: 1px solid #ffffff20; border-radius: 99px; color: #969692; }
-.sd-filter__search:focus-within { border-color: #bbb; }
-.sd-filter__search input { width: 100%; min-width: 0; border: 0; outline: none; background: transparent; color: #eee; font: 400 12px var(--sd-sans); }
-.sd-filter__search input::placeholder { color: #999; }
-.sd-filter__count { flex-basis: 100%; margin: 0; color: var(--sd-ink-2); font-size: 12px; }
-.sd-filter__count:empty { display: none; }
 .sd-fl__grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 14px; }
 @container (min-width: 560px) { .sd-fl__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 20px; } }
 @container (min-width: 860px) { .sd-fl__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 36px 24px; } }
@@ -277,15 +264,8 @@
 @keyframes sd-badge-breathe { 0%, 100% { scale: 1; } 50% { scale: 1.05; } }
 @media (max-width: 859px) {
   .sd-fl { padding-top: 24px; gap: 36px; }
-  .sd-fl__head { align-items: flex-start; flex-direction: column; }
-  .sd-filter { justify-content: flex-start; max-width: none; }
 }
 @media (max-width: 559px) {
-  .sd-filter { width: 100%; }
-  .sd-filter__search { width: 100%; }
-  .sd-filter__search input { font-size: 16px; }
-  .sd-filter__chips { width: 100%; gap: 5px; }
-  .sd-filter__chip { flex: 1; justify-content: center; padding-inline: 7px; font-size: 10px; }
   .sd-stock { width: 20px; }
 }
 
@@ -466,14 +446,10 @@
   /* Shelf tiles: the card fills its tile, the frame around it thins. */
 }
 
-.sd-coll__head { margin-bottom: 24px; }
-.sd-coll__holder { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.sd-coll__holder span { font-family: var(--sd-mono); text-transform: none; letter-spacing: 0.04em; color: var(--sd-ink-2); }
 /* Share a card or a collection: the post on X and the link, side by side, small. */
-.sd-coll__share, .sd-cardhero__share { display: flex; flex-wrap: wrap; gap: 10px; }
-.sd-coll__share { margin-top: 18px; }
+.sd-cardhero__share { display: flex; flex-wrap: wrap; gap: 10px; }
 .sd-cardhero__share { margin-top: 18px; }
-.sd-coll__share .sd-btn, .sd-cardhero__share .sd-btn { min-height: 42px; padding: 10px 16px; font-size: 12px; letter-spacing: 0.12em; }
+.sd-cardhero__share .sd-btn { min-height: 42px; padding: 10px 16px; font-size: 12px; letter-spacing: 0.12em; }
 
 /* A card image fades in over the sealed back (thumbs) or the dark window (live cards) once it has loaded. */
 /* Hidden until it has loaded, then faded in; and shown regardless after a moment, so a picture whose load event
@@ -489,9 +465,6 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 }
 :is(.sd-tile, .sd-showcase2__cards a, .sd-cardplate__link):focus-visible { outline: 2px solid var(--sd-gold); outline-offset: 3px; }
 
-/* A held card: its rarity and edition under it, as on the shelf. */
-.sd-coll__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
-.sd-coll__meta .sd-rtag { margin-left: 0; }
 
 /* ── Odds per card: one bar, scarcest first, each rarity in its colour ── */
 .sd-oddsbar { display: grid; gap: 12px; }

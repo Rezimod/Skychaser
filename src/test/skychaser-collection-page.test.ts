@@ -43,7 +43,7 @@ it('renders an edition that has not been observed yet', async () => {
   const html = await render('holder-1');
   expect(mocks.holderView).toHaveBeenCalledWith({}, 'holder-1');
   expect(html).toContain('M31');
-  expect(html).toContain('edition 001 of 300');
+  expect(html).toContain('#001');
   expect(html).toContain('Photograph after first light');
   expect(html).toContain('No. 001 of 10');
 });
@@ -87,4 +87,16 @@ it('asks for a wallet rather than querying for nothing', async () => {
   const html = await render();
   expect(html).toContain('Sign in to read your Collection');
   expect(mocks.holderView).not.toHaveBeenCalled();
+});
+
+it('shows two editions of one card as one tile with both numbers', async () => {
+  const base = { designation: 'M31', name: 'Andromeda Galaxy', editionSize: 300, rarity: 'common', observationStatus: 'eligible', latest: null, history: [] }
+  mocks.holderView.mockResolvedValue([
+    { ...base, editionId: 'e1', editionNumber: 7 },
+    { ...base, editionId: 'e2', editionNumber: 2 },
+  ]);
+  const html = await render('holder-1');
+  expect(html.match(/class="sd-tile"/g)).toHaveLength(1);
+  expect(html).toContain('×2');
+  expect(html).toContain('No. 002, 007 of 300');
 });

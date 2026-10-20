@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowRight } from 'lucide-react'
+import CardThumb from './CardThumb'
 import { usePrivySafe } from './usePrivySafe'
 import { useSkychaserHolder } from './useSkychaserHolder'
+
+const FAN = ['EARTH', 'SATURN', 'M42']
 
 /**
  * The Collection is read by wallet. A signed-in holder never has to type
@@ -21,41 +25,56 @@ export default function CollectionWallet() {
     if (ready && authenticated && address) router.replace(`/collection?wallet=${address}`)
   }, [ready, authenticated, address, router])
 
-  if (ready && authenticated && address) return <p className="sd-note">Opening your Collection.</p>
+  const opening = ready && authenticated && address
 
   return (
-    <>
-      <p className="sd-lede">Your editions and every photograph the Live Telescope will take of them. Collections are public, like the log.</p>
-      <div className="sd-pay__actions sd-section">
-        <button type="button" className="sd-btn sd-btn--primary" onClick={() => login()} disabled={!ready}>
-          {ready ? 'Log in' : 'Reading the account'}
-        </button>
+    <div className="sd-coll__gate">
+      <div className="sd-coll__gate-copy">
+        <p className="sd-coll__kicker">Collection</p>
+        <h1 className="sd-coll__title">Your collection</h1>
+        <p className="sd-coll__lede">Every edition you hold, its number, and every photograph the Live Telescope will take of it. Collections are public, like the log.</p>
+        {opening ? (
+          <p className="sd-note">Opening your Collection.</p>
+        ) : (
+          <>
+            <button type="button" className="sd-btn sd-btn--primary sd-coll__login" onClick={() => login()} disabled={!ready}>
+              {ready ? 'Log in' : 'Reading the account'}
+            </button>
+            <form
+              className="sd-coll__lookup"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const wallet = typed.trim()
+                if (wallet) router.push(`/collection?wallet=${encodeURIComponent(wallet)}`)
+              }}
+            >
+              <label className="sd-coll__lookup-k" htmlFor="sd-holder">
+                Or read any holder
+              </label>
+              <div className="sd-coll__lookup-row">
+                <input
+                  id="sd-holder"
+                  value={typed}
+                  onChange={(e) => setTyped(e.target.value)}
+                  placeholder="Holder address"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <button type="submit" disabled={!typed.trim()} aria-label="Read the collection">
+                  <ArrowRight size={18} aria-hidden="true" />
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
-      <p className="sd-gate__or">or read any holder</p>
-      <form
-        className="sd-pay__actions"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const wallet = typed.trim()
-          if (wallet) router.push(`/collection?wallet=${encodeURIComponent(wallet)}`)
-        }}
-      >
-        <label className="sr-only" htmlFor="sd-holder">
-          Holder address
-        </label>
-        <input
-          id="sd-holder"
-          className="sd-input"
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          placeholder="Holder address"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <button type="submit" className="sd-btn" disabled={!typed.trim()}>
-          Read it
-        </button>
-      </form>
-    </>
+      <div className="sd-coll__fan" aria-hidden="true">
+        {FAN.map((d, i) => (
+          <span key={d} className="sd-coll__fancard" data-i={i}>
+            <CardThumb designation={d} eager />
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
