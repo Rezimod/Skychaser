@@ -19,7 +19,7 @@ export type RarityInfo = {
   rarity: Rarity;
   /** 0 for common, rising with scarcity — for sorting a Collection. */
   rank: number;
-  /** Hex on the crypto ramp — Solana green, Ethereum blue, Solana purple, Bitcoin orange — for the plate's edge, the chip and the drawn plate. */
+  /** Hex on the stellar temperature ramp — the colour of a star from cool to hot: ember red, solar yellow, white-cyan, blue giant — for the plate's edge, the chip and the drawn plate. */
   color: string;
   label: string;
   /** A single character, never an emoji. */
@@ -27,10 +27,10 @@ export type RarityInfo = {
 };
 
 const RARITY_MAP: Record<Rarity, Omit<RarityInfo, 'rarity' | 'rank'>> = {
-  common: { color: '#14F195', label: 'Common', glyph: '◇' },
-  rare: { color: '#3C7DFF', label: 'Rare', glyph: '◈' },
-  epic: { color: '#9945FF', label: 'Epic', glyph: '◆' },
-  legendary: { color: '#F7931A', label: 'Legendary', glyph: '✦' },
+  common: { color: '#FF6A4D', label: 'Common', glyph: '◇' },
+  rare: { color: '#FFC94A', label: 'Rare', glyph: '◈' },
+  epic: { color: '#8FE3FF', label: 'Epic', glyph: '◆' },
+  legendary: { color: '#5B7CFF', label: 'Legendary', glyph: '✦' },
 };
 
 export function isRarity(value: string): value is Rarity {

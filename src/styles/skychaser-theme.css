@@ -54,10 +54,10 @@
   --sd-teal: var(--sd-gold);
 
   /* Rarity — blue, violet, the login red, gold */
-  --sd-rarity-common: #14f195;
-  --sd-rarity-rare: #3c7dff;
-  --sd-rarity-epic: #9945ff;
-  --sd-rarity-legendary: #f7931a;
+  --sd-rarity-common: #ff6a4d;
+  --sd-rarity-rare: #ffc94a;
+  --sd-rarity-epic: #8fe3ff;
+  --sd-rarity-legendary: #5b7cff;
   --rarity: var(--sd-rarity-common);
 
   /* Observation status — gold for what the node can reach, ink for the rest */
