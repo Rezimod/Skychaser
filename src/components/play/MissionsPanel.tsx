@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Check, Circle, Lock } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useLogin, usePrivy } from '@privy-io/react-auth';
+import { useGameAccount } from '@/game/account';
 import { localMissionStore } from '@/lib/solar-system/mission-store';
 import { MOON_MISSIONS } from '@/lib/solar-system/moon-missions';
 import { DISCOVERIES, readDiscoveryCount } from '@/lib/solar-system/flight-missions';
@@ -43,8 +43,7 @@ export function missionStates(done: readonly string[], active: string, gate: (id
 export function MissionsPanel({ onClose }: MissionsPanelProps) {
   const t = useTranslations('play');
   const tm = useTranslations('solarSystem.moon.missions');
-  const { ready, authenticated, getAccessToken } = usePrivy();
-  const { login } = useLogin();
+  const { available, ready, authenticated, getAccessToken, login } = useGameAccount();
   const [p, setP] = useState<Progress | null>(null);
   const [credited, setCredited] = useState<ExploreProgress | null>(null);
   useEffect(() => {
@@ -104,11 +103,11 @@ export function MissionsPanel({ onClose }: MissionsPanelProps) {
           </dl>
         </>
       )}
-      {p && ready && !authenticated && (
+      {p && available && ready && !authenticated && (
         <p className="game-missions__signin">
           {t('stars.signIn', { max })}
           <button type="button" className="game-missions__signin-btn"
-            onClick={() => login({ loginMethods: ['email', 'google', 'wallet'], walletChainType: 'solana-only' })}>
+            onClick={login}>
             {t('stars.signInAction')}
           </button>
         </p>

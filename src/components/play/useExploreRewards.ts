@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
-import { useWallets as usePrivySolanaWallets } from '@privy-io/react-auth/solana';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useGameAccount } from '@/game/account';
 import {
   localRewardSink, syncedRewardSink, type Achievement, type SyncedRewardSink,
 } from '@/lib/solar-system/achievements';
@@ -16,29 +15,12 @@ export interface ExploreAward {
 
 const AWARD_SHOWN_MS = 6000;
 
-/** The signed-in explorer's Solana address, from Privy alone: the game's
- *  document carries no wallet-adapter context. */
-function usePrivySolanaAddress(): string | null {
-  const { user } = usePrivy();
-  const solana = usePrivySolanaWallets();
-  const linked = useMemo(() => {
-    const match = user?.linkedAccounts.find((a) =>
-      a.type === 'wallet'
-      && (a as { chainType?: string }).chainType === 'solana'
-      && (a as { walletClientType?: string }).walletClientType === 'privy');
-    return (match as { address?: string } | undefined)?.address ?? null;
-  }, [user]);
-  const live = solana.ready ? (solana.wallets[0]?.address ?? null) : null;
-  return live ?? linked;
-}
-
 /** The game's connection to the platform. One sink for the surfaces to write
  *  records into; each new one goes to `/api/games/explore/complete`, which
  *  credits Stars to the signed-in wallet. Signing in later flushes whatever
  *  the crew earned before. */
 export function useExploreRewards() {
-  const { authenticated, ready, getAccessToken } = usePrivy();
-  const address = usePrivySolanaAddress();
+  const { authenticated, ready, getAccessToken, wallet: address } = useGameAccount();
   const wallet = authenticated && address ? address : null;
   const walletRef = useRef(wallet);
   walletRef.current = wallet;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Hammer, LogIn, Plus, RotateCw, Trash2, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { usePrivy } from '@privy-io/react-auth';
+import { useGameAccount } from '@/game/account';
 import type { BuildHandle, BuildTelemetry } from '@/lib/solar-system/build-mode';
 import { makeBuildSync, type BuildSync, type SyncState } from '@/lib/solar-system/build-sync';
 import { CAPS, MODULE_SPECS, moduleSpec, type BuildWorld } from '@/lib/solar-system/build-rules';
@@ -31,12 +31,14 @@ const same = (a: View | null, b: View) => !!a && (Object.keys(b) as (keyof View)
 /** Build mode's controls on the glass: the toggle, the catalogue, the scope, and what is wrong with the spot. */
 export function BuildHud({ world, getBuild, canOpen, mount, paused, touch }: BuildHudProps) {
   const t = useTranslations('solarSystem.build');
-  const { authenticated, getAccessToken, login } = usePrivy();
+  const { available, authenticated, getAccessToken, login } = useGameAccount();
   const [view, setView] = useState<View | null>(null);
   const [sync, setSync] = useState<SyncState>({ status: 'loading', signedIn: false, refused: '' });
   const buildRef = useRef<BuildHandle | null>(null);
   const syncRef = useRef<BuildSync | null>(null);
   const authRef = useRef({ authenticated, getAccessToken });
+  const availableRef = useRef(available);
+  availableRef.current = available;
   authRef.current = { authenticated, getAccessToken };
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -53,6 +55,7 @@ export function BuildHud({ world, getBuild, canOpen, mount, paused, touch }: Bui
         syncRef.current = b ? makeBuildSync({
           world, build: b, onState: setSync,
           token: () => (authRef.current.authenticated ? authRef.current.getAccessToken() : Promise.resolve(null)),
+          shared: availableRef.current,
         }) : null;
       }
       if (!b) { setView(null); return; }
@@ -157,7 +160,7 @@ export function BuildHud({ world, getBuild, canOpen, mount, paused, touch }: Bui
           {view.scope === 'colony' && <span>{t('colonyCount', { n: view.colonyTotal })}</span>}
         </div>
         <p className="build-hud__status" data-bad={bad} role="status">{status}</p>
-        {needsSignIn && (
+        {needsSignIn && available && (
           <button type="button" className="build-hud__signin" onClick={() => login()}><LogIn size={14} aria-hidden /><span>{t('signInButton')}</span></button>
         )}
         <p className="build-hud__save" data-state={sync.status}>{sync.status === 'offline' ? t('offline') : sync.status === 'loading' ? t('loading') : sync.signedIn ? t('saved') : ''}</p>

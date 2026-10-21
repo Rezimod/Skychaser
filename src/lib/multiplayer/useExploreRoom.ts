@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useGameAccount } from '@/game/account';
 import { connectRealtime, realtimeConfig, type Channel, type PresenceState, type RealtimeClient } from '@/lib/multiplayer/realtime';
 import { makeRoomCode, normalizeRoomCode, pushSample, readPose, type RoomLink, type Scene } from '@/lib/multiplayer/room-link';
 
@@ -45,7 +45,7 @@ function firstMetas(state: PresenceState) {
 }
 
 export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: number; watchLobby: boolean; onEpoch: (ms: number) => void }) {
-  const { authenticated, ready } = usePrivy();
+  const { authenticated, ready } = useGameAccount();
   const config = realtimeConfig();
   const [code, setCode] = useState<string | null>(null);
   const [joined, setJoined] = useState(false);
