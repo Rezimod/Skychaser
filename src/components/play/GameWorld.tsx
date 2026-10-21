@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pause, Play, RotateCcw, Users, X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useLogin, usePrivy } from '@privy-io/react-auth';
+import { useGameAccount } from '@/game/account';
 import { SolarSystemCanvas, type EpochRef } from '@/components/solar-system/SolarSystemCanvas';
 import { PlayerShip, type LandingSite } from '@/components/solar-system/PlayerShip';
 import { MoonSurface } from '@/components/solar-system/MoonSurface';
@@ -12,7 +12,6 @@ import { createFlightSession, type FlightSession } from '@/lib/solar-system/play
 import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
 import { createRoomLink, normalizeRoomCode, type RoomLink } from '@/lib/multiplayer/room-link';
 import { useExploreRoom } from '@/lib/multiplayer/useExploreRoom';
-import { useProfile } from '@/hooks/useProfile';
 import { ExploreRoomPanel } from '@/components/solar-system/ExploreRoomPanel';
 import { ExploreRoomBadge } from '@/components/solar-system/ExploreRoomBadge';
 import { game, type GameState } from '@/game/state';
@@ -71,14 +70,12 @@ export function GameWorld({ scene, state }: GameWorldProps) {
     window.__stellarRoom = roomLinkRef.current!;
     return () => { delete window.__stellarRoom; };
   }, []);
-  const { user } = usePrivy();
-  const { login } = useLogin();
-  const { profile } = useProfile();
+  const account = useGameAccount();
   const [roomOpen, setRoomOpen] = useState(false);
   // An invite link carries the room; it is joined once the explorer is signed in.
   const [pendingRoom, setPendingRoom] = useState(() => normalizeRoomCode(new URLSearchParams(window.location.search).get('room') ?? ''));
   const room = useExploreRoom(roomLinkRef.current, {
-    name: profile?.username || t('room.defaultName', { tag: (user?.id ?? '').slice(-4).toUpperCase() }),
+    name: account.name || t('room.defaultName', { tag: (account.userId ?? '').slice(-4).toUpperCase() }),
     // The clock is a mutable cell here, read once a second: that is close
     // enough to share, and it keeps the deck from re-rendering per frame.
     epochMs: clockMs,
@@ -153,7 +150,7 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         <button type="button" className="solar-system__fab solar-system__fab--close" onClick={game.exit} aria-label={t('immersive.exit')}>
           <X size={20} aria-hidden />
         </button>
-        {landed === null && <button type="button" className="solar-system__fab" onClick={() => setRoomOpen((o) => !o)} aria-label={t('room.open')} aria-expanded={roomOpen}>
+        {landed === null && account.available && <button type="button" className="solar-system__fab" onClick={() => setRoomOpen((o) => !o)} aria-label={t('room.open')} aria-expanded={roomOpen}>
           <Users size={20} aria-hidden />
         </button>}
         <span className="solar-system__mini-clock">
@@ -179,7 +176,7 @@ export function GameWorld({ scene, state }: GameWorldProps) {
       {room.code && !roomOpen && <ExploreRoomBadge code={room.code} roster={room.roster} onOpen={() => setRoomOpen(true)} />}
       {roomOpen && (
         <ExploreRoomPanel room={room} onClose={() => setRoomOpen(false)}
-          onSignIn={() => login({ loginMethods: ['email', 'google', 'wallet'], walletChainType: 'solana-only' })} />
+          onSignIn={account.login} />
       )}
       {showChrome && <div className="solar-system__dockbar" role="group" aria-label={t('time.title')}>
         <button type="button" className="solar-system__dockbtn" onClick={() => setPlaying((p) => !p)} aria-label={t(playing ? 'time.pause' : 'time.play')}>
