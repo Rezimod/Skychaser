@@ -28,7 +28,7 @@ export interface Binding<A extends string> {
 }
 
 export type FootAction =
-  | 'move' | 'look' | 'zoom' | 'jump' | 'sprint' | 'walk' | 'crouch' | 'interact'
+  | 'move' | 'look' | 'zoom' | 'jump' | 'jet' | 'sprint' | 'walk' | 'crouch' | 'interact'
   | 'headlamp' | 'view' | 'shoulder' | 'map' | 'gears' | 'sound';
 
 export const FOOT_BINDINGS: readonly Binding<FootAction>[] = [
@@ -36,6 +36,8 @@ export const FOOT_BINDINGS: readonly Binding<FootAction>[] = [
   { action: 'look', keys: [], keyLabel: 'mouse', pad: ['rightStick'], padLabel: 'RS', touch: true },
   { action: 'zoom', keys: [], keyLabel: 'wheel', pad: [PAD.UP, PAD.DOWN], padLabel: '↑ ↓' },
   { action: 'jump', keys: ['Space'], keyLabel: 'Space', pad: [PAD.A], padLabel: 'A', touch: true },
+  // The jump key held in the air is the jet on every controller (surface-controls); J is its own key.
+  { action: 'jet', keys: ['KeyJ'], keyLabel: 'J', pad: [], padLabel: 'A', touch: true },
   { action: 'sprint', keys: ['ShiftLeft', 'ShiftRight'], keyLabel: 'Shift', pad: [PAD.RT, PAD.L3], padLabel: 'RT', touch: true },
   { action: 'walk', keys: ['AltLeft', 'AltRight'], keyLabel: 'Alt', pad: [PAD.LT], padLabel: 'LT' },
   { action: 'crouch', keys: ['KeyC'], keyLabel: 'C', pad: [PAD.B], padLabel: 'B', touch: true },

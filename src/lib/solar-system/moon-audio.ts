@@ -39,6 +39,8 @@ export interface SuitAudio {
   motor: (load: number, running: boolean) => void;
   /** The descent engine through the frame, 0…1 of throttle. Every frame. */
   engine: (throttle: number) => void;
+  /** The jetpack on the back, 0…1 of throttle: a roar through the shell whose pitch climbs with it, and a click as it lights. Every frame. */
+  jet: (throttle: number) => void;
   /** Air moving in the chamber, 0 none … 1 a full cycle. Every frame. */
   hiss: (k: number) => void;
   /** A habitat's machinery, heard only in air: 0 outside, 1 on a live deck. */
@@ -57,6 +59,7 @@ export function makeSuitAudio(open = false): SuitAudio {
   let helmetK = 0;
   let drillOsc: OscillatorNode | null = null;
   let drillGain: GainNode | null = null;
+  let jetLit = false;
   const unsubscribe = onSoundChange((_on, level) => {
     if (master && ctx) master.gain.setTargetAtTime(level * MASTER_GAIN, ctx.currentTime, 0.05);
   });
@@ -275,6 +278,62 @@ export function makeSuitAudio(open = false): SuitAudio {
       });
       if (!b) return;
       ramp(b, k * 0.09, 0.08);
+    },
+    jet(throttle) {
+      // The pack is bolted to the suit, so unlike the descent engine its
+      // roar is not a distant shake but the shell itself buzzing: a band of
+      // noise the throttle pushes up in pitch, over a low pulse from the
+      // pumps, and the valve's click as it lights.
+      const k = Math.min(1, Math.max(0, throttle));
+      const lit = k > 0.02;
+      if (lit && !jetLit) {
+        one((c, m) => {
+          const t0 = c.currentTime;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0.14, t0);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+          g.connect(m);
+          if (noise) {
+            const n = c.createBufferSource(); n.buffer = noise;
+            const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900;
+            n.connect(hp); hp.connect(g); n.start(t0); n.stop(t0 + 0.08);
+          }
+          const o = c.createOscillator();
+          o.type = 'square';
+          o.frequency.setValueAtTime(320, t0);
+          o.frequency.exponentialRampToValueAtTime(90, t0 + 0.05);
+          o.connect(g); o.start(t0); o.stop(t0 + 0.07);
+        });
+      }
+      jetLit = lit;
+      const b = bed('jet', lit, (c, m) => {
+        const roar = noiseBed(c, 'bandpass', 420, 0.6);
+        const pulse = c.createOscillator();
+        pulse.type = 'triangle';
+        pulse.frequency.value = 52;
+        const pulseLp = c.createBiquadFilter();
+        pulseLp.type = 'lowpass'; pulseLp.frequency.value = 160;
+        const pulseGain = c.createGain();
+        pulseGain.gain.value = 0.4;
+        const gain = c.createGain();
+        gain.gain.value = 0;
+        roar.gain.gain.value = 1;
+        roar.gain.connect(gain);
+        pulse.connect(pulseLp); pulseLp.connect(pulseGain); pulseGain.connect(gain);
+        gain.connect(m);
+        pulse.start();
+        return {
+          gain,
+          tune: (q) => {
+            if (!ctx) return;
+            roar.filter.frequency.setTargetAtTime(380 + q * 720, ctx.currentTime, 0.06);
+            pulse.frequency.setTargetAtTime(44 + q * 30, ctx.currentTime, 0.1);
+          },
+        };
+      });
+      if (!b) return;
+      b.tune?.(k);
+      ramp(b, k * 0.11, 0.06);
     },
     hiss(k) {
       // Only while the chamber has air in it: in vacuum this is silence.

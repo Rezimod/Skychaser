@@ -2,18 +2,23 @@
 // Four rings, each laid in the hole of the one inside it: the walk area in
 // chunks that change detail with distance, the city, the valley, and the
 // Caucasus — the last two folded in by the haze hook so they sit at their
-// true angle inside the far plane. Colour is the land cover OpenStreetMap
+// true angle inside the far plane, and curved down onto the sphere from the
+// site (surface-orbit `withCurvature`), 4 km down at their edge, so they meet
+// the planet globe past them from any height. Colour is the land cover OpenStreetMap
 // gives where it has it; past the city it is the elevation and the slope,
 // and above the season's snowline, snow.
 
 import * as THREE from 'three';
 import { COVER, coverAt, makeHeightAt, type HeightGrid } from '@/lib/solar-system/world-earth-data';
-import { withHaze } from '@/lib/solar-system/world-earth-haze';
+import { EARTH_R_REFRACTED, withHaze } from '@/lib/solar-system/world-earth-haze';
+import { withCurvature } from '@/lib/solar-system/surface-orbit';
 
 export interface EarthTerrain {
   group: THREE.Group;
   heightAt: (x: number, z: number) => number;
   walkGrid: HeightGrid;
+  /** The rings past the walk area, for the orbit view's ceilings. */
+  rings: { city: THREE.Mesh; valley: THREE.Mesh; caucasus: THREE.Mesh };
   /** Pick detail for the camera; cheap, call every frame. */
   update: (cameraPos: THREE.Vector3) => void;
   dispose: () => void;
@@ -174,6 +179,8 @@ export function makeEarthTerrain(grids: HeightGrid[], date: Date, lite: boolean)
   const ring = (g: HeightGrid, hole: HeightGrid, step: number, far: boolean) => {
     const geom = patch(g, 0, g.n - 1, 0, g.n - 1, step, inside(hole, g.cell * step), inside(hole, 0));
     const mat = withHaze(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.97, metalness: 0 }), `ring-${g.id}`, far);
+    // The eye sees the far ground curve away with refraction's longer radius.
+    if (far) withCurvature(mat, EARTH_R_REFRACTED);
     const mesh = new THREE.Mesh(geom, mat);
     mesh.receiveShadow = !far;
     mesh.frustumCulled = !far;
@@ -187,6 +194,7 @@ export function makeEarthTerrain(grids: HeightGrid[], date: Date, lite: boolean)
   let tick = 0;
   return {
     group, heightAt, walkGrid: walk,
+    rings: { city: rings[0], valley: rings[1], caucasus: rings[2] },
     update(cameraPos) {
       if ((tick++ & 7) !== 0) return;
       for (const c of chunks) {

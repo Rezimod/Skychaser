@@ -158,9 +158,14 @@ export interface MissionsSetup {
   onComplete?: (id: string) => void;
   /** Run when a mission is taken on. */
   onStart?: (id: string) => void;
+  /** Anything outside the game a mission also waits on: in Stellar
+   *  Academy's children's mode, the lesson that teaches it. Asked fresh each
+   *  time, so a lesson finished in another tab opens the mission. Left out,
+   *  nothing outside the game holds a mission back. */
+  gate?: (id: string) => boolean;
 }
 
-export function makeMissions({ missions, bus, store, onComplete, onStart }: MissionsSetup): MissionsHandle {
+export function makeMissions({ missions, bus, store, onComplete, onStart, gate = () => true }: MissionsSetup): MissionsHandle {
   const byId = new Map(missions.map((m) => [m.id, m]));
   const saved = store.load();
   const done = new Set(saved.done.filter((id) => byId.has(id)));
@@ -193,7 +198,7 @@ export function makeMissions({ missions, bus, store, onComplete, onStart }: Miss
     onEvent: null,
     available() {
       return missions
-        .filter((m) => !done.has(m.id) && m.id !== active && (m.requires ?? []).every((r) => done.has(r)))
+        .filter((m) => !done.has(m.id) && m.id !== active && (m.requires ?? []).every((r) => done.has(r)) && gate(m.id))
         .map((m) => m.id);
     },
     statusOf(id) {
@@ -201,11 +206,11 @@ export function makeMissions({ missions, bus, store, onComplete, onStart }: Miss
       if (id === active) return 'active';
       const m = byId.get(id);
       if (!m) return 'locked';
-      return (m.requires ?? []).every((r) => done.has(r)) ? 'open' : 'locked';
+      return (m.requires ?? []).every((r) => done.has(r)) && gate(id) ? 'open' : 'locked';
     },
     start(id) {
       const next = id ?? handle.available()[0];
-      if (!next || !byId.has(next) || done.has(next)) return null;
+      if (!next || !byId.has(next) || done.has(next) || !gate(next)) return null;
       active = next;
       counts = byId.get(next)!.objectives.map(() => 0);
       persist();

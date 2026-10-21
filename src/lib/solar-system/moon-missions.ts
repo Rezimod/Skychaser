@@ -14,6 +14,7 @@
 import type { Mission } from '@/lib/solar-system/missions';
 import { makeMissions, type MissionsHandle } from '@/lib/solar-system/missions';
 import { localMissionStore } from '@/lib/solar-system/mission-store';
+import { academyMissionGate } from '@/lib/academy/gates';
 import { CRATER, RIDGE, makeMissionProps, type MissionPropsHandle, type MissionPropsWorld } from '@/lib/solar-system/moon-mission-props';
 
 export const MOON_MISSIONS: Mission[] = [
@@ -89,6 +90,9 @@ export function makeMoonMissions(world: MissionPropsWorld): MoonMissionsHandle {
     missions: MOON_MISSIONS,
     bus: world.bus,
     store: localMissionStore(MISSION_IDS),
+    // In Stellar Academy's children's mode each mission waits for the lesson
+    // that teaches it; everywhere else the gate is always open.
+    gate: academyMissionGate(),
     onStart: (id) => {
       // The premise of a mission is set when it is taken on, not written into
       // the base: the power mission starts with the base dim, the comms one

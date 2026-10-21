@@ -7,8 +7,13 @@
 // The same hook can fold distance for the far terrain: past FAR_START a
 // vertex is pulled in along its own line of sight, so the Caucasus, a
 // hundred kilometres off, fits inside the camera's far plane (30 km) at exactly the
-// angle it really subtends — and it drops by the Earth's curvature (with
-// standard refraction) on the way.
+// angle it really subtends. The drop by the Earth's curvature (with standard
+// refraction, EARTH_R_REFRACTED) is the terrain's own `withCurvature`
+// (surface-orbit), measured from the site, so it holds from orbit too.
+//
+// `uHazeLift` scales β as the camera climbs out of the air (surface-orbit
+// `hazeLift`): the scenes' haze is a ground-level air, and from kilometres up
+// it would lay a disc of fog on the planet under it. 1 on the ground.
 //
 // The world position rides a varying named vEarthPos, never a substring of
 // three's own vWorldPosition.
@@ -18,7 +23,7 @@ import * as THREE from 'three';
 export const FAR_START = 11000;
 export const FAR_END = 29000;
 /** Earth's radius stretched by refraction (k = 0.13): the drop at distance d is d² / 2R. */
-const R_EFF = 6371000 / (1 - 0.13);
+export const EARTH_R_REFRACTED = 6371000 / (1 - 0.13);
 
 export const haze = {
   uHazeColor: { value: new THREE.Color(0.6, 0.7, 0.85) },
@@ -26,12 +31,13 @@ export const haze = {
   uHazeSunDir: { value: new THREE.Vector3(0, 1, 0) },
   uHazeBeta: { value: 1.3e-4 },
   uHazeBase: { value: 400 },
+  uHazeLift: { value: 1 },
   uFarStart: { value: FAR_START },
   uFarEnd: { value: FAR_END },
 };
 
 const VERT_HEAD = 'varying vec3 vEarthPos;\nuniform float uFarStart;\nuniform float uFarEnd;\n';
-const FRAG_HEAD = 'varying vec3 vEarthPos;\nuniform vec3 uHazeColor;\nuniform vec3 uHazeSunColor;\nuniform vec3 uHazeSunDir;\nuniform float uHazeBeta;\nuniform float uHazeBase;\n';
+const FRAG_HEAD = 'varying vec3 vEarthPos;\nuniform vec3 uHazeColor;\nuniform vec3 uHazeSunColor;\nuniform vec3 uHazeSunDir;\nuniform float uHazeBeta;\nuniform float uHazeBase;\nuniform float uHazeLift;\n';
 
 const PROJECT = `
   vec4 eLocal = vec4( transformed, 1.0 );
@@ -42,9 +48,6 @@ const PROJECT = `
   vEarthPos = eWorld.xyz;
   #ifdef EARTH_FAR
     vec3 eRel = eWorld.xyz - cameraPosition;
-    float eFlat = length( eRel.xz );
-    eWorld.y -= eFlat * eFlat / ${(2 * R_EFF).toFixed(1)};
-    eRel = eWorld.xyz - cameraPosition;
     float eLen = max( length( eRel ), 1e-3 );
     float eFold = eLen < uFarStart ? eLen : uFarStart + ( uFarEnd - uFarStart ) * ( 1.0 - exp( -( eLen - uFarStart ) / ( uFarEnd - uFarStart ) ) );
     eWorld.xyz = cameraPosition + eRel * ( eFold / eLen );
@@ -59,7 +62,7 @@ const FOG = `
     float eDist = length( eRay );
     vec3 eDir = eRay / max( eDist, 1e-3 );
     float eThin = 0.3 + 0.7 * exp( -max( 0.0, vEarthPos.y - uHazeBase ) / 1500.0 );
-    float eT = exp( -eDist * uHazeBeta * eThin );
+    float eT = exp( -eDist * uHazeBeta * uHazeLift * eThin );
     float eSun = pow( max( dot( eDir, uHazeSunDir ), 0.0 ), 7.0 );
     vec3 eAir = mix( uHazeColor, uHazeSunColor, eSun );
     gl_FragColor.rgb = gl_FragColor.rgb * eT + eAir * ( 1.0 - eT );

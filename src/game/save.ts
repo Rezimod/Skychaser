@@ -38,3 +38,27 @@ export function writeCheckpoint(scene: GameScene) {
     // Private mode — the expedition restarts from the Moon next time.
   }
 }
+
+/** The language changed mid-game: the reload that follows goes straight back
+ *  to this scene. One tab, one use — sessionStorage, consumed on boot. */
+const RELOCALE_KEY = 'stellar_explore_relocale';
+
+export function markRelocale(snap: { state: string; scene: GameScene }) {
+  try {
+    if (snap.state === 'playing' || snap.state === 'paused' || snap.state === 'loading') sessionStorage.setItem(RELOCALE_KEY, snap.scene);
+    else sessionStorage.removeItem(RELOCALE_KEY);
+  } catch {
+    // No storage: the reload opens on the title.
+  }
+}
+
+/** The scene to resume after a language switch, once; null on any other load. */
+export function takeRelocale(): GameScene | null {
+  try {
+    const v = sessionStorage.getItem(RELOCALE_KEY);
+    sessionStorage.removeItem(RELOCALE_KEY);
+    return v && isGameScene(v) ? v : null;
+  } catch {
+    return null;
+  }
+}

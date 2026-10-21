@@ -1200,46 +1200,82 @@ export interface NebulaeHandle {
   dispose: () => void;
 }
 
-function nebulaTexture(r: number, g: number, b: number): THREE.CanvasTexture {
-  const s = 256;
+/** A small value-noise field, tileable on `period`, for baking cloud textures. */
+function valueNoise2(seed: number) {
+  const P = 64;
+  const grid = new Float32Array(P * P);
+  let x = seed * 2654435761 >>> 0 || 1;
+  for (let i = 0; i < grid.length; i++) {
+    x ^= x << 13; x >>>= 0; x ^= x >> 17; x ^= x << 5; x >>>= 0;
+    grid[i] = (x & 0xffff) / 0xffff;
+  }
+  const at = (ix: number, iy: number) => grid[((iy % P + P) % P) * P + ((ix % P + P) % P)];
+  return (u: number, v: number) => {
+    const ix = Math.floor(u); const iy = Math.floor(v);
+    const fx = u - ix; const fy = v - iy;
+    const sx = fx * fx * (3 - 2 * fx); const sy = fy * fy * (3 - 2 * fy);
+    const a = at(ix, iy) + (at(ix + 1, iy) - at(ix, iy)) * sx;
+    const b = at(ix, iy + 1) + (at(ix + 1, iy + 1) - at(ix, iy + 1)) * sx;
+    return a + (b - a) * sy;
+  };
+}
+
+/** A nebula baked once: a domain-warped fractal cloud — filaments, not a
+ *  blob — with dark dust lanes cut through it, a hotter core, and a whisper
+ *  of noise so the faint edges never band into rings on an 8-bit target. */
+/** Baked once per page: the orrery is rebuilt on every return from a surface. */
+const nebulaCanvases = new Map<string, HTMLCanvasElement>();
+
+function nebulaTexture(r: number, g: number, b: number, size = 256, seed = 1): THREE.CanvasTexture {
+  const key = `${r},${g},${b},${size},${seed}`;
+  const cached = nebulaCanvases.get(key);
+  if (cached) {
+    const tex = new THREE.CanvasTexture(cached);
+    tex.colorSpace = SRGB;
+    return tex;
+  }
+  const s = size;
   const c = document.createElement('canvas');
+  nebulaCanvases.set(key, c);
   c.width = c.height = s;
   const ctx = c.getContext('2d')!;
-  ctx.clearRect(0, 0, s, s);
-  ctx.globalCompositeOperation = 'lighter';
-  const blob = (cx: number, cy: number, rx: number, ry: number, a: number, rot: number) => {
-    const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-    grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
-    grad.addColorStop(0.45, `rgba(${r},${g},${b},${a * 0.4})`);
-    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(rot);
-    ctx.scale(rx, ry);
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(0, 0, 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  const img = ctx.createImageData(s, s);
+  const n1 = valueNoise2(seed * 7 + 1);
+  const n2 = valueNoise2(seed * 13 + 5);
+  const fbm = (n: (u: number, v: number) => number, u: number, v: number, oct: number) => {
+    let sum = 0; let amp = 0.5; let f = 1;
+    for (let o = 0; o < oct; o++) { sum += amp * n(u * f, v * f); f *= 2.03; amp *= 0.5; }
+    return sum;
   };
-  blob(s / 2, s / 2, s * 0.46, s * 0.4, 0.5, 0);
-  for (let i = 0; i < 6; i++) {
-    blob(
-      s * (0.3 + Math.random() * 0.4),
-      s * (0.3 + Math.random() * 0.4),
-      s * (0.12 + Math.random() * 0.2),
-      s * (0.08 + Math.random() * 0.14),
-      0.22 + Math.random() * 0.2,
-      Math.random() * Math.PI,
-    );
+  const oct = s > 256 ? 6 : 5;
+  const scale = 4.2 / s;
+  // Hue drifts across the cloud: the rim leans toward a second colour.
+  const r2 = Math.min(255, b * 0.6 + 90); const g2 = Math.min(255, r * 0.35 + 60); const b2 = Math.min(255, g * 0.5 + 120);
+  for (let y = 0; y < s; y++) {
+    for (let x = 0; x < s; x++) {
+      const u = x * scale; const v = y * scale;
+      const wu = u + 1.8 * fbm(n2, u + 3.1, v + 1.7, 4);
+      const wv = v + 1.8 * fbm(n2, u - 2.3, v + 4.9, 4);
+      let d = fbm(n1, wu, wv, oct);
+      d = Math.max(0, d - 0.32) / 0.68;
+      d = d * d * 1.6;
+      const lane = fbm(n2, wu * 1.7 + 9.1, wv * 1.7 - 3.3, 4);
+      d *= 1 - 0.85 * Math.max(0, Math.min(1, (lane - 0.48) * 4));
+      const dx = x / s - 0.5; const dy = y / s - 0.5;
+      const rr = Math.sqrt(dx * dx + dy * dy) * 2;
+      const fall = Math.max(0, 1 - rr * rr) ** 1.6;
+      const core = Math.exp(-rr * rr * 9) * 0.5;
+      const a = Math.min(1, d * fall + core * fall * d * 2 + core * 0.25);
+      const mix = Math.min(1, rr * 1.1);
+      const i = (y * s + x) * 4;
+      const dither = (Math.random() - 0.5) * 3;
+      img.data[i] = Math.min(255, r + (r2 - r) * mix + core * 120 + dither);
+      img.data[i + 1] = Math.min(255, g + (g2 - g) * mix + core * 100 + dither);
+      img.data[i + 2] = Math.min(255, b + (b2 - b) * mix + core * 80 + dither);
+      img.data[i + 3] = Math.max(0, Math.min(255, a * 255 + dither));
+    }
   }
-  // Fade hard to transparent at the sprite edge so no square ever shows.
-  ctx.globalCompositeOperation = 'destination-in';
-  const mask = ctx.createRadialGradient(s / 2, s / 2, s * 0.2, s / 2, s / 2, s * 0.5);
-  mask.addColorStop(0, 'rgba(0,0,0,1)');
-  mask.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = mask;
-  ctx.fillRect(0, 0, s, s);
+  ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = SRGB;
   return tex;
@@ -1251,12 +1287,12 @@ export function makeNebulae(lite: boolean): NebulaeHandle {
   const group = new THREE.Group();
   group.name = 'nebulae';
   const specs = [
-    { rgb: [255, 120, 190], dir: [0.62, 0.28, -0.73], r: 430, scale: 300, opacity: 0.16 },
-    { rgb: [90, 150, 255], dir: [-0.55, -0.12, -0.83], r: 560, scale: 420, opacity: 0.13 },
-    { rgb: [160, 95, 255], dir: [-0.2, 0.5, 0.84], r: 690, scale: 520, opacity: 0.11 },
+    { rgb: [255, 120, 190], dir: [0.62, 0.28, -0.73], r: 430, scale: 300, opacity: 0.3 },
+    { rgb: [90, 150, 255], dir: [-0.55, -0.12, -0.83], r: 560, scale: 420, opacity: 0.24 },
+    { rgb: [160, 95, 255], dir: [-0.2, 0.5, 0.84], r: 690, scale: 520, opacity: 0.2 },
   ].slice(0, lite ? 2 : 3);
   const items = specs.map((spec) => {
-    const tex = nebulaTexture(spec.rgb[0], spec.rgb[1], spec.rgb[2]);
+    const tex = nebulaTexture(spec.rgb[0], spec.rgb[1], spec.rgb[2], lite ? 192 : 320, specs.indexOf(spec) + 1);
     const mat = new THREE.SpriteMaterial({
       map: tex,
       transparent: true,

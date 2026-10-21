@@ -136,6 +136,29 @@ const earthNight: ShaderMutator = (shader) => {
   );
 };
 
+/** Worlds with air do not cut from day to night: sunlight scattered round
+ *  the limb lights a band past the terminator, reddened by the long path
+ *  through the air. Warm on Earth and Mars, gold under Venus's cloud. The
+ *  band is a function of the angle to the Sun alone — one dot product. */
+const TWILIGHT: Partial<Record<SolarBodyId, [number, number, number, number]>> = {
+  earth: [1.0, 0.52, 0.28, 0.42],
+  venus: [1.0, 0.78, 0.42, 0.5],
+  mars: [0.95, 0.55, 0.36, 0.3],
+};
+const twilight = (r: number, g: number, b: number, k: number): ShaderMutator => (shader) => {
+  injectWorldVaryings(shader);
+  const c = (v: number) => (v * k).toFixed(3);
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <lights_fragment_end>',
+    /* glsl */ `#include <lights_fragment_end>
+    {
+      float mu = dot(normalize(vWorldNrm), normalize(-vWorldPos));
+      float band = smoothstep(-0.2, 0.0, mu) * (1.0 - smoothstep(0.0, 0.3, mu));
+      reflectedLight.indirectDiffuse += diffuseColor.rgb * vec3(${c(r)}, ${c(g)}, ${c(b)}) * band;
+    }`,
+  );
+};
+
 /** Measured peak zonal wind at each giant's equator (m/s, signed against the
  *  body's own rotation) and how many alternating jets run from equator to pole.
  *  Saturn's equatorial jet is the fastest prograde flow in the solar system;
@@ -375,6 +398,8 @@ function applyHooks(id: SolarBodyId, mat: THREE.MeshStandardMaterial, lite: bool
   const mutators: ShaderMutator[] = [];
   if (id !== 'sun') mutators.push(highlightShoulder);
   if (id === 'earth') mutators.push(earthNight);
+  const dusk = TWILIGHT[id];
+  if (dusk) mutators.push(twilight(...dusk));
   const wind = WIND_FIELD[id];
   if (wind) mutators.push(gasGiantAtmosphere(id, wind, lite));
   if (id === 'saturn') mutators.push(ringShadow());

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import messages from '@/messages/voyage.en.json';
 import './solar-system.css';
+import './suit-jet.css';
+import './landing.css';
 import './voyage.css';
 
 export const metadata: Metadata = {

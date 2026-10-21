@@ -14,7 +14,7 @@ import type { Interactable } from '@/lib/solar-system/moon-interactions';
 import type { DescentStart } from '@/lib/solar-system/moon-lander';
 import { DEFAULT_OBSERVER } from '@/lib/observer-location';
 import { centroid, insideRing, type EarthData } from '@/lib/solar-system/world-earth-data';
-import { makeEarthTerrain } from '@/lib/solar-system/world-earth-terrain';
+import { makeEarthTerrain, type EarthTerrain } from '@/lib/solar-system/world-earth-terrain';
 import { makeEarthSky, type EarthSky } from '@/lib/solar-system/world-earth-sky';
 import { makeCity } from '@/lib/solar-system/world-earth-city';
 import { makeStreets } from '@/lib/solar-system/world-earth-streets';
@@ -52,6 +52,8 @@ export interface EarthState {
 export interface EarthWorld {
   group: THREE.Group;
   sky: EarthSky;
+  /** The ground to the Caucasus: the orbit view gives its rings their own ceilings. */
+  terrain: EarthTerrain;
   heightAt: (x: number, z: number) => number;
   floorAt: (x: number, z: number) => number;
   colliders: Collider[];
@@ -208,7 +210,7 @@ export function makeEarthWorld(renderer: THREE.WebGLRenderer, data: EarthData, l
   };
 
   const handle: EarthWorld = {
-    group, sky, heightAt, floorAt,
+    group, sky, terrain, heightAt, floorAt,
     colliders: [...landmarks.colliders],
     pois: [...landmarks.pois],
     interactables: [

@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { acquireModel } from '@/game/models';
 import { currentQuality } from '@/game/quality';
+import { buildSuitGear, type SuitGear } from '@/lib/solar-system/suit-gear';
 
 export const HIP_H = 0.98;
 export const THIGH = 0.46;
@@ -41,6 +42,10 @@ export interface SuitRig {
   hips: THREE.Bone[];
   knees: THREE.Bone[];
   ankles: THREE.Bone[];
+  /** The code-built hardware on the joints: the jet module, the console, the lamps (suit-gear). */
+  gear: SuitGear;
+  /** The body's LOD, once the model is on the rig: its level says whether the fittings are worth drawing. */
+  lod: THREE.LOD | null;
   /** Settles once the model is on the rig, or could not be loaded. */
   ready: Promise<void>;
   /** The helmet lamps and the displays, bright with the headlamp on. */
@@ -89,6 +94,9 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
   if (bareHead) pack.scale.setScalar(1e-4);
   const joints = new Map<string, THREE.Bone>();
   group.traverse((o) => { if ((o as THREE.Bone).isBone) joints.set(o.name, o as THREE.Bone); });
+  // The hardware goes on before the model: it needs only the joints, and a
+  // remote crew merges the rig as soon as it is built.
+  const gear = buildSuitGear({ pack, chest, helmet }, bareHead);
 
   const owned: { dispose: () => void }[] = [];
   let suitMat: THREE.MeshStandardMaterial | null = null;
@@ -154,6 +162,7 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
     // 25 m on this Mac, 37 m where there is room for it.
     if (far?.isSkinnedMesh) lod.addLevel(skinned(far), currentQuality().lodDistance * (lite ? 0.5 : 0.62));
     group.add(lod);
+    rig.lod = lod;
     // Rigid pieces are exported in rest-pose space: hang each on its joint.
     const rigid = (name: string, parent: THREE.Object3D, at: string, material: THREE.Material) => {
       const from = find(name);
@@ -173,6 +182,8 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
         gold.envMapIntensity = 1.8;
         owned.push(gold);
         rigid('Visor', visor, 'visor', gold);
+        // The fittings reflect what the visor does.
+        gear.setEnvMap(gold.envMap, gold.envMapIntensity);
       }
     }
   };
@@ -185,16 +196,19 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
     if (process.env.NODE_ENV !== 'test') console.warn('cosmonaut model', err);
   });
 
-  return {
-    group, body, pelvis, chest, pack, neck, helmet, visor, sides, shoulders, elbows, hands, hips, knees, ankles, ready,
+  const rig: SuitRig = {
+    group, body, pelvis, chest, pack, neck, helmet, visor, sides, shoulders, elbows, hands, hips, knees, ankles, gear, lod: null, ready,
     setLamps(on) {
       lamps = on;
       if (suitMat) suitMat.emissiveIntensity = on ? 1.6 : 0.5;
+      gear.setLamps(on);
     },
     dispose() {
       disposed = true;
+      gear.dispose();
       for (const o of owned) o.dispose();
       releaseModel?.();
     },
   };
+  return rig;
 }

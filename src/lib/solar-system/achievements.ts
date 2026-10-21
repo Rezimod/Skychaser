@@ -1,14 +1,12 @@
-// What the crew actually did up there, kept as records rather than rewards.
+// What the crew actually did up there, kept as records first.
 //
 // A finished mission writes one achievement — an id, the moment, and what it
-// was about. Nothing here awards Stars, mints anything or touches the
-// network: the sink is an interface so that a server-verified one can take
-// its place without the Moon knowing, and until then the records live on the
-// device and are shown in the mission log.
-//
-// TODO(explore-slice): server-verified achievement sync — the records here
-// are self-reported and worth nothing on chain. See docs/reputation-economy.md
-// for what a verified one has to carry.
+// was about. The Moon itself awards nothing: the sink is an interface, the
+// local one keeps the records on the device, and the synced one (below)
+// reports each new record to the platform, which decides what it is worth
+// (lib/games/explore.ts) and credits Stars to the signed-in wallet. A record
+// made while signed out or offline is not lost: it is reported on the next
+// flush, once there is a wallet to credit.
 
 export interface Achievement {
   /** `explore.telescope_calibrated` and the like: stable, and namespaced. */
@@ -92,5 +90,80 @@ export function memoryRewardSink(now: () => number = Date.now): RewardSink {
       return true;
     },
     list: () => list,
+  };
+}
+
+// ── The connection to the platform ──
+
+/** Report one record. True when the platform has it (credited now, credited
+ *  before, or not worth anything); false when it should be tried again later
+ *  — signed out, offline, or the server is down. */
+export type AchievementSubmit = (achievement: Achievement) => Promise<boolean>;
+
+export interface SyncedRewardSink extends RewardSink {
+  /** Report every record the platform has not credited yet, one by one. */
+  flush: () => Promise<void>;
+  /** The ids the platform has credited, as far as this device knows. */
+  credited: () => string[];
+  /** The platform said these are credited (a progress read): stop reporting them. */
+  markCredited: (ids: readonly string[]) => void;
+}
+
+const CREDITED_KEY = 'stellar_explore_credited_v1';
+
+function parseIds(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** A sink that keeps records locally and reports each new one to the
+ *  platform. What has been credited is remembered on the device so a record
+ *  is reported once, not on every visit; a report that fails is simply made
+ *  again on the next flush. */
+export function syncedRewardSink(local: RewardSink, submit: AchievementSubmit): SyncedRewardSink {
+  let credited: Set<string> | null = null;
+  const known = () => {
+    if (!credited) {
+      try { credited = new Set(parseIds(localStorage.getItem(CREDITED_KEY))); } catch { credited = new Set(); }
+    }
+    return credited;
+  };
+  const remember = (ids: readonly string[]) => {
+    const set = known();
+    let changed = false;
+    for (const id of ids) if (!set.has(id)) { set.add(id); changed = true; }
+    if (changed) {
+      try { localStorage.setItem(CREDITED_KEY, JSON.stringify([...set])); } catch { /* private window */ }
+    }
+  };
+  let inFlight: Promise<void> | null = null;
+  const flush = () => {
+    if (inFlight) return inFlight;
+    inFlight = (async () => {
+      const set = known();
+      for (const a of local.list()) {
+        if (set.has(a.id)) continue;
+        let ok = false;
+        try { ok = await submit(a); } catch { ok = false; }
+        if (ok) remember([a.id]);
+      }
+    })().finally(() => { inFlight = null; });
+    return inFlight;
+  };
+  return {
+    record(id, detail) {
+      const fresh = local.record(id, detail);
+      if (fresh) void flush();
+      return fresh;
+    },
+    list: () => local.list(),
+    flush,
+    credited: () => [...known()],
+    markCredited: remember,
   };
 }

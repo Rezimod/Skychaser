@@ -18,6 +18,7 @@ import {
 import { disposePlanetTexture, makePlanetTextureLoader } from '@/lib/solar-system/texture-load';
 import { createPlanetMaterial, disposePlanetMaterial, tickPlanetMaterial } from '@/lib/solar-system/planet-textures';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
+import { releaseSaturnRingStripTexture } from '@/lib/solar-system/saturn-ring-strip';
 import {
   makeOrbitRings,
   disposeOrbitRings,
@@ -56,6 +57,7 @@ import {
 } from '@/lib/solar-system/scene-extras';
 import { makeSunSurface } from '@/lib/solar-system/sun-surface';
 import { makePostFx } from '@/lib/solar-system/post-processing';
+import { projectSunPoint, type SunScreen } from '@/lib/solar-system/post-flare';
 import { currentQuality, onQualityChange, pixelRatioFor } from '@/game/quality';
 import { compileFor, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
 import { probeCalls } from '@/lib/solar-system/moon-perf';
@@ -76,6 +78,8 @@ import { lightYearsBetween, resolveDestination } from '@/lib/solar-system/star-r
 import { makeSmallBodies } from '@/lib/solar-system/small-bodies';
 import { makeAlienEncounters, type AlienHandle } from '@/lib/solar-system/aliens';
 import { makeDeepSpaceProbes } from '@/lib/solar-system/probes';
+import { makeRemoteFleet, writeFlightPose } from '@/lib/multiplayer/remote-fleet';
+import { writeOrbitPose, type RoomLink } from '@/lib/multiplayer/room-link';
 import {
   makeNearbyStars,
   makeMilkyWayDisk,
@@ -88,8 +92,12 @@ import {
 declare global {
   interface Window {
     /** Development only: lets a headless capture teleport the ship and read the session. */
-    __skychaserFlight?: { session: FlightSession; ship: PlayerShipHandle; world: FlightWorld; aliens: AlienHandle };
-    __skychaserOrrery?: { probe: (within?: string) => Record<string, number> };
+    __stellarFlight?: { session: FlightSession; ship: PlayerShipHandle; world: FlightWorld; aliens: AlienHandle };
+    __stellarOrrery?: {
+      probe: (within?: string) => Record<string, number>;
+      /** Frame the system (theta, phi, radius) or select and orbit a body: for captures. */
+      view: (v: { theta?: number; phi?: number; radius?: number; focus?: SolarBodyId | null; dist?: number }) => void;
+    };
   }
 }
 
@@ -117,8 +125,12 @@ export interface SolarSystemCanvasProps {
    *  ship, hands the camera to it and turns the alien encounters hostile;
    *  the orbit camera state is left untouched and resumes on exit. */
   flight?: FlightSession;
+  /** A multiplayer room: the ship's pose goes out through it, the others' come in. */
+  room?: RoomLink;
   /** Called once, after the first frame has been drawn. */
   onReady?: () => void;
+  /** The game is paused: the last frame stays on the glass and nothing is drawn. */
+  paused?: boolean;
 }
 
 /** Project a world-space point onto CSS pixel coords. Returns null when the
@@ -195,7 +207,9 @@ export function SolarSystemCanvas({
   zoomTo,
   onZoomToConsumed,
   flight,
+  room,
   onReady,
+  paused = false,
 }: SolarSystemCanvasProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const epochRef = useRef(epoch);
@@ -225,7 +239,11 @@ export function SolarSystemCanvas({
   zoomToRef.current = zoomTo;
   onZoomToConsumedRef.current = onZoomToConsumed;
   flightRef.current = flight;
+  const roomRef = useRef(room);
+  roomRef.current = room;
   const onReadyRef = useRef(onReady);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   onReadyRef.current = onReady;
   /** Bumped when the GPU drops the context: the whole scene is rebuilt on a fresh one. */
   const [glGeneration, setGlGeneration] = useState(0);
@@ -345,6 +363,10 @@ export function SolarSystemCanvas({
     // Scene → bloom → tone-mapped output (the Sun, engine glows and bolts
     // bloom; lit planet surfaces sit under the threshold and stay sharp).
     const postFx = makePostFx(renderer, scene, camera, quality);
+    // The Sun sits at the origin; its place on the glass drives the flare
+    // and the light shafts, and it fades as it leaves the frame.
+    const sunOrigin = new THREE.Vector3();
+    const sunScreen: SunScreen = { x: 0.5, y: 0.5, visible: false, edge: 0 };
 
     // Space lighting: the sun is the only real source, but a dim ambient
     // keeps night sides identifiable — without it, the Moon and any planet
@@ -910,6 +932,8 @@ export function SolarSystemCanvas({
 
     let pinchActive = false;
     let lastPinchDist = 0;
+    /** A pinch happened in this gesture: no finger lifting out of it is a tap. */
+    let hadPinch = false;
 
     const flying = () => !!flightRef.current?.active;
 
@@ -977,11 +1001,13 @@ export function SolarSystemCanvas({
       if (flying()) { e.preventDefault(); return; }
       if (e.touches.length === 2) {
         pinchActive = true;
+        hadPinch = true;
         lastPinchDist = touchDist(e.touches);
         drag = false;
         downOk = false;
       } else if (e.touches.length === 1) {
         pinchActive = false;
+        hadPinch = false;
         lastPinchDist = 0;
         downOk = true;
         drag = true;
@@ -1036,7 +1062,13 @@ export function SolarSystemCanvas({
         pinchActive = false;
         lastPinchDist = 0;
       }
-      if (e.changedTouches.length === 1 && !pinchActive) {
+      // Out of a pinch with one finger still down: that finger turns the view.
+      if (hadPinch && e.touches.length === 1) {
+        drag = true;
+        lx = e.touches[0].clientX;
+        ly = e.touches[0].clientY;
+      }
+      if (e.type === 'touchend' && e.changedTouches.length === 1 && e.touches.length === 0 && !hadPinch) {
         const t = e.changedTouches[0];
         const moved = Math.hypot(t.clientX - downX, t.clientY - downY);
         if (moved < 10) pick(t.clientX, t.clientY);
@@ -1044,6 +1076,7 @@ export function SolarSystemCanvas({
       if (e.touches.length === 0) {
         drag = false;
         downOk = false;
+        hadPinch = false;
       }
     };
 
@@ -1056,6 +1089,7 @@ export function SolarSystemCanvas({
     el.addEventListener('touchstart', onTouchStart, { passive: false });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd);
+    el.addEventListener('touchcancel', onTouchEnd);
 
     const onResize = () => {
       if (!mount) return;
@@ -1066,10 +1100,10 @@ export function SolarSystemCanvas({
       postFx.setSize(mount.clientWidth, mount.clientHeight);
     };
     window.addEventListener('resize', onResize);
-    // A new preset: the pixel ratio follows at once. What was decided when the
-    // scene was built — the bloom chain, the star and belt counts — follows on
-    // the next build, as it does on the surfaces.
-    const offQuality = onQualityChange(onResize);
+    // A new preset: the pixel ratio and the post chain follow at once. What
+    // was decided when the scene was built — the star and belt counts —
+    // follows on the next build, as it does on the surfaces.
+    const offQuality = onQualityChange((q) => { postFx.setQuality(q); onResize(); });
 
     // How much of the glass a sunlit world is filling, eased: see worldGlare().
     let bodyGlare = 0;
@@ -1121,6 +1155,10 @@ export function SolarSystemCanvas({
     // created lazily inside the loop and torn down the frame the session
     // goes inactive (or on unmount), so repeated enter/exit never leaks.
     let ship: PlayerShipHandle | null = null;
+    // The other explorers in the room — drawn only while this one is flying.
+    const fleet = makeRemoteFleet();
+    fleet.group.visible = false;
+    scene.add(fleet.group);
     const teardownShip = () => {
       if (!ship) return;
       // Where the pilot left it, for the canvas that comes after this one.
@@ -1138,7 +1176,7 @@ export function SolarSystemCanvas({
       scene.remove(ship.fxGroup);
       ship.dispose();
       ship = null;
-      delete window.__skychaserFlight;
+      delete window.__stellarFlight;
       alphaCen.group.visible = false;
       gargantua.group.visible = false;
       // The follow camera rolls its up vector, widens the lens and pulls the
@@ -1341,6 +1379,10 @@ export function SolarSystemCanvas({
         raf = 0;
         return;
       }
+      if (pausedRef.current && readyFired) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       // Wall-clock seconds for shader animation (convection, cloud bands).
       const sceneTime = reduceMotion ? 0 : (now - t0) / 1000;
       const epochNow = epochRef.current.current;
@@ -1371,7 +1413,7 @@ export function SolarSystemCanvas({
           scene.add(ship.fxGroup);
           // The ship's programs start building now, in parallel where the
           // driver allows, rather than one by one inside its first frame.
-          compileFor(renderer, postFx.drawTarget(), () => renderer.compile(scene, camera));
+          void compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera)).catch(() => undefined);
           // Which star system is drawn follows the ship; see below.
           ship.fillAnchor.add(shipFill);
           shipFill.position.set(0, 0, 0);
@@ -1389,11 +1431,16 @@ export function SolarSystemCanvas({
           ship.spawn(fromHome || !parkedRef.current ? world.home : parkedRef.current);
           const live = ship;
           aliens.setHostile({ group: live.group, onHit: (dmg) => live.takeDamage(dmg) });
-          if (process.env.NODE_ENV !== 'production') window.__skychaserFlight = { session, ship: live, world, aliens };
+          if (process.env.NODE_ENV !== 'production') window.__stellarFlight = { session, ship: live, world, aliens };
         }
       } else if (ship) {
         teardownShip();
       }
+      if (!ship) {
+        fleet.group.visible = false;
+        if (roomRef.current) writeOrbitPose(roomRef.current.self);
+      }
+
       const focus = focusRef.current;
       if (ship) {
         syncWorld(ship.group.position, earthPos, now);
@@ -1408,6 +1455,12 @@ export function SolarSystemCanvas({
         gargantua.group.visible = inSystem('gargantua');
         if (alphaCen.group.visible) alphaCen.update(session?.paused ? 0 : dtSec, camera.position, camera);
         if (gargantua.group.visible) gargantua.update(session?.paused ? 0 : dtSec, camera.position, camera);
+        const link = roomRef.current;
+        fleet.group.visible = !!link;
+        if (link) {
+          writeFlightPose(link.self, ship.group, tel.pilot === 'eva' ? ship.eva : null, session!.shipKind, world.bodies);
+          fleet.update(link, world.bodies, camera, now);
+        }
         markTargets(tel, world, camera);
         // Exposure adapts against the Sun: the closer and the more the nose
         // is on it, the further the iris closes, so the disc keeps a
@@ -1515,18 +1568,29 @@ export function SolarSystemCanvas({
       // so they fade away as the camera closes on the subject.
       setOrbitRingsFade(orbitRings, ship ? 0.14 : focus ? 0 : THREE.MathUtils.clamp((sysRadius - 9) / 9, 0, 1));
 
-      postFx.render(dtSec);
+      projectSunPoint(sunOrigin, camera, sunScreen);
+      postFx.setSun(sunScreen.x, sunScreen.y, sunScreen.visible, sunScreen.edge);
+      // Under the loader nothing is drawn until the programs are built: a
+      // frame drawn with half-built programs waits for them on the main
+      // thread, and the loader's own animation freezes with it.
+      if (readyFired || compiled) postFx.render(dtSec);
       if (!readyFired) {
         if (mapsPending > 0 && now < mapsDeadline) {
           // Still waiting on the maps; the loader covers the canvas.
         } else if (!warmed) {
           // Every program in the scene — the galactic tiers and the belts
-          // that are faded out now included — and every texture, uploaded,
+          // that are faded out now included — built in parallel off the main
+          // thread where the driver allows, then every texture uploaded,
           // before the loader goes. Then a couple of frames to show it holds.
           warmed = true;
-          compileFor(renderer, postFx.drawTarget(), () => renderer.compile(scene, camera));
-          uploadSceneTextures(renderer, scene);
-        } else if (++settledFrames >= 2) {
+          void compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera))
+            .catch(() => undefined)
+            .then(() => {
+              if (contextLost) return;
+              uploadSceneTextures(renderer, scene);
+              compiled = true;
+            });
+        } else if (compiled && ++settledFrames >= 2) {
           readyFired = true;
           onReadyRef.current?.();
         }
@@ -1535,13 +1599,25 @@ export function SolarSystemCanvas({
     };
     let readyFired = false;
     let warmed = false;
+    let compiled = false;
     let settledFrames = 0;
     startLoop();
-    if (process.env.NODE_ENV !== 'production') window.__skychaserOrrery = { probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within) };
+    if (process.env.NODE_ENV !== 'production') {
+      window.__stellarOrrery = {
+        probe: (within) => probeCalls(renderer, scene, () => postFx.render(0), within),
+        view: (v) => {
+          if (v.theta !== undefined) sysTheta = v.theta;
+          if (v.phi !== undefined) sysPhi = v.phi;
+          if (v.radius !== undefined) sysRadius = THREE.MathUtils.clamp(v.radius, 5.2, MAX_SYS_RADIUS);
+          if (v.focus !== undefined) onSelectRef.current(v.focus);
+          if (v.dist !== undefined) { lastFocus = v.focus ?? lastFocus; orbDist = v.dist; }
+        },
+      };
+    }
 
     return () => {
       stopLoop();
-      delete window.__skychaserOrrery;
+      delete window.__stellarOrrery;
       window.clearTimeout(rebuildTimer);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       document.removeEventListener('visibilitychange', onVis);
@@ -1555,8 +1631,10 @@ export function SolarSystemCanvas({
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
 
       teardownShip();
+      fleet.dispose();
       textureLoadsCancelled = true;
       textureById.forEach(disposePlanetTexture);
       textureById.clear();
@@ -1635,11 +1713,20 @@ export function SolarSystemCanvas({
       hitById.clear();
       starGeo.dispose();
       (stars.material as THREE.Material).dispose();
+      // The soft sprite is one texture for the whole page (stars, glows,
+      // plumes): each renderer that uploads it hangs a dispose listener on
+      // it, and that listener keeps the whole renderer reachable after this
+      // canvas is gone — one more per trip to a surface and back. Disposing
+      // it frees only this context's copy; the next renderer re-uploads it.
+      starSprite.dispose();
+      releaseSaturnRingStripTexture();
       postFx.dispose();
       renderer.dispose();
       // Give the context back now rather than when the canvas is collected:
       // the Moon scene and every rebuild after a context loss want one too.
-      renderer.forceContextLoss();
+      // (A context the GPU already took has nothing to give back, and asking
+      // for its extension only logs a warning.)
+      if (!contextLost) renderer.forceContextLoss();
       if (renderer.domElement.parentNode === mount) {
         mount.removeChild(renderer.domElement);
       }

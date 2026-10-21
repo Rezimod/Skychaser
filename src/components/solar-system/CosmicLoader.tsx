@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-export type LoaderVariant = 'orrery' | 'descent' | 'ascent' | 'hyperspace';
+export type LoaderVariant = 'orrery' | 'descent' | 'ascent' | 'hyperspace' | 'entry' | 'insertion';
 /** The world in the middle of the screen, photographed where there is a photograph. */
 export type LoaderBody = 'earth' | 'moon' | 'mars' | 'proximaB';
 
@@ -11,7 +11,11 @@ interface CosmicLoaderProps {
   detail?: string;
   className?: string;
   /** What turns in the middle: a world with its moon, a world's limb with
-   *  a lander going down or up, or the star streaks of a ship under way. */
+   *  a lander going down or up, the star streaks of a ship under way, the
+   *  entry — the world growing in the windscreen through a sheet of plasma —
+   *  or orbit insertion: the world turning below, a ship settling onto a low
+   *  orbit round it. The entry itself is flown in the surface scene now, so
+   *  insertion is calm: no plasma. */
   variant?: LoaderVariant;
   /** Which world; each variant has its own default. */
   body?: LoaderBody;
@@ -40,6 +44,8 @@ function starShadows(count: number, seed: number): string {
 const NEAR = starShadows(90, 7);
 const FAR = starShadows(160, 131);
 const STREAKS = Array.from({ length: 24 }, (_, i) => i);
+/** The plasma of the entry: fewer, and they come from the world ahead. */
+const PLASMA = Array.from({ length: 18 }, (_, i) => i);
 /** How long each tip stays up. */
 const TIP_MS = 3800;
 const MAPS: Record<LoaderBody, string> = {
@@ -65,6 +71,7 @@ function Globe({ body, className }: { body: LoaderBody; className: string }) {
 export function CosmicSky() {
   return (
     <span className="cosmic-loader__sky" aria-hidden>
+      <span className="cosmic-loader__nebula"><i /><i /></span>
       <span className="cosmic-loader__stars" style={{ boxShadow: FAR }} />
       <span className="cosmic-loader__stars cosmic-loader__stars--near" style={{ boxShadow: NEAR }} />
     </span>
@@ -122,10 +129,26 @@ export function CosmicLoader({ label, detail, className, variant = 'orrery', bod
             <b />
           </div>
         )}
+        {variant === 'insertion' && (
+          <div className="cosmic-loader__insertion" data-body={world}>
+            <Globe body={world} className="cosmic-loader__below" />
+            <span className="cosmic-loader__track"><i className="cosmic-loader__ship" /></span>
+          </div>
+        )}
+        {variant === 'entry' && (
+          <div className="cosmic-loader__entry" data-body={world}>
+            <Globe body={world} className="cosmic-loader__planet" />
+            <span className="cosmic-loader__plasma">
+              {PLASMA.map((i) => <i key={i} style={{ '--i': i } as React.CSSProperties} />)}
+            </span>
+            <span className="cosmic-loader__shock" />
+            <span className="cosmic-loader__heat" />
+          </div>
+        )}
       </div>
       <div className="cosmic-loader__copy">
         <p className="cosmic-loader__label">{label}</p>
-        {detail && <p className="cosmic-loader__detail">{detail}</p>}
+        {detail && <p className="cosmic-loader__detail">{detail}{known && <b className="cosmic-loader__pct">{Math.round(Math.min(1, Math.max(0, progress)) * 100)}%</b>}</p>}
         <span className="cosmic-loader__bar" data-determinate={known ? '' : undefined} aria-hidden>
           <i style={known ? { transform: `scaleX(${Math.min(1, Math.max(0.02, progress))})` } : undefined} />
         </span>

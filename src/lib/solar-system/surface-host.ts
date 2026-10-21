@@ -11,7 +11,9 @@ import { makeMoonPost, type MoonPostHandle } from '@/lib/solar-system/moon-post'
 import { makeMoonPerf, probeCalls, type MoonPerf } from '@/lib/solar-system/moon-perf';
 import { makeLightPool, type LightPool } from '@/lib/solar-system/moon-lights';
 import { compileFor, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
+import { projectSunDirection, type SunScreen } from '@/lib/solar-system/post-flare';
 import { getSettings } from '@/game/settings';
+import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { currentQuality, onQualityChange, pixelRatioFor, stepQualityDown, type QualityProfile } from '@/game/quality';
 
 export interface SurfaceHostOptions {
@@ -41,6 +43,10 @@ export interface SurfaceHost {
   readonly paused: boolean;
   /** Keep the shadow box on the crew, one texel at a time, so its edges never crawl. */
   followShadow: (crew: THREE.Vector3, sunDir: THREE.Vector3) => void;
+  /** Another scene the frame draws (the planet globe under the surface):
+   *  compiled and uploaded with the surface scene's own, under the loader.
+   *  Register it before `start` compiles. */
+  compileExtra: (scene: THREE.Scene, camera: THREE.Camera) => void;
   /** Compile every program (once `after` settles: models still loading), then run `frame` once per drawn frame. */
   start: (frame: (dt: number) => void, onReady: () => void, after?: Promise<unknown>) => void;
   /** Draw through the post chain, inside the frame accounting. */
@@ -52,8 +58,19 @@ export interface SurfaceHost {
   dispose: (release: () => void) => void;
 }
 
-const SHADOW_BIAS = -0.0004;
-const SHADOW_NORMAL_BIAS = 0.22;
+/** The PCF kernel's radius in texels: a wider, softer penumbra where the
+ *  map has the texels to spare (the taps are the same five either way). */
+export function shadowSoftness(q: Pick<QualityProfile, 'level'>): number {
+  return q.level === 'ultra' ? 2.6 : q.level === 'high' ? 2 : 1.25;
+}
+
+/** The shadow's biases for a map of `texel` metres a texel and a PCF
+ *  kernel of `radius` texels: the normal offset in metres (the receiver
+ *  moved off its surface), and the depth bias in the shadow camera's depth
+ *  (its range is 419 m, so 1e-4 is about 4 cm). */
+export function shadowBiasFor(texel: number, radius: number): { normal: number; depth: number } {
+  return { normal: texel * (1.1 + 0.55 * radius), depth: -0.00012 };
+}
 
 export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): SurfaceHost {
   const buildStart = performance.now();
@@ -71,6 +88,12 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = opts.exposure;
   renderer.shadowMap.enabled = quality.shadowMapSize > 0;
+  // Always PCF. three r184 dropped PCFSoftShadowMap: it has no define of its
+  // own, so a program compiled while it is set gets the BASIC path and a
+  // plain sampler2D, then the first shadow pass swaps the type to PCF and
+  // allocates a depth texture with a compare mode — the two meet as
+  // "Mismatch between texture format and sampler type" on every lit draw.
+  // The softness is the PCF kernel's radius instead (`shadowSoftness`).
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setClearColor(opts.clearColor, 1);
   mount.appendChild(renderer.domElement);
@@ -83,8 +106,6 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   sun.castShadow = true;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 420;
-  sun.shadow.bias = SHADOW_BIAS;
-  sun.shadow.normalBias = SHADOW_NORMAL_BIAS;
   let shadowTexel = 1;
   const fitShadow = (q: QualityProfile) => {
     const size = Math.max(1, q.shadowMapSize);
@@ -93,6 +114,15 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     sun.shadow.camera.left = -sr; sun.shadow.camera.right = sr; sun.shadow.camera.top = sr; sun.shadow.camera.bottom = -sr;
     sun.shadow.camera.updateProjectionMatrix();
     shadowTexel = (sr * 2) / size;
+    sun.shadow.radius = shadowSoftness(q);
+    // Bias in texels, not metres: the old fixed 0.22 m of normal offset and
+    // 0.17 m of depth bias lifted every receiver a third of a metre toward
+    // the sun, so boots, rocks and anything under knee height cast nothing,
+    // and every shadow stood short of what cast it. A texel and a bit, plus
+    // the PCF kernel's own reach, keeps the ground clean under a low sun.
+    const b = shadowBiasFor(shadowTexel, sun.shadow.radius);
+    sun.shadow.normalBias = b.normal;
+    sun.shadow.bias = b.depth;
   };
   fitShadow(quality);
   scene.add(sun);
@@ -103,6 +133,20 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   const shadowV = new THREE.Vector3();
 
   const post = makeMoonPost(renderer, scene, camera, quality);
+  // The Sun the post chain flares from is this light: its direction is the
+  // sprite's in every sky, and at infinity a direction is all the flare
+  // needs. Its strength follows the light's own — Earth's key light is the
+  // Moon at night, and that is not a Sun to flare from.
+  const sunDir = new THREE.Vector3();
+  const sunScreen: SunScreen = { x: 0.5, y: 0.5, visible: false, edge: 0 };
+  const feedSun = () => {
+    sunDir.copy(sun.position).sub(sun.target.position);
+    if (sunDir.lengthSq() < 1e-8) { post.setSun(0.5, 0.5, false, 0); return; }
+    sunDir.normalize();
+    projectSunDirection(sunDir, camera, sunScreen);
+    const strength = THREE.MathUtils.clamp(sun.intensity / Math.max(1e-3, opts.sun.intensity), 0, 1);
+    post.setSun(sunScreen.x, sunScreen.y, sunScreen.visible, sunScreen.edge * strength);
+  };
   const pinned = process.env.NODE_ENV !== 'production' && new URLSearchParams(window.location.search).has('fixedpx');
   const perf = makeMoonPerf(renderer, mount, {
     minRatio: pinned ? maxRatio : Math.min(1, maxRatio),
@@ -184,6 +228,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   document.addEventListener('visibilitychange', onVis);
 
   let compiling: Promise<unknown> = Promise.resolve();
+  const extras: { scene: THREE.Scene; camera: THREE.Camera }[] = [];
   const host: SurfaceHost = {
     renderer, scene, camera, sun, lightPool, post, perf, mount, quality, lite,
     get ready() { return ready; },
@@ -196,6 +241,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
       sun.target.position.copy(shadowU).multiplyScalar(su).addScaledVector(shadowV, sv).addScaledVector(sunDir, crew.dot(sunDir));
       sun.position.copy(sun.target.position).addScaledVector(sunDir, 220);
     },
+    compileExtra(extraScene, extraCamera) { extras.push({ scene: extraScene, camera: extraCamera }); },
     start(frame, onReady, after) {
       frameFn = frame;
       // Compile every program before the first frame — in parallel where the
@@ -213,6 +259,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
             // their maps go up too.
             try {
               uploadSceneTextures(renderer, scene);
+              for (const e of extras) uploadSceneTextures(renderer, e.scene);
               post.render(0);
             } catch { /* a lost context mid-warm: the loss handler rebuilds */ }
           }
@@ -223,12 +270,16 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
           onReady();
           resume();
         };
-        return compileFor(renderer, post.drawTarget(), () => renderer.compileAsync(scene, camera)).then(begin, begin);
+        return compileFor(renderer, post.drawTarget(), () => Promise.all([
+          renderer.compileAsync(scene, camera),
+          ...extras.map((e) => renderer.compileAsync(e.scene, e.camera)),
+        ])).then(begin, begin);
       };
       compiling = after ? after.then(compile, compile) : compile() ?? Promise.resolve();
     },
     render(dt) {
       perf.mark();
+      feedSun();
       post.render(dt);
       perf.end();
     },
@@ -257,10 +308,17 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         for (const l of lightPool.lights) l.dispose();
         post.dispose();
         scene.environment?.dispose();
+        // The soft sprite is one texture for the whole page: each renderer
+        // that uploads it hangs a dispose listener on it, and that listener
+        // keeps this whole renderer reachable after the surface is gone. Its
+        // dispose frees only this context's copy; the next scene re-uploads.
+        softSpriteTexture().dispose();
         renderer.dispose();
         // Give the context back now rather than when the canvas is collected:
-        // the next surface and the orrery each want one of their own.
-        renderer.forceContextLoss();
+        // the next surface and the orrery each want one of their own. A
+        // context the GPU already took has nothing to give back, and three
+        // warns that the extension is gone if asked.
+        if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
       };
       compiling.then(finish, finish);
     },

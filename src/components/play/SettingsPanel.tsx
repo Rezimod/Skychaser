@@ -1,21 +1,33 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { FOV_RANGE, getSettings, onSettingsChange, resetSettings, SENSITIVITY_RANGE, updateSettings, type QualityPreset } from '@/game/settings';
 import { clearQualityGovernor, governedQuality, QUALITY_LEVELS, type QualityLevel } from '@/game/quality';
+import { game } from '@/game/state';
+import { markRelocale } from '@/game/save';
 import { GamePanel } from './GamePanel';
 
 interface SettingsPanelProps {
   onClose: () => void;
 }
 
-const QUALITY_LABEL: Record<QualityLevel, string> = { performance: 'qualityPerformance', balanced: 'qualityBalanced', high: 'qualityHigh' };
+const LOCALES = ['en', 'ka'] as const;
+const QUALITY_LABEL: Record<QualityLevel, string> = { performance: 'qualityPerformance', balanced: 'qualityBalanced', high: 'qualityHigh', ultra: 'qualityUltra' };
 
 export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const t = useTranslations('play');
+  const locale = useLocale();
   const s = useSyncExternalStore(onSettingsChange, getSettings, getSettings);
   const governed = governedQuality();
+  const setLocale = (next: string) => {
+    if (next === locale) return;
+    document.cookie = `stellar_locale=${next}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    // The new language needs a reload; a player mid-game comes back to the
+    // scene they were in, not to the title.
+    markRelocale(game.get());
+    window.location.reload();
+  };
   return (
     <GamePanel title={t('settings')} onClose={onClose}>
       <div className="game-setting">
@@ -31,7 +43,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         <p className="game-setting__note">
           {governed && s.quality === 'auto'
             ? t('settingsPanel.qualityGoverned', { level: t(`settingsPanel.${QUALITY_LABEL[governed]}`) })
-            : t('settingsPanel.qualityNote')}
+            : s.quality === 'ultra'
+              ? t('settingsPanel.qualityUltraNote')
+              : t('settingsPanel.qualityNote')}
         </p>
       </div>
       <div className="game-setting">
@@ -52,6 +66,14 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
         <label htmlFor="gs-vol">{t('settingsPanel.volume')} <b>{Math.round(s.volume * 100)}%</b></label>
         <input id="gs-vol" type="range" min={0} max={1} step={0.05} value={s.volume}
           onChange={(e) => updateSettings({ volume: Number(e.target.value) })} />
+      </div>
+      <div className="game-setting">
+        <span className="game-setting__label">{t('settingsPanel.language')}</span>
+        <div className="game-setting__choices" role="group" aria-label={t('settingsPanel.language')}>
+          {LOCALES.map((l) => (
+            <button key={l} type="button" className="game-setting__choice" aria-pressed={locale === l} onClick={() => setLocale(l)}>{t(`settingsPanel.${l}`)}</button>
+          ))}
+        </div>
       </div>
       <button type="button" className="game-setting__reset" onClick={resetSettings}>{t('settingsPanel.reset')}</button>
     </GamePanel>

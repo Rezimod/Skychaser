@@ -52,8 +52,18 @@ export interface ShipParts {
   glowSprites: THREE.Sprite[];
   plumes: THREE.Mesh[];
   plumeMat: THREE.MeshBasicMaterial | null;
+  /** One long narrow cone inside each plume, scaled with it. */
+  plumeCores: THREE.Mesh[];
+  /** The bright core inside each plume — HDR, so the bloom pass lights it
+   *  into the blue-white streak the reference ships trail. Scaled with the
+   *  plumes; its opacity is the flight model's to set. */
+  plumeCoreMat: THREE.MeshBasicMaterial | null;
   plasmaMat: THREE.SpriteMaterial;
   plasma: THREE.Sprite;
+  /** The entry: ribbons of plasma streaming back from the nose along the
+   *  hull, lengthened and lit by heat. Empty on hulls that never enter. */
+  streaks: THREE.Mesh[];
+  streakMat: THREE.MeshBasicMaterial | null;
   strobeMat: THREE.MeshBasicMaterial;
   /** Position lights — base colour in `userData.base`. */
   navMats: THREE.MeshBasicMaterial[];
@@ -79,6 +89,7 @@ interface Palette {
   engineMat: THREE.MeshStandardMaterial;
   bellMat: THREE.MeshStandardMaterial;
   plumeMat: THREE.MeshBasicMaterial;
+  plumeCoreMat: THREE.MeshBasicMaterial;
   owned: THREE.Material[];
 }
 
@@ -95,14 +106,17 @@ function palette(accentHex: number, driveHex: number): Palette {
     color: 0x07111c, roughness: 0.08, metalness: 0.9,
     emissive: new THREE.Color(0x0b2a3c), emissiveIntensity: 0.55,
   });
-  const { engineMat, bellMat, plumeMat } = driveMats(driveHex);
+  const { engineMat, bellMat, plumeMat, plumeCoreMat } = driveMats(driveHex);
   return {
-    graphite, titanium, panel, dark, accent, glass, engineMat, bellMat, plumeMat,
-    owned: [graphite, titanium, panel, dark, accent, glass, engineMat, bellMat, plumeMat],
+    graphite, titanium, panel, dark, accent, glass, engineMat, bellMat, plumeMat, plumeCoreMat,
+    owned: [graphite, titanium, panel, dark, accent, glass, engineMat, bellMat, plumeMat, plumeCoreMat],
   };
 }
 
-/** Engine core, nozzle bell and plume, tinted by the drive colour. */
+/** Engine core, nozzle bell and plume, tinted by the drive colour. The
+ *  plume is two cones: a wide soft haze in the drive's own colour, and a
+ *  long narrow core pushed past white so the bloom pass turns it into the
+ *  blue-white streak a ship under power trails. */
 function driveMats(driveHex: number) {
   const drive = new THREE.Color(driveHex);
   const engineMat = new THREE.MeshStandardMaterial({
@@ -115,7 +129,17 @@ function driveMats(driveHex: number) {
     color: drive.clone().multiplyScalar(1.5), transparent: true, opacity: 0.5,
     depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   });
-  return { engineMat, bellMat, plumeMat };
+  const plumeCoreMat = new THREE.MeshBasicMaterial({
+    color: plumeCoreColor(drive), transparent: true, opacity: 0.6,
+    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  return { engineMat, bellMat, plumeMat, plumeCoreMat };
+}
+
+/** The core's colour: the drive hue pulled most of the way to white and
+ *  over 1, so it reads as incandescent rather than tinted. */
+export function plumeCoreColor(drive: THREE.Color): THREE.Color {
+  return drive.clone().lerp(new THREE.Color(0.95, 0.98, 1.0), 0.72).multiplyScalar(2.6);
 }
 
 /** Hollow cone for an exhaust plume: wide end at the nozzle, tip trailing. */
@@ -123,6 +147,34 @@ function plumeCone(radius: number, length: number): THREE.ConeGeometry {
   const geom = new THREE.ConeGeometry(radius, length, 14, 1, true);
   geom.translate(0, length / 2, 0);
   return geom;
+}
+
+/** The entry's plasma: a ring of thin ribbons round the nose, streaming aft
+ *  along the hull. `noseZ` is where they start, `r` the hull's radius there
+ *  and `length` how far back they reach at full heat; the flight model
+ *  scales them with the heat it reads. Additive, HDR orange, so they bloom. */
+export function plasmaStreaks(into: THREE.Object3D, noseZ: number, r: number, length: number): { streaks: THREE.Mesh[]; streakMat: THREE.MeshBasicMaterial } {
+  const streakMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color(1.9, 0.62, 0.22), transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+  });
+  const streaks: THREE.Mesh[] = [];
+  const geom = plumeCone(r * 0.16, length);
+  const N = 9;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 + 0.4;
+    const m = new THREE.Mesh(geom, streakMat);
+    // Around the nose, each ribbon leaning a little out from the hull so
+    // the sheaf opens behind the ship the way a shock layer spreads.
+    m.position.set(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.7, noseZ);
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = a;
+    m.rotation.y = 0.07 + (i % 3) * 0.03;
+    m.visible = false;
+    into.add(m);
+    streaks.push(m);
+  }
+  return { streaks, streakMat };
 }
 
 interface Builder {
@@ -133,6 +185,7 @@ interface Builder {
   glowMats: THREE.SpriteMaterial[];
   glowSprites: THREE.Sprite[];
   plumes: THREE.Mesh[];
+  plumeCores: THREE.Mesh[];
   rcs: RcsJet[];
   navMats: THREE.MeshBasicMaterial[];
   owned: THREE.Material[];
@@ -157,13 +210,16 @@ function engine(b: Builder, x: number, y: number, z: number, r: number, plumeLen
   const plume = mesh(b, plumeCone(r * 0.78, plumeLen), b.pal.plumeMat, x, y, z - 0.3 * H, parent);
   plume.rotation.x = -Math.PI / 2;
   b.plumes.push(plume);
+  const plumeCore = mesh(b, plumeCone(r * 0.42, plumeLen * 1.35), b.pal.plumeCoreMat, x, y, z - 0.3 * H, parent);
+  plumeCore.rotation.x = -Math.PI / 2;
+  b.plumeCores.push(plumeCore);
   const mat = new THREE.SpriteMaterial({
     map: b.glowTex, color: b.pal.plumeMat.color, transparent: true, opacity: 0.7,
     depthWrite: false, blending: THREE.AdditiveBlending,
   });
   const sprite = new THREE.Sprite(mat);
   sprite.position.set(x, y, z - 0.4 * H);
-  sprite.scale.setScalar(r * 4.2);
+  sprite.scale.setScalar(r * 5);
   parent.add(sprite);
   b.glowMats.push(mat);
   b.glowSprites.push(sprite);
@@ -203,7 +259,7 @@ function builder(H: number, pal: Palette): Builder {
   group.add(hull);
   return {
     hull, pal, H, glowTex: softSpriteTexture(),
-    glowMats: [], glowSprites: [], plumes: [], rcs: [], navMats: [], owned: [...pal.owned],
+    glowMats: [], glowSprites: [], plumes: [], plumeCores: [], rcs: [], navMats: [], owned: [...pal.owned],
   };
 }
 
@@ -257,6 +313,8 @@ function finish(
   plasma.position.set(0, 0, plasmaZ);
   plasma.scale.setScalar(4 * H);
   b.hull.add(plasma);
+  const { streaks, streakMat } = plasmaStreaks(b.hull, plasmaZ - 0.3 * H, 0.9 * H, length * 1.1);
+  b.owned.push(streakMat);
   return {
     group: b.hull.parent as THREE.Group,
     hull: b.hull,
@@ -269,8 +327,12 @@ function finish(
     glowSprites: b.glowSprites,
     plumes: b.plumes,
     plumeMat: b.pal.plumeMat,
+    plumeCores: b.plumeCores,
+    plumeCoreMat: b.pal.plumeCoreMat,
     plasmaMat,
     plasma,
+    streaks,
+    streakMat,
     strobeMat,
     navMats: b.navMats,
     rcs: b.rcs,
@@ -349,7 +411,7 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
   group.name = 'playerShip';
   const hull = new THREE.Group();
   group.add(hull);
-  const { engineMat, bellMat, plumeMat } = driveMats(spec.drive);
+  const { engineMat, bellMat, plumeMat, plumeCoreMat } = driveMats(spec.drive);
   // The inside of the nozzle is what the chase camera sees.
   bellMat.side = THREE.BackSide;
   // Takes the hull's own textures once they load; the heat glow drives its emissive.
@@ -364,6 +426,8 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
   plasma.position.set(0, 0, (spec.length / 2) * H);
   plasma.scale.setScalar(4 * H);
   hull.add(plasma);
+  // The ribbons start a little back from the nose and reach past the tail.
+  const { streaks, streakMat } = plasmaStreaks(hull, (spec.length / 2 - 0.6) * H, (spec.length / 8) * H, spec.length * 1.2 * H);
   // Until the model names its gun ports, the guns fire from the nose.
   const noseGun = new THREE.Object3D();
   noseGun.position.set(0, 0, (spec.length / 2) * H);
@@ -374,8 +438,8 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
   const loaded: THREE.Object3D[] = [];
   const parts: ShipParts = {
     group, hull, wings: [], cannonTips: [noseGun], skinMat, engineMat, bellMat,
-    glowMats: [], glowSprites: [], plumes: [], plumeMat, plasmaMat, plasma, strobeMat,
-    navMats: [], rcs: [], owned: [skinMat, engineMat, bellMat, plumeMat, strobeMat],
+    glowMats: [], glowSprites: [], plumes: [], plumeMat, plumeCores: [], plumeCoreMat, plasmaMat, plasma, streaks, streakMat, strobeMat,
+    navMats: [], rcs: [], owned: [skinMat, engineMat, bellMat, plumeMat, plumeCoreMat, streakMat, strobeMat],
     length: spec.length * H, spinner: null,
     release() {
       released = true;
@@ -529,11 +593,19 @@ function modelEngine(parts: ShipParts, add: (o: THREE.Object3D) => THREE.Object3
   bell.position.set(at.x, at.y, at.z - 0.45 * r);
   add(bell);
   if (parts.plumeMat) {
-    const plume = new THREE.Mesh(plumeCone(r * 0.75, r * 9), parts.plumeMat);
+    // The soft haze, wide and short, and inside it the long bright core.
+    const plume = new THREE.Mesh(plumeCone(r * 0.85, r * 8), parts.plumeMat);
     plume.rotation.x = -Math.PI / 2;
     plume.position.set(at.x, at.y, at.z - 1.2 * r);
     add(plume);
     parts.plumes.push(plume);
+    if (parts.plumeCoreMat) {
+      const core = new THREE.Mesh(plumeCone(r * 0.42, r * 13), parts.plumeCoreMat);
+      core.rotation.x = -Math.PI / 2;
+      core.position.set(at.x, at.y, at.z - 1.1 * r);
+      add(core);
+      parts.plumeCores.push(core);
+    }
   }
   const mat = new THREE.SpriteMaterial({
     map: glowTex, color: parts.plumeMat?.color ?? 0xffffff, transparent: true, opacity: 0.7,
@@ -541,7 +613,7 @@ function modelEngine(parts: ShipParts, add: (o: THREE.Object3D) => THREE.Object3
   });
   const sprite = new THREE.Sprite(mat);
   sprite.position.set(at.x, at.y, at.z - 1.6 * r);
-  sprite.scale.setScalar(H);
+  sprite.scale.setScalar(1.3 * H);
   add(sprite);
   parts.glowMats.push(mat);
   parts.glowSprites.push(sprite);
@@ -748,6 +820,7 @@ export function buildCosmonaut(E: number): ShipParts {
   hull.add(plasma);
   return {
     group, hull, wings: [], cannonTips: [], skinMat, engineMat, bellMat, glowMats, glowSprites,
-    plumes: [], plumeMat: null, plasmaMat, plasma, strobeMat, navMats: [], rcs: [], owned, length: 2.6 * E, spinner: null,
+    plumes: [], plumeMat: null, plumeCores: [], plumeCoreMat: null, plasmaMat, plasma, streaks: [], streakMat: null, strobeMat,
+    navMats: [], rcs: [], owned, length: 2.6 * E, spinner: null,
   };
 }

@@ -62,8 +62,6 @@
   z-index: 100;
   display: flex;
   flex-direction: column;
-  min-height: 100dvh;
-  min-height: 100vh;
   background: #02040a;
   color: var(--text, #e8ecf4);
   overscroll-behavior: none;
@@ -338,13 +336,14 @@
   -webkit-touch-callout: none !important;
 }
 .flight-hud {
-  /* The deck's palette: ice on deep navy glass. */
-  --hud-ink: #eaf2fd;
-  --hud-dim: rgba(166, 190, 220, 0.74);
-  --hud-accent: #4da3ff;
-  --hud-line: rgba(122, 162, 216, 0.22);
-  --hud-glass: rgba(10, 18, 33, 0.62);
-  --hud-deep: rgba(8, 14, 27, 0.9);
+  /* The deck's palette: white on near-black glass, teal for what is live
+     and amber for what is spent — the same two accents as the surfaces. */
+  --hud-ink: #f4f8ff;
+  --hud-dim: rgba(176, 196, 222, 0.7);
+  --hud-accent: #5eead4;
+  --hud-line: rgba(140, 180, 220, 0.18);
+  --hud-glass: rgba(6, 10, 20, 0.58);
+  --hud-deep: rgba(5, 9, 18, 0.9);
   --hud-ok: #46d68a;
   /* Shapes and sizes; every breakpoint sets these and the rest follows. */
   --hud-radius: 18px;
@@ -462,6 +461,23 @@
   background:
     radial-gradient(125% 95% at 50% 50%, rgba(120, 190, 255, 0) 34%, rgba(38, 96, 220, 0.3) 74%, rgba(6, 14, 42, 0.8) 100%);
 }
+/* A hit: the glass rims blue while the shield takes it, red once the hull does. */
+.flight-hud__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: var(--hit, 0);
+  background: radial-gradient(130% 110% at 50% 50%, rgba(80, 170, 255, 0) 52%, rgba(80, 170, 255, 0.22) 78%, rgba(120, 200, 255, 0.55) 100%);
+  box-shadow: inset 0 0 0 2px rgba(140, 210, 255, 0.5);
+}
+.flight-hud[data-guard='hull'] .flight-hud__hit {
+  background: radial-gradient(130% 110% at 50% 50%, rgba(255, 60, 40, 0) 48%, rgba(255, 60, 40, 0.28) 76%, rgba(255, 70, 50, 0.7) 100%);
+  box-shadow: inset 0 0 0 2px rgba(255, 110, 90, 0.6);
+}
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__track > span { background: #ff7a5c; }
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child svg,
+.flight-hud[data-guard='hull'] .flight-hud__sys:first-child .flight-hud__sys-name { color: #ff9a80; }
 .flight-hud__flash {
   position: absolute;
   inset: 0;
@@ -475,9 +491,9 @@
 /* ── The immersive view: only the eye is drawn; the stick and the look pad
    stay live but unseen, so the view is the whole screen and the ship still
    answers. ── */
-.flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
+.flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
-.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash) { display: none; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
 .flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
 .flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
@@ -572,6 +588,8 @@
 .flight-hud__card-text { display: grid; gap: 3px; min-width: 0; flex: 1; }
 .flight-hud__card-label { font-size: 10px; line-height: 1.35; color: var(--hud-dim); }
 .flight-hud__card-value { font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; }
+.flight-drive__jump .flight-hud__card-value { white-space: nowrap; }
+.flight-drive__dist { font-family: var(--font-mono, ui-monospace, monospace); letter-spacing: 0.02em; }
 .flight-hud__card-go { flex: none; color: var(--hud-dim); }
 /* The state light in the card's corner. */
 .flight-hud__dot {
@@ -779,6 +797,22 @@
   color: var(--hud-accent);
 }
 .flight-hud .flight-hud__help-head button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--hud-dim); }
+/* On a narrow screen the centred card ran under the round keys down the
+   right edge (menu, hide the deck) and took their taps: it keeps clear of
+   that column instead. */
+@media (max-width: 600px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--hud-round) + 10px);
+    width: auto;
+    transform: none;
+    max-height: calc(100% - var(--edge-top) - var(--edge-bottom) - 120px);
+    overflow-y: auto;
+  }
+}
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+}
 .flight-hud__help p { margin: 0; font-size: 11px; line-height: 1.55; color: var(--hud-dim); }
 
 /* ── The dock ── */
@@ -794,6 +828,10 @@
   grid-template-areas: 'land' 'keys' 'console';
 }
 .flight-hud__prompts { grid-area: land; justify-self: start; display: flex; align-items: flex-end; gap: 8px; }
+/* The menu drops down over the deck; on an upright phone it reaches the
+   land and dock prompts, which would draw over its rows. They step aside
+   while it is open. */
+.flight-hud[data-menu='true'] .flight-hud__prompts { visibility: hidden; }
 .flight-hud .flight-hud__dock-key { border-color: rgba(77, 163, 255, 0.55); color: var(--hud-accent); }
 .flight-hud .flight-hud__dock-key[data-on='true'] { background: rgba(77, 163, 255, 0.2); }
 
@@ -814,7 +852,7 @@
   --land: 0;
   height: auto;
   width: max-content;
-  max-width: min(236px, calc(100cqw - 2 * var(--gutter)));
+  max-width: min(280px, calc(100cqw - 2 * var(--gutter)));
   padding: 6px 11px 6px 6px;
   gap: 9px;
   border-radius: 14px;
@@ -854,7 +892,7 @@
   transform-origin: left;
   transition: transform 0.2s linear;
 }
-.flight-hud__land-state { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.2; color: var(--hud-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flight-hud__land-state { font-family: var(--font-mono, ui-monospace, monospace); font-size: 11px; line-height: 1.25; color: var(--hud-dim); }
 .flight-hud__land[data-ready='true'] .flight-hud__land-state { color: var(--terracotta); }
 .flight-hud__land-key {
   flex: none;
@@ -1058,7 +1096,7 @@
    bar. Everything is sized off --stick and --key so the whole band fits a
    320px screen without a single overflow. ── */
 @container viewport (max-width: 599px) {
-  .flight-hud { --gutter: 10px; --hud-round: 42px; }
+  .flight-hud { --gutter: 10px; --hud-round: 44px; }
   .flight-hud__title { font-size: 19px; }
   .flight-hud__head { max-width: calc(100% - 120px); }
   /* Under the heading block, clear of the cards on the other side. */
@@ -1099,7 +1137,7 @@
   .flight-hud[data-touch='true'] .flight-drive__jump .flight-hud__dot { top: 5px; right: 5px; }
   .flight-hud[data-touch='true'] .flight-hud__comms { top: calc(var(--edge-top) + 110px); }
   .flight-hud[data-touch='true'] .flight-hud__console { width: auto; justify-self: center; gap: 10px; padding: 4px 12px 4px 5px; border-radius: 999px; }
-  .flight-hud[data-touch='true'] .flight-hud__radar { width: 34px; height: 34px; }
+  .flight-hud[data-touch='true'] .flight-hud__radar { width: 44px; height: 44px; }
   .flight-hud[data-touch='true'] .flight-hud__range { gap: 1px; }
   .flight-hud[data-touch='true'] .flight-hud__console-value { font-size: 13px; }
   .flight-hud[data-touch='true'] .flight-hud__speed { width: 54px; height: 54px; margin: -2px 0; }
@@ -1164,7 +1202,7 @@
 @container viewport (max-height: 700px) {
 }
 @container viewport (max-height: 500px) {
-  .flight-hud { --stick: 92px; --key: 42px; --hud-round: 42px; --gutter: 12px; --card: 196px; }
+  .flight-hud { --stick: 104px; --key: 44px; --hud-round: 44px; --gutter: 12px; --card: 196px; }
   .flight-hud__top-keys { grid-auto-flow: column; }
   .flight-hud__side { top: calc(var(--edge-top) + var(--hud-round) + 12px); gap: 8px; }
   .flight-hud .flight-hud__card { padding: 5px 8px; }
@@ -1188,6 +1226,10 @@
   .flight-hud__menu-group { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 2px 6px; padding: 3px 0; }
   .flight-hud__menu-row { grid-column: 1 / -1; }
 }
+/* A thumb is not a cursor: every row it can hit in the deck's menus is 44 px,
+   on its side too — the menu scrolls the last row in rather than shrink them. */
+.flight-hud[data-touch='true'] .flight-hud__menu button,
+.flight-hud[data-touch='true'] .flight-drive__menu button { height: 44px; }
 
 /* ──────────────────── planet info chip (opens the facts card) ────────────────────
    Picking a body no longer throws a panel over it. A callout docks beside the
@@ -1275,13 +1317,15 @@
 .moon-surface__canvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
 .moon-surface__canvas:active { cursor: grabbing; }
 .moon-hud {
-  --hud-ink: #eef6ff;
-  --hud-dim: rgba(186, 214, 240, 0.62);
-  --hud-accent: #4db2ff;
-  --hud-warm: #ffc266;
-  --hud-line: rgba(120, 180, 235, 0.3);
-  --hud-glass: rgba(6, 14, 28, 0.52);
-  --hud-solid: rgba(5, 11, 22, 0.86);
+  /* White on near-black glass; teal for what is live, amber for what is
+     spent. Thin lines, so the glass reads as a visor and not a window. */
+  --hud-ink: #f4f8ff;
+  --hud-dim: rgba(186, 206, 232, 0.62);
+  --hud-accent: #5eead4;
+  --hud-warm: #ffb347;
+  --hud-line: rgba(140, 180, 220, 0.2);
+  --hud-glass: rgba(6, 10, 20, 0.5);
+  --hud-solid: rgba(5, 9, 18, 0.86);
   --edge-top: max(14px, env(safe-area-inset-top));
   --edge-right: max(14px, env(safe-area-inset-right));
   --edge-bottom: max(14px, env(safe-area-inset-bottom));
@@ -2186,13 +2230,34 @@
   justify-items: center;
   gap: 22px;
   overflow: hidden;
-  background: #050812;
+  background:
+    radial-gradient(120% 90% at 70% 110%, rgba(30, 72, 140, 0.3), rgba(5, 8, 18, 0) 60%),
+    radial-gradient(90% 70% at 15% 0%, rgba(40, 30, 90, 0.26), rgba(5, 8, 18, 0) 70%),
+    #050812;
   color: #eef2fb;
   text-align: center;
   padding-inline: 16px;
   transition: opacity 0.6s ease, visibility 0s linear 0s;
 }
 .cosmic-loader__sky { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+/* Two slow clouds of colour behind the stars, and a vignette over all of it. */
+.cosmic-loader__sky::after { content: ''; position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 50%, rgba(2, 3, 8, 0) 55%, rgba(2, 3, 8, 0.6) 100%); }
+.cosmic-loader__nebula { position: absolute; inset: 0; }
+.cosmic-loader__nebula i { position: absolute; width: 90vmax; height: 60vmax; border-radius: 50%; opacity: 0.55; }
+.cosmic-loader__nebula i:first-child {
+  left: -30vmax;
+  top: -18vmax;
+  background: radial-gradient(closest-side, rgba(94, 234, 212, 0.13), rgba(94, 234, 212, 0.04) 55%, rgba(94, 234, 212, 0));
+  animation: cosmic-nebula-a 70s ease-in-out infinite alternate;
+}
+.cosmic-loader__nebula i:last-child {
+  right: -34vmax;
+  top: 4vmax;
+  background: radial-gradient(closest-side, rgba(150, 110, 255, 0.14), rgba(110, 80, 220, 0.05) 55%, rgba(110, 80, 220, 0));
+  animation: cosmic-nebula-b 90s ease-in-out infinite alternate;
+}
+@keyframes cosmic-nebula-a { to { transform: translate3d(8vmax, 5vmax, 0) scale(1.12); } }
+@keyframes cosmic-nebula-b { to { transform: translate3d(-10vmax, 4vmax, 0) scale(0.92); } }
 .cosmic-loader__stars {
   position: absolute;
   top: 0;
@@ -2387,18 +2452,22 @@
   letter-spacing: 0.02em;
 }
 .cosmic-loader__detail {
+  display: inline-flex;
+  gap: 10px;
   margin: 0;
   font: 500 12px/1.4 var(--font-mono, ui-monospace), monospace;
   letter-spacing: 0.03em;
   color: rgba(168, 180, 200, 0.85);
 }
+.cosmic-loader__pct { font-weight: 500; color: var(--terracotta, #ffb347); }
 .cosmic-loader__bar {
   position: relative;
-  width: 200px;
-  height: 2px;
+  width: min(240px, 70vw);
+  height: 3px;
   margin-top: 4px;
-  border-radius: 2px;
+  border-radius: 3px;
   background: rgba(168, 180, 200, 0.16);
+  box-shadow: 0 0 0 1px rgba(168, 180, 200, 0.06);
   overflow: hidden;
 }
 .cosmic-loader__bar i {
@@ -2407,8 +2476,9 @@
   bottom: 0;
   left: 0;
   width: 40%;
-  border-radius: 2px;
-  background: var(--terracotta, #ffb347);
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(255, 150, 60, 0.85), var(--terracotta, #ffb347) 70%, #fff1d6);
+  box-shadow: 0 0 10px rgba(255, 170, 70, 0.6);
   animation: cosmic-sweep 1.6s ease-in-out infinite;
 }
 .cosmic-loader__bar[data-determinate] i {
@@ -2466,7 +2536,7 @@
 @keyframes cosmic-glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 @keyframes cosmic-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) {
-  .cosmic-loader__stars, .cosmic-globe__map, .cosmic-loader__orbit, .cosmic-loader__satellite, .cosmic-loader__craft,
+  .cosmic-loader__stars, .cosmic-loader__nebula i, .cosmic-globe__map, .cosmic-loader__orbit, .cosmic-loader__satellite, .cosmic-loader__craft,
   .cosmic-loader__flame, .cosmic-loader__dust, .cosmic-loader__streaks span::before, .cosmic-loader__streaks b,
   .cosmic-loader__bar i, .cosmic-loader__bar::after, .cosmic-loader__tip { animation: none; }
   .cosmic-loader__craft { transform: translate3d(0, 100px, 0); }
@@ -2660,3 +2730,101 @@
 .flight-arrival__list li svg { opacity: 0; transition: opacity 0.3s ease; }
 .flight-arrival__list li[data-done='true'] svg { opacity: 1; }
 .flight-arrival__skip { margin: 0; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hud-dim); }
+
+/* ── Touch: every key a thumb can reach is at least 44 px, and no label on
+   the flight deck is smaller than 10 px (Georgian at 8–9 px is unreadable). */
+@media (pointer: coarse) {
+  .flight-hud .flight-hud__round { width: max(44px, var(--hud-round)); height: max(44px, var(--hud-round)); }
+  .flight-hud .flight-hud__radar { min-width: 44px; min-height: 44px; }
+  .flight-hud .flight-hud__key,
+  .flight-hud .flight-drive__gear,
+  .flight-hud .flight-hud__card { min-height: 44px; min-width: 44px; }
+  .solar-system__dockbtn { min-width: 44px; min-height: 44px; }
+  .solar-system__chip.solar-system__ratebtn { min-height: 44px; }
+}
+/* The small-phone block above takes these to 8–9 px to fit the dial; 10 px
+   still fits, and reads. */
+.flight-hud .flight-hud__console-label,
+.flight-hud .flight-hud__speed .flight-hud__console-label,
+.flight-hud .flight-hud__speed small,
+.flight-hud .flight-hud__sys-name,
+.flight-hud .flight-drive__gear kbd { font-size: 10px; }
+/* ── Phones: the glass stays light, every key is a thumb, nothing hides ── */
+/* The stick's four marks on every deck, not only the flight deck's. */
+.game-stick__pad { position: absolute; inset: 0; color: var(--hud-dim, rgba(186, 212, 240, 0.7)); pointer-events: none; }
+.game-stick__pad svg { position: absolute; }
+.game-stick__pad svg:nth-child(1) { top: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(2) { right: 7%; top: 50%; transform: translateY(-50%); }
+.game-stick__pad svg:nth-child(3) { bottom: 7%; left: 50%; transform: translateX(-50%); }
+.game-stick__pad svg:nth-child(4) { left: 7%; top: 50%; transform: translateY(-50%); }
+.moon-hud .game-stick__axis { display: none; }
+.game-stick { transition: border-color 0.15s ease, box-shadow 0.2s ease; }
+.game-stick[data-active='true'] { box-shadow: 0 0 0 1px var(--seafoam), 0 0 22px rgba(94, 234, 212, 0.28); }
+.game-stick__thumb { will-change: transform; }
+
+/* The controls card scrolls inside the deck instead of running under it. */
+.flight-hud__help {
+  gap: 4px;
+  top: var(--edge-top);
+  max-height: calc(100cqh - var(--edge-top) - var(--edge-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.flight-hud__help button, .flight-hud__menu button, .flight-drive__menu button { touch-action: pan-y; }
+
+/* Words in a key stay inside the key. */
+.moon-hud .moon-hud__key { width: auto; min-width: 54px; padding: 0 9px; white-space: nowrap; }
+.moon-hud .moon-hud__objective { min-width: 0; padding: 8px 12px; overflow-wrap: anywhere; }
+.moon-hud__objective-text { overflow-wrap: anywhere; }
+
+/* Panels that scroll keep the scroll; nothing else may be pinched. */
+.moon-hud__log, .moon-hud__help, .room-panel { touch-action: pan-y; overscroll-behavior: contain; }
+.moon-hud__log button, .moon-hud__help button { touch-action: pan-y; }
+.moon-hud__help, .moon-hud__log { max-height: min(70dvh, 560px); }
+
+@media (pointer: coarse) {
+  .solar-system__dockbtn { width: 44px; height: 44px; }
+  .solar-system__ratebtn { min-height: 44px; }
+  .flight-hud .flight-hud__help-head button { width: 44px; height: 44px; margin: -8px -10px -8px 0; }
+  .flight-hud .flight-hud__editor-bar button { min-height: 44px; }
+  /* Every blurred layer resamples the live canvas each frame; on a phone
+     GPU that is time the scene needs. A deeper glass reads the same. */
+  .flight-hud button, .flight-hud .flight-hud__card, .flight-hud__console, .flight-hud .game-stick,
+  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .flight-hud { --hud-glass: rgba(6, 10, 20, 0.72); }
+  .moon-hud { --hud-glass: rgba(6, 10, 20, 0.66); }
+  .moon-surface--mars .moon-hud { --hud-glass: rgba(28, 10, 4, 0.66); }
+  .moon-surface--proximaB .moon-hud { --hud-glass: rgba(14, 6, 24, 0.68); }
+}
+
+/* A short landscape phone: the loader keeps its words. */
+@media (max-height: 440px) {
+  .cosmic-loader__stage { min-height: 0; transform: scale(0.66); margin: -36px 0; }
+  .cosmic-loader__tip { display: none; }
+}
+
+/* A key answers the thumb the instant it lands: no hover on glass, so the
+   press itself is the feedback. Colour only — the flight deck's keys carry
+   their placement in their transform. */
+.moon-hud button:active:not(:disabled),
+.flight-hud button:active:not(:disabled) {
+  border-color: var(--hud-accent);
+  background-color: rgba(94, 234, 212, 0.2);
+  transition: none;
+}
+/* On a phone the card keeps clear of the key column down the right edge. */
+@container viewport (max-width: 599px) {
+  .flight-hud__help {
+    left: var(--edge-left);
+    transform: none;
+    width: calc(100% - var(--edge-left) - var(--edge-right) - var(--hud-round) - 10px);
+    padding: 12px 12px 14px;
+  }
+}
+/* The open menu lies over the dock: the keys' placement transform makes the
+   top keys their own stacking context, so the menu's own z-index stays inside it. */
+.flight-hud__top-keys:has(.flight-hud__menu) { z-index: 8; }

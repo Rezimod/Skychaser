@@ -8,7 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { attachDesktopControls, clearFlightInput, zoomFlightCamera } from '@/lib/solar-system/flight-input';
-import { APPROACH_SECONDS } from '@/lib/solar-system/flight-approach';
+import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, titleCard } from '@/lib/solar-system/flight-approach';
 import { assetsFor, SURFACE_GROUPS } from '@/lib/solar-system/surface-assets';
 import { prefetchModels, prefetchDone } from '@/game/models';
 import { type FlightSession, type ShipKind } from '@/lib/solar-system/player-ship';
@@ -21,6 +21,8 @@ import { GameStick, tapKey } from './GameStick';
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import { settle } from '@/game/settle';
+import { getSettings } from '@/game/settings';
+import { eventElement } from '@/game/console';
 
 /** The launch screen stays at least this long, and until the ship has flown a few frames. */
 const LAUNCH_MIN_MS = 1500;
@@ -53,7 +55,7 @@ const HELP_SEEN = 'stellar_explore_help';
 /** The arrival has been watched once; from now on it can be skipped from the first second. */
 const ARRIVAL_SEEN = 'stellar_explore_arrival';
 /** On the first run the way out opens once the transit is behind them. */
-const ARRIVAL_SKIP_AFTER = 4.5;
+const ARRIVAL_SKIP_AFTER = APPROACH_LEGS[0].seconds + 1;
 const ICONS = [Shield, Zap, ChevronsUp];
 /** How long a passing moment stays up in the popup. */
 const POPUP_MS = 4200;
@@ -152,6 +154,9 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const arrBarRef = useRef<HTMLSpanElement>(null);
   const arrHintRef = useRef<HTMLParagraphElement>(null);
   const arrListRef = useRef<HTMLUListElement>(null);
+  const arrBoxRef = useRef<HTMLDivElement>(null);
+  /** The world's name across the glass through the entry. */
+  const titleRef = useRef<HTMLDivElement>(null);
   const radarRef = useRef<HTMLCanvasElement>(null);
   const placeRef = useRef<HTMLSpanElement>(null);
   const subRef = useRef<HTMLSpanElement>(null);
@@ -180,6 +185,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const dockTextRef = useRef<HTMLSpanElement>(null);
   const railRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const guardNameRef = useRef<HTMLSpanElement>(null);
   const placedRefs = useRef<Partial<Record<Placeable, HTMLElement | null>>>({});
   const ghostRefs = useRef<Partial<Record<Placeable, HTMLElement | null>>>({});
   const layoutBefore = useRef<Layout>({});
@@ -197,22 +203,45 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const zoomRef = useRef(1);
   const landscapeRef = useRef(landscape);
   landscapeRef.current = landscape;
+  const onLandscapeRef = useRef(onLandscape);
+  onLandscapeRef.current = onLandscape;
   const landedRef = useRef(landed);
   landedRef.current = landed;
 
+  // A phone that already lies on its side needs no turned deck: the toggle
+  // is only offered upright, and a real turn clears it.
+  const [upright, setUpright] = useState(true);
   useEffect(() => {
-    setTouch(window.matchMedia('(pointer: coarse)').matches);
+    const coarse = window.matchMedia('(pointer: coarse)');
+    setTouch(coarse.matches);
     setLayout(loadLayout());
+    const portrait = window.matchMedia('(orientation: portrait)');
+    const onTurn = () => {
+      setUpright(portrait.matches);
+      if (!portrait.matches && landscapeRef.current) onLandscapeRef.current(false);
+    };
+    onTurn();
+    // A tablet with a trackpad reports a fine pointer; the first finger on
+    // the glass still brings the touch deck up.
+    const onFinger = (e: PointerEvent) => { if (e.pointerType === 'touch') setTouch(true); };
+    portrait.addEventListener('change', onTurn);
+    window.addEventListener('pointerdown', onFinger, { passive: true });
+    return () => {
+      portrait.removeEventListener('change', onTurn);
+      window.removeEventListener('pointerdown', onFinger);
+    };
   }, []);
   // The deck's own guards, on the document: while the ship is flown nothing
   // may be selected, no callout may open, and a touch that is not on a key
   // starts no browser gesture of its own — so two thumbs are two thumbs.
+  // Only while the deck is actually flown: on a surface or behind a pause
+  // menu, panels, sliders and inputs need their own gestures back.
   useEffect(() => {
-    if (!active) return;
+    if (!active || landed || shellPaused) return;
     const noSelect = (e: Event) => e.preventDefault();
     const noGesture = (e: TouchEvent) => {
-      const el = e.target as Element | null;
-      if (el && el.closest('button, [role="menu"], .flight-hud__help, .flight-hud__editor-bar')) return;
+      const el = eventElement(e);
+      if (el && el.closest('button, input, select, textarea, label, a, [role="menu"], [role="dialog"], .flight-hud__help, .flight-hud__editor-bar, .room-panel, .room-badge')) return;
       if (e.cancelable) e.preventDefault();
     };
     document.addEventListener('selectstart', noSelect);
@@ -225,7 +254,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       document.removeEventListener('touchstart', noGesture);
       document.removeEventListener('touchmove', noGesture);
     };
-  }, [active]);
+  }, [active, landed, shellPaused]);
   // Each placed control wears its offset and scale as custom properties;
   // the stylesheet turns them into a transform in deck units.
   useEffect(() => {
@@ -239,8 +268,11 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     }
   }, [layout, active, touch, immersive, editing]);
 
-  const pause = useCallback(() => {
-    if (!session.active || session.paused) return;
+  /** Hold the deck: the ship stops, the input lets go. The arrival and the
+   *  layout editor hold it for themselves; only a pause the pilot asked
+   *  for (`pause`) brings the shell's menu up over it. */
+  const holdDeck = useCallback((): boolean => {
+    if (!session.active || session.paused) return false;
     zoomRef.current = session.input.camZoom;
     session.paused = true;
     detachRef.current?.();
@@ -251,8 +283,11 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     heldRef.current = {};
     lookRef.current = null;
     setPaused(true);
-    onPauseRequestRef.current?.();
+    return true;
   }, [session]);
+  const pause = useCallback(() => {
+    if (holdDeck()) onPauseRequestRef.current?.();
+  }, [holdDeck]);
   pauseRef.current = pause;
   const onPauseRequestRef = useRef(onPauseRequest);
   onPauseRequestRef.current = onPauseRequest;
@@ -296,7 +331,8 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
    *  approach, pitch-over — and the surface's files come down while it does. */
   const land = () => {
     const site = landSiteRef.current;
-    prefetchModels(assetsFor(site));
+    // The surface's own files, and the ship the crew are flying: it is what comes down.
+    prefetchModels(assetsFor(site, session.shipKind));
     // Seen once, and it can be skipped from the first second; the first
     // time, the way out opens when the transit is behind them.
     try {
@@ -320,7 +356,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       // Private mode — it plays in full every time.
     }
     setArrival(null);
-    pause();
+    holdDeck();
     onLandRef.current(site);
   };
   const exit = () => {
@@ -355,7 +391,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   // The shell's pause menu holds the deck, and letting go of it flies on.
   const shellPausedWas = useRef(false);
   useEffect(() => {
-    if (shellPaused && active && !session.paused) pause();
+    if (shellPaused && active && !session.paused) holdDeck();
     else if (!shellPaused && shellPausedWas.current && active && session.paused && !editing) resume();
     shellPausedWas.current = !!shellPaused;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -444,6 +480,13 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     const pop = (value: string, tone: string, now: number) => { popText = value; popTone = tone; popUntil = now + POPUP_MS; };
     const name = (id: string) => SOLAR_IDS.has(id) ? tb(`${id}.name`) : t.has(`bodies.${id}`) ? t(`bodies.${id}`) : id.toUpperCase();
     const text = (el: HTMLElement | null, value: string) => { if (el && el.textContent !== value) el.textContent = value; };
+    // A custom property on the HUD root restyles the whole deck: written only when it changes.
+    const props = new Map<string, string>();
+    const prop = (el: HTMLElement | null, name: string, value: string) => {
+      if (!el || props.get(name) === value) return;
+      props.set(name, value);
+      el.style.setProperty(name, value);
+    };
     let raf = 0;
     let lastPaint = 0;
     const paint = (now: number) => {
@@ -470,11 +513,15 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
       // distance flown when there is not.
       text(rangeLabelRef.current, tel.navId ? t('distance') : t('odometer'));
       text(rangeRef.current, `${fmt(tel.navId ? tel.navKm : tel.odometerKm)} km`);
-      root?.style.setProperty('--speed', String(Math.min(1, tel.speedFrac)));
-      root?.style.setProperty('--flash', tel.jumpFlash.toFixed(3));
-      root?.style.setProperty('--warp', (tel.jumpPhase === 'charge' ? tel.jumpT * 0.6
+      prop(root, '--speed', Math.min(1, tel.speedFrac).toFixed(3));
+      prop(root, '--flash', tel.jumpFlash.toFixed(3));
+      prop(root, '--warp', (tel.jumpPhase === 'charge' ? tel.jumpT * 0.6
         : tel.jumpPhase === 'travel' ? 0.6 + 0.4 * Math.sin(Math.min(1, tel.jumpT) * Math.PI) : 0).toFixed(3));
-      if (root) root.dataset.view = tel.view;
+      // The air on the hull, at the edges of the glass: the entry, or any
+      // dive into an atmosphere. The glide's haze comes up under it.
+      prop(root, '--heat', Math.min(1, tel.heat).toFixed(3));
+      prop(root, '--glide', (tel.approachPhase === 'glide' ? tel.approachLegT : 0).toFixed(3));
+      if (root && root.dataset.view !== tel.view) root.dataset.view = tel.view;
       let status = '';
       if (tel.crashed) status = t('respawn', { n: Math.ceil(tel.respawnIn) });
       else if (tel.docked) status = t('dockedAt', { body: name(tel.dockedTo) });
@@ -529,8 +576,13 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
         // The sim names the leg from its first frame; until then there is
         // nothing to say, and nothing to ask the translator for.
         if (ph !== '') text(arrPhaseRef.current, t(`arrival.${ph}`));
+        if (arrBoxRef.current && arrBoxRef.current.dataset.phase !== ph) arrBoxRef.current.dataset.phase = ph;
         text(arrPlaceRef.current, name(arrivalRef.current));
         arrBarRef.current?.style.setProperty('--t', tel.approachT.toFixed(3));
+        // The title card follows the profile's own curve, from the deck's
+        // clock: up a beat into the entry, gone before the ground. A world
+        // flown down from orbit in its own scene gets its card there.
+        titleRef.current?.style.setProperty('--title', titleCard(tel.approachT * APPROACH_SECONDS, approachProfileFor(arrivalRef.current)).toFixed(3));
         if (!arrivalSkipRef.current && tel.approachT * APPROACH_SECONDS >= ARRIVAL_SKIP_AFTER) arrivalSkipRef.current = true;
         const hint = arrHintRef.current;
         if (hint && hint.hidden === arrivalSkipRef.current) hint.hidden = !arrivalSkipRef.current;
@@ -612,10 +664,21 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
           orderBarRef.current?.style.setProperty('transform', `scaleX(${tel.orderDone ? 0 : tel.orderIntegrity})`);
         }
       }
-      const levels = [tel.shield / tel.maxShield, tel.energy, tel.boostCharge];
+      // With the shields down the first bar reads the hull instead, in the
+      // warning colour: what is left between the crew and the next hit.
+      const shieldsDown = tel.shield <= 0 && !tel.crashed;
+      const levels = [shieldsDown ? tel.hp / tel.maxHp : tel.shield / tel.maxShield, tel.energy, tel.boostCharge];
       levels.forEach((level, i) => {
         barRefs.current[i]?.style.setProperty('transform', `scaleX(${Math.max(0, Math.min(1, level))})`);
       });
+      const guard = shieldsDown ? 'hull' : 'shield';
+      if (root && root.dataset.guard !== guard) {
+        root.dataset.guard = guard;
+        text(guardNameRef.current, t(guard));
+      }
+      // A hit on the glass: the shield's blue shimmer while it holds, red once
+      // the hull is taking it.
+      root?.style.setProperty('--hit', tel.hitFlash.toFixed(3));
       const marker = markerRef.current;
       if (marker) {
         const locked = tel.navId && tel.nav.on;
@@ -692,13 +755,15 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
       const l = lookRef.current;
       if (!l || l.id !== e.pointerId) return;
-      let dx = (e.clientX - l.x) * LOOK_GAIN;
-      let dy = (e.clientY - l.y) * LOOK_GAIN;
+      // The same look settings the mouse and the pad answer to.
+      const s = getSettings();
+      let dx = (e.clientX - l.x) * LOOK_GAIN * s.sensitivity;
+      let dy = (e.clientY - l.y) * LOOK_GAIN * s.sensitivity;
       l.x = e.clientX; l.y = e.clientY;
       // A quarter turn clockwise: the pad's right is the screen's down.
       if (landscapeRef.current) [dx, dy] = [dy, -dx];
       session.input.mouseDX += dx;
-      session.input.mouseDY += dy;
+      session.input.mouseDY += s.invertY ? -dy : dy;
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
     onPointerCancel: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
@@ -719,7 +784,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     setHelp(false);
     onLandscape(false);
     pausedBefore.current = session.paused;
-    pause();
+    holdDeck();
     layoutBefore.current = layout;
     setPicked(null);
     setEditing(true);
@@ -792,7 +857,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const keysOff = (paused && !editing);
 
   return (
-    <div ref={rootRef} className="flight-hud" data-touch={touch} data-phase={active ? 'flying' : 'idle'} data-paused={paused} data-immersive={immersive} data-editing={editing} data-arrival={arrival !== null} hidden={landed}>
+    <div ref={rootRef} className="flight-hud" data-touch={touch} data-phase={active ? 'flying' : 'idle'} data-paused={paused} data-immersive={immersive} data-menu={menu} data-editing={editing} data-arrival={arrival !== null} hidden={landed}>
       {!active ? (
         <div className="flight-hud__launch">
           <button type="button" className="flight-hud__ship" onClick={() => setShipKind(SHIPS[(SHIPS.indexOf(shipKind) + 1) % SHIPS.length])} aria-label={t('hangar')}>
@@ -812,19 +877,33 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
               and the flash goes off at both ends of the jump. */}
           <div className="flight-hud__warp" aria-hidden />
           <div className="flight-hud__flash" aria-hidden />
+          {/* The air on the hull, seen from the seat: an orange glow at the
+              edges of the glass that follows the heat, and the ground's haze
+              coming up through the glide. */}
+          <div className="flight-heat" aria-hidden />
+          <div className="flight-hud__hit" aria-hidden />
+
+          {/* The world's name, letter-spaced across the glass, with one line
+              of what it is like down there — the entry's title card. */}
+          {arrival !== null && (
+            <div ref={titleRef} className="flight-title" aria-hidden>
+              <span className="flight-title__name">{t(`worlds.${arrival}.name`)}</span>
+              <span className="flight-title__line">{t(`worlds.${arrival}.descriptors`)} · {t(`worlds.${arrival}.temp`)}</span>
+            </div>
+          )}
 
           {/* The arrival: the ship has the con. What it is doing, how far
               through it is, what has come down for the surface waiting at
               the end of it, and the way to skip it once it is familiar. */}
           {arrival !== null && (
-            <div className="flight-arrival" role="status" aria-live="polite">
+            <div ref={arrBoxRef} className="flight-arrival" role="status" aria-live="polite">
               <p className="flight-arrival__head">
                 <span ref={arrPhaseRef} className="flight-arrival__phase" />
                 <span ref={arrPlaceRef} className="flight-arrival__place" />
               </p>
               <span ref={arrBarRef} className="flight-arrival__bar" aria-hidden><i /></span>
               <ul ref={arrListRef} className="flight-arrival__list">
-                {SURFACE_GROUPS.filter((g) => assetsFor(arrival).some((a) => a.group === g)).map((g) => (
+                {SURFACE_GROUPS.filter((g) => assetsFor(arrival, session.shipKind).some((a) => a.group === g)).map((g) => (
                   <li key={g} data-group={g} data-done="false">
                     <Check size={13} aria-hidden />
                     <span>{t(`arrival.load.${g}`)}</span>
@@ -852,7 +931,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
 
           {/* Top right: the menu and the eye. Everything else lives in the menu. */}
           <div className="flight-hud__top-keys" {...placed('topkeys')}>
-            <button type="button" className="flight-hud__round" onClick={() => setMenu((m) => !m)} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
+            <button type="button" className="flight-hud__round" onClick={() => { setMenu((m) => !m); setHelp(false); }} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
               {menu ? <X size={19} aria-hidden /> : <Menu size={19} aria-hidden />}
             </button>
             <button type="button" className="flight-hud__round" onClick={() => { setImmersive(true); setMenu(false); }} aria-label={t('hudHide')} title={t('hudHide')}>
@@ -878,7 +957,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
                   <button type="button" role="menuitem" disabled={paused} onClick={() => zoomFlightCamera(session.input, 1)} aria-label={t('camOut')} title={t('camOut')}><Minus size={16} aria-hidden /></button>
                   <button type="button" role="menuitem" disabled={paused} className="flight-hud__view" onClick={() => { session.input.viewToggle = true; setMenu(false); }} aria-label={t('view')} title={t('view')}>3D</button>
                 </div>
-                {touch && (
+                {touch && (upright || landscape) && (
                   <button type="button" role="menuitem" className="flight-hud__turn" data-on={landscape} onClick={() => { onLandscape(!landscape); setMenu(false); }}>
                     <Smartphone size={16} aria-hidden /><span>{t(landscape ? 'portrait' : 'landscape')}</span>
                   </button>
@@ -990,7 +1069,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
               </div>
               <div className="flight-hud__systems">
                 {BARS.map((key, i) => { const Icon = ICONS[i]; return <div key={key} className="flight-hud__sys" aria-label={t(key)}>
-                  <Icon size={15} aria-hidden /><span className="flight-hud__sys-name">{t(key)}</span>
+                  <Icon size={15} aria-hidden /><span ref={i === 0 ? guardNameRef : undefined} className="flight-hud__sys-name">{t(key)}</span>
                   <span className="flight-hud__track"><span ref={(el) => { barRefs.current[i] = el; }} /></span>
                 </div>; })}
               </div>

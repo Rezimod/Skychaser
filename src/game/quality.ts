@@ -1,6 +1,7 @@
 // Quality presets. One place decides how much the surfaces draw: pixel ratio,
 // the shadow map, the post chain, particle and print caps, prop density.
-// The player sees three names; `auto` picks one from the device, and the
+// The player sees four names; `auto` picks one from the device (never
+// `ultra`, which is a desktop's own call), and the
 // runtime governor (moon-perf) sits underneath as the safety net: once the
 // pixel ratio has nothing left to give, it steps the whole preset down a
 // level. It never steps one back up, and a preset the player names outright
@@ -33,6 +34,14 @@ export interface QualityProfile {
   lodDistance: number;
   /** The legacy flag the builders read: `performance` builds everything the old mobile path did. */
   lite: boolean;
+  /** The screen-space passes (post-flare.ts): the Sun's lens flare, its light shafts, the colour grade. */
+  flare: boolean;
+  godRays: boolean;
+  grade: boolean;
+  /** Cloud raymarch quality for the skies that have one: 0 off, 1 coarse, 2 full. */
+  clouds: 0 | 1 | 2;
+  /** Texture anisotropy the builders ask for, clamped by the context. */
+  anisotropy: number;
 }
 
 const PROFILES: Record<QualityLevel, QualityProfile> = {
@@ -40,20 +49,33 @@ const PROFILES: Record<QualityLevel, QualityProfile> = {
     level: 'performance', maxPixelRatio: 1.25, shadowMapSize: 1024, shadowRadius: 42,
     bloom: false, bloomScale: 0.5, msaa: 0, dustMax: 900, printsMax: 400, historyMax: 500,
     stars: 2200, band: 4000, propDensity: 0.5, lodDistance: 25, lite: true,
+    flare: false, godRays: false, grade: false, clouds: 0, anisotropy: 4,
   },
   balanced: {
     level: 'balanced', maxPixelRatio: 1.5, shadowMapSize: 2048, shadowRadius: 60,
     bloom: true, bloomScale: 0.5, msaa: 0, dustMax: 1600, printsMax: 900, historyMax: 1200,
     stars: 4200, band: 9000, propDensity: 1, lodDistance: 40, lite: false,
+    flare: true, godRays: false, grade: true, clouds: 1, anisotropy: 8,
   },
   high: {
     level: 'high', maxPixelRatio: 2, shadowMapSize: 2048, shadowRadius: 60,
     bloom: true, bloomScale: 0.5, msaa: 4, dustMax: 1600, printsMax: 900, historyMax: 1200,
     stars: 4200, band: 9000, propDensity: 1, lodDistance: 60, lite: false,
+    flare: true, godRays: true, grade: true, clouds: 1, anisotropy: 16,
+  },
+  // A desktop with a discrete GPU, and only ever by name: the pixel ratio is
+  // still budgeted, the 8 samples fall back to what the context allows
+  // (three clamps to `capabilities.maxSamples`), and the governor still
+  // steps it down to `high` under `auto` — which it never picks to begin with.
+  ultra: {
+    level: 'ultra', maxPixelRatio: 2, shadowMapSize: 4096, shadowRadius: 70,
+    bloom: true, bloomScale: 0.75, msaa: 8, dustMax: 2400, printsMax: 1400, historyMax: 1800,
+    stars: 8000, band: 16000, propDensity: 1.6, lodDistance: 90, lite: false,
+    flare: true, godRays: true, grade: true, clouds: 2, anisotropy: 16,
   },
 };
 
-export const QUALITY_LEVELS: QualityLevel[] = ['performance', 'balanced', 'high'];
+export const QUALITY_LEVELS: QualityLevel[] = ['performance', 'balanced', 'high', 'ultra'];
 
 export function qualityProfile(level: QualityLevel): QualityProfile {
   return PROFILES[level];
@@ -73,9 +95,16 @@ export interface DeviceSignals {
 const WEAK_GPU = /swiftshader|llvmpipe|software|mali|adreno|powervr|videocore|intel\(r\) hd graphics [2-5]\d{3}/i;
 const INTEGRATED_GPU = /intel|iris|uhd|radeon\s*(vega|graphics)|apple gpu|apple a\d/i;
 const STRONG_GPU = /apple m\d|nvidia|geforce|rtx|radeon (rx|pro)|arc/i;
+/** A recent flagship phone: an Apple GPU, Adreno 640 and up, the Mali-G7x and
+ *  Gx10 lines, Immortalis, Xclipse. These hold bloom and the grade; the
+ *  surfaces' governor still takes a level off one that cannot. */
+const FLAGSHIP_MOBILE_GPU = /apple gpu|adreno[^\d]*(6[4-9]\d|[78]\d\d)|mali-g(7[1-9]|[67]\d0)|immortalis|xclipse/i;
 
-/** Which preset a device should start on. Pure, so it is tested. */
+/** Which preset a device should start on. Pure, so it is tested. `ultra`
+ *  is never detected: a strong GPU starts on `high`, and the desktop player
+ *  who wants the 4K shadow map and the 8 samples names it in Settings. */
 export function detectQuality(s: DeviceSignals): QualityLevel {
+  if (s.touch && FLAGSHIP_MOBILE_GPU.test(s.gpu) && s.cores >= 6 && (s.memoryGB === 0 || s.memoryGB >= 6)) return 'balanced';
   if (s.touch || s.width <= 768 || s.cores <= 2 || (s.memoryGB > 0 && s.memoryGB <= 2)) return 'performance';
   if (WEAK_GPU.test(s.gpu)) return 'performance';
   if (STRONG_GPU.test(s.gpu) && s.cores >= 6) return 'high';

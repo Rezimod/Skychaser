@@ -17,6 +17,8 @@ interface GameStickProps {
 export function GameStick({ label, onMove, rotated = false }: GameStickProps) {
   const root = useRef<HTMLDivElement>(null);
   const pointer = useRef<number | null>(null);
+  /** The stick's box, measured once per touch: reading it per move forces a layout. */
+  const box = useRef<DOMRect | null>(null);
   const callback = useRef(onMove);
   callback.current = onMove;
   const rotatedRef = useRef(rotated);
@@ -24,6 +26,7 @@ export function GameStick({ label, onMove, rotated = false }: GameStickProps) {
 
   const reset = () => {
     pointer.current = null;
+    box.current = null;
     root.current?.style.setProperty('--stick-x', '0px');
     root.current?.style.setProperty('--stick-y', '0px');
     if (root.current) root.current.dataset.active = 'false';
@@ -43,7 +46,7 @@ export function GameStick({ label, onMove, rotated = false }: GameStickProps) {
 
   const move = (e: PointerEvent<HTMLDivElement>) => {
     if (pointer.current !== e.pointerId) return;
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = box.current ?? e.currentTarget.getBoundingClientRect();
     const radius = rect.width * 0.32;
     let dx = (e.clientX - rect.left - rect.width / 2) / radius;
     let dy = (e.clientY - rect.top - rect.height / 2) / radius;
@@ -67,8 +70,10 @@ export function GameStick({ label, onMove, rotated = false }: GameStickProps) {
         if (pointer.current !== null || e.button !== 0) return;
         e.preventDefault();
         pointer.current = e.pointerId;
+        box.current = e.currentTarget.getBoundingClientRect();
         e.currentTarget.setPointerCapture(e.pointerId);
         e.currentTarget.dataset.active = 'true';
+        navigator.vibrate?.(8);
         move(e);
       }}
       onPointerMove={move} onPointerUp={release} onPointerCancel={release} onLostPointerCapture={release}>

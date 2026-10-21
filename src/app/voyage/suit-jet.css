@@ -1,0 +1,40 @@
+/* ── The jetpack on the glass: its meter beside the life support, and its
+      key on the touch deck. The suit block and the deck are laid out in
+      solar-system.css; this file only adds the jet's own pieces. ── */
+
+.moon-hud__vital--jet .moon-hud__bar i { background: #6fb6ff; transition: width 120ms linear; }
+.moon-hud__suit[data-jet='on'] .moon-hud__vital--jet i:first-child { color: #9fd0ff; }
+.moon-hud__suit[data-jet='on'] .moon-hud__vital--jet .moon-hud__bar i { background: #b8dcff; box-shadow: 0 0 6px rgba(159, 208, 255, 0.8); }
+/* Nearly empty: the meter blinks rather than shouts. */
+.moon-hud__suit[data-jet='low'] .moon-hud__vital--jet { animation: suit-jet-blink 0.7s steps(2, start) infinite; }
+.moon-hud__suit[data-jet='low'] .moon-hud__vital--jet .moon-hud__bar i { background: #ff9b6a; }
+@keyframes suit-jet-blink { to { opacity: 0.35; } }
+
+/* The jet key sits beside the jump key on the deck, in the free cell under
+   the gear key; it is held, like the engine key. */
+.moon-hud__jet {
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50% !important;
+  border-color: rgba(159, 208, 255, 0.55) !important;
+  color: #9fd0ff !important;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  align-self: end;
+  margin-bottom: 4px;
+}
+.moon-hud__jet:active { background: rgba(159, 208, 255, 0.26); }
+.moon-surface:not([data-phase='surface']) .moon-hud__jet,
+.moon-surface[data-inside]:not([data-inside='']) .moon-hud__jet,
+.moon-surface[data-driving='true'] .moon-hud__jet { display: none; }
+@media (max-width: 720px) {
+  .moon-hud__jet { width: 58px; height: 58px; }
+}

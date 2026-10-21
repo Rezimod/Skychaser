@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   budgetedPixelRatio, clearQualityGovernor, currentQuality, detectQuality, governedQuality, onQualityChange, qualityProfile,
-  QUALITY_LEVELS, resetQualityDetection, stepQualityDown, type DeviceSignals,
+  QUALITY_LEVELS, resetQualityDetection, setDetectedQuality, stepQualityDown, type DeviceSignals,
 } from '@/game/quality';
 import { resetSettings, updateSettings } from '@/game/settings';
 
@@ -20,14 +20,55 @@ describe('quality presets', () => {
     expect(detectQuality({ ...desktop, memoryGB: 2 })).toBe('performance');
     expect(detectQuality({ ...desktop, gpu: 'Google SwiftShader' })).toBe('performance');
   });
+  it('a flagship phone starts balanced; a mid-range or small-memory one stays on performance', () => {
+    const phone = { gpu: 'Adreno (TM) 740', cores: 8, touch: true, width: 412, memoryGB: 8 };
+    expect(detectQuality(phone)).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Apple GPU', cores: 6, memoryGB: 0 })).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Mali-G710' })).toBe('balanced');
+    expect(detectQuality({ ...phone, gpu: 'Adreno (TM) 610' })).toBe('performance');
+    expect(detectQuality({ ...phone, gpu: 'Mali-G57' })).toBe('performance');
+    expect(detectQuality({ ...phone, memoryGB: 4 })).toBe('performance');
+    expect(detectQuality({ ...phone, cores: 4 })).toBe('performance');
+  });
   it('a strong GPU with enough cores starts high; unknown hardware stays balanced', () => {
     expect(detectQuality({ ...desktop, gpu: 'ANGLE (Apple, Apple M2, OpenGL 4.1)', cores: 8 })).toBe('high');
     expect(detectQuality({ ...desktop, gpu: 'NVIDIA GeForce RTX 3060', cores: 12 })).toBe('high');
     expect(detectQuality({ ...desktop, gpu: 'NVIDIA GeForce RTX 3060', cores: 4 })).toBe('balanced');
     expect(detectQuality({ ...desktop, gpu: '', cores: 8 })).toBe('balanced');
   });
-  it('every preset is ordered: nothing costs more on a lower preset', () => {
+  it('ultra is never detected, only named: even the strongest desktop starts high', () => {
+    expect(detectQuality({ ...desktop, gpu: 'NVIDIA GeForce RTX 4090', cores: 32, memoryGB: 64, width: 3840 })).toBe('high');
+    expect(detectQuality({ ...desktop, gpu: 'AMD Radeon RX 7900 XTX', cores: 16 })).toBe('high');
+    expect(detectQuality({ ...desktop, gpu: 'ANGLE (Apple, Apple M3 Max, OpenGL 4.1)', cores: 16 })).toBe('high');
+    expect(QUALITY_LEVELS).toEqual(['performance', 'balanced', 'high', 'ultra']);
+  });
+  it('ultra is the desktop preset: 4K shadows, 8 samples, every pass on, the pixel ratio still budgeted', () => {
+    const u = qualityProfile('ultra');
+    expect(u).toMatchObject({
+      level: 'ultra', maxPixelRatio: 2, shadowMapSize: 4096, shadowRadius: 70, bloom: true, bloomScale: 0.75, msaa: 8,
+      dustMax: 2400, printsMax: 1400, historyMax: 1800, stars: 8000, band: 16000, propDensity: 1.6, lodDistance: 90, lite: false,
+      flare: true, godRays: true, grade: true, clouds: 2, anisotropy: 16,
+    });
+    // Still under the integrated-graphics budget: ultra on an Iris is the governor's problem, not a 3 MP frame.
+    expect(budgetedPixelRatio(2, u.maxPixelRatio, desktop.gpu, 1440, 900)).toBeLessThan(1.2);
+  });
+  it('the screen-space passes and the cloud quality follow the preset', () => {
     const [p, b, h] = QUALITY_LEVELS.map(qualityProfile);
+    expect(p).toMatchObject({ flare: false, godRays: false, grade: false, clouds: 0, anisotropy: 4 });
+    expect(b).toMatchObject({ flare: true, godRays: false, grade: true, clouds: 1, anisotropy: 8 });
+    expect(h).toMatchObject({ flare: true, godRays: true, grade: true, clouds: 1, anisotropy: 16 });
+  });
+  it('every preset is ordered: nothing costs more on a lower preset', () => {
+    const [p, b, h, u] = QUALITY_LEVELS.map(qualityProfile);
+    expect(h.maxPixelRatio).toBeLessThanOrEqual(u.maxPixelRatio);
+    expect(h.shadowMapSize).toBeLessThanOrEqual(u.shadowMapSize);
+    expect(h.msaa).toBeLessThanOrEqual(u.msaa);
+    expect(h.stars).toBeLessThanOrEqual(u.stars);
+    expect(h.propDensity).toBeLessThanOrEqual(u.propDensity);
+    expect(h.lodDistance).toBeLessThanOrEqual(u.lodDistance);
+    expect(h.anisotropy).toBeLessThanOrEqual(u.anisotropy);
+    expect(h.clouds).toBeLessThanOrEqual(u.clouds);
+    expect(u.lite).toBe(false);
     expect(p.maxPixelRatio).toBeLessThanOrEqual(b.maxPixelRatio);
     expect(b.maxPixelRatio).toBeLessThanOrEqual(h.maxPixelRatio);
     expect(p.shadowMapSize).toBeLessThanOrEqual(b.shadowMapSize);
@@ -71,6 +112,20 @@ describe('quality presets', () => {
       expect(stepQualityDown()).toBe(false);
       expect(seen).toEqual(QUALITY_LEVELS.slice(0, steps).reverse());
       off();
+    });
+
+    it('steps ultra down to high, one level like any other', () => {
+      updateSettings({ quality: 'auto' });
+      setDetectedQuality('ultra');
+      expect(currentQuality().level).toBe('ultra');
+      expect(stepQualityDown()).toBe(true);
+      expect(currentQuality().level).toBe('high');
+      expect(governedQuality()).toBe('high');
+      // Named outright, ultra is the player's: the governor keeps its hands off.
+      updateSettings({ quality: 'ultra' });
+      expect(currentQuality().level).toBe('ultra');
+      expect(stepQualityDown()).toBe(false);
+      expect(currentQuality().level).toBe('ultra');
     });
 
     it('never steps back up, and gives way to a preset the player names', () => {
