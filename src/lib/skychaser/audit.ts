@@ -50,11 +50,13 @@ export type ListedOutcome = { demo?: boolean; tier?: string; oddsBps?: Record<Ra
 
 /**
  * What a 'purchased' row's outcome carries: when the payment window closes,
- * and the payment reference — or, in rows the rehearsal builds of 2026-09/10
+ * and that it is paid on chain — or, in rows the rehearsal builds of 2026-09/10
  * wrote, the mark that nothing was paid. That is a note, not a flag: it is in
- * the log, and the log explains it.
+ * the log, and the log explains it. Rows before 2026-10-21 carry the payment
+ * reference instead of `onChain`; it is no longer published, because anyone
+ * holding an unpaid order's reference could bury its payment under dust.
  */
-export type PurchasedOutcome = { expiresAt?: string; simulated?: boolean; reference?: string } | null;
+export type PurchasedOutcome = { expiresAt?: string; simulated?: boolean; onChain?: boolean; reference?: string } | null;
 
 /** The paying transfer's block, logged at opening: its hash is mixed into the draws. */
 export type BeaconOutcome = { signature: string; slot: number; blockhash: string };
@@ -325,10 +327,10 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
         : { ok: false, problems: ['no outcome recorded'] };
       if (result.ok) verified++;
       else flag('verification_failed', result.problems.join('; '));
-      // A purchase that logged its payment reference was paid on chain: its
-      // draws must have been mixed with the paying block's hash.
+      // A purchase logged as on chain was paid on chain: its draws must have
+      // been mixed with the paying block's hash.
       const bought = purchased?.outcome as PurchasedOutcome;
-      if (o && bought?.reference && !bought.simulated && !demo && !o.beacon) {
+      if (o && (bought?.onChain || bought?.reference) && !bought.simulated && !demo && !o.beacon) {
         flag('beacon_missing', 'paid on chain, but opened without the paying block’s hash in its draws');
       }
       const promised = (listed?.outcome as ListedOutcome)?.oddsBps;

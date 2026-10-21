@@ -5,7 +5,7 @@ import { paused } from '@/lib/kill-switch';
 import { skychaserBuyIpRateLimit, skychaserBuyRateLimit } from '@/lib/rate-limit';
 import { isRarity } from '@/lib/rarity';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
-import { cardAvailability, createCardOrder, settleCardOrders, usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
+import { cardAvailability, createCardOrder, fulfilPaidCardOrders, settleCardOrders, usdToSol, merchantWallet, newPaymentReference, paymentUrl, paymentNetworkMisconfig } from '@/lib/skychaser/orders';
 import { clientIp, holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-guards';
 import { SolPriceUnavailableError } from '@/lib/sol-price';
 
@@ -45,7 +45,11 @@ export async function POST(req: NextRequest) {
   if (!db) return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
 
   // Orders left pending past their window are settled from the chain now, not only at the nightly sweep.
-  after(() => settleCardOrders(db, 10).catch((err) => console.error('[skychaser/cards/buy] settle sweep', err)));
+  after(() =>
+    settleCardOrders(db, 10)
+      .then(() => fulfilPaidCardOrders(db, 10))
+      .catch((err) => console.error('[skychaser/cards/buy] settle sweep', err)),
+  );
   const c = await cardAvailability(db, designation);
   if (!c || !isRarity(c.rarity)) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
   if (!c.released) return NextResponse.json({ error: 'This set is not on sale yet' }, { status: 409 });

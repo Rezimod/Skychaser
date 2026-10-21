@@ -425,7 +425,7 @@ export async function purchaseCapsule(
       )
       INSERT INTO capsule_log (capsule_id, capsule_sequence, event, commitment, buyer_wallet, buyer_nonce, purchase_hash, outcome)
       SELECT id, sequence, 'purchased', commitment, buyer_wallet, buyer_nonce, purchase_hash,
-        ${JSON.stringify({ expiresAt, reference: input.paymentReference })}::jsonb FROM c
+        ${JSON.stringify({ expiresAt, onChain: true })}::jsonb FROM c
       RETURNING seq
     `),
     db.execute(sql`

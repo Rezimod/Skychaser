@@ -15,7 +15,7 @@ vi.mock('@solana/web3.js', async (actual) => {
 vi.mock('@/lib/telegram', () => ({ sendTelegram: pay.telegram }));
 import type { Db } from '@/lib/skychaser/attach';
 import { PublicKey } from '@solana/web3.js';
-import { findPayment, fulfilCardOrder, markPaid, paymentNetworkProblem, recheckClosedCardOrders, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
+import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, markPaid, paymentNetworkProblem, recheckClosedCardOrders, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
@@ -345,6 +345,14 @@ describe('dust cannot hide a payment', () => {
     expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: true, signature: 'payment' });
   });
 
+  it('dust sent before the payment does not count towards the cap, so it cannot bury it', async () => {
+    const dust = Array.from({ length: 60 }, (_, i) => sig(`dust${i}`, '2026-09-20T12:05:00Z'));
+    // Newest first, as the chain lists them: the payment is newer than all the dust.
+    pay.signatures.mockResolvedValue([sig('payment', '2026-09-20T12:10:00Z'), ...dust]);
+    pay.transaction.mockImplementation(async (s: string) => (s === 'payment' ? tx(100_000_000) : tx(0)));
+    expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: true, signature: 'payment' });
+  });
+
   it('pages past a full page of signatures to the payment beneath it', async () => {
     const page = Array.from({ length: 1000 }, (_, i) => sig(`dust${i}`, '2026-09-20T12:14:00Z'));
     pay.signatures
@@ -377,6 +385,24 @@ describe('the sweeps', () => {
     } as unknown as Db;
     // The first order's update throws; the second is still cancelled.
     expect(await settleCardOrders(db)).toEqual([{ orderId: 'broken', status: 'error' }, { orderId: 'unpaid', status: 'cancelled' }]);
+  });
+
+  it('give a paid card order that holds no edition another try, and pass over one that fails', async () => {
+    const stuck = order({ id: 'stuck', productId: 'stellar-card:TYCHO', status: 'paid', signature: 'paid-sig' });
+    const broken = order({ id: 'broken', productId: 'stellar-card:TYCHO', status: 'paid', signature: 'paid-sig-2' });
+    let cardLookups = 0;
+    const chain: Record<string, unknown> = {};
+    for (const m of ['from', 'where', 'orderBy']) chain[m] = () => chain;
+    chain.limit = async (n: number) => {
+      if (n !== 1) return [broken, stuck];
+      if (cardLookups++ === 0) throw new Error('connection reset');
+      return [];
+    };
+    const db = { select: () => chain } as unknown as Db;
+    expect(await fulfilPaidCardOrders(db)).toEqual([
+      { orderId: 'broken', status: 'error' },
+      { orderId: 'stuck', status: 'unknown_card' },
+    ]);
   });
 
   it('owe back a payment found on an order already closed', async () => {

@@ -310,4 +310,12 @@ describe('the paying block in the log', () => {
     const a = auditLog(rows, NOW);
     expect(a.flags.filter((f) => f.kind === 'beacon_missing').map((f) => f.capsuleSequence)).toEqual([1]);
   });
+
+  it('treats a purchase logged as on chain the way it treated a logged reference', () => {
+    const rows = honestLog(2);
+    const purchase = (i: number) => rows.filter((r) => r.event === 'purchased')[i];
+    purchase(1).outcome = { ...(purchase(1).outcome as object), onChain: true };
+    const a = auditLog(rows, NOW);
+    expect(a.flags.filter((f) => f.kind === 'beacon_missing').map((f) => f.capsuleSequence)).toEqual([2]);
+  });
 });

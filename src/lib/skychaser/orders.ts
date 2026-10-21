@@ -186,12 +186,14 @@ export type PaymentCheck =
   | { paid: false; error?: string; status?: number; partial?: Transfer; shared?: string[] };
 
 /**
- * At most this many transactions carrying a reference are read, oldest first,
- * so dust cannot slow a confirmation down. Dust can only be sent once the
- * reference is public — after the buyer's own transfer — so oldest first
- * reaches the payment before any of it.
+ * Transactions carrying a reference are read oldest first. Only those that
+ * paid the merchant count towards MAX_PAYING; MAX_READ bounds the reads, so
+ * dust can neither slow a confirmation without limit nor push a payment out
+ * of reach with a few cheap transactions. The reference is only shown to the
+ * buyer, so dust normally lands after the payment anyway.
  */
-const MAX_SCANNED = 25;
+const MAX_PAYING = 25;
+const MAX_READ = 200;
 /** Signatures are listed a page of 1000 at a time, newest first; this many pages at most. */
 const MAX_SIGNATURE_PAGES = 10;
 
@@ -304,12 +306,14 @@ export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promi
   const extra: string[] = [];
   const shared: string[] = [];
   try {
-    let scanned = 0;
+    let read = 0;
+    let paying = 0;
     for (const f of await signaturesFor(connection, reference)) {
       if (f.err) continue;
-      if (++scanned > MAX_SCANNED) break;
+      if (++read > MAX_READ) break;
       const r = await received(connection, f.signature, recipient, reference);
       if (!r || r.lamports <= BigInt(0)) continue;
+      if (++paying > MAX_PAYING) break;
       if (await ledger.sharedWith(order.id, r.keys.filter((k) => k !== reference.toBase58()))) {
         shared.push(f.signature);
         continue;
@@ -659,6 +663,37 @@ async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
     row = { ...order, status: 'cancelled' };
   }
   return row.status;
+}
+
+/**
+ * Single-card orders marked paid that hold no edition: the allocation after
+ * the payment failed (a database error, or editions kept colliding). Each is
+ * fulfilled again; a card sold out by now marks it refund_due. Without this a
+ * buyer who left the page would have paid with nothing to show for it.
+ */
+export async function fulfilPaidCardOrders(db: Db, limit = 25): Promise<Array<{ orderId: string; status: string }>> {
+  const stuck = await db
+    .select()
+    .from(orders)
+    .where(and(
+      eq(orders.status, 'paid'),
+      like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
+      sql`coalesce(${orders.signature}, '') NOT LIKE ${REHEARSAL_PREFIX + '%'}`,
+      sql`NOT EXISTS (SELECT 1 FROM ${edition} WHERE ${edition.orderId} = ${orders.id})`,
+    ))
+    .orderBy(orders.createdAt)
+    .limit(limit);
+  const out: Array<{ orderId: string; status: string }> = [];
+  for (const order of stuck) {
+    try {
+      const r = await fulfilCardOrder(db, order);
+      out.push({ orderId: order.id, status: r.ok ? 'fulfilled' : r.reason });
+    } catch (err) {
+      console.error('[skychaser/payments] paid card order fulfilment', order.id, err instanceof Error ? err.message : err);
+      out.push({ orderId: order.id, status: 'error' });
+    }
+  }
+  return out;
 }
 
 /**
