@@ -252,7 +252,9 @@ export function startSupernova(root: HTMLElement, opts: SupernovaOptions): Super
   function size() {
     if (!cv) return;
     // Hold the sky to a pixel budget; slower devices drop further below.
-    let d = Math.min(2, window.devicePixelRatio || 1) * Q;
+    // A star that only waits is soft light: drawn at a little over half the pixels, the difference does not show.
+    const idle = t0 === null && opts.waiting;
+    let d = Math.min(2, window.devicePixelRatio || 1) * Q * (idle ? 0.6 : 1);
     if (W * H * d * d > 1.4e6) d = Math.sqrt(1.4e6 / (W * H));
     BW = Math.max(1, Math.round(W * d));
     BH = Math.max(1, Math.round(H * d));
@@ -583,16 +585,22 @@ export function startSupernova(root: HTMLElement, opts: SupernovaOptions): Super
   let paused = false;
   function frame(ms: number) {
     if (dead || paused) return;
+    // Waiting, the star breathes over seconds: thirty frames a second is all it needs, and leaves the page the rest.
+    const idle = t0 === null && opts.waiting;
+    if (idle && last && ms - last < 30) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
     const now = ms / 1000;
     const t = t0 === null ? -1 : (ms - t0) / 1000;
     if (last) {
       acc += ms - last;
       if (++frames === 40) {
         const avg = acc / 40;
-        if (avg > 24 && Q > 0.42) {
+        if (avg > (idle ? 45 : 24) && Q > 0.42) {
           Q *= 0.82;
           size();
-        } else if (avg < 14 && Q < 0.9) {
+        } else if (avg < (idle ? 36 : 14) && Q < 0.9) {
           Q = Math.min(0.9, Q * 1.08);
           size();
         }

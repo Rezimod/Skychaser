@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRef, type CSSProperties, type PointerEvent } from 'react';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import { glowFor } from '@/lib/skychaser/plate';
 import CardThumb from './CardThumb';
 
@@ -67,7 +67,7 @@ export default function HomeFan() {
         <span className="sd-herofan__trail" aria-hidden="true" />
         <div className="sd-herofan__deck">
           {FLIGHT.map((f, i) => {
-            const c = SET_001_CARD_BY_DESIGNATION.get(f.designation);
+            const c = SHELF_BY_DESIGNATION.get(f.designation);
             if (!c) return null;
             return (
               <Link

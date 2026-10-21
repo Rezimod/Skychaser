@@ -23,7 +23,8 @@ export default function StarPulse({ className = '', centre = 0.5, tone = '#f0c75
       handle?.setPaused(!seen);
     }, { rootMargin: '120px' });
     io.observe(el);
-    import('./supernova/engine').then(({ startSupernova }) => {
+    // The CSS star holds the place while the page loads; the engine starts once it has settled.
+    const start = () => void import('./supernova/engine').then(({ startSupernova }) => {
       if (!live || !root.current) return;
       handle = startSupernova(root.current, {
         rarity: 'common',
@@ -38,6 +39,8 @@ export default function StarPulse({ className = '', centre = 0.5, tone = '#f0c75
       });
       handle.setPaused(!seen);
     });
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 2000 });
+    else setTimeout(start, 600);
     return () => {
       live = false;
       io.disconnect();

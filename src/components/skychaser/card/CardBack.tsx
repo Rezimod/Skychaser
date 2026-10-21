@@ -2,7 +2,7 @@ import { memo, type CSSProperties } from 'react';
 import FadeImg from '../FadeImg';
 import { editionLabel, type Plate } from '@/lib/skychaser/plate';
 import { photoFor } from '@/lib/skychaser/photos';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import { accentFor } from './CardFront';
 import { rarityInfo } from '@/lib/rarity';
 import AgencyBadge, { agenciesIn } from './AgencyBadge';
@@ -18,7 +18,7 @@ type Props = {
 function CardBack({ plate, edition, commitment, priority = false }: Props) {
   const photo = photoFor(plate.designation);
   const agencies = photo ? agenciesIn(photo.credit) : [];
-  const card = SET_001_CARD_BY_DESIGNATION.get(plate.designation)!;
+  const card = SHELF_BY_DESIGNATION.get(plate.designation)!;
   const rows = [
     ['Type', card.seed.objectType],
     ...card.record.stats.filter(([label]) => label.toLowerCase() !== 'type').slice(0, 2),

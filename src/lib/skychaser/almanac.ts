@@ -7,24 +7,24 @@
  * own time is only ever used to print them.
  */
 
-import type { AuthoredCard } from '@/lib/sets/build';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import type { ShelfCard } from '@/lib/sets/shelf';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 
 export type CardStatus = 'open' | 'sealed';
 
-export function cardStatus(card: AuthoredCard, now: Date = new Date()): CardStatus {
+export function cardStatus(card: ShelfCard, now: Date = new Date()): CardStatus {
   const end = card.record.eventEndUtc;
   return end !== null && now.getTime() >= Date.parse(end) ? 'sealed' : 'open';
 }
 
 export function isSealed(designation: string, now: Date = new Date()): boolean {
-  const card = SET_001_CARD_BY_DESIGNATION.get(designation);
+  const card = SHELF_BY_DESIGNATION.get(designation);
   return card ? cardStatus(card, now) === 'sealed' : false;
 }
 
 /** A limited card, sold on its own only and never drawn from a capsule. */
 export function isDirectOnly(designation: string): boolean {
-  return SET_001_CARD_BY_DESIGNATION.get(designation)?.record.directOnly ?? false;
+  return SHELF_BY_DESIGNATION.get(designation)?.record.directOnly ?? false;
 }
 
 const DAY = 86_400_000;

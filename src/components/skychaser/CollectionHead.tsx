@@ -5,10 +5,10 @@ import { Check, Copy } from 'lucide-react'
 import { useSkychaserHolder } from './useSkychaserHolder'
 import ShareCard from './ShareCard'
 import { RARITIES, isRarity, rarityInfo, type Rarity } from '@/lib/rarity'
-import { SET_001_CARDS } from '@/lib/sets/set-001'
+import { SHELF_CARDS } from '@/lib/sets/shelf'
 import type { HolderEdition } from '@/lib/skychaser/repo'
 
-const SET = new Set(SET_001_CARDS.map((c) => c.seed.designation))
+const SET = new Set(SHELF_CARDS.map((c) => c.seed.designation))
 
 /**
  * The Collection's head: whose it is (yours when the address is the signed-in

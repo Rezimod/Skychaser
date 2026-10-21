@@ -236,6 +236,13 @@
 @container (min-width: 560px) { .sd-fl__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px 20px; } }
 @container (min-width: 860px) { .sd-fl__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 36px 24px; } }
 .sd-fl__grid > li[hidden] { display: none; }
+/* A tile off screen is not laid out or painted at all, so filtering, opening a card and the first
+   layout only pay for the tiles in view. The padding, taken back by the margin, keeps the glow and
+   the lean inside the box the browser skips; it never takes a tap from the next card. */
+.sd-fl__grid > li { content-visibility: auto; contain-intrinsic-block-size: auto 330px; padding: 28px; margin: -28px; pointer-events: none; }
+.sd-fl__grid > li > * { pointer-events: auto; }
+/* That margin reaches past the screen's edge at the last column: nothing may widen the page. */
+.skychaser { overflow-x: clip; }
 .sd-tile { position: relative; display: block; min-width: 0; text-decoration: none; color: var(--sd-ink); border-radius: 12px; }
 .sd-tile__stage { position: relative; display: block; }
 .sd-tile__tag { position: absolute; top: 16%; right: 8%; z-index: 2; padding: 5px 8px; border: 1px solid #ffffff40; border-radius: 99px; color: #eee; background: #0d0d0de8; font: 10px var(--sd-mono); }

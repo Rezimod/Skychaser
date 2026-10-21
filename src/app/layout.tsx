@@ -21,11 +21,11 @@ import JsonLd from '@/components/shared/JsonLd';
 // kept in app/fonts (Google Fonts, OFL), so a build never asks Google for
 // them: the Google loader broke on a font URL without an extension on
 // 2026-10-13.
-const orbitron = localFont({ src: './fonts/orbitron-latin.woff2', weight: '500 700', variable: '--font-orbitron', display: 'swap' });
+const orbitron = localFont({ src: './fonts/orbitron-latin.woff2', weight: '500 700', variable: '--font-orbitron', display: 'swap', preload: false });
 const geist = localFont({ src: './fonts/geist-latin.woff2', weight: '400 700', variable: '--font-geist', display: 'swap' });
 const anton = localFont({ src: './fonts/anton-latin.woff2', weight: '400', variable: '--font-anton', display: 'swap' });
 const oswald = localFont({ src: './fonts/oswald-latin.woff2', weight: '300 700', variable: '--font-oswald', display: 'swap' });
-const jetbrainsMono = localFont({ src: './fonts/jetbrains-mono-latin.woff2', weight: '400 700', variable: '--font-mono', display: 'swap' });
+const jetbrainsMono = localFont({ src: './fonts/jetbrains-mono-latin.woff2', weight: '400 700', variable: '--font-mono', display: 'swap', preload: false });
 
 export const viewport: Viewport = {
   width: 'device-width',

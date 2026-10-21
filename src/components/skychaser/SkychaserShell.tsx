@@ -5,7 +5,7 @@ import SkychaserNavLinks from './SkychaserNavLinks';
 import SkychaserTabBar from './SkychaserTabBar';
 import SkychaserAccountGate from './SkychaserAccountGate';
 import SkychaserAuth from './SkychaserAuth';
-import SkychaserLiving, { LIVE_SCRIPT } from './SkychaserLiving';
+import SkychaserLiving from './SkychaserLiving';
 
 const PARTNERS = [
   { src: '/brand-partners/astroman.png', alt: 'Astroman', width: 640, height: 169 },
@@ -77,7 +77,6 @@ export default function SkychaserShell({
   return (
     <SkychaserAuth>
       <div className="skychaser skychaser--framed">
-        <script dangerouslySetInnerHTML={{ __html: LIVE_SCRIPT }} />
         <div className="sd-backdrop" aria-hidden="true" />
         <header className="sd-bar">
           <div className="sd-container sd-bar__inner">

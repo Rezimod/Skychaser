@@ -6,7 +6,7 @@ import CardPlate from './CardPlate';
 import CardBack from './card/CardBack';
 import SkychaserCard from './card/SkychaserCard';
 import { accentFor, accentInkFor } from './card/CardFront';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import type { Rarity } from '@/lib/rarity';
 import { RARITIES, isRarity, rarityInfo } from '@/lib/rarity';
 import { plateFor } from '@/lib/skychaser/plate';
@@ -305,7 +305,7 @@ export default function SkychaserReveal({
 
   const tag = (
     <p className="sn-tag" hidden={!done}>
-      <span className="sn-tag__kind">{SET_001_CARD_BY_DESIGNATION.get(flown.designation)?.seed.objectType ?? 'Genesis'}</span>
+      <span className="sn-tag__kind">{SHELF_BY_DESIGNATION.get(flown.designation)?.seed.objectType ?? 'Genesis'}</span>
       <strong className="sn-tag__name">{flown.name}</strong>
       <a className="sn-tag__line" href={`/card/${flown.designation}`} aria-label={`${flown.name}, ${info.label}, No. ${pad(flown.editionNumber)} of ${flown.editionSize}`}>
         <span className="sn-tag__rar" style={{ color: info.color }}>

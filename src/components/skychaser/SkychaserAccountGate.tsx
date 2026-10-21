@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useSkychaserSession } from './SkychaserAuth';
+import { useSkychaserSession, warmPrivy } from './SkychaserAuth';
 
 const SkychaserAccount = dynamic(() => import('./SkychaserAccount'), {
   ssr: false,
@@ -14,11 +14,19 @@ const SkychaserAccount = dynamic(() => import('./SkychaserAccount'), {
 
 /** The account corner: a plain Log in until Privy is wanted, then the full menu. */
 export default function SkychaserAccountGate() {
-  const { ready, enable } = useSkychaserSession();
+  const { ready, enable, wantsLogin } = useSkychaserSession();
   if (!ready)
     return (
-      <button type="button" className="sd-chip sd-chip--cta" onClick={() => enable(true)}>
-        Log in
+      <button
+        type="button"
+        className={`sd-chip sd-chip--cta${wantsLogin ? ' is-loading' : ''}`}
+        aria-busy={wantsLogin || undefined}
+        onPointerEnter={warmPrivy}
+        onTouchStart={warmPrivy}
+        onFocus={warmPrivy}
+        onClick={() => enable(true)}
+      >
+        {wantsLogin ? 'Opening' : 'Log in'}
       </button>
     );
   return <SkychaserAccount />;

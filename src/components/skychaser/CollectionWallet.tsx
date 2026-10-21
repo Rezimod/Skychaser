@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react'
 import CardThumb from './CardThumb'
 import { usePrivySafe } from './usePrivySafe'
 import { useSkychaserHolder } from './useSkychaserHolder'
+import { warmPrivy } from './SkychaserAuth'
 
 const FAN = ['EARTH', 'SATURN', 'M42']
 
@@ -37,7 +38,7 @@ export default function CollectionWallet() {
           <p className="sd-note">Opening your Collection.</p>
         ) : (
           <>
-            <button type="button" className="sd-btn sd-btn--primary sd-coll__login" onClick={() => login()} disabled={!ready}>
+            <button type="button" className="sd-btn sd-btn--primary sd-coll__login" onPointerEnter={warmPrivy} onTouchStart={warmPrivy} onFocus={warmPrivy} onClick={() => login()} disabled={!ready}>
               {ready ? 'Log in' : 'Reading the account'}
             </button>
             <form

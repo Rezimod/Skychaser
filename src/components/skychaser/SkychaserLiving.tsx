@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import { cardStatus } from '@/lib/skychaser/almanac';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { plateFor } from '@/lib/skychaser/plate';
@@ -31,9 +31,6 @@ const warm = (designation: string) => {
   }
 };
 
-/** Sets the class the deal waits on before the cards are painted, so they never flash in place first. */
-export const LIVE_SCRIPT = `if(!matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('sd-live')`;
-
 /**
  * What moves on a Skychaser page without being a component of its own: cards
  * that lean toward the pointer (or the scroll, on a phone), cards dealt onto
@@ -50,7 +47,7 @@ export default function SkychaserLiving() {
       const a = (e.target as Element | null)?.closest<HTMLAnchorElement>('a[data-zoom]');
       if (!a || !a.querySelector('.sd-thumb')) return;
       const designation = a.dataset.zoom!;
-      const seed = SET_001_CARD_BY_DESIGNATION.get(designation);
+      const seed = SHELF_BY_DESIGNATION.get(designation);
       const plate = plateFor(designation);
       if (!seed || !plate) return;
       e.preventDefault();
@@ -65,15 +62,16 @@ export default function SkychaserLiving() {
   useEffect(() => {
     if (calm()) return;
     const root = document.documentElement;
-    root.classList.add('sd-live');
     const offs: (() => void)[] = [];
 
-    // The deal: whatever comes into view in one frame is dealt left to right, top to bottom.
+    // The deal: whatever comes into view in one frame is dealt left to right, top to bottom. The cards
+    // on the first screen are already showing, painted with the page; only those below it wait their turn.
     const deal = new IntersectionObserver(
       (entries) => {
-        const shown = entries.filter((en) => en.isIntersecting).map((en) => en.target as HTMLElement);
-        shown.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-        shown.forEach((el, i) => {
+        const shown = entries.filter((en) => en.isIntersecting);
+        shown.sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left);
+        shown.forEach((en, i) => {
+          const el = en.target as HTMLElement;
           el.style.setProperty('--d', `${Math.min(i, 9) * 45}ms`);
           el.classList.add('is-in');
           deal.unobserve(el);
@@ -81,7 +79,11 @@ export default function SkychaserLiving() {
       },
       { rootMargin: '0px 0px -6% 0px' },
     );
-    document.querySelectorAll(DEALT).forEach((el) => deal.observe(el));
+    const below = [...document.querySelectorAll<HTMLElement>(DEALT)].filter((el) => el.getBoundingClientRect().top > innerHeight);
+    for (const el of below) {
+      el.dataset.deal = '';
+      deal.observe(el);
+    }
     offs.push(() => deal.disconnect());
 
     // In view: only these cards carry anything that runs (the lean, a pass of foil).
@@ -203,7 +205,7 @@ function ZoomedCard({ zoom, onClosed }: { zoom: Zoom; onClosed: () => void }) {
   const [active, setActive] = useState(zoom.from);
   const designation = active.dataset.zoom!;
   const plate = plateFor(designation)!;
-  const item = SET_001_CARD_BY_DESIGNATION.get(designation)!;
+  const item = SHELF_BY_DESIGNATION.get(designation)!;
   const perk = perkFor(designation, plate.rarity);
   const price = active.dataset.zoomPrice ?? (cardStatus(item) === 'sealed' ? 'Sealed' : `$${cardPriceUsd(designation, plate.rarity)}`);
   const left = active.dataset.zoomLeft;
@@ -225,13 +227,21 @@ function ZoomedCard({ zoom, onClosed }: { zoom: Zoom; onClosed: () => void }) {
   useLayoutEffect(() => {
     const root = document.documentElement;
     const overflow = root.style.overflow;
-    root.style.overflow = 'hidden';
     const overlay = dialog.current!.parentElement!;
     const siblings = [...overlay.parentElement!.children].filter((element): element is HTMLElement => element instanceof HTMLElement && element !== overlay);
     const previous = siblings.map((element) => element.inert);
-    siblings.forEach((element) => { element.inert = true; });
     closer.current?.focus({ preventScroll: true });
+    // The card is painted first; shutting the page behind it restyles the whole page, so it waits a frame, under the veil.
+    let shut = 0;
+    const frame = requestAnimationFrame(() => {
+      shut = window.setTimeout(() => {
+        root.style.overflow = 'hidden';
+        siblings.forEach((element) => { element.inert = true; });
+      });
+    });
     return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(shut);
       root.style.overflow = overflow;
       siblings.forEach((element, siblingIndex) => { element.inert = previous[siblingIndex]; });
       zoom.from.focus({ preventScroll: true });

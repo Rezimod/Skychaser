@@ -1,7 +1,7 @@
 import { getSunAltitude, getTonightDarkWindow } from '@/lib/dark-window';
 import type { Station } from '@/lib/observatory/sim-stations';
 import { targetPosition, type TelescopeTarget } from '@/lib/observatory/telescope-targets';
-import { SET_001_CARDS } from '@/lib/sets/set-001';
+import { SHELF_CARDS } from '@/lib/sets/shelf';
 
 export type Span = { start: number; end: number };
 export type PathPoint = { t: number; altitude: number; azimuth: number };
@@ -44,7 +44,7 @@ export function clock(t: number, timezone: string, seconds = false) {
 
 /** The First Light card drawn of each telescope target, where there is one. */
 const CARD_BY_TARGET = new Map<string, string>();
-for (const c of SET_001_CARDS) {
+for (const c of SHELF_CARDS) {
   const id = c.seed.targetId;
   if (c.seed.observationStatus === 'not_available') continue;
   for (const key of [id, `star-${id}`]) if (!CARD_BY_TARGET.has(key)) CARD_BY_TARGET.set(key, c.seed.designation);

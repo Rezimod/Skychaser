@@ -5,7 +5,7 @@
  */
 import { rarityInfo, type Rarity } from '@/lib/rarity';
 import type { Family, Section } from '@/lib/sets/build';
-import { SET_001_CARDS, SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_CARDS, SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import { posterFor, type Poster } from './poster';
 
 const MOVES = 'RA/DEC · MOVES — COMPUTED FOR THE NIGHT';
@@ -115,7 +115,7 @@ function lunar(lat: number, lon: number) {
 }
 
 export function plateFor(designation: string): Plate | null {
-  const card = SET_001_CARD_BY_DESIGNATION.get(designation);
+  const card = SHELF_BY_DESIGNATION.get(designation);
   if (!card) return null;
   const { seed, record } = card;
   const rarity = seed.rarity as Rarity;
@@ -137,8 +137,8 @@ export function plateFor(designation: string): Plate | null {
     rarity,
     rname: info.label,
     glyph: info.glyph,
-    num: String(SET_001_CARDS.indexOf(card) + 1).padStart(2, '0'),
-    total: SET_001_CARDS.length,
+    num: String(SHELF_CARDS.indexOf(card) + 1).padStart(2, '0'),
+    total: SHELF_CARDS.length,
     des: `${designation} · ${seed.objectType} · ${seed.catalogRef}`.toUpperCase(),
     kicker: `${seed.objectType} · ${seed.catalogRef}`.toUpperCase(),
     data: record.stats.map(([label, value]) => [label, value.toUpperCase()]),
@@ -172,6 +172,6 @@ function warm(hex: string) {
   return parseInt(b, 16) > parseInt(r, 16) ? `#${b}${g}${r}` : hex;
 }
 export const glowFor = (designation: string) =>
-  warm(GLOW[designation] ?? SET_001_CARD_BY_DESIGNATION.get(designation)?.record.glow ?? '#ffd8bc');
+  warm(GLOW[designation] ?? SHELF_BY_DESIGNATION.get(designation)?.record.glow ?? '#ffd8bc');
 
 export const editionLabel = (n: number | null | undefined) => (n == null ? '—' : pad3(n));

@@ -3,7 +3,7 @@ import FadeImg from '../FadeImg';
 import type { Plate } from '@/lib/skychaser/plate';
 import { perkFor } from '@/lib/skychaser/perks';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SHELF_BY_DESIGNATION } from '@/lib/sets/shelf';
 import ACCENTS from '@/lib/skychaser/accents.json';
 import AgencyBadge, { MISSION } from './AgencyBadge';
 import { rarityInfo } from '@/lib/rarity';
@@ -13,6 +13,8 @@ type Props = {
   capture?: string | null;
   lite?: boolean;
   priority?: boolean;
+  /** On the shelf, drawn small: the half-size picture. */
+  small?: boolean;
   u: string;
   /** '$8', or 'Sealed'. Defaults to the card's list price. */
   price?: string;
@@ -21,7 +23,7 @@ type Props = {
 };
 
 /** The card's painted scene (scripts/skychaser-plates/art-prompts.json). */
-export const artFor = (designation: string) => `/cards/art/${designation}.webp?v=4`;
+export const artFor = (designation: string, small = false) => `/cards/art/${small ? 'sm/' : ''}${designation}.webp?v=4`;
 
 /** The card's colour, sampled from its own picture (scripts/skychaser-plates/accents.ts). */
 export const accentFor = (designation: string) => (ACCENTS as Record<string, string>)[designation] ?? '#dfe3ea';
@@ -47,9 +49,9 @@ export function faceSources(plate: Plate) {
   return [artFor(plate.designation)];
 }
 
-function CardFront({ plate, capture, priority = false, price, sub }: Props) {
-  const source = capture ?? artFor(plate.designation);
-  const seed = SET_001_CARD_BY_DESIGNATION.get(plate.designation)?.seed;
+function CardFront({ plate, capture, priority = false, small = false, price, sub }: Props) {
+  const source = capture ?? artFor(plate.designation, small);
+  const seed = SHELF_BY_DESIGNATION.get(plate.designation)?.seed;
   const perk = perkFor(plate.designation, plate.rarity);
   const shown = price ?? `$${cardPriceUsd(plate.designation, plate.rarity)}`;
   const foot = sub ?? `${Number(plate.of)} editions`;

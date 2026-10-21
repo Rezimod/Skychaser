@@ -33,7 +33,7 @@
     translate: 0 0; scale: 0.97; transition-duration: 70ms;
   }
   /* While the chain is thought about, the pass of light keeps crossing. */
-  .sd-btn--primary.is-loading::after {
+  :is(.sd-btn--primary, .sd-chip--cta).is-loading::after {
     animation: sd-btn-sweep 1.2s var(--sd-ease-inout) infinite; transition: none;
   }
 }
@@ -81,8 +81,8 @@
 
 /* ── The deal: cards land on the table as they come into view ── */
 @media (prefers-reduced-motion: no-preference) {
-  .sd-live :is(.sd-fl__grid, .sd-showcase2__cards) > li:not(.is-in) > * { opacity: 0; }
-  .sd-live :is(.sd-fl__grid, .sd-showcase2__cards) > li.is-in > * { animation: sd-lv-deal 520ms var(--sd-ease-out) var(--d, 0ms) backwards; }
+  :is(.sd-fl__grid, .sd-showcase2__cards) > li[data-deal]:not(.is-in) > * { opacity: 0; }
+  :is(.sd-fl__grid, .sd-showcase2__cards) > li[data-deal].is-in > * { animation: sd-lv-deal 520ms var(--sd-ease-out) var(--d, 0ms) backwards; }
 }
 @keyframes sd-lv-deal {
   from { opacity: 0; transform: perspective(900px) translateY(28px) rotateX(14deg) scale(0.96); }

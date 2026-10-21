@@ -54,6 +54,9 @@ function LegacyAuth({ state, children }: { state: PrivyState; children: ReactNod
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Fetches Privy ahead of a press: called when a pointer or finger reaches a Log in button. */
+export const warmPrivy = () => import('./SkychaserPrivy');
+
 function LazyAuth({ children }: { children: ReactNode }) {
   const [Shell, setShell] = useState<ComponentType<{ onState: (s: PrivyState) => void }> | null>(null);
   const [state, setState] = useState<PrivyState | null>(null);
@@ -61,7 +64,7 @@ function LazyAuth({ children }: { children: ReactNode }) {
 
   const enable = useCallback((login = false) => {
     if (login) setWantsLogin(true);
-    import('./SkychaserPrivy').then((m) => setShell(() => m.default));
+    warmPrivy().then((m) => setShell(() => m.default));
   }, []);
 
   useEffect(() => {
