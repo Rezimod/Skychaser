@@ -39,6 +39,9 @@ export interface CameraFrame {
   orbitPitch: number;
   /** 0..1 — atmospheric heating; buffets the rig. */
   heat: number;
+  /** 0..1 — the arrival's entry (or retro burn): a harder buffet than the
+   *  heat alone, and the lens pushed a little wider as the air takes hold. */
+  entry: number;
   /** Where the camera looks while the wreck burns. */
   crashLook: THREE.Vector3;
 }
@@ -114,7 +117,9 @@ export function makeCameraRig(): CameraRig {
       accel += (norm - accel) * (1 - Math.exp(-dt * 5));
 
       impulse *= Math.exp(-dt * 2.4);
-      const buffet = (f.boost ? 0.09 : 0) + (f.speedFrac > 0.92 ? 0.05 : 0) + f.heat * 0.45;
+      // The entry buffets in earnest: the heat's own shake, and the frame
+      // shuddering under the air (or the burn) on top of it.
+      const buffet = (f.boost ? 0.09 : 0) + (f.speedFrac > 0.92 ? 0.05 : 0) + f.heat * 0.5 + f.entry * 0.55;
       const amp = impulse + buffet;
 
       if (f.view === 'crash') {
@@ -192,7 +197,7 @@ export function makeCameraRig(): CameraRig {
           .addScaledVector(fwd, wobble(clock, 6.1) * s * 0.4);
       }
 
-      const fovTarget = f.fov + fovOffset() + (f.boost ? 9 : 0) + 5 * Math.min(1, f.speedFrac) ** 2;
+      const fovTarget = f.fov + fovOffset() + (f.boost ? 9 : 0) + 5 * Math.min(1, f.speedFrac) ** 2 + 4 * f.entry;
       if (snap || fov === 0) fov = fovTarget;
       fov += (fovTarget - fov) * (1 - Math.exp(-dt * 3.2));
       if (Math.abs(fov - camera.fov) > 0.01) {

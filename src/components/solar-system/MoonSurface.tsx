@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Camera, ChevronsDown, ChevronsUp, Drill, Eye, EyeOff, Flame, Flashlight, Gauge, HelpCircle,
   LogIn, Menu, Package, Rocket, Trophy, Volume2, VolumeX, Wind, X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeMoonSurface, type MoonSurfaceHandle } from '@/lib/solar-system/moon-surface';
+import type { ShipKind } from '@/lib/solar-system/ship-mesh';
 import { DRILL_BAND } from '@/lib/solar-system/moon-mission';
-import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { JET_LOW, motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { GameStick, tapKey } from './GameStick';
 import { CosmicLoader } from './CosmicLoader';
 import { ControlsHelp } from './ControlsHelp';
@@ -17,21 +19,29 @@ import { footBinding } from '@/game/bindings';
 import { attachSurfaceControls, type SurfaceControls } from '@/game/surface-controls';
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
+import type { RoomLink } from '@/lib/multiplayer/room-link';
+import type { RewardSink } from '@/lib/solar-system/achievements';
+import { BuildHud } from './BuildHud';
 import { MissionPanel } from './MissionPanel';
 
 interface MoonSurfaceProps {
   onReturn: () => void;
+  room: RoomLink;
+  /** Where finished missions go: the shell's sink reports them to the platform. */
+  sink?: RewardSink;
   /** The game shell's pause: the sim, the sound and the keys all stop. */
   paused?: boolean;
   /** Where the build is; the shell's loading screen follows it and this one stays hidden. */
   onProgress?: (stage: 'build' | 'compile' | 'ready') => void;
   /** The mouse was let go of (Esc under pointer lock): the shell should pause. */
   onPauseRequest?: () => void;
+  /** The hull the crew flew here in: it is what comes down and what they board to leave. */
+  shipKind?: ShipKind;
 }
 
 /** The Moon's own notes under the controls: the place, not the keys. */
-const KEY_TIPS = ['r16', 'r10', 'r8', 'r13', 'r7'] as const;
-const TOUCH_TIPS = ['t7', 't6', 't10', 't5'] as const;
+const KEY_TIPS = ['r17', 'r16', 'r10', 'r8', 'r13', 'r7'] as const;
+const TOUCH_TIPS = ['t11', 't7', 't6', 't10', 't5'] as const;
 const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const fmtRange = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`);
 /** A rough range: to the nearest ten metres, marked as such. */
@@ -40,8 +50,10 @@ const fmtApprox = (m: number) => `~${fmtRange(Math.round(m / 10) * 10)}`;
 const PPD = 3.1;
 const TURNS = 3;
 
-export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: MoonSurfaceProps) {
+export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseRequest, shipKind }: MoonSurfaceProps) {
   const t = useTranslations('solarSystem.moon');
+  /** The world's own card over the orbit, as the flight deck words it. */
+  const tworld = useTranslations('solarSystem.flight.worlds.moon');
   const tl = useTranslations('solarSystem.loading');
   const tc = useTranslations('solarSystem.controls');
   const tips = useLoadingTips();
@@ -50,7 +62,6 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   /** Bumped when the GPU drops the context; the scene is rebuilt on the surface. */
   const [glGeneration, setGlGeneration] = useState(0);
   const [gpuLost, setGpuLost] = useState(false);
-  const [gpuFailed, setGpuFailed] = useState(false);
   const resumeRef = useRef(false);
   const [help, setHelp] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -63,9 +74,28 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   const handleRef = useRef<MoonSurfaceHandle | null>(null);
   // Landing panel.
   const landAltRef = useRef<HTMLSpanElement>(null);
+  // The flight from orbit (and back up to it): its panel, the title card.
+  const orbRef = useRef<HTMLDivElement>(null);
+  const orbPhaseRef = useRef<HTMLSpanElement>(null);
+  const orbAltRef = useRef<HTMLSpanElement>(null);
+  const orbSpeedRef = useRef<HTMLSpanElement>(null);
+  const orbVsRef = useRef<HTMLSpanElement>(null);
+  const orbSiteLabelRef = useRef<HTMLSpanElement>(null);
+  const orbSiteRef = useRef<HTMLSpanElement>(null);
+  const orbHeatRef = useRef<HTMLElement>(null);
+  const orbWarpRef = useRef<HTMLSpanElement>(null);
+  const orbSkipRef = useRef<HTMLSpanElement>(null);
+  const orbTitleRef = useRef<HTMLDivElement>(null);
   const landTitleRef = useRef<HTMLSpanElement>(null);
+  const plaqueExitRef = useRef<HTMLSpanElement>(null);
+  // The hull is read once, when the scene is built: a later change is the next landing's.
+  const shipKindRef = useRef(shipKind);
+  shipKindRef.current = shipKind;
   const onReturnRef = useRef(onReturn);
   onReturnRef.current = onReturn;
+  // Read through a ref: a new sink identity must not rebuild the scene.
+  const sinkRef = useRef(sink);
+  sinkRef.current = sink;
   const onProgressRef = useRef(onProgress);
   onProgressRef.current = onProgress;
   const onPauseRequestRef = useRef(onPauseRequest);
@@ -89,6 +119,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   const stripRef = useRef<HTMLDivElement>(null);
   const compassRef = useRef<HTMLDivElement>(null);
   const pipRef = useRef<HTMLDivElement>(null);
+  const holePipRef = useRef<HTMLDivElement>(null);
   const jobPipRef = useRef<HTMLDivElement>(null);
   const meterRef = useRef<HTMLDivElement>(null);
   const meterLabelRef = useRef<HTMLSpanElement>(null);
@@ -124,6 +155,8 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   const o2BarRef = useRef<HTMLSpanElement>(null);
   const pwrRef = useRef<HTMLSpanElement>(null);
   const pwrBarRef = useRef<HTMLSpanElement>(null);
+  const jetRef = useRef<HTMLSpanElement>(null);
+  const jetBarRef = useRef<HTMLSpanElement>(null);
   const handsRef = useRef<HTMLSpanElement>(null);
   const handsTextRef = useRef<HTMLSpanElement>(null);
   const hrRef = useRef<HTMLSpanElement>(null);
@@ -138,6 +171,12 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   const gearTextRef = useRef<HTMLSpanElement>(null);
   const airlockRef = useRef<HTMLDivElement>(null);
   const stanceRef = useRef<HTMLDivElement>(null);
+  // Underground.
+  const blackRef = useRef<HTMLDivElement>(null);
+  const crackRef = useRef<SVGSVGElement>(null);
+  const brRef = useRef<HTMLDivElement>(null);
+  const brGravRef = useRef<HTMLSpanElement>(null);
+  const brReadRef = useRef<HTMLSpanElement>(null);
   const controlsRef = useRef<SurfaceControls | null>(null);
   const touchRef = useRef(false);
 
@@ -165,24 +204,20 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
     let rebuildTimer = 0;
     const tt = (key: string, values?: Record<string, string | number>) => tRef.current(key, values);
     onProgressRef.current?.('build');
-    let handle: MoonSurfaceHandle;
-    try {
-      handle = makeMoonSurface(mount, {
-        startOnSurface: resumeRef.current,
-        onContextLost: () => {
-          setGpuLost(true);
-          rebuildTimer = window.setTimeout(() => {
-            resumeRef.current = true;
-            setGpuLost(false);
-            setGlGeneration((g) => g + 1);
-          }, 1200);
-        },
-      });
-    } catch {
-      setGpuFailed(true);
-      onProgressRef.current?.('ready');
-      return;
-    }
+    const handle = makeMoonSurface(mount, {
+      room,
+      sink: sinkRef.current,
+      shipKind: shipKindRef.current,
+      startOnSurface: resumeRef.current,
+      onContextLost: () => {
+        setGpuLost(true);
+        rebuildTimer = window.setTimeout(() => {
+          resumeRef.current = true;
+          setGpuLost(false);
+          setGlGeneration((g) => g + 1);
+        }, 1200);
+      },
+    });
     handleRef.current = handle;
     onProgressRef.current?.('compile');
     let readyReported = false;
@@ -242,9 +277,51 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       root.dataset.view = tel.view;
       root.dataset.driving = String(tel.driving);
       root.dataset.inside = tel.inside;
+      const bt = tel.backrooms;
+      const under = bt.phase !== '' && bt.phase !== 'fall';
+      root.dataset.backrooms = bt.phase;
+      root.dataset.helmetOn = String(bt.helmet);
+      setVar(blackRef.current, '--black', bt.black.toFixed(3));
+      if (crackRef.current) crackRef.current.dataset.on = String(bt.crack);
+      const brPanel = brRef.current;
+      if (brPanel) {
+        show(brPanel, under);
+        if (under) {
+          text(brGravRef.current, tt('backrooms.gravityRead', { n: bt.gravity.toFixed(2), g: (bt.gravity / 9.81).toFixed(2) }));
+          if (brGravRef.current) brGravRef.current.dataset.earth = String(bt.gravity > 5);
+          show(brReadRef.current, !!bt.readout);
+          if (bt.readout) text(brReadRef.current, tt(`backrooms.readout.${bt.readout}`));
+          setVar(brPanel, '--glitch', bt.glitch.toFixed(2));
+        }
+      }
 
       // ── The way down. ──
       if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+      // From orbit, and back up to it: the flight panel, the heat at the
+      // edges of the glass and the glass shaking with the air (--heat,
+      // --shake), and the world's name over the orbit.
+      const ob = tel.orbital;
+      const flying = !!ob && (tel.phase === 'orbit' || tel.phase === 'ascent');
+      root.dataset.flight = String(flying);
+      show(orbRef.current, flying);
+      setVar(root, '--heat', flying && ob ? ob.heat.toFixed(3) : '0');
+      setVar(root, '--shake', flying && ob ? Math.min(1, ob.turbulence + ob.burn * 0.06).toFixed(3) : '0');
+      setVar(orbTitleRef.current, '--title', ob && tel.phase === 'orbit' ? orbitTitle(ob).toFixed(3) : '0');
+      if (flying && ob) {
+        const down = tel.phase === 'orbit';
+        text(orbPhaseRef.current, tt(`landing.orbital.phases.${ob.phase}`));
+        text(orbAltRef.current, formatAltitude(ob.altitude));
+        text(orbSpeedRef.current, formatSpeed(ob.speed));
+        text(orbVsRef.current, formatVertical(ob.vertical));
+        text(orbSiteLabelRef.current, tt(down ? 'landing.orbital.toSite' : 'landing.orbital.downrange'));
+        text(orbSiteRef.current, formatRange(ob.downrangeKm));
+        if (orbHeatRef.current) orbHeatRef.current.style.transform = `scaleX(${Math.min(1, ob.heat).toFixed(3)})`;
+        const warp = ob.timeWarp > 1.05;
+        text(orbWarpRef.current, warp ? tt('landing.orbital.warp', { n: ob.timeWarp < 10 ? ob.timeWarp.toFixed(1) : Math.round(ob.timeWarp) }) : tt('landing.orbital.realTime'));
+        if (orbWarpRef.current) orbWarpRef.current.dataset.warp = String(warp);
+        show(orbSkipRef.current, down);
+        if (orbRef.current) orbRef.current.dataset.leg = ob.phase;
+      }
       if (tel.phase !== 'surface') {
         const l = tel.landing;
         text(landTitleRef.current, tel.phase === 'ascent' ? tt('landing.ascent') : tt('landing.title'));
@@ -259,6 +336,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
         if (tel.phase === 'touchdown') {
           text(plaqueGradeRef.current, tt(`grades.${tel.grade || 'good'}`));
           text(plaqueSpeedRef.current, tt('landing.touchdown', { n: l.touchdown.toFixed(2) }));
+          show(plaqueExitRef.current, tel.exitReady);
         }
         return;
       }
@@ -275,6 +353,8 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       if (onMission && ms.distance >= 0) pipAt(pipRef.current, ms.bearing, heading, true);
       else pipAt(pipRef.current, m.bearing, heading, m.distance >= 0 && (m.task === '' || !m.atSite));
       pipAt(jobPipRef.current, j.bearing, heading, j.active !== '' && j.distance >= 0);
+      // The hum on channel two, once the base has mentioned it.
+      pipAt(holePipRef.current, bt.bearing, heading, bt.known && !bt.escaped && bt.distance >= 0 && tel.phase === 'surface');
       // One meter under the compass: a job's alignment when there is one,
       // otherwise the expedition's scanner.
       const meter = meterRef.current;
@@ -313,7 +393,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       if (motion.altitude) text(altRef.current, `${tel.altitude.toFixed(1)} m`);
 
       // ── The suit, when it is low, just changed, or in front of the crew. ──
-      const glance = { o2: tel.o2, power: tel.suitPower, sinceChange: tel.pressureAgo, firstPerson: tel.view === 'helmet' };
+      const glance = { o2: tel.o2, power: tel.suitPower, sinceChange: tel.pressureAgo, firstPerson: tel.view === 'helmet', jetFuel: tel.jetFuel, jetting: tel.jetting };
       const suit = suitRef.current;
       const suitOn = suitShown(glance);
       show(suit, suitOn);
@@ -323,6 +403,10 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
         if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
         text(pwrRef.current, `${Math.round(tel.suitPower)}%`);
         if (pwrBarRef.current) pwrBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.suitPower))}%`;
+        // The jetpack beside the life support: lit while it burns, blinking when there is little left.
+        suit.dataset.jet = tel.jetFuel < JET_LOW ? 'low' : tel.jetting ? 'on' : '';
+        text(jetRef.current, `${Math.round(tel.jetFuel * 100)}%`);
+        if (jetBarRef.current) jetBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.jetFuel * 100))}%`;
       }
       // ── What is in the crew's hands, and whether the lamp is burning. ──
       const carried = tel.props.carrying;
@@ -337,9 +421,9 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       text(distRef.current, fmtRange(tel.distanceM));
       text(cratersRef.current, String(tel.craters));
 
-      // ── The one key. ──
-      const p = tel.prompt;
-      const label = p.active ? tt(`act.${p.label}`) : '';
+      // ── The one key: underground, the Backrooms' own. ──
+      const p = under ? bt.prompt : tel.prompt;
+      const label = !p.active ? '' : under ? tt(`backrooms.act.${p.label}`) : tt(`act.${p.label}`);
       const action = actionRef.current;
       if (action) {
         show(action, p.active);
@@ -427,9 +511,10 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       }
       const radio = radioRef.current;
       if (radio) {
-        const line = m.radio ? tt(`mission.${m.radio}`) : '';
+        const line = bt.radio ? tt(`backrooms.radio.${bt.radio}`) : m.radio ? tt(`mission.${m.radio}`) : '';
         show(radio, line !== '');
         if (line) text(radio, line);
+        radio.dataset.static = String(!!bt.radio);
       }
       const readout = readoutRef.current;
       if (readout) {
@@ -461,7 +546,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
       handle.dispose();
       handleRef.current = null;
     };
-  }, [glGeneration]);
+  }, [glGeneration, room]);
   useEffect(() => {
     handleRef.current?.setPaused(!!paused);
     if (paused) unlockPointer();
@@ -486,13 +571,14 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
     };
   };
   /** Hold a key on the touch deck. */
-  const deck = (key: 'jump' | 'throttle' | 'use') => hold((on) => {
+  const deck = (key: 'jump' | 'jet' | 'throttle' | 'use') => hold((on) => {
     const c = controlsRef.current;
     if (!c) return;
     c.touchDeck[key] = on;
     c.sync();
   });
   const jumpKey = deck('jump');
+  const jetKey = deck('jet');
   const throttleKey = deck('throttle');
   /** The action key: pressing it presses the job in front of you; holding it holds it. */
   const useKey = deck('use');
@@ -518,8 +604,14 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
     setRun(c.touchDeck.run);
   };
   const toggleCrouch = () => controlsRef.current?.toggleCrouch();
+  const getBuild = useCallback(() => handleRef.current?.build ?? null, []);
+  const canBuild = useCallback(() => {
+    const tel = handleRef.current?.telemetry;
+    return !!tel && tel.phase === 'surface' && !tel.driving && !tel.inside && tel.backrooms.phase === '';
+  }, []);
   const rewards = handleRef.current?.telemetry.mission.rewards ?? [];
   const jobsDone = handleRef.current?.telemetry.jobs.done ?? [];
+  const underground = handleRef.current?.telemetry.backrooms;
   const missions = handleRef.current?.telemetry.missions;
   const achievements = handleRef.current?.telemetry.achievements ?? [];
   const crewAt = { x: handleRef.current?.telemetry.crewX ?? 0, z: handleRef.current?.telemetry.crewZ ?? 0 };
@@ -527,18 +619,48 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
   return (
     <div ref={rootRef} className="moon-surface" data-world="moon" data-phase="descent" data-ready="false" data-immersive={immersive}>
       <div ref={mountRef} className="moon-surface__canvas" />
-      {(gpuLost || gpuFailed || !onProgress) && <CosmicLoader className={gpuLost || gpuFailed ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent"
-        label={gpuLost || gpuFailed ? tl('gpu') : tl('moon')} detail={gpuLost || gpuFailed ? undefined : tl('moonDetail')} tips={tips} />}
-      {gpuFailed && (
-        <button type="button" className="moon-hud__key earth-hud__retry" onClick={onReturn}>
-          <Rocket size={18} aria-hidden /><span>{t('returnOrbit')}</span>
-        </button>
-      )}
+      {(gpuLost || !onProgress) && <CosmicLoader className={gpuLost ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent"
+        label={gpuLost ? tl('gpu') : tl('moon')} detail={gpuLost ? undefined : tl('moonDetail')} tips={tips} />}
       <div className="moon-hud">
         <div className="moon-hud__visor" aria-hidden />
+        <div ref={blackRef} className="moon-hud__black" aria-hidden />
+        <svg ref={crackRef} className="moon-hud__crack" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden data-on="false">
+          <path d="M612 318 L655 262 L668 180 L702 120 M655 262 L742 246 L820 262 M612 318 L560 290 L498 300 L430 262 M612 318 L640 392 L628 470 L672 540 M640 392 L716 420 L790 404 L860 440 M560 290 L540 220 L552 150" />
+          <path className="moon-hud__crack-fine" d="M668 180 L640 150 M742 246 L760 200 M498 300 L470 350 M628 470 L590 500 M716 420 L730 470 M540 220 L500 205" />
+          <circle cx="612" cy="318" r="9" />
+        </svg>
+        <div ref={brRef} className="moon-hud__br" role="status" hidden>
+          <span className="moon-hud__br-place">{t('backrooms.place')}</span>
+          <span ref={brGravRef} className="moon-hud__br-grav" data-earth="true" />
+          <span ref={brReadRef} className="moon-hud__br-read" hidden />
+          <span className="moon-hud__br-carrier">{t('backrooms.noCarrier')}</span>
+        </div>
 
         {/* ── The way down. ── */}
         <div className="moon-hud__landing">
+          {/* From orbit: the air at the edges of the glass, the world's
+              name over the orbit, and the flight's own numbers. */}
+          <div className="orbital-heat" aria-hidden />
+          <div ref={orbTitleRef} className="flight-title orbital-title" aria-hidden>
+            <span className="flight-title__name">{tworld('name')}</span>
+            <span className="flight-title__line">{tworld('descriptors')} · {tworld('temp')}</span>
+          </div>
+          <div ref={orbRef} className="orbital-hud" role="status" hidden>
+            <span ref={orbPhaseRef} className="moon-hud__land-title" />
+            <span ref={orbAltRef} className="moon-hud__land-alt" />
+            <div className="moon-hud__land-rows">
+              <span className="moon-hud__reading"><span>{t('landing.orbital.speed')}</span><span ref={orbSpeedRef} /></span>
+              <span className="moon-hud__reading"><span>{t('landing.orbital.vertical')}</span><span ref={orbVsRef} /></span>
+              <span className="moon-hud__reading"><span ref={orbSiteLabelRef}>{t('landing.orbital.toSite')}</span><span ref={orbSiteRef} /></span>
+            </div>
+            <span className="orbital-hud__heat"><span>{t('landing.orbital.heat')}</span><i><b ref={orbHeatRef} /></i></span>
+            <span ref={orbWarpRef} className="orbital-hud__warp" data-warp="true" />
+            <span ref={orbSkipRef} className="orbital-hud__skip">
+              {touch
+                ? <button type="button" onClick={() => handleRef.current?.skipOrbit()}>{t('landing.orbital.skipTouch')}</button>
+                : <><kbd>E</kbd>{t('landing.orbital.skip')}</>}
+            </span>
+          </div>
           <div className="moon-hud__land-card">
             <span ref={landTitleRef} className="moon-hud__land-title">{t('landing.title')}</span>
             <span className="moon-hud__land-alt" ref={landAltRef} />
@@ -554,6 +676,11 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
           <div ref={plaqueRef} className="moon-hud__plaque" role="status" hidden>
             <span ref={plaqueGradeRef} className="moon-hud__plaque-grade" />
             <span ref={plaqueSpeedRef} className="moon-hud__plaque-speed" />
+            <span ref={plaqueExitRef} className="moon-hud__plaque-exit" hidden>
+              {touch
+                ? <button type="button" onClick={() => { const h = handleRef.current; if (h) h.input.interact = true; }}>{t('landing.exit')}</button>
+                : <><kbd>E</kbd>{t('landing.exit')}</>}
+            </span>
           </div>
         </div>
 
@@ -570,6 +697,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
           </div>
           <div ref={pipRef} className="moon-hud__pip" hidden />
           <div ref={jobPipRef} className="moon-hud__pip moon-hud__pip--job" hidden />
+          <div ref={holePipRef} className="moon-hud__pip moon-hud__pip--hole" hidden />
           <span className="moon-hud__needle" />
         </div>
         <div ref={meterRef} className="moon-hud__meter" hidden>
@@ -602,6 +730,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
         <div ref={suitRef} className="moon-hud__suit" data-level="ok" role="status" hidden>
           <span className="moon-hud__vital"><i>O₂</i><span ref={o2Ref} /><b className="moon-hud__bar"><i ref={o2BarRef} /></b></span>
           <span className="moon-hud__vital"><i>{t('suitPower')}</i><span ref={pwrRef} /><b className="moon-hud__bar"><i ref={pwrBarRef} /></b></span>
+          <span className="moon-hud__vital moon-hud__vital--jet"><i>{t('jetpack')}</i><span ref={jetRef} /><b className="moon-hud__bar"><i ref={jetBarRef} /></b></span>
         </div>
 
         {/* ── Bottom right: the hands, and the lamp. ── */}
@@ -618,6 +747,8 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
           <span className="moon-hud__drill-row"><span>{t('mission.drill.temp')}</span><span ref={drillHeatRef} className="moon-hud__gauge"><i /></span></span>
           <span ref={drillWarnRef} className="moon-hud__drill-warn" hidden />
         </div>
+
+        <BuildHud world="moon" getBuild={getBuild} canOpen={canBuild} mount={mountRef} paused={!!paused} touch={touch} />
 
         {/* ── Top right: the camera, the eye, the menu. ── */}
         <button type="button" className="moon-hud__round moon-hud__unhide" onClick={() => setImmersive(false)} aria-label={t('hudShow')} title={t('hudShow')}>
@@ -682,6 +813,7 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
                 crew={crewAt}
                 achievements={achievements}
                 extras={[
+                  ...(underground?.escaped ? [{ key: 'backrooms', label: t('backrooms.log', { time: fmtTime(underground.bestSeconds) }) }] : []),
                   ...rewards.map((r) => ({ key: `old-${r}`, label: t(`mission.rewards.${r}`) })),
                   ...jobsDone.map((id) => ({ key: `job-${id}`, label: t(`jobs.names.${id}`) })),
                 ]}
@@ -741,6 +873,9 @@ export function MoonSurface({ onReturn, paused, onProgress, onPauseRequest }: Mo
           </button>
           <button type="button" className="moon-hud__jump" {...jumpKey} aria-label={t('jump')}>
             <Wind size={18} aria-hidden /><span>{t('jump')}</span>
+          </button>
+          <button type="button" className="moon-hud__jet" {...jetKey} aria-label={t('jet')}>
+            <Rocket size={18} aria-hidden /><span>{t('jet')}</span>
           </button>
           <button type="button" className="moon-hud__throttle" {...throttleKey} aria-label={t('landing.throttle')}>
             <span className="moon-hud__throttle-fill"><i ref={landThrRef} /></span>

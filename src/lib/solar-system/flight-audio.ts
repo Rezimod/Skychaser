@@ -35,6 +35,9 @@ export interface FlightAudio {
   drone: (k: number) => void;
   /** The roar of air on a re-entry heat shield, 0 silent … 1 at peak heating. Call every frame. */
   reentry: (k: number) => void;
+  /** Down through the speed of sound: the double thud of the ship's own
+   *  shock waves going past, the bow's and then the tail's. */
+  sonicBoom: () => void;
   /** Hold everything while the deck is paused. */
   setPaused: (paused: boolean) => void;
   dispose: () => void;
@@ -356,6 +359,29 @@ export function makeFlightAudio(): FlightAudio {
           roar = null;
           window.setTimeout(() => { try { r.src.stop(); r.rumble.stop(); r.gain.disconnect(); } catch { /* already gone */ } }, 900);
         }
+      });
+    },
+    sonicBoom() {
+      safe((c) => {
+        // Two low cracks a beat apart, each a noise burst over a falling sine.
+        burst(c, 'lowpass', 520, 45, 1.5, 0.55);
+        tone(c, 'sine', 70, 26, 1.2, 0.5);
+        tone(c, 'sine', 64, 24, 1.0, 0.5, 0.16);
+        if (!noise || !master) return;
+        const t0 = c.currentTime + 0.16;
+        const src = c.createBufferSource();
+        src.buffer = noise;
+        const flt = c.createBiquadFilter();
+        flt.type = 'lowpass';
+        flt.frequency.setValueAtTime(460, t0);
+        flt.frequency.exponentialRampToValueAtTime(40, t0 + 0.6);
+        const g = c.createGain();
+        g.gain.setValueAtTime(1.2, t0);
+        g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.6);
+        src.connect(flt).connect(g).connect(master);
+        src.onended = () => { src.disconnect(); flt.disconnect(); g.disconnect(); };
+        src.start(t0);
+        src.stop(t0 + 0.62);
       });
     },
     setPaused(next) {

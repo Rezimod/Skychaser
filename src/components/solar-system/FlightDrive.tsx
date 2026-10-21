@@ -85,12 +85,16 @@ export function FlightJumpCard({ session, paused }: DriveProps) {
   const [menu, setMenu] = useState(false);
   const cardRef = useRef<HTMLButtonElement>(null);
   const destRef = useRef<HTMLSpanElement>(null);
+  const distRef = useRef<HTMLSpanElement>(null);
 
   useDrivePaint(session, (tel) => {
     const state = tel.jumpPhase !== 'none' ? 'jumping' : tel.driveReady ? 'ready' : 'locked';
     if (cardRef.current) cardRef.current.dataset.state = state;
     const target = t(`systems.${tel.targetName}`);
-    setText(destRef.current, state === 'locked' ? t('driveLocked') : state === 'jumping' ? target : `${target} · ${formatLy(locale, tel.targetLy, t('ly'))}`);
+    // The destination keeps its own line; how far it is rides with the label,
+    // so a long name never breaks across the separator.
+    setText(destRef.current, state === 'locked' ? t('driveLocked') : target);
+    setText(distRef.current, state === 'ready' ? ` · ${formatLy(locale, tel.targetLy, t('ly'))}` : '');
   });
 
   const engage = (id: string) => {
@@ -106,7 +110,7 @@ export function FlightJumpCard({ session, paused }: DriveProps) {
       <button ref={cardRef} type="button" className="flight-hud__card flight-drive__jump" onClick={() => setMenu((m) => !m)} disabled={paused} aria-expanded={menu && !paused} aria-haspopup="menu" aria-label={t('jumpLabel')}>
         <span className="flight-hud__card-icon"><Orbit size={18} aria-hidden /></span>
         <span className="flight-hud__card-text">
-          <span className="flight-hud__card-label">{t('jumpShort')}</span>
+          <span className="flight-hud__card-label">{t('jumpShort')}<span ref={distRef} className="flight-drive__dist" /></span>
           <span ref={destRef} className="flight-hud__card-value" />
         </span>
         <ChevronRight className="flight-hud__card-go" size={16} aria-hidden />

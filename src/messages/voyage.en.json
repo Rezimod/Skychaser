@@ -431,11 +431,37 @@
         "transit": "Transit",
         "approach": "Approach",
         "pitchover": "Powered descent",
+        "entry": "Atmospheric entry",
+        "burn": "Descent burn",
+        "glide": "Final approach",
+        "orbit": "Orbit insertion",
         "skip": "Press any key to skip",
         "load": {
           "habitat": "Habitat",
           "vehicle": "Vehicles",
           "crew": "Crew"
+        }
+      },
+      "worlds": {
+        "moon": {
+          "name": "Moon",
+          "descriptors": "Airless moon · Grey craters · Vacuum",
+          "temp": "−170 °C"
+        },
+        "mars": {
+          "name": "Mars",
+          "descriptors": "Cold desert · Rust plains · Thin CO₂ air",
+          "temp": "−63 °C"
+        },
+        "proximaB": {
+          "name": "Proxima b",
+          "descriptors": "Tidally locked · Red twilight · Living shore",
+          "temp": "4 °C"
+        },
+        "earth": {
+          "name": "Earth",
+          "descriptors": "Blue world · Tbilisi · Breathable air",
+          "temp": "18 °C"
         }
       }
     },
@@ -469,7 +495,9 @@
         "t7": "Hold the engine key on the way down. Leave it too late and guidance takes over.",
         "r13": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
         "t10": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
-        "r16": "The rover: E to climb in · hold E at a roll to bail out · Space is the handbrake"
+        "r16": "The rover: E to climb in · hold E at a roll to bail out · Space is the handbrake",
+        "r17": "The jetpack: hold Space in the air, or J. It burns for a few seconds and refills on the ground.",
+        "t11": "The jetpack: keep the jump key held in the air, or hold the jet key beside it. It refills on the ground."
       },
       "pois": {
         "habitatA": "Habitat A — crew quarters",
@@ -488,8 +516,10 @@
         "science": "Geology lab — bench and sample store",
         "logistics": "Rover bay and charger",
         "landingZone": "Landing zone — keep clear",
+        "sinkhole": "Collapsed lava tube — keep back",
         "hatch": "Maintenance hatch",
-        "telescope": "Telescope station — on the ridge"
+        "telescope": "Telescope station — on the ridge",
+        "colonySite": "Skychaser Colony — the shared build site"
       },
       "eva": "EVA",
       "pulse": "Pulse",
@@ -522,7 +552,32 @@
         "throttle": "Engine",
         "touchdown": "{n} m/s at contact",
         "drift": "Drift",
-        "ascent": "Lift-off"
+        "ascent": "Take-off",
+        "exit": "Exit ship",
+        "orbital": {
+          "phases": {
+            "orbit": "Orbit",
+            "deorbit": "Deorbit burn",
+            "entry": "Atmospheric entry",
+            "braking": "Braking burn",
+            "glide": "Glide",
+            "approach": "Approach",
+            "climb": "Lift-off",
+            "ascent": "Ascent",
+            "done": "Powered descent"
+          },
+          "altitude": "Altitude",
+          "speed": "Speed",
+          "vertical": "Vertical",
+          "heat": "Heat",
+          "toSite": "To site",
+          "downrange": "Downrange",
+          "warp": "Time ×{n}",
+          "realTime": "Real time",
+          "mach": "Mach {n}",
+          "skip": "Skip to landing",
+          "skipTouch": "Tap to skip to landing"
+        }
       },
       "gears": {
         "creep": "Creep",
@@ -614,7 +669,8 @@
           "charger": "Charger"
         },
         "placeBeacon": "Set up the beacon",
-        "boardLander": "Board the lander — lift off",
+        "logSinkhole": "Log the sinkhole",
+        "boardLander": "Board ship — Take off",
         "enterAirlock": "Enter the airlock",
         "exitAirlock": "Leave through the airlock",
         "getIn": "Get in",
@@ -660,21 +716,24 @@
           "samples": "Two samples returned to the store",
           "comms": "Earth link realigned",
           "rover": "Rover wheel serviced",
-          "seismo": "Seismometer deployed"
+          "seismo": "Seismometer deployed",
+          "sinkhole": "Sinkhole marked with a beacon"
         },
         "start": {
           "solar": "Job — array B string is offline",
           "samples": "Job — two tagged samples to bring in",
           "comms": "Job — the Earth link has degraded",
           "rover": "Job — a rover wheel sensor has faulted",
-          "seismo": "Job — deploy a seismometer"
+          "seismo": "Job — deploy a seismometer",
+          "sinkhole": "Job — mark the sinkhole before someone else walks into it"
         },
         "done": {
           "solar": "Array B back on the sun — full power",
           "samples": "Samples sealed in the store",
           "comms": "Dish on Earth — link restored",
           "rover": "Wheel serviced — all gears back",
-          "seismo": "Seismometer listening"
+          "seismo": "Seismometer listening",
+          "sinkhole": "Beacon at the sinkhole — logged"
         },
         "steps": {
           "solar": {
@@ -702,11 +761,42 @@
             "place": "Set it down",
             "level": "Level it — let go when the bubble centres",
             "activate": "Switch it on"
+          },
+          "sinkhole": {
+            "go": "Go to the sinkhole — stay back from the rim",
+            "place": "Set up the warning beacon",
+            "log": "Log the sinkhole at the mission computer"
           }
         }
       },
       "soundOn": "Sound on",
       "soundOff": "Sound off",
+      "backrooms": {
+        "place": "Level 0",
+        "gravityRead": "Gravity {n} m/s² · {g} g",
+        "air": "Outside air",
+        "noCarrier": "No carrier",
+        "elapsed": "Off comms",
+        "log": "Came back out of the Backrooms — {time}",
+        "act": {
+          "removeHelmet": "Take the helmet off",
+          "openDoor": "Open the door",
+          "climb": "Climb"
+        },
+        "radio": {
+          "hint": "…base to EVA… there is a hum on channel two… out past the comms mast… say again…",
+          "static": "No carrier. The set is searching.",
+          "guide": "The panels ahead are coming on, one after another.",
+          "back": "Where were you? You were off comms for 47 minutes."
+        },
+        "readout": {
+          "air": "External atmosphere: 20.9% O₂ · 101 kPa · 23 °C",
+          "gravity": "Gravity 9.81 m/s² — one full g. This is not the Moon.",
+          "repress": "Helmet sealed — suit repressurising"
+        },
+        "wake": "Get up.",
+        "crack": "Visor cracked"
+      },
       "missions": {
         "title": "Missions",
         "none": "Nothing in hand",
@@ -798,6 +888,8 @@
         }
       },
       "suitPower": "Power",
+      "jetpack": "Jetpack",
+      "jet": "Jet",
       "items": {
         "coupling": "Cable coupling",
         "feed": "Feed horn",
@@ -830,6 +922,7 @@
         "loading": "Descending to Mars Base",
         "loadingDetail": "Preparing the plain — 0.38 g, thin air, dust in it",
         "outside": "Outside",
+        "crystals": "Crystals",
         "run": "Run",
         "hints": {
           "walk": "W A S D — walk. Hold Shift to run. Mars holds you down twice as hard as the Moon.",
@@ -859,7 +952,8 @@
           "cargoShip": "Cargo ship — everything here came down in it",
           "rover": "Pressurised rover — 200 km on a charge",
           "landingZone": "Landing zone — keep clear",
-          "ourLander": "Your descent vehicle"
+          "ourLander": "Your descent vehicle",
+          "colonySite": "Skychaser Colony — the shared build site"
         },
         "act": {
           "read": {
@@ -868,7 +962,8 @@
             "isru": "Plant status",
             "power": "Reactor status"
           },
-          "boardLander": "Board the lander — lift off"
+          "collectCrystal": "Collect the crystals",
+          "boardLander": "Board ship — Take off"
         },
         "readout": {
           "habitat": "HAB-1 · 101 kPa · 21 °C · CO₂ 0.4 % · shielding 2.1 m regolith · 4 crew asleep",
@@ -888,6 +983,7 @@
         "loading": "Descending to Proxima b",
         "loadingDetail": "A red dwarf's day side — 1.1 g, warm, and something is alive",
         "outside": "Outside",
+        "crystals": "Crystals",
         "run": "Run",
         "hints": {
           "walk": "W A S D — walk. Hold Shift to run. The ground pulls harder than home.",
@@ -910,7 +1006,8 @@
         },
         "act": {
           "greet": "Greet",
-          "boardLander": "Board the lander — lift off"
+          "collectCrystal": "Collect the crystals",
+          "boardLander": "Board ship — Take off"
         },
         "readout": {
           "none": ""
@@ -981,7 +1078,7 @@
           "slew": "Slew to the target",
           "eyepiece": "Look through the eyepiece",
           "closeEyepiece": "Close the eyepiece",
-          "boardLander": "Board the lander — lift off",
+          "boardLander": "Board ship — Take off",
           "drive": "Get in the car",
           "getOut": "Get out",
           "stopToExit": "Stop to get out"
@@ -1046,9 +1143,55 @@
             "star": "{name}"
           }
         },
-        "entry": "Entry interface"
+        "entry": "Entry interface",
+        "crystals": "Crystals"
       }
     },
+    "room": {
+      "title": "Explore together",
+      "open": "Play together",
+      "close": "Close",
+      "unconfigured": "Multiplayer is not switched on for this site yet.",
+      "signInPrompt": "Sign in to open a room or join friends. Everyone in a room sees each other in flight and on the same world.",
+      "signIn": "Sign in",
+      "create": "Create a room",
+      "joinLabel": "Join with a code",
+      "codePlaceholder": "e.g. K7M2Q",
+      "join": "Join",
+      "badCode": "A room code is {n} letters and digits.",
+      "full": "That room is full — {max} explorers at most.",
+      "openRooms": "Open rooms",
+      "noRooms": "No open rooms right now. Create one and send the code to a friend.",
+      "hostedBy": "{name}'s room",
+      "joining": "Joining room {code}…",
+      "roomCode": "Room code",
+      "copyInvite": "Copy invite link",
+      "copied": "Link copied",
+      "howItWorks": "Launch or land anywhere — the others see your ship in flight and your suit on the same world. Friends sign in and open the link, or type the code.",
+      "explorers": "Explorers {n}/{max}",
+      "you": "{name} (you)",
+      "leave": "Leave room",
+      "defaultName": "Explorer {tag}",
+      "badgeAria": "Room {code}, {n} explorers — open room",
+      "places": {
+        "orbit": "System view",
+        "flight": "Flying",
+        "surface": "On a surface",
+        "moon": "On the Moon",
+        "mars": "On Mars",
+        "proximaB": "On Proxima b",
+        "earth": "In Tbilisi",
+        "backrooms": "In the Backrooms"
+      },
+      "toast": {
+        "joined": "{name} joined the room",
+        "left": "{name} left the room",
+        "landed": "{name}: {place}",
+        "launched": "{name} lifted off"
+      }
+    },
+    "launch": "Launch Voyage",
+    "launchSub": "Land at Skychaser Base on the Moon",
     "controls": {
       "keys": {
         "mouse": "Mouse",
@@ -1058,6 +1201,7 @@
       "look": "look around (click once to take the mouse; Esc lets go and pauses)",
       "zoom": "zoom; out past the far stop is the wide view",
       "jump": "jump; on the way down, the descent engine",
+      "jet": "the jetpack: hold in the air to climb; the jump key held does the same. A few seconds of burn, refilled on the ground",
       "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound",
       "walk": "walk on purpose",
       "crouch": "crouch: slow, low and steady",
@@ -1072,6 +1216,7 @@
         "move": "Left stick — walk; push it to the rim to lope",
         "look": "Right half — drag to look around",
         "jump": "Jump — bottom right; on the way down, hold the engine key",
+        "jet": "Jet — beside Jump; hold it in the air, or keep holding Jump",
         "sprint": "Lope — the key beside the stick",
         "crouch": "Crouch — beside the stick",
         "interact": "The amber key — tap to use, hold to work",
@@ -1080,6 +1225,60 @@
         "gears": "The gear key — the rover's speed"
       },
       "lampOn": "Headlamp on"
+    },
+    "build": {
+      "title": "Build",
+      "toggle": "Build mode",
+      "close": "Leave build mode",
+      "worldMoon": "Moon",
+      "worldMars": "Mars",
+      "scopePrivate": "My base",
+      "scopeColony": "Colony",
+      "scopeHint": "Build where",
+      "modules": {
+        "habitat": "Habitat",
+        "corridor": "Corridor",
+        "solar": "Solar array",
+        "battery": "Battery",
+        "pad": "Landing pad",
+        "rocketStand": "Rocket stand"
+      },
+      "size": "{w}×{d} m",
+      "count": "Mine here: {n} / {cap}",
+      "colonyCount": "Colony: {n} pieces",
+      "loading": "Loading bases…",
+      "offline": "Saving unavailable — pieces stay for this session",
+      "saved": "Saved to your account",
+      "ready": "Ready to place",
+      "signIn": "Sign in to build — your pieces are kept on your account",
+      "signInButton": "Sign in",
+      "colonyAway": "Colony site {n} m away, bearing {deg}°",
+      "hoverMine": "Your {name} — X to remove",
+      "hoverOther": "{name} — built by another player",
+      "problem": {
+        "sitePrivate": "Too close to Skychaser Base, a site or the colony",
+        "siteColony": "Outside the colony ring",
+        "overlap": "Something is already there",
+        "blocked": "Blocked",
+        "slope": "Ground too steep",
+        "cap": "Piece limit reached",
+        "signIn": "Sign in to build"
+      },
+      "refused": {
+        "signIn": "Sign in to build",
+        "tooFast": "Building too fast — wait a moment",
+        "notYours": "That piece is not yours",
+        "site": "The server refused that spot",
+        "overlap": "Someone built there first",
+        "coords": "The server refused that spot",
+        "module": "Unknown module",
+        "cap": "Piece limit reached",
+        "error": "Could not save — try again"
+      },
+      "place": "Place",
+      "rotate": "Rotate",
+      "remove": "Remove",
+      "keys": "E or click: place · R: rotate · 1–6: module · T: my base / colony · X: remove · B or Esc: leave"
     }
   },
   "play": {
@@ -1087,18 +1286,22 @@
     "tagline": "The solar system, flown",
     "enter": "Enter the solar system",
     "enterSub": "Look around, then Explore to fly",
+    "continue": "Continue",
+    "continueSub": "Back where you left off — {place}",
     "missions": "Missions",
     "settings": "Settings",
     "controls": "Controls",
     "exit": "Back to Skychaser",
     "paused": "Paused",
     "resume": "Resume",
+    "pauseHint": "Esc — resume",
     "restart": "Restart checkpoint",
     "back": "Back",
     "loading": {
       "module": "Loading the game",
       "build": "Building the surface",
       "compile": "Compiling the shaders",
+      "buildOrbit": "Building the solar system",
       "ready": "Ready",
       "scene": {
         "orbit": "Charting the orbits",
@@ -1106,6 +1309,11 @@
         "mars": "Descending to Mars",
         "proximaB": "Descending to Proxima b",
         "earth": "Descending to Tbilisi"
+      },
+      "insertion": {
+        "moon": "Orbit insertion — the Moon",
+        "mars": "Orbit insertion — Mars",
+        "earth": "Orbit insertion — Earth"
       }
     },
     "settingsPanel": {
@@ -1114,18 +1322,24 @@
       "qualityPerformance": "Performance",
       "qualityBalanced": "Balanced",
       "qualityHigh": "High",
+      "qualityUltra": "Ultra",
+      "qualityUltraNote": "Ultra is for a desktop with a discrete GPU: 4K shadows, 8× anti-aliasing, lens flare and light shafts. Star and rock counts take effect on the next landing.",
       "qualityNote": "Automatic picks a preset from your device. Star and rock counts take effect on the next landing.",
       "sensitivity": "Look sensitivity",
       "invertY": "Invert vertical look",
       "fov": "Field of view",
       "volume": "Volume",
+      "language": "Language",
+      "en": "English",
+      "ka": "ქართული",
       "reset": "Reset to defaults",
       "qualityGoverned": "Lowered to {level} to hold the frame rate. Pick a preset to keep your own."
     },
     "controlsPanel": {
       "surface": "On the surface",
       "ship": "In the ship",
-      "shell": "Esc — pause · Tab — mission panel (coming) · M — sound"
+      "shell": "Esc — pause · Tab — mission panel (coming) · M — sound",
+      "shellKeys": "Esc — pause · Tab — mission panel on the Moon · M — sound"
     },
     "missionsPanel": {
       "moon": "Skychaser Base expedition",
@@ -1139,8 +1353,24 @@
       },
       "jobs": "{n} of {total} base jobs done",
       "discoveries": "{n} of {total} discoveries logged",
-      "empty": "Nothing logged yet. Land at Skychaser Base to begin."
+      "empty": "Nothing logged yet. Land at Skychaser Base to begin.",
+      "count": "{n} of {total} done",
+      "state": {
+        "done": "Done",
+        "next": "Up next",
+        "open": "Open",
+        "locked": "Locked",
+        "lesson": "Learn it first"
+      },
+      "academy": "In children's mode, each mission opens after its lesson in Stellar Academy.",
+      "academyAction": "Open Stellar Academy"
     },
-    "qualityDrop": "Detail reduced to hold the frame rate — change it in Settings."
+    "qualityDrop": "Detail reduced to hold the frame rate — change it in Settings.",
+    "stars": {
+      "awarded": "+{n} Stars — {name}",
+      "credited": "{n} of {max} Stars credited to your account",
+      "signIn": "Sign in and each mission you finish is credited as Stars — up to {max} for the expedition.",
+      "signInAction": "Sign in"
+    }
   }
 }

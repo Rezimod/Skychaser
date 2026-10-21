@@ -214,9 +214,10 @@ export function makeMoonSky(sunDir: THREE.Vector3, stars: { faint: number; band:
   const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: new THREE.Color(6, 5.7, 5.2), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   sunSprite.position.copy(sunDir).multiplyScalar(SUN_R);
   sunSprite.scale.setScalar(90);
-  const sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xfff1d6, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending }));
+  // No air: the glare round the Sun is the visor's, not the sky's, so it stays tight and the sky beside it stays black.
+  const sunHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xfff1d6, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }));
   sunHalo.position.copy(sunSprite.position);
-  sunHalo.scale.setScalar(420);
+  sunHalo.scale.setScalar(300);
   group.add(sunSprite, sunHalo);
 
   // Earth at its true apparent size: about two degrees across.

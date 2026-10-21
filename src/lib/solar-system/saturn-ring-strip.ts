@@ -68,3 +68,11 @@ export function getSaturnRingStripTexture(): THREE.CanvasTexture {
   cached = tex;
   return tex;
 }
+
+/** The orrery is going away: free this renderer's copy of the strip and drop
+ *  the dispose listener its renderer hung on the shared texture, which would
+ *  otherwise keep that renderer reachable for the life of the page. The
+ *  canvas stays; the next renderer uploads it again. */
+export function releaseSaturnRingStripTexture() {
+  cached?.dispose();
+}

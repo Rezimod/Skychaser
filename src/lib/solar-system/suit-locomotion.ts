@@ -18,7 +18,9 @@ import { classifyLanding, gaitProfile, landRecovery, PIVOT_ANGLE, turnRate, type
 import { makeFeet, type Foot, type FootMode, type StepEvent } from '@/lib/solar-system/suit-feet';
 import { slideColliders, slopeAt, stepGround, vaultProbe, SLOPE_LIMIT, VAULT_MAX, type Collider, type Vec3 } from '@/lib/solar-system/suit-collision';
 import { poseAt, vaultTrack, type Track, type TrackPose } from '@/lib/solar-system/suit-scripted';
+import { makeJetpack, type Jetpack } from '@/lib/solar-system/suit-jetpack';
 
+export { JET, jetThrust, makeJetpack, type Jetpack, type JetState } from '@/lib/solar-system/suit-jetpack';
 export { gaitProfile, EARTH_G, LUNAR_G, MARS_G, JUMP_MIN_APEX, classifyLanding, landRecovery, turnRate, type GaitProfile, type Landing } from '@/lib/solar-system/gait-profile';
 export type { Collider, Vec3 } from '@/lib/solar-system/suit-collision';
 export type { Foot, StepEvent } from '@/lib/solar-system/suit-feet';
@@ -37,6 +39,8 @@ export interface WalkInput {
   crouch: boolean;
   /** Using a tool at a work site. */
   work: boolean;
+  /** Held: the jetpack — the jump key kept down in the air, or its own key. */
+  jet?: boolean;
 }
 
 export type Mode =
@@ -86,10 +90,18 @@ export interface LocoState {
   stepUp: number;
   /** 0…1 through a scripted track. */
   scriptK: number;
+  /** The jetpack: 0…1 in the tank, lit this step, and its eased throttle for the flame and the roar. */
+  jetFuel: number;
+  jetting: boolean;
+  jetK: number;
+  /** Lit this step and not the last. */
+  jetIgnited: boolean;
 }
 
 export interface Locomotion {
   profile: GaitProfile;
+  /** The pack on the back: its tank and thrust (suit-jetpack). */
+  jet: Jetpack;
   position: Vec3;
   velocity: Vec3;
   yaw: number;
@@ -125,6 +137,12 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
     mode: 'idle', gait: 'stand', grounded: true, airborne: false, speed: 0, speedFrac: 0, altitude: 0, landed: false, impact: 0, landing: '', landT: 9,
     crouched: false, sprinting: false, stamina: 1, stumble: 0, fallen: false, getUp: 0, grade: 0, sliding: false, lean: 0, leanSide: 0,
     stride: 0, cadence: 0, stepPhase: 0, stepSide: 1, effort: 0, turning: false, jumping: false, striding: false, bounding: false, stepUp: 0, scriptK: 0,
+    jetFuel: 1, jetting: false, jetK: 0, jetIgnited: false,
+  };
+  const jet = makeJetpack();
+  /** The pack's readouts onto the state, after each step of it. */
+  const syncJet = () => {
+    state.jetFuel = jet.state.fuel; state.jetting = jet.state.jetting; state.jetK = jet.state.throttle; state.jetIgnited = jet.state.ignited;
   };
   let coyote = 0;
   let jumpBuffer = 0;
@@ -155,7 +173,7 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
   };
 
   const loco: Locomotion = {
-    profile: P, position, velocity, yaw: 0, feet: feet.feet, state, onStep: null, ceilingAt: null,
+    profile: P, jet, position, velocity, yaw: 0, feet: feet.feet, state, onStep: null, ceilingAt: null,
     setProfile(p) { P = p; loco.profile = p; },
     settleFeet() {
       feet.settle(loco.yaw);
@@ -184,7 +202,8 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
         if (state.getUp === 0) { state.fallen = false; state.mode = 'idle'; loco.settleFeet(); }
       }
 
-      // ── Carried along a track, or sitting: no physics. ──
+      // ── Carried along a track, or sitting: no physics. The pack refills meanwhile. ──
+      if (track || state.mode === 'seated') { jet.update(dt, false, true, g, 0); syncJet(); }
       if (track) {
         trackT += dt;
         poseAt(track, trackT, pose);
@@ -359,6 +378,19 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
         effort = 1;
         feet.liftAll();
       }
+
+      // ── The jetpack: held in the air it lifts; on the ground it refills.
+      // Only a real flight lights it — a jump, a fall, a bail — never the
+      // short hop between two running strides, which the held key would
+      // otherwise turn into a stutter of puffs. ──
+      const jetWant = !!input.jet && !wasGrounded && !state.fallen && authority > 0.5 && !crouched
+        && (state.jumping || state.mode === 'fall' || state.mode === 'bail');
+      const jetAccel = jet.update(dt, jetWant, wasGrounded, g, velocity.y);
+      if (jetAccel > 0) {
+        velocity.y += jetAccel * dt;
+        effort = Math.max(effort, 0.6);
+      }
+      syncJet();
 
       // ── Integrate, and meet the world. ──
       const prevX = position.x; const prevZ = position.z;

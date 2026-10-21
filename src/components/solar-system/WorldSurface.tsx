@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronsDown, ChevronsUp, Eye, EyeOff, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, ChevronsDown, ChevronsUp, Eye, EyeOff, Flame, Flashlight, Gem, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeWorldSurface, type WorldSurfaceHandle } from '@/lib/solar-system/world-surface';
+import type { ShipKind } from '@/lib/solar-system/ship-mesh';
 import { WORLDS, type WorldId } from '@/lib/solar-system/world-profiles';
-import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { JET_LOW, motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
@@ -17,16 +19,21 @@ import { footBinding } from '@/game/bindings';
 import { attachSurfaceControls, type SurfaceControls } from '@/game/surface-controls';
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
+import type { RoomLink } from '@/lib/multiplayer/room-link';
+import { BuildHud } from './BuildHud';
 
 interface WorldSurfaceProps {
   world: WorldId;
   onReturn: () => void;
+  room: RoomLink;
   /** The game shell's pause: the sim, the sound and the keys all stop. */
   paused?: boolean;
   /** Where the build is; the shell's loading screen follows it and this one stays hidden. */
   onProgress?: (stage: 'build' | 'compile' | 'ready') => void;
   /** The mouse was let go of (Esc under pointer lock): the shell should pause. */
   onPauseRequest?: () => void;
+  /** The hull the crew flew here in: it is what comes down and what they board to leave. */
+  shipKind?: ShipKind;
 }
 
 /** Each world's own notes under the controls: the place, not the keys. */
@@ -37,9 +44,11 @@ const fmtRange = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${
 const PPD = 3.1;
 const TURNS = 3;
 
-export function WorldSurface({ world, onReturn, paused, onProgress, onPauseRequest }: WorldSurfaceProps) {
+export function WorldSurface({ world, onReturn, room, paused, onProgress, onPauseRequest, shipKind }: WorldSurfaceProps) {
   const t = useTranslations('solarSystem.moon');
   const tw = useTranslations(`solarSystem.worlds.${world}`);
+  /** The world's own card over the orbit, as the flight deck words it. */
+  const tworld = useTranslations(`solarSystem.flight.worlds.${world}`);
   const tl = useTranslations('solarSystem.loading');
   const tc = useTranslations('solarSystem.controls');
   const tips = useLoadingTips();
@@ -47,7 +56,6 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
   const [touch, setTouch] = useState(false);
   const [glGeneration, setGlGeneration] = useState(0);
   const [gpuLost, setGpuLost] = useState(false);
-  const [gpuFailed, setGpuFailed] = useState(false);
   const resumeRef = useRef(false);
   const [help, setHelp] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -64,9 +72,26 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
   const rootRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<WorldSurfaceHandle | null>(null);
   const landAltRef = useRef<HTMLSpanElement>(null);
+  // The flight from orbit (and back up to it): its panel, the title card.
+  const orbRef = useRef<HTMLDivElement>(null);
+  const orbPhaseRef = useRef<HTMLSpanElement>(null);
+  const orbAltRef = useRef<HTMLSpanElement>(null);
+  const orbSpeedRef = useRef<HTMLSpanElement>(null);
+  const orbVsRef = useRef<HTMLSpanElement>(null);
+  const orbSiteLabelRef = useRef<HTMLSpanElement>(null);
+  const orbSiteRef = useRef<HTMLSpanElement>(null);
+  const orbHeatRef = useRef<HTMLElement>(null);
+  const orbWarpRef = useRef<HTMLSpanElement>(null);
+  const orbMachRef = useRef<HTMLSpanElement>(null);
+  const orbSkipRef = useRef<HTMLSpanElement>(null);
+  const orbTitleRef = useRef<HTMLDivElement>(null);
   const landRateRef = useRef<HTMLSpanElement>(null);
   const landOffRef = useRef<HTMLSpanElement>(null);
   const landDriftRef = useRef<HTMLSpanElement>(null);
+  const plaqueExitRef = useRef<HTMLSpanElement>(null);
+  // The hull is read once, when the scene is built: a later change is the next landing's.
+  const shipKindRef = useRef(shipKind);
+  shipKindRef.current = shipKind;
   const landFuelRef = useRef<HTMLElement>(null);
   const landThrRef = useRef<HTMLElement>(null);
   const assistRef = useRef<HTMLDivElement>(null);
@@ -96,6 +121,10 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
   const o2BarRef = useRef<HTMLElement>(null);
   const hrRef = useRef<HTMLSpanElement>(null);
   const tempRef = useRef<HTMLSpanElement>(null);
+  const jetRef = useRef<HTMLSpanElement>(null);
+  const crystalsRef = useRef<HTMLSpanElement>(null);
+  const crystalsCountRef = useRef<HTMLSpanElement>(null);
+  const jetBarRef = useRef<HTMLElement>(null);
   const outRef = useRef<HTMLSpanElement>(null);
   const evaRef = useRef<HTMLSpanElement>(null);
   const distRef = useRef<HTMLSpanElement>(null);
@@ -164,25 +193,20 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
     const tt = (key: string, values?: Record<string, string | number>) => tRef.current(key, values);
     const ttw = (key: string, values?: Record<string, string | number>) => twRef.current(key, values);
     onProgressRef.current?.('build');
-    let handle: WorldSurfaceHandle;
-    try {
-      handle = makeWorldSurface(mount, world, {
-        earth: earthData ?? undefined,
-        startOnSurface: resumeRef.current,
-        onContextLost: () => {
-          setGpuLost(true);
-          rebuildTimer = window.setTimeout(() => {
-            resumeRef.current = true;
-            setGpuLost(false);
-            setGlGeneration((g) => g + 1);
-          }, 1200);
-        },
-      });
-    } catch {
-      setGpuFailed(true);
-      onProgressRef.current?.('ready');
-      return;
-    }
+    const handle = makeWorldSurface(mount, world, {
+      room,
+      earth: earthData ?? undefined,
+      shipKind: shipKindRef.current,
+      startOnSurface: resumeRef.current,
+      onContextLost: () => {
+        setGpuLost(true);
+        rebuildTimer = window.setTimeout(() => {
+          resumeRef.current = true;
+          setGpuLost(false);
+          setGlGeneration((g) => g + 1);
+        }, 1200);
+      },
+    });
     handleRef.current = handle;
     onProgressRef.current?.('compile');
     let readyReported = false;
@@ -217,9 +241,37 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
       root.dataset.view = tel.view;
 
       if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+      // From orbit, and back up to it: the flight panel, the heat at the
+      // edges of the glass and the glass shaking with the air (--heat,
+      // --shake), and the world's name over the orbit.
+      const ob = tel.orbital;
+      const flying = !!ob && (tel.phase === 'orbit' || tel.phase === 'ascent');
+      root.dataset.flight = String(flying);
+      show(orbRef.current, flying);
+      root.style.setProperty('--heat', flying && ob ? ob.heat.toFixed(3) : '0');
+      root.style.setProperty('--shake', flying && ob ? Math.min(1, ob.turbulence + ob.burn * 0.06).toFixed(3) : '0');
+      orbTitleRef.current?.style.setProperty('--title', ob && tel.phase === 'orbit' ? orbitTitle(ob).toFixed(3) : '0');
+      if (flying && ob) {
+        const down = tel.phase === 'orbit';
+        text(orbPhaseRef.current, tt(`landing.orbital.phases.${ob.phase}`));
+        text(orbAltRef.current, formatAltitude(ob.altitude));
+        text(orbSpeedRef.current, formatSpeed(ob.speed));
+        text(orbVsRef.current, formatVertical(ob.vertical));
+        text(orbSiteLabelRef.current, tt(down ? 'landing.orbital.toSite' : 'landing.orbital.downrange'));
+        text(orbSiteRef.current, formatRange(ob.downrangeKm));
+        if (orbHeatRef.current) orbHeatRef.current.style.transform = `scaleX(${Math.min(1, ob.heat).toFixed(3)})`;
+        const warp = ob.timeWarp > 1.05;
+        text(orbWarpRef.current, warp ? tt('landing.orbital.warp', { n: ob.timeWarp < 10 ? ob.timeWarp.toFixed(1) : Math.round(ob.timeWarp) }) : tt('landing.orbital.realTime'));
+        if (orbWarpRef.current) orbWarpRef.current.dataset.warp = String(warp);
+        // The speed of sound, once there is air enough to have one.
+        show(orbMachRef.current, ob.mach > 0.05);
+        if (ob.mach > 0.05) text(orbMachRef.current, tt('landing.orbital.mach', { n: ob.mach.toFixed(ob.mach < 3 ? 2 : 1) }));
+        show(orbSkipRef.current, down);
+        if (orbRef.current) orbRef.current.dataset.leg = ob.phase;
+      }
       if (tel.phase !== 'surface') {
         const l = tel.landing;
-        text(landTitleRef.current, tel.entry ? ttw('entry') : tel.phase === 'ascent' ? tt('landing.ascent') : tt('landing.title'));
+        text(landTitleRef.current, tel.phase === 'ascent' ? tt('landing.ascent') : tt('landing.title'));
         text(landAltRef.current, `${l.altitude.toFixed(l.altitude < 10 ? 1 : 0)} m`);
         text(landRateRef.current, `${Math.abs(l.descent).toFixed(1)} m/s`);
         text(landOffRef.current, `${Math.round(l.offset)} m`);
@@ -231,6 +283,7 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
         if (tel.phase === 'touchdown') {
           text(plaqueGradeRef.current, tt(`grades.${tel.grade || 'good'}`));
           text(plaqueSpeedRef.current, tt('landing.touchdown', { n: l.touchdown.toFixed(2) }));
+          show(plaqueExitRef.current, tel.exitReady);
         }
         return;
       }
@@ -247,7 +300,7 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
 
       // ── The suit, on a world that needs one, when it is low or in front of
       // the crew. There is no suit power out here, so the oxygen decides. ──
-      const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet' };
+      const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet', jetFuel: tel.jetFuel, jetting: tel.jetting };
       const suit = suitRef.current;
       const suitOn = !breathable && suitShown(glance);
       show(suit, suitOn);
@@ -256,8 +309,14 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
         text(o2Ref.current, `${tel.o2.toFixed(1)}%`);
         if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
         text(tempRef.current, `${tel.suitTemp.toFixed(1)}°`);
+        suit.dataset.jet = tel.jetFuel < JET_LOW ? 'low' : tel.jetting ? 'on' : '';
+        text(jetRef.current, `${Math.round(tel.jetFuel * 100)}%`);
+        if (jetBarRef.current) jetBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.jetFuel * 100))}%`;
       }
       show(lampRef.current, tel.headlamp);
+      // The crystal tally: only on worlds that grew any, and only once one is held.
+      show(crystalsRef.current, tel.crystalsTotal > 0 && tel.crystals > 0);
+      text(crystalsCountRef.current, `${tel.crystals} / ${tel.crystalsTotal}`);
       // The rest are read rather than watched: these refs are only mounted
       // while the log is open.
       text(gravRef.current, `${handle.profile.gravity.toFixed(2)} m/s²`);
@@ -388,7 +447,7 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
       handle.dispose();
       handleRef.current = null;
     };
-  }, [world, glGeneration, isEarth, earthData]);
+  }, [world, glGeneration, isEarth, earthData, room]);
   useEffect(() => {
     handleRef.current?.setPaused(!!paused);
     if (paused) unlockPointer();
@@ -410,13 +469,14 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
     };
   };
   /** Hold a key on the touch deck. */
-  const deck = (key: 'jump' | 'throttle' | 'use') => hold((on) => {
+  const deck = (key: 'jump' | 'jet' | 'throttle' | 'use') => hold((on) => {
     const c = controlsRef.current;
     if (!c) return;
     c.touchDeck[key] = on;
     c.sync();
   });
   const jumpKey = deck('jump');
+  const jetKey = deck('jet');
   const throttleKey = deck('throttle');
   const useKey = deck('use');
   const actionKey = {
@@ -435,13 +495,15 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
     setRun(c.touchDeck.run);
   };
   const toggleCrouch = () => controlsRef.current?.toggleCrouch();
+  const getBuild = useCallback(() => handleRef.current?.build ?? null, []);
+  const canBuild = useCallback(() => handleRef.current?.telemetry.phase === 'surface', []);
 
   return (
     <div ref={rootRef} className={`moon-surface moon-surface--${world}`} data-world={world} data-phase="descent" data-ready="false" data-immersive={immersive}>
       <div ref={mountRef} className="moon-surface__canvas" />
-      {(gpuLost || gpuFailed || earthError || !onProgress) && <CosmicLoader className={gpuLost || gpuFailed || earthError ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent" body={world}
-        label={gpuLost || gpuFailed ? tl('gpu') : earthError ? tw('loadError') : tw('loading')} detail={gpuLost || gpuFailed || earthError ? undefined : tw('loadingDetail')} tips={tips} />}
-      {(gpuFailed || earthError) && (
+      {(gpuLost || earthError || !onProgress) && <CosmicLoader className={gpuLost || earthError ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent" body={world}
+        label={gpuLost ? tl('gpu') : earthError ? tw('loadError') : tw('loading')} detail={gpuLost || earthError ? undefined : tw('loadingDetail')} tips={tips} />}
+      {earthError && (
         <button type="button" className="moon-hud__key earth-hud__retry" onClick={onReturn}>
           <Rocket size={18} aria-hidden /><span>{t('returnOrbit')}</span>
         </button>
@@ -450,6 +512,32 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
         <div className="moon-hud__visor" aria-hidden />
 
         <div className="moon-hud__landing">
+          {/* From orbit: the air at the edges of the glass, the world's
+              name over the orbit, and the flight's own numbers. */}
+          <div className="orbital-heat" aria-hidden />
+          <div ref={orbTitleRef} className="flight-title orbital-title" aria-hidden>
+            <span className="flight-title__name">{tworld('name')}</span>
+            <span className="flight-title__line">{tworld('descriptors')} · {tworld('temp')}</span>
+          </div>
+          <div ref={orbRef} className="orbital-hud" role="status" hidden>
+            <span ref={orbPhaseRef} className="moon-hud__land-title" />
+            <span ref={orbAltRef} className="moon-hud__land-alt" />
+            <div className="moon-hud__land-rows">
+              <span className="moon-hud__reading"><span>{t('landing.orbital.speed')}</span><span ref={orbSpeedRef} /></span>
+              <span className="moon-hud__reading"><span>{t('landing.orbital.vertical')}</span><span ref={orbVsRef} /></span>
+              <span className="moon-hud__reading"><span ref={orbSiteLabelRef}>{t('landing.orbital.toSite')}</span><span ref={orbSiteRef} /></span>
+            </div>
+            <span className="orbital-hud__heat"><span>{t('landing.orbital.heat')}</span><i><b ref={orbHeatRef} /></i></span>
+            <span className="orbital-hud__foot">
+              <span ref={orbWarpRef} className="orbital-hud__warp" data-warp="true" />
+              <span ref={orbMachRef} className="orbital-hud__mach" hidden />
+            </span>
+            <span ref={orbSkipRef} className="orbital-hud__skip">
+              {touch
+                ? <button type="button" onClick={() => handleRef.current?.skipOrbit()}>{t('landing.orbital.skipTouch')}</button>
+                : <><kbd>E</kbd>{t('landing.orbital.skip')}</>}
+            </span>
+          </div>
           <div className="moon-hud__land-card">
             <span ref={landTitleRef} className="moon-hud__land-title">{t('landing.title')}</span>
             <span className="moon-hud__land-alt" ref={landAltRef} />
@@ -465,6 +553,11 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
           <div ref={plaqueRef} className="moon-hud__plaque" role="status" hidden>
             <span ref={plaqueGradeRef} className="moon-hud__plaque-grade" />
             <span ref={plaqueSpeedRef} className="moon-hud__plaque-speed" />
+            <span ref={plaqueExitRef} className="moon-hud__plaque-exit" hidden>
+              {touch
+                ? <button type="button" onClick={() => { const h = handleRef.current; if (h) h.input.interact = true; }}>{t('landing.exit')}</button>
+                : <><kbd>E</kbd>{t('landing.exit')}</>}
+            </span>
           </div>
         </div>
 
@@ -510,16 +603,19 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
         <div ref={suitRef} className="moon-hud__suit" data-level="ok" role="status" hidden>
           <span className="moon-hud__vital"><i>O₂</i><span ref={o2Ref} /><b className="moon-hud__bar"><i ref={o2BarRef} /></b></span>
           <span className="moon-hud__vital"><i>{t('suitTemp')}</i><span ref={tempRef} /></span>
+          <span className="moon-hud__vital moon-hud__vital--jet"><i>{t('jetpack')}</i><span ref={jetRef} /><b className="moon-hud__bar"><i ref={jetBarRef} /></b></span>
         </div>
 
         {/* ── Bottom right: the lamp. ── */}
         <div className="moon-hud__hands">
           <span ref={lampRef} className="moon-hud__carry moon-hud__lamp" hidden><Flashlight size={14} aria-hidden /><i>{tc('lampOn')}</i></span>
+          <span ref={crystalsRef} className="moon-hud__carry moon-hud__crystals" hidden><Gem size={14} aria-hidden /><i>{tw('crystals')}</i><span ref={crystalsCountRef} /></span>
         </div>
 
         <button type="button" className="moon-hud__round moon-hud__unhide" onClick={() => setImmersive(false)} aria-label={t('hudShow')} title={t('hudShow')}>
           <Eye size={19} aria-hidden />
         </button>
+        {world === 'mars' && <BuildHud world="mars" getBuild={getBuild} canOpen={canBuild} mount={mountRef} paused={!!paused} touch={touch} />}
         <div className="moon-hud__top">
           <button type="button" className="moon-hud__round" {...tapKey(cycleView)} aria-label={t('camera')} title={t('camera')}>
             <Camera size={19} aria-hidden />
@@ -622,6 +718,12 @@ export function WorldSurface({ world, onReturn, paused, onProgress, onPauseReque
           <button type="button" className="moon-hud__jump" {...jumpKey} aria-label={t('jump')}>
             <Wind size={18} aria-hidden /><span>{t('jump')}</span>
           </button>
+          {/* No pack where there is air to breathe: the pilot came out without it. */}
+          {!breathable && (
+            <button type="button" className="moon-hud__jet" {...jetKey} aria-label={t('jet')}>
+              <Rocket size={18} aria-hidden /><span>{t('jet')}</span>
+            </button>
+          )}
           <button type="button" className="moon-hud__throttle" {...throttleKey} aria-label={t('landing.throttle')}>
             <span className="moon-hud__throttle-fill"><i ref={landThrRef} /></span>
             <Flame size={22} aria-hidden /><span>{t('landing.throttle')}</span>

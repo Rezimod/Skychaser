@@ -7,14 +7,16 @@
 // put.
 //
 // Finished jobs are remembered; the one in progress is not — a reload hands
-// it out again from the start.
+// it out again from the start. One job only exists for a crew that has come
+// back out of the Backrooms: mark the sinkhole so nobody else walks into it.
 
 import * as THREE from 'three';
 import type { Interactable } from '@/lib/solar-system/moon-interactions';
 import type { Anchor, AnchorId } from '@/lib/solar-system/moon-base-zones';
+import { BEACON } from '@/lib/solar-system/moon-sinkhole';
 
-export type JobId = 'solar' | 'seismo' | 'samples' | 'rover' | 'comms';
-export const JOB_ORDER: JobId[] = ['solar', 'samples', 'comms', 'rover', 'seismo'];
+export type JobId = 'solar' | 'seismo' | 'samples' | 'rover' | 'comms' | 'sinkhole';
+export const JOB_ORDER: JobId[] = ['solar', 'samples', 'comms', 'rover', 'seismo', 'sinkhole'];
 
 export interface JobWorld {
   anchors: Record<AnchorId, Anchor>;
@@ -27,6 +29,9 @@ export interface JobWorld {
   setRoverFault: (on: boolean) => void;
   /** The expedition has put the crew on the mission computer. */
   briefed: () => boolean;
+  /** The crew has been down the sinkhole and back: the beacon job is on the board. */
+  backroomsEscaped?: () => boolean;
+  setBeacon?: (on: boolean) => void;
 }
 
 export interface JobsTelemetry {
@@ -222,7 +227,18 @@ export function makeJobs(world: JobWorld): JobsHandle {
       ],
       finish: () => {},
     },
+    {
+      id: 'sinkhole',
+      setup: () => world.setBeacon?.(false),
+      steps: [
+        { objective: 'sinkhole.go', kind: 'go', target: at(BEACON, 3) },
+        { objective: 'sinkhole.place', kind: 'hold', label: 'placeBeacon', seconds: 2, target: at(BEACON, 3), onDone: () => world.setBeacon?.(true) },
+        { objective: 'sinkhole.log', kind: 'tap', label: 'logSinkhole', target: at(a.scienceTerminal, 2.6) },
+      ],
+      finish: () => world.setBeacon?.(true),
+    },
   ];
+  const available = (id: JobId) => id !== 'sinkhole' || (world.backroomsEscaped?.() ?? false);
 
   let active: Job | null = null;
   let stepIndex = 0;
@@ -296,7 +312,7 @@ export function makeJobs(world: JobWorld): JobsHandle {
     start(id) {
       if (active) return active.id;
       // Every job done: the board has nothing left to hand out.
-      const pick = id ?? JOB_ORDER.find((j) => !done.includes(j));
+      const pick = id ?? JOB_ORDER.find((j) => !done.includes(j) && available(j));
       active = pick ? jobs.find((j) => j.id === pick) ?? null : null;
       if (!active) return null;
       stepIndex = 0;

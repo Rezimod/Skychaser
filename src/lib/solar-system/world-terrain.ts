@@ -7,11 +7,44 @@
 // can hold water.
 
 import * as THREE from 'three';
-import { fbm } from '@/lib/solar-system/moon-terrain';
+import { fbm, ringEdge } from '@/lib/solar-system/moon-terrain';
+import { withHaze } from '@/lib/solar-system/world-earth-haze';
 import type { WorldProfile } from '@/lib/solar-system/world-profiles';
 
 export const WORLD_SIZE = 360;
 export const PAD_RADIUS = 40;
+
+/** Flat treads and steep risers: 0…1 in, 0…1 out, in `n` steps. */
+export function terrace(m: number, n: number): number {
+  if (n <= 0) return m;
+  const s = Math.min(m, 0.9999) * n;
+  const i = Math.floor(s); const f = s - i;
+  return (i + smooth(Math.max(0, (f - 0.72) / 0.28))) / n;
+}
+
+/** The sun's direction as the ground shaders read it (world space); set by the scene. */
+const sunWorld = { value: new THREE.Vector3(0, 1, 0) };
+export function setGroundSun(dir: THREE.Vector3) { sunWorld.value.copy(dir).normalize(); }
+
+/** GLSL shared by everything made of this world's rock: a rim of the star's
+ *  light along edges seen against it, so a boulder or a spire reads as a
+ *  solid against the haze instead of a flat silhouette. */
+export const RIM_GLSL = /* glsl */`
+  {
+    vec3 rNw = inverseTransformDirection( normal, viewMatrix );
+    vec3 rVw = normalize( cameraPosition - vEarthPos );
+    float rim = pow( 1.0 - max( dot( rNw, rVw ), 0.0 ), 3.5 );
+    float toward = smoothstep( -0.25, 0.55, dot( rNw, uSunW ) ) * smoothstep( -0.4, 0.6, dot( -rVw, uSunW ) );
+    reflectedLight.indirectDiffuse += uRimColor * rim * toward * diffuseColor.rgb * 2.2;
+  }
+`;
+export function injectRim(shader: THREE.WebGLProgramParametersWithUniforms, rimColor: THREE.Color) {
+  shader.uniforms.uSunW = sunWorld;
+  shader.uniforms.uRimColor = { value: rimColor };
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nuniform vec3 uSunW; uniform vec3 uRimColor;')
+    .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>\n${RIM_GLSL}`);
+}
 
 function hash(ix: number, iy: number, seed: number): number {
   let n = (ix * 374761393 + iy * 668265263 + seed * 1442695041) | 0;
@@ -41,6 +74,12 @@ export interface WorldTerrain {
   normalAt: (x: number, z: number, out: THREE.Vector3) => THREE.Vector3;
   /** Firm ground for boots: the water surface where there is water. */
   floorAt: (x: number, z: number) => number;
+  /** The ground anywhere the eye can reach: the square inside, the horizon ring's hills beyond it. */
+  groundAt: (x: number, z: number) => number;
+  /** The grain normal map, for anything else made of this ground. */
+  grain: THREE.Texture;
+  /** Slope 0…1 (1 − normal.y) off the heightfield. */
+  slopeAt: (x: number, z: number) => number;
   dispose: () => void;
 }
 
@@ -136,7 +175,8 @@ function rockGeometry(seed: number, detail: number): THREE.BufferGeometry {
 
 /** `density` scales the rock count (the preset's prop density). */
 export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density = 1): WorldTerrain {
-  const N = lite ? 160 : 320;
+  // Ultra (prop density 1.5 and up) gets a finer grid: the same field, sampled closer.
+  const N = lite ? 160 : density >= 1.5 ? 448 : 320;
   const size = WORLD_SIZE;
   const half = size / 2;
   const cell = size / N;
@@ -156,7 +196,18 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
     craters.push({ x, z, r, depth: r * (0.12 + hash(i, 24, seed) * 0.1) });
   }
   const rawHeight = (x: number, z: number): number => {
-    let h = fbm(x / 110, z / 110, 4, seed) * G.relief;
+    // The relief is read through a bent lens: a second noise shifts where
+    // the first is sampled, so ridges curl and basins are not round.
+    const wx = x + fbm(x / 70 + 11, z / 70, 2, seed + 51) * G.warp;
+    const wz = z + fbm(x / 70, z / 70 + 7, 2, seed + 53) * G.warp;
+    let h = fbm(wx / 110, wz / 110, 4, seed) * G.relief;
+    if (G.mesas > 0) {
+      // Plateaus: where a broad noise is high the ground steps up in
+      // terraces — the strata of the mesas outside, at a size a crew can climb.
+      const macro = fbm(wx / 85 + 3, wz / 85, 3, seed + 61);
+      const m = clamp01((macro - 0.10) / 0.5);
+      h += terrace(m, G.terraces) * G.mesas * smooth(clamp01(m * 4));
+    }
     h += fbm(x / 24, z / 24, 3, seed + 9) * 1.1;
     // Dunes: long ripples across the plain, bent by the wind's own noise.
     const bend = fbm(x / 60, z / 60, 2, seed + 41) * 6;
@@ -207,17 +258,25 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
     const h = heightAt(x, z);
     return water && Math.hypot(x - water.x, z - water.z) < water.r * 1.3 ? Math.max(h, water.level - 0.4) : h;
   };
+  const slopeTmp = new THREE.Vector3();
+  const slopeAt = (x: number, z: number): number => 1 - normalAt(x, z, slopeTmp).y;
 
-  // ── The colour of the ground: the plain, its dark patches, its pale streaks. ──
+  // ── The colour of the ground: the plain, its dark patches, its pale streaks;
+  // bare rock where it is steep, sand where it is flat and low. ──
   const colorAt = (x: number, z: number, out: number[]) => {
     const dark = clamp01(fbm(x / 34, z / 34, 3, seed + 33) * 1.6 + 0.1);
     const pale = clamp01(fbm(x / 18 + 40, z / 52, 3, seed + 37) * 2.2 - 0.55);
     const grain = 1 + fbm(x / 5, z / 5, 2, seed + 35) * 0.12;
+    const slope = slopeAt(x, z);
+    const rock = smooth(clamp01((slope - 0.22) / 0.3));
+    const sand = (1 - smooth(clamp01(slope / 0.08))) * clamp01(fbm(x / 28 + 9, z / 28, 2, seed + 39) * 1.8 + 0.2);
     let wet = 0;
     if (water) wet = clamp01(1 - (Math.hypot(x - water.x, z - water.z) - water.r) / 22);
     for (let k = 0; k < 3; k++) {
       let v = G.plain[k] * (1 - dark) + G.dark[k] * dark;
       v = v * (1 - pale) + G.pale[k] * pale;
+      v = v * (1 - sand * 0.6) + G.sand[k] * sand * 0.6;
+      v = v * (1 - rock) + G.slopeRock[k] * rock;
       // Damp ground is darker and, on a living world, greener where the moss takes.
       if (wet > 0) v = v * (1 - wet * 0.45) + (k === 1 ? 0.22 : 0.08) * wet;
       out[k] = v * grain;
@@ -254,7 +313,7 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
   const tex = (c: HTMLCanvasElement, srgb: boolean) => {
     const t = new THREE.CanvasTexture(c);
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
-    t.anisotropy = 8;
+    t.anisotropy = density >= 1.5 ? 16 : 8;
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     return t;
   };
@@ -263,34 +322,97 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
     map: maps.map, normalMap: maps.normal, normalScale: new THREE.Vector2(0.8, 0.8),
     roughnessMap: maps.rough, roughness: 1, metalness: 0, vertexColors: true, color: 0xffffff,
   });
-  mat.onBeforeCompile = (shader) => {
-    // A second, finer normal sample breaks the tiling.
-    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
-      vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
-      vec3 mapN2 = texture2D( normalMap, vNormalMapUv * 6.37 + vec2(0.31, 0.77) ).xyz * 2.0 - 1.0;
-      mapN = normalize( vec3( mapN.xy * normalScale + mapN2.xy * normalScale * 0.55, mapN.z * mapN2.z ) );
-      normal = normalize( tbn * mapN );`);
-  };
+  const slopeRock = new THREE.Color(...G.slopeRock);
+  const sandColor = new THREE.Color(...G.sand);
+  const rimColor = new THREE.Color(...profile.atmosphere.hazeSun);
+  // The air (world-earth-haze) in place of the fog, then the ground's own
+  // shading: a finer second normal sample breaks the tiling; on a steep
+  // face the grain is projected sideways off the world position (a rock
+  // wall is not a stretched floor), and the vertex colours' rock/sand blend
+  // is sharpened per pixel by the geometric slope; on the flat, the dunes'
+  // ripples are an analytic normal, not geometry — a sawtooth sine across
+  // the wind, bent by a slow noise, faded out before it could alias.
+  withHaze(mat, `world-ground|${profile.id}`, false, (shader) => {
+    shader.uniforms.uSlopeRock = { value: slopeRock };
+    shader.uniforms.uSand = { value: sandColor };
+    shader.uniforms.uDunes = { value: G.dunes };
+    injectRim(shader, rimColor);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vSlope;')
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nvSlope = 1.0 - objectNormal.y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        varying float vSlope; uniform vec3 uSlopeRock; uniform vec3 uSand; uniform float uDunes;
+        float gHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
+        float gNoise( vec2 p ) { vec2 i = floor( p ); vec2 f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
+          return mix( mix( gHash( i ), gHash( i + vec2( 1.0, 0.0 ) ), f.x ), mix( gHash( i + vec2( 0.0, 1.0 ) ), gHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y ); }`)
+      .replace('#include <normal_fragment_maps>', `
+        float steep = smoothstep( 0.22, 0.5, vSlope );
+        vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+        vec3 mapN2 = texture2D( normalMap, vNormalMapUv * 6.37 + vec2( 0.31, 0.77 ) ).xyz * 2.0 - 1.0;
+        if ( steep > 0.001 ) {
+          // Sideways projections of the same grain, weighted by which way the face looks.
+          vec3 gN = abs( inverseTransformDirection( normal, viewMatrix ) );
+          vec3 side = texture2D( normalMap, vEarthPos.zy / 4.5 ).xyz * 2.0 - 1.0;
+          vec3 side2 = texture2D( normalMap, vEarthPos.xy / 4.5 + 0.5 ).xyz * 2.0 - 1.0;
+          vec3 wall = ( side * gN.x + side2 * gN.z ) / max( gN.x + gN.z, 1e-3 );
+          mapN = mix( mapN, wall, steep );
+        }
+        vec2 ripple = vec2( 0.0 );
+        if ( uDunes > 0.0 ) {
+          float rDist = length( vEarthPos - cameraPosition );
+          float rMask = uDunes * ( 1.0 - steep ) * ( 1.0 - smoothstep( 45.0, 120.0, rDist ) );
+          if ( rMask > 0.001 ) {
+            vec2 k = normalize( vec2( 0.45, 0.9 ) ) * 6.98;
+            float bend = gNoise( vEarthPos.xz / 25.0 ) * 4.0;
+            float ph = dot( k, vEarthPos.xz ) + bend;
+            float dh = cos( ph ) + 0.5 * cos( 2.0 * ph );
+            ripple = -k * dh * 0.022 * rMask;
+          }
+        }
+        mapN = normalize( vec3( mapN.xy * normalScale + mapN2.xy * normalScale * 0.55 + ripple, mapN.z * mapN2.z ) );
+        normal = normalize( tbn * mapN );`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          float cSteep = smoothstep( 0.24, 0.5, vSlope );
+          float cFlat = 1.0 - smoothstep( 0.0, 0.1, vSlope );
+          float cSand = cFlat * smoothstep( 0.35, 0.7, gNoise( vEarthPos.xz / 22.0 ) ) * 0.5;
+          diffuseColor.rgb = mix( diffuseColor.rgb, uSand * ( 0.85 + 0.3 * gNoise( vEarthPos.xz * 0.7 ) ), cSand );
+          diffuseColor.rgb = mix( diffuseColor.rgb, uSlopeRock * ( 0.8 + 0.4 * gNoise( vEarthPos.zy * 0.9 + vEarthPos.x * 0.3 ) ), cSteep * 0.75 );
+        }`);
+  });
   const mesh = new THREE.Mesh(geom, mat);
   mesh.receiveShadow = true;
   mesh.name = `${profile.id}-terrain`;
 
   // ── The horizon: hills to the fog, mountains past it. ──
+  const ringHeightAt = (x: number, z: number): number => {
+    const r = Math.hypot(x, z);
+    const near = heightAt(x, z) - 0.08;
+    if (r <= 250) return near;
+    const far = Math.min(1, (r - 300) / 600);
+    let hills = fbm(x / 260, z / 260, 4, seed + 71) * G.relief * 4 + Math.pow(Math.max(0, fbm(x / 520 + 9, z / 520, 3, seed + 77)), 1.4) * 140 * far;
+    // The mesa country goes on past the fence: broad terraced tables out to the mountains.
+    if (G.mesas > 0) hills += terrace(clamp01((fbm(x / 210 + 5, z / 210, 3, seed + 63) - 0.05) / 0.5), G.terraces + 1) * G.mesas * 5 * Math.min(1, (r - 250) / 200);
+    const k = Math.min(1, (r - 250) / 90);
+    const t = k * k * (3 - 2 * k);
+    // Back down to the datum by the outer edge, where the globe takes over.
+    return (near * (1 - t) + hills * t) * (1 - ringEdge(r));
+  };
+  const groundAt = (x: number, z: number): number => (Math.hypot(x, z) < 172 && Math.abs(x) < half && Math.abs(z) < half ? heightAt(x, z) : ringHeightAt(x, z));
   const hGeom = new THREE.RingGeometry(172, 1500, lite ? 96 : 160, lite ? 10 : 18);
   hGeom.rotateX(-Math.PI / 2);
   const hp = hGeom.attributes.position as THREE.BufferAttribute;
   const hc = new Float32Array(hp.count * 3);
   for (let i = 0; i < hp.count; i++) {
     const x = hp.getX(i); const z = hp.getZ(i);
-    const r = Math.hypot(x, z);
-    const near = heightAt(x, z) - 0.08;
-    const far = Math.min(1, (r - 300) / 600);
-    const hills = fbm(x / 260, z / 260, 4, seed + 71) * G.relief * 4 + Math.pow(Math.max(0, fbm(x / 520 + 9, z / 520, 3, seed + 77)), 1.4) * 140 * far;
-    const k = r <= 250 ? 0 : Math.min(1, (r - 250) / 90);
-    const t = k * k * (3 - 2 * k);
-    hp.setY(i, near * (1 - t) + hills * t);
+    hp.setY(i, ringHeightAt(x, z));
     colorAt(x, z, rgb);
-    hc[i * 3] = rgb[0]; hc[i * 3 + 1] = rgb[1]; hc[i * 3 + 2] = rgb[2];
+    // Toward the plain's own colour at the outer edge: the globe past it
+    // takes that colour on round the patch (siteColor), so the seam is one tone.
+    const e = ringEdge(Math.hypot(x, z));
+    const plain = profile.ground.plain;
+    hc[i * 3] = rgb[0] + (plain[0] - rgb[0]) * e; hc[i * 3 + 1] = rgb[1] + (plain[1] - rgb[1]) * e; hc[i * 3 + 2] = rgb[2] + (plain[2] - rgb[2]) * e;
   }
   hGeom.setAttribute('color', new THREE.BufferAttribute(hc, 3));
   hGeom.computeVertexNormals();
@@ -302,7 +424,16 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
   // ── Rocks: three cuts in two stones, chunked so the camera culls them. ──
   const rockGeoms = [rockGeometry(1, 1), rockGeometry(2, lite ? 1 : 2), rockGeometry(3, lite ? 1 : 2)];
   // Two stones in one material: the colour rides on the instance.
-  const rockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, metalness: 0.02, normalMap: maps.normal, normalScale: new THREE.Vector2(0.5, 0.5) });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.88, metalness: 0.02, normalMap: maps.normal, normalScale: new THREE.Vector2(0.7, 0.7) });
+  // Boulders take the air and the rim, and a finer second grain so the stone is not a smooth potato up close.
+  withHaze(rockMat, `world-rock|${profile.id}`, false, (shader) => {
+    injectRim(shader, rimColor);
+    shader.fragmentShader = shader.fragmentShader.replace('#include <normal_fragment_maps>', `
+      vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;
+      vec3 mapN2 = texture2D( normalMap, vNormalMapUv * 4.13 + vec2( 0.17, 0.61 ) ).xyz * 2.0 - 1.0;
+      mapN = normalize( vec3( mapN.xy * normalScale + mapN2.xy * normalScale * 0.6, mapN.z * mapN2.z ) );
+      normal = normalize( tbn * mapN );`);
+  });
   const stones = [new THREE.Color(G.rockA), new THREE.Color(G.rockB)];
   const perCut = Math.round((lite ? 80 : 160) * density);
   const rocks = new THREE.Group();
@@ -349,7 +480,7 @@ export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density =
   });
 
   return {
-    mesh, rocks, horizon, heightAt, normalAt, floorAt,
+    mesh, rocks, horizon, heightAt, normalAt, floorAt, groundAt, slopeAt, grain: maps.normal,
     dispose() {
       geom.dispose(); hGeom.dispose(); mat.dispose();
       maps.map.dispose(); maps.normal.dispose(); maps.rough.dispose();

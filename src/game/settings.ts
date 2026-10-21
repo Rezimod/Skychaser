@@ -3,7 +3,7 @@
 
 import { setSoundVolume, soundVolume } from '@/lib/solar-system/sound-prefs';
 
-export type QualityPreset = 'auto' | 'performance' | 'balanced' | 'high';
+export type QualityPreset = 'auto' | 'performance' | 'balanced' | 'high' | 'ultra';
 
 export interface GameSettings {
   /** Which preset drives DPR, shadows and effects. Only `auto` exists until the performance pass. */
@@ -43,7 +43,7 @@ function read(): GameSettings {
     const v = JSON.parse(raw) as Partial<GameSettings> & { v?: number };
     if (v.v !== VERSION) return { ...d, volume: soundVolume() };
     return {
-      quality: v.quality === 'performance' || v.quality === 'balanced' || v.quality === 'high' ? v.quality : 'auto',
+      quality: v.quality === 'performance' || v.quality === 'balanced' || v.quality === 'high' || v.quality === 'ultra' ? v.quality : 'auto',
       sensitivity: clamp(v.sensitivity, SENSITIVITY_RANGE, d.sensitivity),
       invertY: v.invertY === true,
       fov: clamp(v.fov, FOV_RANGE, d.fov),

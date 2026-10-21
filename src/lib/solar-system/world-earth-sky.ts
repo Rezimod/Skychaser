@@ -9,6 +9,12 @@
 //
 // The eye adapts: one number takes the scene from a noon sky to a night one
 // without the night going black, and every light in the scene is scaled by it.
+//
+// Climbing (surface-orbit `setAltitude`), the dome is laid out against the
+// true horizon, which sinks below the level, its air fades to black space by
+// 60 km, and the cloud deck, 2.2 km over a camera on the ground, is passed
+// through and gone by 3.2 km above the sea; the globe under the dome has
+// clouds of its own.
 
 import * as THREE from 'three';
 import { Body, Illumination } from '@/lib/solar-system/astronomy';
@@ -20,6 +26,7 @@ import {
 } from '@/lib/solar-system/world-earth-atmosphere';
 import { azAltToDir, bodyAzAlt, moonState } from '@/lib/solar-system/world-earth-tonight';
 import { haze } from '@/lib/solar-system/world-earth-haze';
+import { skyAt } from '@/lib/solar-system/surface-orbit';
 
 /** Display units per unit of solar irradiance: a clear noon zenith near 0.25, the horizon under
  *  the bloom threshold, so the sky never glows over the scene. */
@@ -30,6 +37,9 @@ const CD_PER_UNIT = 1.2e5;
 const CITY_GLOW_CD = 6.8e-3;
 const MAX_ADAPT = 2.2e4;
 const DOME = 1800;
+/** The cloud deck over a camera on the ground, m; and the height above the sea below which the camera counts as on the ground. */
+const DECK = 2200;
+const DECK_FLOOR = 1000;
 
 export interface SkyState {
   /** The scene's clock, refreshed about once a second of scene time; `dateMs` is exact every frame. */
@@ -64,6 +74,8 @@ export interface EarthSky {
   setWeather: (cloud: number, visibilityM: number) => void;
   /** Advance the clock by dt seconds of real time and follow the camera. */
   update: (dt: number, cameraPos: THREE.Vector3) => void;
+  /** The camera's height above sea level, m: the air thins to space, the horizon sinks, the deck goes. */
+  setAltitude: (altitudeM: number, cameraPos: THREE.Vector3) => void;
   dispose: () => void;
 }
 
@@ -74,6 +86,7 @@ const DomeShader = {
     uniform vec3 uSunDir; uniform vec3 uMoonDir; uniform float uMoonK;
     uniform vec3 uSunDisc; uniform vec3 uGlow; uniform float uGain;
     uniform float uCloud; uniform float uTime; uniform vec3 uCloudLit; uniform vec3 uCloudShade; uniform vec2 uWind;
+    uniform float uAir; uniform float uDip; uniform float uDeck;
     varying vec3 vDir;
     vec3 lut(sampler2D t, float peak, vec3 d, vec3 L) {
       float el = asin(clamp(d.y, -1.0, 1.0));
@@ -89,15 +102,20 @@ const DomeShader = {
       return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
     float fbm(vec2 p) { float s = 0.0; float a = 0.5; for (int i = 0; i < 5; i++) { s += a * vn(p); p = p * 2.03 + vec2(1.7, 9.2); a *= 0.5; } return s; }
     void main() {
-      vec3 d = normalize(vDir);
+      vec3 v = normalize(vDir);
+      // The air against the true horizon, which sinks by uDip below the level with height.
+      float vel = asin(clamp(v.y, -1.0, 1.0)) + uDip;
+      vec3 d = vec3(normalize(v.xz + vec2(1e-6)) * cos(vel), sin(vel)).xzy;
       vec3 col = lut(uSunLut, uSunLutMax, d, uSunDir) + lut(uMoonLut, uMoonLutMax, d, uMoonDir) * uMoonK;
       float up = max(d.y, 0.0);
       col += uGlow * (0.3 + 1.8 * pow(1.0 - up, 6.0));
-      float cs = dot(d, uSunDir);
+      // How much of the air is over the camera: none in space. The disc stays.
+      col *= uAir;
+      float cs = dot(v, uSunDir);
       col += uSunDisc * smoothstep(0.99997, 0.999985, cs) + uSunDisc * 0.03 * pow(max(cs, 0.0), 900.0);
-      if (uCloud > 0.01 && d.y > 0.004) {
-        // A deck at 2.2 km: where the line of sight crosses it, and how far away that is.
-        vec2 hit = d.xz / d.y * 2200.0;
+      if (uCloud > 0.01 && uDeck > 1.0 && d.y > 0.004) {
+        // The deck, uDeck over the eye: where the line of sight crosses it, and how far away that is.
+        vec2 hit = d.xz / d.y * uDeck;
         float dist = length(hit);
         vec2 p = hit / 2600.0 + uWind * uTime;
         float n = fbm(p) * 0.75 + fbm(p * 3.1 + 4.0) * 0.25;
@@ -105,7 +123,8 @@ const DomeShader = {
         float fade = exp(-dist / 26000.0);
         float lit = 0.55 + 0.45 * pow(max(dot(d, uSunDir), 0.0), 3.0);
         vec3 cloud = mix(uCloudShade, uCloudLit, lit * (1.0 - n * 0.5));
-        col = mix(col, cloud, cover * fade * 0.94);
+        // Thinning out as the camera climbs into it, rather than gone at once.
+        col = mix(col, cloud * max(uAir, 0.2), cover * fade * 0.94 * smoothstep(0.0, 400.0, uDeck));
       }
       col *= uGain;
       col *= mix(0.4, 1.0, smoothstep(-0.08, 0.0, d.y));
@@ -165,6 +184,8 @@ export function makeEarthSky(renderer: THREE.WebGLRenderer, lite: boolean, start
     uGain: { value: SKY_SCALE }, uCloud: { value: 0 }, uTime: { value: 0 },
     uCloudLit: { value: new THREE.Vector3(1, 1, 1) }, uCloudShade: { value: new THREE.Vector3(0.5, 0.5, 0.55) },
     uWind: { value: new THREE.Vector2(0.0011, 0.0004) },
+    /** 1 on the ground, 0 in space; the horizon's dip, rad; the cloud deck's height over the eye, m. */
+    uAir: { value: 1 }, uDip: { value: 0 }, uDeck: { value: DECK },
   };
   const domeGeom = new THREE.SphereGeometry(DOME, lite ? 32 : 48, lite ? 16 : 24);
   const domeMat = new THREE.ShaderMaterial({ ...DomeShader, uniforms, side: THREE.BackSide, depthWrite: false, depthTest: false });
@@ -224,6 +245,13 @@ export function makeEarthSky(renderer: THREE.WebGLRenderer, lite: boolean, start
   const handle: EarthSky = {
     group, environment: null as unknown as THREE.Texture, state,
     setDate: () => {}, setWeather: () => {}, update: () => {}, dispose: () => {},
+    setAltitude(altitudeM) {
+      const k = skyAt('earth', altitudeM);
+      uniforms.uAir.value = k.air;
+      uniforms.uDip.value = k.dip;
+      // Every walkable place in Tbilisi is under the floor, where the deck is where it always was.
+      uniforms.uDeck.value = Math.max(0, DECK - Math.max(0, altitudeM - DECK_FLOOR));
+    },
   };
 
   const tmpRgb = [0, 0, 0];
@@ -292,8 +320,12 @@ export function makeEarthSky(renderer: THREE.WebGLRenderer, lite: boolean, start
     // The disc itself stays out of the reflections: a point that bright only turns metal into glare.
     const disc = uniforms.uSunDisc.value.clone();
     uniforms.uSunDisc.value.set(0, 0, 0);
+    // The reflections are the sky from the ground, whatever height the camera is at.
+    const air = uniforms.uAir.value; const dip = uniforms.uDip.value; const deck = uniforms.uDeck.value;
+    uniforms.uAir.value = 1; uniforms.uDip.value = 0; uniforms.uDeck.value = DECK;
     const next = pmrem.fromScene(envScene, 0.04);
     uniforms.uSunDisc.value.copy(disc);
+    uniforms.uAir.value = air; uniforms.uDip.value = dip; uniforms.uDeck.value = deck;
     envTarget?.dispose();
     envTarget = next;
     handle.environment = next.texture;

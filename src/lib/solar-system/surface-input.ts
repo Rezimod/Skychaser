@@ -17,6 +17,8 @@ export interface FootStick {
   sprint: boolean;
   walk: boolean;
   crouch: boolean;
+  /** Held: the jetpack (the jump key kept down in the air, or its own key). */
+  jet?: boolean;
 }
 
 export interface SprintLatch {
@@ -51,6 +53,7 @@ export function walkFromStick(out: WalkInput, s: FootStick, camYaw: number, jump
   out.walk = s.walk;
   out.crouch = s.crouch;
   out.jump = jumpEdge;
+  out.jet = !!s.jet && !s.crouch;
   out.work = work;
   return out;
 }
@@ -96,4 +99,10 @@ export function makePressEdge(): PressEdge {
 /** The helmet lamp: a warm pool of light a couple of metres ahead of the visor. */
 export function headlamp(pool: LightPool, crew: { x: number; y: number; z: number }, yaw: number) {
   pool.request(crew.x + Math.sin(yaw) * 2.4, crew.y + 1.1, crew.z + Math.cos(yaw) * 2.4, 0xfff1dc, 7, 14, 1.6);
+}
+
+/** The jet's flame: a blue-white light under the pack, behind the crew, as strong as the throttle `k`. */
+export function jetLight(pool: LightPool, crew: { x: number; y: number; z: number }, yaw: number, k: number) {
+  if (k <= 0.02) return;
+  pool.request(crew.x - Math.sin(yaw) * 0.45, crew.y + 0.7, crew.z - Math.cos(yaw) * 0.45, 0x9fd0ff, 9 * k, 6, 1.6);
 }

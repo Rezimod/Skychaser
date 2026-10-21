@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import {
-  classifyLanding, gaitProfile, makeLocomotion, EARTH_G, JUMP_MIN_APEX, LUNAR_G, turnRate, type Collider, type GaitProfile, type WalkInput,
+  classifyLanding, gaitProfile, makeLocomotion, EARTH_G, JET, JUMP_MIN_APEX, LUNAR_G, turnRate, type Collider, type GaitProfile, type WalkInput,
 } from '@/lib/solar-system/suit-locomotion';
 import { STEP_UP, STEP_DOWN, vaultProbe } from '@/lib/solar-system/suit-collision';
 import { MARS, PROXIMA_B } from '@/lib/solar-system/world-profiles';
@@ -386,6 +386,86 @@ describe('Earth gravity, helmet off', () => {
   });
 });
 
+describe('the jetpack in the air', () => {
+  /** Jump, then hold the jet from the top of the arc for `seconds`. */
+  const flight = (w: ReturnType<typeof walker>, seconds: number, over: Partial<WalkInput> = {}) => {
+    w.loco.update(DT, input({ jump: true }), flat, [], 999);
+    let apexVy = 9;
+    while (w.velocity.y > 0 && w.velocity.y <= apexVy) { apexVy = w.velocity.y; w.run(DT); }
+    let maxVy = -9; let maxY = 0;
+    for (let t = 0; t < seconds; t += DT) {
+      w.run(DT, { jet: true, ...over });
+      maxVy = Math.max(maxVy, w.velocity.y);
+      maxY = Math.max(maxY, w.position.y);
+    }
+    return { maxVy, maxY };
+  };
+
+  it('raises velocity.y and climbs to its speed on the Moon; a plain jump only falls from the apex', () => {
+    const w = walker(moon);
+    const { maxVy, maxY } = flight(w, 1.5);
+    expect(w.loco.state.jetting).toBe(true);
+    expect(w.loco.state.gait).toBe('air');
+    expect(maxVy).toBeGreaterThan(2.5);
+    expect(maxVy).toBeLessThan(JET.climb * 1.05);
+    expect(maxY).toBeGreaterThan((moon.hop * moon.hop) / (2 * moon.g) + 2);
+    const plain = walker(moon);
+    const p = flight(plain, 1.5, { jet: false });
+    expect(p.maxVy).toBeLessThanOrEqual(0.05);
+    expect(plain.loco.state.jetting).toBe(false);
+  });
+
+  it('still lifts on Mars and Proxima b', () => {
+    for (const p of [mars, proxima]) {
+      const w = walker(p);
+      const { maxVy } = flight(w, 1);
+      expect(maxVy).toBeGreaterThan(1.2);
+      expect(w.loco.state.jetting).toBe(true);
+    }
+  });
+
+  it('gives nothing without fuel, and the tank comes back on the ground', () => {
+    const w = walker(moon);
+    w.loco.jet.state.fuel = 0;
+    const { maxVy } = flight(w, 1);
+    expect(maxVy).toBeLessThanOrEqual(0.05);
+    expect(w.loco.state.jetting).toBe(false);
+    let t = 0;
+    while ((!w.loco.state.grounded || t < 0.2) && t < 10) { w.run(DT); t += DT; }
+    expect(w.loco.state.grounded).toBe(true);
+    w.run(JET.regenDelay + 1 / JET.regen + 0.2);
+    expect(w.loco.state.jetFuel).toBe(1);
+  });
+
+  it('never lights on the ground, in a lope\'s stride, or while the jump key is merely tapped', () => {
+    const w = walker(moon);
+    w.run(1, { jet: true });
+    expect(w.loco.state.jetting).toBe(false);
+    expect(w.loco.state.jetFuel).toBe(1);
+    // A jog's flights are short hops between steps: the held key stays quiet through them.
+    let lit = false;
+    w.run(4, { moveZ: 0.6, jet: true }, () => { lit ||= w.loco.state.jetting; });
+    expect(lit).toBe(false);
+    expect(w.loco.state.jetFuel).toBe(1);
+    // One step of jump with the key let go the step after: a jump, no burn.
+    const j = walker(moon);
+    j.loco.update(DT, input({ jump: true, jet: true }), flat, [], 999);
+    j.run(2);
+    expect(j.loco.state.jetFuel).toBe(1);
+  });
+
+  it('burns from the throttle, eased, so the flame and the roar never snap', () => {
+    const w = walker(moon);
+    w.loco.update(DT, input({ jump: true }), flat, [], 999);
+    w.run(0.3, { jet: true });
+    expect(w.loco.state.jetK).toBeGreaterThan(0.5);
+    expect(w.loco.state.jetK).toBeLessThan(1);
+    w.run(DT, { jet: false });
+    expect(w.loco.state.jetting).toBe(false);
+    expect(w.loco.state.jetK).toBeGreaterThan(0.3);
+  });
+});
+
 describe('the suit on the mesh', () => {
   const ctx = new Proxy({}, { get: (_t, k) => (k === 'createImageData' ? (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }) : () => {}) });
   const dust: DustHandle = { points: new THREE.Points(), burst: vi.fn(), setCap: vi.fn(), update: vi.fn(), dispose: vi.fn() };
@@ -415,6 +495,57 @@ describe('the suit on the mesh', () => {
       expect(worst).toBeLessThan(0.03);
       c.dispose();
     }
+    HTMLCanvasElement.prototype.getContext = getContext;
+  });
+
+  it('carries the jet to the suit: the state, the flame and the sparks', async () => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ctx) as never;
+    const { makeCosmonaut } = await import('@/lib/solar-system/moon-cosmonaut');
+    const scene = new THREE.Scene();
+    const c = makeCosmonaut(dust, true);
+    scene.add(c.group);
+    c.settle();
+    c.update(DT, input({ jump: true }), flat, [], 999);
+    for (let i = 0; i < 60; i++) { c.update(DT, input({ jet: true }), flat, [], 999); c.present(1); }
+    expect(c.state.jetting).toBe(true);
+    expect(c.state.anim).toBe('jet');
+    expect(c.state.jetFuel).toBeLessThan(1);
+    expect(c.state.jetK).toBeGreaterThan(0.5);
+    // The sparks ride under the suit's group but stay in world space: their
+    // world matrix is identity when they draw, whatever the suit has done.
+    const sparks = c.group.children.find((o) => o.name === 'jet-sparks') as THREE.Points;
+    expect(sparks).toBeDefined();
+    c.group.position.set(3, 1, -2);
+    c.group.updateMatrixWorld(true);
+    sparks.onBeforeRender(null as never, scene, null as never, sparks.geometry, sparks.material as THREE.Material, null as never);
+    expect(sparks.matrixWorld.equals(new THREE.Matrix4())).toBe(true);
+    const flame = c.group.getObjectByName('nozzle')!.children.find((o) => o.children.length > 0)!;
+    expect(flame.scale.y).toBeGreaterThan(0.3);
+    // Down again: the landing after a flight kicks up a bigger cloud than a step.
+    (dust.burst as ReturnType<typeof vi.fn>).mockClear();
+    let t = 0;
+    while (!c.state.grounded && t < 10) { c.update(DT, input(), flat, [], 999); t += DT; }
+    expect(dust.burst).toHaveBeenCalled();
+    const counts = (dust.burst as ReturnType<typeof vi.fn>).mock.calls.map((a) => (a[0] as { count: number }).count);
+    expect(Math.max(...counts)).toBeGreaterThanOrEqual(34);
+    expect(c.state.jetting).toBe(false);
+    c.dispose();
+    expect(c.group.children.find((o) => o.name === 'jet-sparks')).toBeUndefined();
+    HTMLCanvasElement.prototype.getContext = getContext;
+  });
+
+  it('has no jet without a pack (a world with air)', async () => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = (() => ctx) as never;
+    const { makeCosmonaut } = await import('@/lib/solar-system/moon-cosmonaut');
+    const c = makeCosmonaut(dust, true, EARTH_G, false, true);
+    c.settle();
+    c.update(DT, input({ jump: true }), flat, [], 999);
+    for (let i = 0; i < 40; i++) c.update(DT, input({ jet: true }), flat, [], 999);
+    expect(c.state.jetting).toBe(false);
+    expect(c.state.jetFuel).toBe(1);
+    c.dispose();
     HTMLCanvasElement.prototype.getContext = getContext;
   });
 

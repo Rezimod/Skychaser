@@ -9,7 +9,8 @@ import { makeInteractions } from '@/lib/solar-system/moon-interactions';
 import type { LightPool } from '@/lib/solar-system/moon-lights';
 import type { DustHandle } from '@/lib/solar-system/moon-fx';
 import { makeAliens, GREETINGS_TO_LEAD, NOTICE_RANGE, POLITE_DISTANCE, LOSE_RANGE } from '@/lib/solar-system/world-aliens';
-import { LANDING_SITES, MARS, PROXIMA_B, isWorldId } from '@/lib/solar-system/world-profiles';
+import { EARTH, LANDING_SITES, MARS, PROXIMA_B, isWorldId } from '@/lib/solar-system/world-profiles';
+import { cloudSteps } from '@/lib/solar-system/world-clouds';
 import { gaitProfile, LUNAR_G } from '@/lib/solar-system/suit-locomotion';
 
 const flat = () => 0;
@@ -118,6 +119,43 @@ describe('walking on a heavier world', () => {
     expect(prox.brake).toBeGreaterThan(mars.brake);
     expect(mars.brake).toBeGreaterThan(moon.brake);
     expect(prox.cadenceRun).toBeGreaterThan(mars.cadenceRun);
+  });
+});
+
+describe('the air and the sky over the other worlds', () => {
+  it('Mars scatters red and eats blue; Proxima b scatters blue under a red star', () => {
+    expect(MARS.atmosphere.rayleigh[0]).toBeGreaterThan(MARS.atmosphere.rayleigh[2]);
+    expect(MARS.atmosphere.absorb[2]).toBeGreaterThan(MARS.atmosphere.absorb[0]);
+    expect(PROXIMA_B.atmosphere.rayleigh[2]).toBeGreaterThan(PROXIMA_B.atmosphere.rayleigh[0]);
+    for (const p of [MARS, PROXIMA_B]) {
+      expect(p.atmosphere.hazeBeta).toBeGreaterThan(0);
+      expect(p.atmosphere.mieG).toBeGreaterThan(0);
+      expect(p.atmosphere.mieG).toBeLessThan(1);
+      expect(p.clouds).not.toBeNull();
+      expect(p.formations).not.toBeNull();
+      expect(p.crystals).not.toBeNull();
+    }
+  });
+
+  it('only Proxima b has the ringed giant, about twenty-four degrees across; Mars keeps its two moons', () => {
+    expect(MARS.giant).toBeNull();
+    expect(MARS.sky.moons.map((m) => m.id)).toEqual(['phobos', 'deimos']);
+    expect(PROXIMA_B.giant?.angularDeg).toBeCloseTo(24, 0);
+    expect(PROXIMA_B.giant!.ringOuter).toBeGreaterThan(PROXIMA_B.giant!.ringInner);
+    expect(PROXIMA_B.giant!.dir.y).toBeGreaterThan(0.15);
+  });
+
+  it('Earth brings none of it: its sky and air are the real ones', () => {
+    expect(EARTH.clouds).toBeNull();
+    expect(EARTH.giant).toBeNull();
+    expect(EARTH.formations).toBeNull();
+    expect(EARTH.crystals).toBeNull();
+  });
+
+  it('the cloud march steps with the preset: none, coarse, full', () => {
+    expect(cloudSteps(0)).toBe(0);
+    expect(cloudSteps(1)).toBe(4);
+    expect(cloudSteps(2)).toBe(10);
   });
 });
 
