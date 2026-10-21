@@ -394,8 +394,8 @@
 .sd-pay__wallet-list button:hover { background: rgba(255, 255, 255, 0.05); color: var(--sd-ink); }
 .sd-pay .sd-btn--primary { min-height: 52px; }
 .sd-pay__connect { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
-.sd-pay__alt, .sd-pay__minor button { align-self: center; padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
-.sd-pay__alt:hover, .sd-pay__minor button:hover:not(:disabled) { color: var(--sd-accent-ink); }
+.sd-pay__minor button { align-self: center; padding: 4px 0; border: 0; background: none; color: var(--sd-ink-2); font: 500 13px var(--sd-sans); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--sd-rule-strong); cursor: pointer; }
+.sd-pay__minor button:hover:not(:disabled) { color: var(--sd-accent-ink); }
 .sd-pay__minor { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px 18px; }
 .sd-pay__minor button:disabled { color: var(--sd-ink-4); cursor: default; }
 .sd-pay__note { margin: 0; font: 500 12px var(--sd-mono); color: var(--sd-ink-2); overflow-wrap: anywhere; }

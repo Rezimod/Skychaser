@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
@@ -37,6 +37,42 @@ export default function SkychaserBuyCard({
   const [done, setDone] = useState<Confirmation | null>(null);
   const [error, setError] = useState('');
   const [placing, setPlacing] = useState(false);
+  /** Pressed Buy while logged out: the purchase carries on once the login lands. */
+  const [wantBuy, setWantBuy] = useState(false);
+
+  const place = async () => {
+    if (!address) {
+      setError('This account has no Solana wallet yet.');
+      return;
+    }
+    setPlacing(true);
+    setError('');
+    try {
+      const token = await getAccessToken();
+      const res = await fetch('/api/skychaser/cards/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ walletAddress: address, designation }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? 'The order could not be placed.');
+        return;
+      }
+      setOrder(data as SkychaserOrder);
+    } catch {
+      setError('The order could not be placed. Try again in a moment.');
+    } finally {
+      setPlacing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!wantBuy || !ready || !authenticated || !address) return;
+    setWantBuy(false);
+    void place();
+    // place reads the current address; it runs once, when the login lands.
+  }, [wantBuy, ready, authenticated, address]);
 
   if (!released) {
     return <p className="sd-note">Direct sale opens when Genesis is released. Until then, every card comes out of a capsule.</p>;
@@ -70,38 +106,11 @@ export default function SkychaserBuyCard({
     );
   }
 
-  const place = async () => {
-    if (!address) {
-      setError('This account has no Solana wallet yet.');
-      return;
-    }
-    setPlacing(true);
-    setError('');
-    try {
-      const token = await getAccessToken();
-      const res = await fetch('/api/skychaser/cards/buy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ walletAddress: address, designation }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? 'The order could not be placed.');
-        return;
-      }
-      setOrder(data as SkychaserOrder);
-    } catch {
-      setError('The order could not be placed. Try again in a moment.');
-    } finally {
-      setPlacing(false);
-    }
-  };
-
   // Paid, but no edition could be spared by then: say so, and that it is refunded.
   if (done && !done.edition) {
     return <p className="sd-data">{done.error ?? 'The payment arrived, but no edition could be allocated. It will be refunded.'}</p>;
   }
-  if (order) return <SkychaserPay order={order} onConfirmed={setDone} />;
+  if (order) return <SkychaserPay order={order} onConfirmed={setDone} autoPay onExpired={() => { setOrder(null); void place(); }} />;
 
   return (
     <>
@@ -111,8 +120,15 @@ export default function SkychaserBuyCard({
             {placing ? 'Placing' : `Buy direct — $${priceUsd}`}
           </button>
         ) : (
-          <button type="button" className="sd-btn sd-btn--primary" onClick={() => login()}>
-            Log in to buy
+          <button
+            type="button"
+            className="sd-btn sd-btn--primary"
+            onClick={() => {
+              setWantBuy(true);
+              login();
+            }}
+          >
+            Buy direct — ${priceUsd}
           </button>
         )}
       </div>

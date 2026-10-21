@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSkychaserSession, type SolanaWallets } from './SkychaserAuth';
 import { usePrivySafe } from './usePrivySafe';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
@@ -54,11 +54,17 @@ export default function SkychaserPay({
   order,
   onConfirmed,
   compact = false,
+  autoPay = false,
+  onExpired,
 }: {
   order: SkychaserOrder;
   onConfirmed: (c: Confirmation) => void;
   /** Tighter spacing, for the capsule sheet. */
   compact?: boolean;
+  /** Asks the wallet to sign as soon as the order is shown: the Buy press was the only one needed. */
+  autoPay?: boolean;
+  /** When given, an expired quote offers a fresh one instead of a dead button. */
+  onExpired?: () => void;
 }) {
   const { getAccessToken } = usePrivySafe();
   const session = useSkychaserSession().state;
@@ -129,9 +135,8 @@ export default function SkychaserPay({
     setNote('Sent, but not confirmed yet. Press “Check payment” in a moment.');
   };
 
-  // A wallet the holder connected (Phantom, Solflare…) is the one they mean to pay from; the account's own wallet only when picked.
-  const wallet = wallets.find((w) => w.address === chosen) ?? wallets.find((w) => !isEmbedded(w));
-  const embedded = wallets.find(isEmbedded);
+  // A wallet the holder connected (Phantom, Solflare…) is the one they mean to pay from; otherwise the account's own wallet.
+  const wallet = wallets.find((w) => w.address === chosen) ?? wallets.find((w) => !isEmbedded(w)) ?? wallets.find(isEmbedded);
   const choose = (address: string) => {
     setChosen(address);
     setNote('');
@@ -157,7 +162,7 @@ export default function SkychaserPay({
       const need = lamports + BigInt(FEE_LAMPORTS + KEEP_LAMPORTS);
       if (BigInt(balance) < need) {
         setShortOf(sol(need));
-        setNote(`This wallet holds ${sol(balance)} SOL. The capsule, its fee and the wallet's reserve need ${sol(need)} SOL.`);
+        setNote(`This wallet holds ${sol(balance)} SOL. The purchase, its fee and the wallet's reserve need ${sol(need)} SOL.`);
         return;
       }
       signing = true;
@@ -186,6 +191,15 @@ export default function SkychaserPay({
       setPaying(false);
     }
   };
+
+  // The Buy press already asked to pay: open the wallet once, as soon as there is one to open.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoPay || autoStarted.current || !wallet || left === 0) return;
+    autoStarted.current = true;
+    void payFromWallet();
+    // payFromWallet reads the current wallet; it runs once, when the wallet first appears.
+  }, [autoPay, wallet, left]);
 
   /** Lets a payment be tried again once a check has found nothing. */
   const retryAfterUnsure = async () => {
@@ -234,14 +248,20 @@ export default function SkychaserPay({
             onConnect={connect}
             disabled={paying || unsure || !!sent}
           />
-          <button
-            type="button"
-            className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : ''}`}
-            onClick={payFromWallet}
-            disabled={paying || !!sent || unsure || left === 0}
-          >
-            {payLabel}
-          </button>
+          {left === 0 && !sent && !unsure && onExpired ? (
+            <button type="button" className="sd-btn sd-btn--primary sd-btn--block" onClick={onExpired}>
+              Get a new price
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`sd-btn sd-btn--primary sd-btn--block${paying ? ' is-loading' : ''}`}
+              onClick={payFromWallet}
+              disabled={paying || !!sent || unsure || left === 0}
+            >
+              {payLabel}
+            </button>
+          )}
         </>
       ) : (
         <>
@@ -258,11 +278,6 @@ export default function SkychaserPay({
             {WalletGlyph}
             Connect wallet
           </button>
-          {embedded && (
-            <button type="button" className="sd-pay__alt" onClick={() => choose(embedded.address)}>
-              Pay from your Skychaser wallet instead
-            </button>
-          )}
         </>
       )}
 

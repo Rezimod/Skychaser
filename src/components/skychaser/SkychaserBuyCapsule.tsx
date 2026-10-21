@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePrivySafe as usePrivy } from './usePrivySafe';
 import { useSkychaserHolder } from './useSkychaserHolder';
@@ -69,6 +69,8 @@ export default function SkychaserBuyCapsule({
   const [error, setError] = useState('');
   /** The set could not fill the capsule: it is withdrawn and refunded, so there is nothing to retry. */
   const [withdrawn, setWithdrawn] = useState(false);
+  /** Pressed Buy while logged out: the purchase carries on once the login lands. */
+  const [wantBuy, setWantBuy] = useState(false);
 
   const post = async (path: string, body: unknown) => {
     const token = await getAccessToken();
@@ -139,6 +141,13 @@ export default function SkychaserBuyCapsule({
     }
   };
 
+  useEffect(() => {
+    if (!wantBuy || !ready || !authenticated || !address) return;
+    setWantBuy(false);
+    void reserve();
+    // reserve reads the current address; it runs once, when the login lands.
+  }, [wantBuy, ready, authenticated, address]);
+
   if (cards) {
     return (
       <div className="sd-buyflow">
@@ -188,14 +197,21 @@ export default function SkychaserBuyCapsule({
           {busy ? <Working label={busy} /> : 'Detonate the star'}
         </button>
       ) : order ? (
-        <SkychaserPay order={order} onConfirmed={confirmed} compact />
+        <SkychaserPay order={order} onConfirmed={confirmed} compact autoPay />
       ) : ready && authenticated ? (
         <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${busy ? ' is-loading' : ''}`} onClick={reserve} disabled={!!busy}>
           {busy ? <Working label={busy} /> : `Buy & detonate — $${priceUsd}`}
         </button>
       ) : (
-        <button type="button" className="sd-btn sd-btn--primary sd-btn--block" onClick={() => login()}>
-          Log in to buy — ${priceUsd}
+        <button
+          type="button"
+          className="sd-btn sd-btn--primary sd-btn--block"
+          onClick={() => {
+            setWantBuy(true);
+            login();
+          }}
+        >
+          {`Buy & detonate — $${priceUsd}`}
         </button>
       )}
 
