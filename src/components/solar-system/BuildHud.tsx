@@ -37,6 +37,8 @@ export function BuildHud({ world, getBuild, canOpen, mount, paused, touch }: Bui
   const buildRef = useRef<BuildHandle | null>(null);
   const syncRef = useRef<BuildSync | null>(null);
   const authRef = useRef({ authenticated, getAccessToken });
+  const availableRef = useRef(available);
+  availableRef.current = available;
   authRef.current = { authenticated, getAccessToken };
   const pausedRef = useRef(paused);
   pausedRef.current = paused;
@@ -53,6 +55,7 @@ export function BuildHud({ world, getBuild, canOpen, mount, paused, touch }: Bui
         syncRef.current = b ? makeBuildSync({
           world, build: b, onState: setSync,
           token: () => (authRef.current.authenticated ? authRef.current.getAccessToken() : Promise.resolve(null)),
+          shared: availableRef.current,
         }) : null;
       }
       if (!b) { setView(null); return; }

@@ -38,6 +38,21 @@ describe('build sync', () => {
     sync.dispose();
   });
 
+  it('on a host with no shared store, builds for the session and never asks the server', async () => {
+    const { b } = fakeBuild();
+    const fetcher = vi.fn(async () => json(200, { signedIn: false, pieces: [] }));
+    const sync = makeBuildSync({ world: 'moon', build: b, token: async () => null, onState: (s) => states.push(s), fetcher: fetcher as unknown as typeof fetch, shared: false });
+    await flush(); await flush();
+    expect(states.at(-1)?.status).toBe('offline');
+    expect(sync.canBuild()).toBe(true);
+    b.onPlace?.(piece());
+    sync.refresh();
+    await flush();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(b.drop).not.toHaveBeenCalled();
+    sync.dispose();
+  });
+
   it('keeps a signed-out player from building while the store answers', async () => {
     const { b } = fakeBuild();
     const fetcher = vi.fn(async () => json(200, { signedIn: false, pieces: [{ id: 'a', scope: 'colony', module: 'pad', x: 91, z: 9, yaw: 0, mine: false }] }));

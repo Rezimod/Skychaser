@@ -24,6 +24,9 @@ export interface BuildSyncOptions {
   token: () => Promise<string | null>;
   onState: (s: SyncState) => void;
   fetcher?: typeof fetch;
+  /** False on a host with no shared store: building works for the session
+   *  and nothing is asked of /api/bases. */
+  shared?: boolean;
 }
 
 export interface BuildSync {
@@ -60,6 +63,7 @@ export function makeBuildSync(o: BuildSyncOptions): BuildSync {
   };
 
   const load = async () => {
+    if (o.shared === false) { state.status = 'offline'; emit(); return; }
     try {
       const res = await f(`/api/bases?world=${o.world}`, { headers: await headers(false), cache: 'no-store', signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) });
       if (!alive) return;
@@ -128,7 +132,7 @@ export function makeBuildSync(o: BuildSyncOptions): BuildSync {
   };
 
   void load();
-  timer = setInterval(() => { void load(); }, POLL_MS);
+  if (o.shared !== false) timer = setInterval(() => { void load(); }, POLL_MS);
 
   return {
     refresh: () => { void load(); },
