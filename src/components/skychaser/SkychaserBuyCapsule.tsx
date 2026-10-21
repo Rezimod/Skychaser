@@ -49,6 +49,8 @@ export default function SkychaserBuyCapsule({
   priceUsd,
   cardsPerCapsule,
   onClose,
+  onExpired,
+  autoBuy = false,
 }: {
   capsuleId: string;
   sequence: number;
@@ -57,6 +59,10 @@ export default function SkychaserBuyCapsule({
   cardsPerCapsule: number;
   /** Passed on to the reveal: where closing it goes, instead of leaving the cards in the page. */
   onClose?: () => void;
+  /** The quote ran out: this capsule stays held until the sweep releases it, so the buyer is offered another. Without it, the page reloads. */
+  onExpired?: () => void;
+  /** Reserve at once, without a press: the buyer already pressed Buy on a capsule whose quote ran out. */
+  autoBuy?: boolean;
 }) {
   const { getAccessToken, login } = usePrivy();
   const { authenticated, ready, address } = useSkychaserHolder();
@@ -70,7 +76,7 @@ export default function SkychaserBuyCapsule({
   /** The set could not fill the capsule: it is withdrawn and refunded, so there is nothing to retry. */
   const [withdrawn, setWithdrawn] = useState(false);
   /** Pressed Buy while logged out: the purchase carries on once the login lands. */
-  const [wantBuy, setWantBuy] = useState(false);
+  const [wantBuy, setWantBuy] = useState(autoBuy);
 
   const post = async (path: string, body: unknown) => {
     const token = await getAccessToken();
@@ -197,7 +203,7 @@ export default function SkychaserBuyCapsule({
           {busy ? <Working label={busy} /> : 'Detonate the star'}
         </button>
       ) : order ? (
-        <SkychaserPay order={order} onConfirmed={confirmed} compact autoPay />
+        <SkychaserPay order={order} onConfirmed={confirmed} compact autoPay onExpired={onExpired ?? (() => window.location.reload())} />
       ) : ready && authenticated ? (
         <button type="button" className={`sd-btn sd-btn--primary sd-btn--block${busy ? ' is-loading' : ''}`} onClick={reserve} disabled={!!busy}>
           {busy ? <Working label={busy} /> : `Buy & detonate — $${priceUsd}`}

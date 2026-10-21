@@ -19,6 +19,8 @@ type OnSale = { id: string; sequence: number; commitment: string; priceUsd: numb
 export default function CapsuleTierSheet({ tier, onClose }: { tier: Tier; onClose: () => void }) {
   const [next, setNext] = useState<OnSale | null | undefined>(undefined);
   const [failed, setFailed] = useState(false);
+  /** Bumped when a quote runs out: the next capsule on sale is read again and bought at once. */
+  const [retry, setRetry] = useState(0);
   const panel = useRef<HTMLDivElement>(null);
   // Lifted to the page's .skychaser root: opened from a sticky panel, the sheet
   // would otherwise stack inside it, under the card grid beside it.
@@ -26,6 +28,7 @@ export default function CapsuleTierSheet({ tier, onClose }: { tier: Tier; onClos
 
   useEffect(() => {
     let live = true;
+    setNext(undefined);
     fetch(`/api/skychaser/capsules?tier=${tier.key}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
       .then((d: { capsules: OnSale[] }) => live && setNext(d.capsules[0] ?? null))
@@ -33,7 +36,7 @@ export default function CapsuleTierSheet({ tier, onClose }: { tier: Tier; onClos
     return () => {
       live = false;
     };
-  }, [tier.key]);
+  }, [tier.key, retry]);
 
   useEffect(() => {
     panel.current?.focus();
@@ -99,12 +102,15 @@ export default function CapsuleTierSheet({ tier, onClose }: { tier: Tier; onClos
                   <span title={next.commitment}>commitment {next.commitment.slice(0, 10)}…</span>
                 </p>
                 <SkychaserBuyCapsule
+                  key={next.id}
                   capsuleId={next.id}
                   sequence={next.sequence}
                   commitment={next.commitment}
                   priceUsd={next.priceUsd}
                   cardsPerCapsule={next.cardsPerCapsule}
                   onClose={onClose}
+                  onExpired={() => setRetry((n) => n + 1)}
+                  autoBuy={retry > 0}
                 />
               </>
             )}
