@@ -17,13 +17,14 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { encodeURL } from '@solana/pay';
 import { sendTelegram } from '@/lib/telegram';
 import BigNumber from 'bignumber.js';
-import { and, desc, eq, gt, inArray, like, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, like, lt, or, sql } from 'drizzle-orm';
 import { card, edition, orders } from '@/lib/schema';
 import { priceToSol } from '@/lib/dealers';
 import { fetchSolPriceRates } from '@/lib/sol-price';
 import { isDirectOnly, isSealed } from './almanac';
 import type { Db } from './attach';
 import { ORDER_WINDOW_MINUTES } from './economics';
+import { bookingTablesMissing, grantCredits } from './booking';
 
 export type OrderRow = typeof orders.$inferSelect;
 
@@ -607,7 +608,7 @@ export const FINALITY_GRACE_MS = 2 * 60_000;
 export const RECHECK_CLOSED_DAYS = 3;
 
 /**
- * Single-card orders whose window (and the finality grace after it) has
+ * Single-card and credits orders whose window (and the finality grace after it) has
  * closed while still pending — the buyer paid and left, or never paid. Each is
  * settled from the chain as the confirm route would: paid inside the window,
  * its edition is allocated; paid late or short, it is owed back; nothing paid,
@@ -622,7 +623,7 @@ export async function settleCardOrders(db: Db, limit = 25): Promise<Array<{ orde
     .from(orders)
     .where(and(
       eq(orders.status, 'pending'),
-      like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
+      or(like(orders.productId, `${CARD_PRODUCT_PREFIX}%`), like(orders.productId, `${CREDITS_PRODUCT_PREFIX}%`)),
       lt(orders.expiresAt, new Date(Date.now() - FINALITY_GRACE_MS)),
     ))
     .orderBy(orders.createdAt)
@@ -647,7 +648,7 @@ async function settleCardOrder(db: Db, order: OrderRow): Promise<string> {
     if (row.status === 'paid') {
       await reportExtraTransfers(order.id, payment.extra);
       await reportSharedTransfers(order.id, payment.shared);
-      await fulfilCardOrder(db, row);
+      await fulfilDirectOrder(db, row);
     }
   } else if (payment.paid) {
     row = await markRefundDue(db, order.id, payment.signature, payment.paidAt, 'paid after its payment window closed');
@@ -697,7 +698,58 @@ export async function fulfilPaidCardOrders(db: Db, limit = 25): Promise<Array<{ 
 }
 
 /**
- * Single-card orders cancelled in the last RECHECK_CLOSED_DAYS, asked again:
+ * What a paid card or credits order bought: its edition, or its credits.
+ * Credits wait, still paid, while the credit tables are missing; the sweep
+ * grants them once booking opens.
+ */
+async function fulfilDirectOrder(db: Db, order: OrderRow): Promise<void> {
+  const credits = creditsInOrder(order.productId);
+  if (credits === null) {
+    await fulfilCardOrder(db, order);
+    return;
+  }
+  try {
+    await grantCredits(db, { privyId: order.privyId, credits, orderId: order.id });
+  } catch (err) {
+    if (!bookingTablesMissing(err)) throw err;
+  }
+}
+
+/**
+ * Credits orders marked paid with no ledger line: the buyer paid and left
+ * before confirming, or paid before the credit tables existed. Each is
+ * granted now, once (the ledger's unique order_id). Throws while the credit
+ * tables are missing; the cron reports that step and runs the rest.
+ */
+export async function grantPaidCredits(db: Db, limit = 25): Promise<Array<{ orderId: string; status: string }>> {
+  const stuck = await db
+    .select()
+    .from(orders)
+    .where(and(
+      eq(orders.status, 'paid'),
+      like(orders.productId, `${CREDITS_PRODUCT_PREFIX}%`),
+      sql`coalesce(${orders.signature}, '') NOT LIKE ${REHEARSAL_PREFIX + '%'}`,
+      sql`NOT EXISTS (SELECT 1 FROM credit_ledger WHERE credit_ledger.order_id = ${orders.id})`,
+    ))
+    .orderBy(orders.createdAt)
+    .limit(limit);
+  const out: Array<{ orderId: string; status: string }> = [];
+  for (const order of stuck) {
+    const credits = creditsInOrder(order.productId);
+    if (credits === null) continue;
+    try {
+      await grantCredits(db, { privyId: order.privyId, credits, orderId: order.id });
+      out.push({ orderId: order.id, status: 'granted' });
+    } catch (err) {
+      console.error('[skychaser/payments] paid credits grant', order.id, err instanceof Error ? err.message : err);
+      out.push({ orderId: order.id, status: 'error' });
+    }
+  }
+  return out;
+}
+
+/**
+ * Single-card and credits orders cancelled in the last RECHECK_CLOSED_DAYS, asked again:
  * a buyer who paid by QR and closed the tab, or whose transfer was final only
  * after the sweep, would otherwise have paid with nothing on record. Anything
  * found now is owed back. Run by the daily cron.
@@ -708,7 +760,7 @@ export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array
     .from(orders)
     .where(and(
       eq(orders.status, 'cancelled'),
-      like(orders.productId, `${CARD_PRODUCT_PREFIX}%`),
+      or(like(orders.productId, `${CARD_PRODUCT_PREFIX}%`), like(orders.productId, `${CREDITS_PRODUCT_PREFIX}%`)),
       gt(orders.expiresAt, new Date(Date.now() - RECHECK_CLOSED_DAYS * 86_400_000)),
     ))
     // Newest first: orders found unpaid stay cancelled, so oldest first would ask about the same ones every day.
@@ -733,7 +785,7 @@ export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array
 export async function refundsOwed(db: Db): Promise<number> {
   const { rows } = (await db.execute(sql`
     SELECT count(*)::int AS n FROM orders
-    WHERE status = 'refund_due' AND (product_id = ${CAPSULE_PRODUCT_ID} OR product_id LIKE ${CARD_PRODUCT_PREFIX + '%'})
+    WHERE status = 'refund_due' AND (product_id = ${CAPSULE_PRODUCT_ID} OR product_id LIKE ${CARD_PRODUCT_PREFIX + '%'} OR product_id LIKE ${CREDITS_PRODUCT_PREFIX + '%'})
   `)) as Rows<{ n: number }>;
   return Number(rows[0]?.n ?? 0);
 }

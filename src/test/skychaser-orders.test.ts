@@ -15,7 +15,7 @@ vi.mock('@solana/web3.js', async (actual) => {
 vi.mock('@/lib/telegram', () => ({ sendTelegram: pay.telegram }));
 import type { Db } from '@/lib/skychaser/attach';
 import { PublicKey } from '@solana/web3.js';
-import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, markPaid, paymentNetworkProblem, recheckClosedCardOrders, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
+import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, grantPaidCredits, markPaid, paymentNetworkProblem, recheckClosedCardOrders, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
@@ -402,6 +402,24 @@ describe('the sweeps', () => {
     expect(await fulfilPaidCardOrders(db)).toEqual([
       { orderId: 'broken', status: 'error' },
       { orderId: 'stuck', status: 'unknown_card' },
+    ]);
+  });
+
+  it('grant paid credits that were never added, and pass over one that fails', async () => {
+    const left = order({ id: 'left', productId: 'skychaser-credits:starter:20', status: 'paid', signature: 'paid-sig' });
+    const broken = order({ id: 'broken', productId: 'skychaser-credits:starter:20', status: 'paid', signature: 'paid-sig-2' });
+    const chain: Record<string, unknown> = {};
+    for (const m of ['from', 'where', 'orderBy']) chain[m] = () => chain;
+    chain.limit = async () => [broken, left];
+    let calls = 0;
+    const execute = vi.fn(async () => {
+      if (calls++ === 0) throw new Error('connection reset');
+      return { rows: [{ added: 1, balance: 20 }] };
+    });
+    const db = { select: () => chain, execute } as unknown as Db;
+    expect(await grantPaidCredits(db)).toEqual([
+      { orderId: 'broken', status: 'error' },
+      { orderId: 'left', status: 'granted' },
     ]);
   });
 
