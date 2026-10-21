@@ -15,7 +15,7 @@ export default function OrbitRing({ designations }: { designations: string[] }) 
       <ul className="sd-orbit__ring" style={{ '--n': designations.length } as React.CSSProperties}>
         {designations.map((d, i) => (
           <li key={d} className="sd-orbit__body" style={{ '--k': i } as React.CSSProperties}>
-            <CardThumb designation={d} />
+            <CardThumb designation={d} small />
           </li>
         ))}
       </ul>

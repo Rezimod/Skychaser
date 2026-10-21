@@ -242,9 +242,12 @@ function ZoomedCard({ zoom, onClosed }: { zoom: Zoom; onClosed: () => void }) {
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(shut);
-      root.style.overflow = overflow;
-      siblings.forEach((element, siblingIndex) => { element.inert = previous[siblingIndex]; });
-      zoom.from.focus({ preventScroll: true });
+      // Opening the page again restyles all of it too: the card goes first, the page opens a frame later.
+      requestAnimationFrame(() => window.setTimeout(() => {
+        root.style.overflow = overflow;
+        siblings.forEach((element, siblingIndex) => { element.inert = previous[siblingIndex]; });
+        zoom.from.focus({ preventScroll: true });
+      }));
     };
   }, [zoom.from]);
 

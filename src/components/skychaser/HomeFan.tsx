@@ -88,7 +88,7 @@ export default function HomeFan() {
                   } as CSSProperties
                 }
               >
-                <CardThumb designation={f.designation} eager />
+                <CardThumb designation={f.designation} eager small />
               </Link>
             );
           })}

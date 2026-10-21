@@ -9,14 +9,16 @@ type Props = {
   /** Given a price, the face is drawn live, with today's price and stock; otherwise the baked face loads. */
   price?: string;
   sub?: ReactNode;
+  /** Never drawn wider than 200px (the home page): the 400px face. */
+  small?: boolean;
 };
 
-export default function CardThumb({ designation, eager = false, price, sub }: Props) {
+export default function CardThumb({ designation, eager = false, price, sub, small = false }: Props) {
   const plate = plateFor(designation);
   if (!plate) return <span className="sd-thumb sd-thumb--blank" aria-hidden="true">{designation}</span>;
   return (
     <div className="sd-thumb" role="img" aria-label={`${plate.name}, ${plate.rname}, Genesis ${plate.num} of ${plate.total}`}>
-      {price ? <CardFront plate={plate} priority={eager} small price={price} sub={sub} u="" /> : <FadeImg src={`${plate.art}/card.webp?v=specimen9`} width={520} height={726} priority={eager} />}
+      {price ? <CardFront plate={plate} priority={eager} small price={price} sub={sub} u="" /> : <FadeImg src={`${plate.art}/card${small ? '-sm' : ''}.webp?v=specimen9`} width={520} height={726} priority={eager} />}
     </div>
   );
 }
