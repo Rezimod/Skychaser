@@ -30,13 +30,13 @@ const POP = 0.5;
 
 /** How big each kind is drawn (the unit stone is about 2 wide and 1.4 tall), and how it is stretched. */
 const LOOK: Record<GemKind, { scale: number; stretch: [number, number, number]; glow: number; body: [number, number, number]; spin: number }> = {
-  diamond: { scale: 0.5, stretch: [1, 1, 1], glow: 3.4, body: [0.75, 0.82, 0.9], spin: 0.9 },
+  diamond: { scale: 0.5, stretch: [1, 1, 1], glow: 2.2, body: [0.42, 0.48, 0.56], spin: 0.9 },
   emerald: { scale: 0.44, stretch: [1.25, 0.9, 0.85], glow: 3.0, body: [0.1, 0.5, 0.22], spin: 0.7 },
   ruby: { scale: 0.42, stretch: [1, 1, 1], glow: 3.2, body: [0.55, 0.04, 0.08], spin: 0.8 },
   sapphire: { scale: 0.42, stretch: [1, 1.1, 1], glow: 3.0, body: [0.08, 0.16, 0.6], spin: 0.8 },
-  ice: { scale: 0.42, stretch: [0.75, 1.8, 0.75], glow: 2.6, body: [0.55, 0.78, 0.9], spin: 0.5 },
-  gold: { scale: 0.42, stretch: [1.15, 0.85, 1], glow: 1.5, body: [1.0, 0.68, 0.2], spin: 0.6 },
-  meteorite: { scale: 0.52, stretch: [1.1, 0.9, 1], glow: 1.9, body: [0.1, 0.085, 0.08], spin: 0.4 },
+  ice: { scale: 0.42, stretch: [0.75, 1.8, 0.75], glow: 1.8, body: [0.3, 0.5, 0.62], spin: 0.5 },
+  gold: { scale: 0.42, stretch: [1.15, 0.85, 1], glow: 0.9, body: [1.0, 0.68, 0.2], spin: 0.6 },
+  meteorite: { scale: 0.52, stretch: [1.1, 0.9, 1], glow: 1.1, body: [0.1, 0.085, 0.08], spin: 0.4 },
 };
 
 export interface GemInstance extends GemSpot {
@@ -111,12 +111,13 @@ export function gemGeometry(lite: boolean): THREE.BufferGeometry {
   // The rock: every corner moved along its own direction by a seeded lump,
   // keyed on where it is so shared corners move together.
   const lump = (v: THREE.Vector3) => {
-    const d = v.clone().setY(v.y + 0.25);
+    const ix = Math.round(v.x * 100); const iz = Math.round(v.z * 100) + Math.round(v.y * 100) * 7;
+    // Each corner pushed off its own direction and out to its own radius: a knobbly lump, no table left.
+    const d = v.clone().setY(v.y * 1.6 + 0.2).add(new THREE.Vector3(hash(ix, iz, 41) - 0.5, hash(ix, iz, 43) - 0.5, hash(ix, iz, 47) - 0.5).multiplyScalar(0.9));
     if (d.lengthSq() < 1e-6) d.set(0, 1, 0);
     d.normalize();
-    const k = hash(Math.round(v.x * 100), Math.round(v.z * 100) + Math.round(v.y * 100) * 7, 31);
-    const r = 0.68 * (0.82 + k * 0.4);
-    return new THREE.Vector3(d.x * r, d.y * r * 0.78 + 0.08, d.z * r);
+    const r = 0.5 + hash(ix, iz, 31) * 0.42;
+    return new THREE.Vector3(d.x * r * 1.1, d.y * r * 0.85 + 0.1, d.z * r);
   };
   const pos: number[] = []; const nrm: number[] = [];
   const e1 = new THREE.Vector3(); const e2 = new THREE.Vector3(); const n = new THREE.Vector3(); const c = new THREE.Vector3();
@@ -334,10 +335,11 @@ export function makeGems(opts: GemsOptions): Gems {
           float glint = pow( max( dot( reflect( -gV, gN ), gL ), 0.0 ), 42.0 );
           float cut = 1.0 - vRough;
           vec3 gCol = vec3( 1.0 );
-          #ifdef USE_INSTANCING_COLOR
-            gCol = vColor;
+          #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
+            gCol = vColor.rgb;
           #endif
-          totalEmissiveRadiance = gCol * vGlow * ( mix( 0.28, 0.6, cut ) + fres * mix( 0.6, 1.3, cut ) ) + vec3( glint * mix( 1.2, 6.0, cut ) * vGlow );
+          // Cut stones glow through; rough ones (a nugget, a meteorite) only at their rims, so they read as solid.
+          totalEmissiveRadiance = gCol * vGlow * ( mix( 0.05, 0.24, cut ) + fres * mix( 0.9, 1.1, cut ) ) + vec3( glint * mix( 1.2, 6.0, cut ) * vGlow );
         }`);
   };
   if (opts.haze) withHaze(stoneMat, `world-gem|${opts.world}`, false, patch);

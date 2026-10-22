@@ -572,7 +572,7 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
       if (wl > 0.1 || hs > 2) {
         const want = wl > 0.1 ? Math.atan2(wantX, wantZ) : Math.atan2(velocity.x, velocity.z);
         const d = wrap(want - loco.yaw);
-        const cap = (2.2 + 18 / (T.accel + 4)) * dt;
+        const cap = (1.6 + T.accel * 0.08) * dt;
         loco.yaw = wrap(loco.yaw + clamp(d * (1 - Math.exp(-dt * 5)), -cap, cap));
       }
     }

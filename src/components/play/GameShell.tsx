@@ -21,6 +21,7 @@ import { CosmicLoader, type LoaderBody, type LoaderVariant } from '@/components/
 import { useLoadingTips } from '@/components/solar-system/useLoadingTips';
 import { warmAudioService } from '@/lib/solar-system/sound-prefs';
 import { isGlobeWorld } from '@/lib/solar-system/planet-frame';
+import { LeaderboardPanel } from './LeaderboardPanel';
 import dynamic from 'next/dynamic';
 import { TitleScreen } from './TitleScreen';
 import { PauseMenu } from './PauseMenu';
@@ -256,6 +257,7 @@ export default function GameShell() {
       {overlay === 'settings' && <SettingsPanel onClose={game.closeOverlay} />}
       {overlay === 'controls' && <ControlsPanel onClose={game.closeOverlay} />}
       {overlay === 'missions' && <MissionsPanel onClose={game.closeOverlay} />}
+      {overlay === 'leaderboard' && <LeaderboardPanel onClose={game.closeOverlay} />}
     </div>
   );
 }

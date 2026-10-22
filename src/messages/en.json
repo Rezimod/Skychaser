@@ -1560,7 +1560,9 @@
         "walk": "W A S D — jog. Shift to sprint, Alt to walk.",
         "jump": "Space — jump. One sixth g: you will be up there a while.",
         "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
-        "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while."
+        "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while.",
+        "fly": "Hold Space to fly: Space climbs, C goes down, Shift flies faster. The pack never runs dry.",
+        "flyTouch": "Hold Jet to fly. In the air the Jump key takes you down — or drag the Jet key down."
       },
       "keys": {
         "r7": "Meteoroids land now and then. They never land on you.",
@@ -1970,7 +1972,8 @@
         "coupling": "Cable coupling",
         "feed": "Feed horn",
         "sample": "Regolith sample"
-      }
+      },
+      "descend": "Down"
     },
     "loading": {
       "title": "Opening the solar system",
@@ -2577,14 +2580,14 @@
         "mouse": "Mouse",
         "wheel": "Wheel"
       },
-      "move": "walk; how far you push picks walk, jog or run",
+      "move": "walk, or fly; how far you push picks walk, jog or run",
       "look": "look around (click once to take the mouse; Esc lets go and pauses)",
       "zoom": "zoom; out past the far stop is the wide view",
       "jump": "jump; on the way down, the descent engine",
-      "jet": "the jetpack: hold in the air to climb; the jump key held does the same. A few seconds of burn, refilled on the ground",
-      "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound",
+      "jet": "the jetpack: hold to take off and climb (the jump key held does the same); let go to hover. It never runs dry",
+      "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound. In flight, faster",
       "walk": "walk on purpose",
-      "crouch": "crouch: slow, low and steady",
+      "crouch": "crouch: slow, low and steady. In flight, hold it to go down",
       "interact": "the thing in front of you: tap to use, hold to work",
       "headlamp": "headlamp on and off",
       "view": "in and out of the helmet",
@@ -2595,8 +2598,8 @@
       "touch": {
         "move": "Left stick — walk; push it to the rim to lope",
         "look": "Right half — drag to look around",
-        "jump": "Jump — bottom right; on the way down, hold the engine key",
-        "jet": "Jet — beside Jump; hold it in the air, or keep holding Jump",
+        "jump": "Jump — bottom right; in flight it takes you down; on the way down, hold the engine key",
+        "jet": "Jet — beside Jump; hold it to fly, drag it down to descend",
         "sprint": "Lope — the key beside the stick",
         "crouch": "Crouch — beside the stick",
         "interact": "The amber key — tap to use, hold to work",

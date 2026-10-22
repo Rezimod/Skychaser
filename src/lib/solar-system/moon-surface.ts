@@ -941,6 +941,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   let descentRoll = 0;
   const walk: WalkInput = { moveX: 0, moveZ: 0, jump: false, run: false, crouch: false, work: false };
   const tmp = new THREE.Vector3();
+  const shadowFocus = new THREE.Vector3();
   const roverVel = new THREE.Vector3();
   const descentFocus = new THREE.Vector3();
   const descentPos = new THREE.Vector3();
@@ -961,7 +962,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     }
     rover.update(h, 0, 0, base.colliders, TERRAIN_WALK_RADIUS);
     const moving = Math.hypot(input.moveX, input.moveY) > 0.2;
-    stick.moveX = input.moveX; stick.moveY = input.moveY; stick.run = input.run; stick.walk = input.walk; stick.crouch = input.crouch; stick.jet = input.jet; stick.descend = !!input.descend;
+    stick.moveX = input.moveX; stick.moveY = input.moveY; stick.run = input.run; stick.walk = input.walk; stick.crouch = input.crouch; stick.jet = input.jet && !base.inside; stick.descend = !!input.descend;
     stick.sprint = sprintFrom(sprintLatch, input.sprint, moving, h);
     walkFromStick(walk, stick, cam.yaw, jump, interactions.prompt.holding);
     const wasTracking = tracking();
@@ -1249,7 +1250,8 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
         chaseTarget.distance = wide ? cam.distance * 4.2 + 14 : inside ? Math.min(cam.distance, 2.8) : cam.distance;
         const flying = cosmonaut.state.flying;
         chaseTarget.speedFrac = flying ? cosmonaut.state.flySpeed : cosmonaut.state.speedFrac;
-        chaseTarget.fovExtra = cosmonaut.state.sprinting ? 5 : 0;
+        // A boost widens the lens further than a sprint does.
+        chaseTarget.fovExtra = flying ? 6 * cosmonaut.state.flySpeed : cosmonaut.state.sprinting ? 5 : 0;
         chaseTarget.flying = flying ? 1 : 0;
         FOOT_CHASE.blocked = nearHab ? base.blocked : null;
         cam.chase(dt, chaseTarget, wide ? WIDE_CHASE : FOOT_CHASE);
@@ -1364,7 +1366,10 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       camera.position.set(crew.x + devCam[0], crew.y + devCam[1], crew.z + devCam[2]);
       camera.lookAt(crew.x, crew.y + 1.0, crew.z);
     }
-    host.followShadow(crew, SUN_DIR);
+    // High in flight, the shadows stay on the ground below rather than round the crew in mid-air.
+    shadowFocus.copy(crew);
+    if (cosmonaut.state.flying && cosmonaut.state.altitude > 6) shadowFocus.y -= cosmonaut.state.altitude - 6;
+    host.followShadow(shadowFocus, SUN_DIR);
     lightPool.flush(crew.x, crew.y, crew.z);
     sky.update(dt, camera, renderer.getPixelRatio());
     if (surfacing > 0) { surfacing = Math.max(0, surfacing - dt * 0.7); post.setBlack(surfacing); }

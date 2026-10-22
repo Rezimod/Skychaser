@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Camera, ChevronsUp, Drill, Flame, Flashlight, Gauge, HelpCircle,
+  Camera, ChevronsDown, ChevronsUp, Drill, Flame, Flashlight, Gauge, HelpCircle,
   LogIn, Menu, Package, Rocket, Trophy, Volume2, VolumeX, Wind, X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeMoonSurface, type MoonSurfaceHandle } from '@/lib/solar-system/moon-surface';
 import type { ShipKind } from '@/lib/solar-system/ship-mesh';
 import { DRILL_BAND } from '@/lib/solar-system/moon-mission';
-import { JET_LOW, motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
 import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { GameStick, tapKey } from './GameStick';
 import { CosmicLoader } from './CosmicLoader';
@@ -164,8 +164,6 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
   const o2BarRef = useRef<HTMLSpanElement>(null);
   const pwrRef = useRef<HTMLSpanElement>(null);
   const pwrBarRef = useRef<HTMLSpanElement>(null);
-  const jetRef = useRef<HTMLSpanElement>(null);
-  const jetBarRef = useRef<HTMLSpanElement>(null);
   const handsRef = useRef<HTMLSpanElement>(null);
   const handsTextRef = useRef<HTMLSpanElement>(null);
   const hrRef = useRef<HTMLSpanElement>(null);
@@ -236,6 +234,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       paused: () => pausedRef.current,
       wake: handle.startAudio,
       onCrouch: setCrouch,
+      flying: () => !!handleRef.current?.telemetry.flying,
       onPauseRequest: () => onPauseRequestRef.current?.(),
       onMap: () => { if (!freeFlyRef.current) setLog((v) => !v); },
       onGearCycle: () => cycleGear(),
@@ -287,6 +286,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
       root.dataset.view = tel.view;
+      // In flight the jump key is the way down (suit-jet.css swaps its face).
+      root.dataset.jetFlying = String(tel.flying);
       root.dataset.driving = String(tel.driving);
       root.dataset.inside = tel.inside;
       const bt = tel.backrooms;
@@ -408,7 +409,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       if (motion.altitude) text(altRef.current, `${tel.altitude.toFixed(1)} m`);
 
       // ── The suit, when it is low, just changed, or in front of the crew. ──
-      const glance = { o2: tel.o2, power: tel.suitPower, sinceChange: tel.pressureAgo, firstPerson: tel.view === 'helmet', jetFuel: tel.jetFuel, jetting: tel.jetting };
+      // The pack never runs dry, so it has no meter: the suit block keeps to the life support.
+      const glance = { o2: tel.o2, power: tel.suitPower, sinceChange: tel.pressureAgo, firstPerson: tel.view === 'helmet' };
       const suit = suitRef.current;
       const suitOn = suitShown(glance);
       show(suit, suitOn);
@@ -418,10 +420,6 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
         if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
         text(pwrRef.current, `${Math.round(tel.suitPower)}%`);
         if (pwrBarRef.current) pwrBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.suitPower))}%`;
-        // The jetpack beside the life support: lit while it burns, blinking when there is little left.
-        suit.dataset.jet = tel.jetFuel < JET_LOW ? 'low' : tel.jetting ? 'on' : '';
-        text(jetRef.current, `${Math.round(tel.jetFuel * 100)}%`);
-        if (jetBarRef.current) jetBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.jetFuel * 100))}%`;
       }
       // ── What is in the crew's hands, and whether the lamp is burning. ──
       const carried = tel.props.carrying;
@@ -594,8 +592,35 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
     c.touchDeck[key] = on;
     c.sync();
   });
-  const jumpKey = deck('jump');
-  const jetKey = deck('jet');
+  /** The jump key: a jump on the ground; in flight, held, the way down. */
+  const jumpKey = hold((on) => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const down = on && !!handleRef.current?.telemetry.flying;
+    c.touchDeck.jump = on && !down;
+    c.touchDeck.descend = down;
+    c.sync();
+  });
+  /** The jet key: held, it lifts off and climbs; dragged down a thumb's width, it descends instead. */
+  const jetFrom = useRef(0);
+  const jetSet = (jet: boolean, descend: boolean) => {
+    const c = controlsRef.current;
+    if (!c || (c.touchDeck.jet === jet && c.touchDeck.descend === descend)) return;
+    c.touchDeck.jet = jet; c.touchDeck.descend = descend;
+    c.sync();
+  };
+  const jetHold = hold((on) => jetSet(on, false));
+  const jetKey = {
+    ...jetHold,
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => { jetFrom.current = e.clientY; jetHold.onPointerDown(e); },
+    onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => {
+      const c = controlsRef.current;
+      if (!c || !(c.touchDeck.jet || c.touchDeck.descend)) return;
+      const dy = e.clientY - jetFrom.current;
+      if (dy > 26) jetSet(false, true);
+      else if (dy < 14) jetSet(true, false);
+    },
+  };
   const throttleKey = deck('throttle');
   /** The action key: pressing it presses the job in front of you; holding it holds it. */
   const useKey = deck('use');
@@ -741,7 +766,6 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
         <div ref={suitRef} className="moon-hud__suit" data-level="ok" role="status" hidden>
           <span className="moon-hud__vital"><i>O₂</i><span ref={o2Ref} /><b className="moon-hud__bar"><i ref={o2BarRef} /></b></span>
           <span className="moon-hud__vital"><i>{t('suitPower')}</i><span ref={pwrRef} /><b className="moon-hud__bar"><i ref={pwrBarRef} /></b></span>
-          <span className="moon-hud__vital moon-hud__vital--jet"><i>{t('jetpack')}</i><span ref={jetRef} /><b className="moon-hud__bar"><i ref={jetBarRef} /></b></span>
         </div>
 
         {/* ── Bottom right: the hands, and the lamp. ── */}
@@ -871,7 +895,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
             <span ref={actionTextRef} />
           </button>
           <button type="button" className="moon-hud__jump" {...jumpKey} aria-label={t('jump')}>
-            <Wind size={18} aria-hidden /><span>{t('jump')}</span>
+            <Wind className="moon-hud__ico-jump" size={18} aria-hidden /><ChevronsDown className="moon-hud__ico-down" size={18} aria-hidden />
+            <span className="moon-hud__word-jump">{t('jump')}</span><span className="moon-hud__word-down">{t('descend')}</span>
           </button>
           <button type="button" className="moon-hud__jet" {...jetKey} aria-label={t('jet')}>
             <Rocket size={18} aria-hidden /><span>{t('jet')}</span>

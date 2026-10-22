@@ -39,6 +39,7 @@ export const GemHud = forwardRef<GemHudHandle>(function GemHud(_props, ref) {
   const toastRef = useRef<HTMLDivElement>(null);
   const seen = useRef(-1);
   const until = useRef(0);
+  const shown = useRef({ gems: -1, total: -1, points: -1 });
   useGemSync();
 
   useImperativeHandle(ref, () => ({
@@ -46,10 +47,12 @@ export const GemHud = forwardRef<GemHudHandle>(function GemHud(_props, ref) {
       const box = boxRef.current;
       const on = tel.phase === 'surface' && tel.gemsTotal > 0;
       if (box && box.hidden === on) box.hidden = !on;
-      const count = `${tel.gems} / ${tel.gemsTotal}`;
-      if (countRef.current && countRef.current.textContent !== count) countRef.current.textContent = count;
-      const pts = tRef.current('points', { n: tel.gemPoints });
-      if (pointsRef.current && pointsRef.current.textContent !== pts) pointsRef.current.textContent = pts;
+      // Only when the numbers move: this runs with the rest of the glass, many times a second.
+      if (shown.current.gems !== tel.gems || shown.current.total !== tel.gemsTotal || shown.current.points !== tel.gemPoints) {
+        shown.current = { gems: tel.gems, total: tel.gemsTotal, points: tel.gemPoints };
+        if (countRef.current) countRef.current.textContent = `${tel.gems} / ${tel.gemsTotal}`;
+        if (pointsRef.current) pointsRef.current.textContent = tRef.current('points', { n: tel.gemPoints });
+      }
       const toast = toastRef.current;
       if (!toast) return;
       // The first paint only learns the count: no toast for what was already held.

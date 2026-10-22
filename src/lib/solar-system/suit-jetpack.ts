@@ -188,6 +188,14 @@ export interface Jetpack {
   reset: () => void;
 }
 
+/** The fastest the crew may come down toward something `h` metres below and
+ *  still be at no more than `stop` m/s when they reach it, on the braking
+ *  a pack with `lift` can give (with a margin), m/s. */
+function approach(h: number, stop: number, rate: number, lift: number): number {
+  const d = Math.max(0, h);
+  return Math.min(stop + d * rate, Math.sqrt(stop * stop + 2 * 0.6 * lift * d));
+}
+
 export function makeJetpack(g = 3): Jetpack {
   const state: JetState = {
     fuel: 1, flying: false, jetting: false, throttle: 0, thrust: 0, ignited: false, flown: false, holdT: 0, airT: 0, groundT: 9,
@@ -246,22 +254,16 @@ export function makeJetpack(g = 3): Jetpack {
       }
       // ── Up, down or hold. ──
       let wy = c.climb && !c.descend ? T.climb : c.descend && !c.climb ? -T.descend : 0;
-      // The fastest the crew may come down toward something `h` metres below
-      // and still be stopped by `stop` m/s at it, on what the pack can brake.
-      const approach = (h: number, stop: number, rate: number) => {
-        const d = Math.max(0, h);
-        return Math.min(stop + d * rate, Math.sqrt(stop * stop + 2 * 0.6 * T.lift * d));
-      };
       if (canLand) {
         // Low over the ground with nothing held up, a hover settles onto it;
         // and a descent eases off over the last metres.
         if (!c.climb && wy <= 0 && alt < JET.settle) wy = -JET.settleSpeed;
-        if (wy < 0) wy = Math.max(wy, -approach(alt, JET.flare, JET.flareRate));
+        if (wy < 0) wy = Math.max(wy, -approach(alt, JET.flare, JET.flareRate, T.lift));
       } else {
         const overSea = !!env.deck && r > env.deck.radius;
         const floor = overSea && env.deck ? env.deck.floor : groundY + JET.hover;
         const above = b.y - floor;
-        if (wy < 0) wy = Math.max(wy, -approach(above, 0, 1.2));
+        if (wy < 0) wy = Math.max(wy, -approach(above, 0, 1.2, T.lift));
         if (above < 0) wy = Math.max(wy, Math.min(3, -above * 1.5));
         // Coming home to a deck from under its rim: up over the top first.
         if (idle && env.deck && b.y < env.deck.top + 2) wy = Math.max(wy, 1.5);
@@ -276,10 +278,14 @@ export function makeJetpack(g = 3): Jetpack {
       const ay = clamp(T.g + (wy - b.vy) / JET.tauV, -T.brake, T.g + T.lift);
       out.x = ax; out.y = ay; out.z = az;
       // The flame follows the push: a light world's hover is a small blue
-      // flame, Jupiter's is a roar, and a hard climb or turn opens it up.
+      // flame, Jupiter's is a roar, and a hard climb or turn opens it up. A
+      // steady climb or cruise needs little more push than a hover, but it
+      // should look and sound like work, so the burn reads the climb and the
+      // speed as well.
       state.thrust = clamp(Math.hypot(ax, Math.max(0, ay), az) / (T.g + T.lift), 0, 1);
       state.flying = true; state.jetting = true;
-      ease(dt, 0.25 + 0.75 * state.thrust);
+      const pace = Math.min(1, Math.hypot(b.vx, b.vz) / T.boost);
+      ease(dt, clamp(0.22 + 0.6 * state.thrust + (wy > 0 ? 0.25 : 0) + 0.2 * pace, 0, 1));
       return out;
     },
     land() {

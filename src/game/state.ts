@@ -12,7 +12,7 @@ export type GameState = 'boot' | 'title' | 'loading' | 'playing' | 'paused' | 'e
 /** What the loading screen is waiting on, in order. */
 export type LoadStage = 'module' | 'build' | 'compile' | 'ready';
 /** `lobby` is the multiplayer lobby: the room to play in, before the game starts. */
-export type Overlay = 'none' | 'settings' | 'controls' | 'missions' | 'lobby';
+export type Overlay = 'none' | 'settings' | 'controls' | 'missions' | 'lobby' | 'leaderboard';
 
 export interface GameSnapshot {
   state: GameState;

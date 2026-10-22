@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, ChevronRight, LogOut, Rocket, RotateCw, Settings, Users } from 'lucide-react';
+import { BookOpen, ChevronRight, Gem, LogOut, Rocket, RotateCw, Settings, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { game } from '@/game/state';
 import { readCheckpoint, type Checkpoint, type GameScene } from '@/game/save';
@@ -95,6 +95,7 @@ export function TitleScreen({ onStart, onMultiplayer }: TitleScreenProps) {
           ))}
         </div>
         <div className="game-title__row">
+          <button type="button" className="game-menu__item" onClick={() => game.openOverlay('leaderboard')}><Gem size={18} aria-hidden /><span>{t('leaderboard.title')}</span></button>
           <button type="button" className="game-menu__item" onClick={() => game.openOverlay('settings')}><Settings size={18} aria-hidden /><span>{t('settings')}</span></button>
           <button type="button" className="game-menu__item game-menu__item--exit" onClick={game.exit}><LogOut size={18} aria-hidden /><span>{t('exitShort')}</span></button>
         </div>

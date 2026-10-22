@@ -509,6 +509,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   let descentRoll = 0;
   const walk: WalkInput = { moveX: 0, moveZ: 0, jump: false, run: false, crouch: false, work: false };
   const tmp = new THREE.Vector3();
+  const shadowFocus = new THREE.Vector3();
   const descentFocus = new THREE.Vector3();
   const descentPos = new THREE.Vector3();
   const wrap = (a: number) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
@@ -751,7 +752,8 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
         footTarget.height = wide ? 2.2 : earth ? EARTH_CHASE.height : 1.35;
         footTarget.distance = wide ? cam.distance * 4.2 + 14 : cam.distance;
         footTarget.speedFrac = flying ? cosmonaut.state.flySpeed : cosmonaut.state.speedFrac;
-        footTarget.fovExtra = cosmonaut.state.sprinting ? 5 : 0;
+        // A boost widens the lens further than a sprint does.
+        footTarget.fovExtra = flying ? 6 * cosmonaut.state.flySpeed : cosmonaut.state.sprinting ? 5 : 0;
         footTarget.flying = flying ? 1 : 0;
         cam.chase(dt, footTarget, wide ? WIDE_TUNE : earth ? EARTH_CHASE : FOOT_TUNE);
         // The head glances after the camera's look.
@@ -824,7 +826,10 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     flora?.update(dt, t);
     gems.update(dt, crew.x, crew.y, crew.z, lightPool, telemetry.phase === 'surface');
     if (aliens && telemetry.phase === 'surface') aliens.update(dt, t, crew.x, crew.z, lightPool);
-    host.followShadow(crew, SUN_DIR);
+    // High in flight, the shadows stay on the ground below rather than round the crew in mid-air.
+    shadowFocus.copy(crew);
+    if (cosmonaut.state.flying && cosmonaut.state.altitude > 6) shadowFocus.y -= cosmonaut.state.altitude - 6;
+    host.followShadow(shadowFocus, SUN_DIR);
     if (telemetry.headlamp && !earth?.driving()) headlamp(lightPool, crew, view === 'helmet' ? cam.yaw + Math.PI : cosmonaut.yaw);
     if (!earth?.driving()) jetLight(lightPool, crew, cosmonaut.yaw, cosmonaut.state.jetK);
     lightPool.flush(crew.x, crew.y, crew.z);
