@@ -59,12 +59,28 @@ export interface PlasmaPalette {
 }
 
 /** Air is nitrogen and oxygen: peach-white at the shield, orange, a rose
- *  wake. Mars is carbon dioxide: more amber, a redder tail. */
-export const PLASMA: Record<'earth' | 'mars' | 'default', PlasmaPalette> = {
+ *  wake. Mars is carbon dioxide: more amber, a redder tail. Venus is carbon
+ *  dioxide too, ninety times as much of it: deeper orange, a burnt wake. The
+ *  giants are hydrogen and helium: a blue-white core, violet round the
+ *  shoulders and the pink of the hydrogen lines in the wake. */
+export const PLASMA: Record<'earth' | 'mars' | 'venus' | 'giant' | 'default', PlasmaPalette> = {
   earth: { core: [1.0, 0.86, 0.74], hot: [1.0, 0.42, 0.17], wake: [0.95, 0.26, 0.3] },
   mars: { core: [1.0, 0.84, 0.6], hot: [1.0, 0.5, 0.14], wake: [0.92, 0.3, 0.1] },
+  venus: { core: [1.0, 0.8, 0.52], hot: [1.0, 0.42, 0.08], wake: [0.9, 0.22, 0.05] },
+  giant: { core: [0.9, 0.88, 1.0], hot: [0.68, 0.42, 1.0], wake: [1.0, 0.3, 0.62] },
   default: { core: [1.0, 0.85, 0.7], hot: [1.0, 0.45, 0.16], wake: [0.95, 0.3, 0.2] },
 };
+
+/** The palette for a world's entry, by its id (any world, globe or not). */
+export function plasmaFor(world: string): PlasmaPalette {
+  switch (world) {
+    case 'earth': return PLASMA.earth;
+    case 'mars': return PLASMA.mars;
+    case 'venus': return PLASMA.venus;
+    case 'jupiter': case 'saturn': case 'uranus': case 'neptune': return PLASMA.giant;
+    default: return PLASMA.default;
+  }
+}
 
 const NOISE3 = /* glsl */ `
 float eh(vec3 p) { p = fract(p * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }

@@ -1314,6 +1314,21 @@
   animation: moon-arrive 1.2s ease-out both;
 }
 @keyframes moon-arrive { from { opacity: 0; } to { opacity: 1; } }
+/* The handover between the flight and a surface (GameWorld): the surface is
+   built and drawn under a zero opacity behind the arrival's last leg, then
+   cross-fades in over the flight; on the way up it fades off the orbit. It
+   takes no pointer while it is not shown, and its own fade-in is the
+   wrapper's, not the arrival animation's. */
+.game-world__surface {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1.1s ease-in-out;
+}
+.game-world__surface[data-shown='true'] { opacity: 1; pointer-events: auto; }
+.game-world__surface > .moon-surface { animation: none; }
 .moon-surface__canvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
 .moon-surface__canvas:active { cursor: grabbing; }
 .moon-hud {
@@ -2311,6 +2326,10 @@
 /* No photograph of Proxima b exists: the Earth's oceans turned rose and its land teal. */
 .cosmic-globe[data-body='proximaB'] .cosmic-globe__map { filter: hue-rotate(120deg) saturate(1.1); }
 .cosmic-globe[data-body='proximaB'] { box-shadow: 0 0 0 1px rgba(255, 150, 200, 0.18), 0 0 22px rgba(255, 120, 180, 0.12); }
+.cosmic-globe[data-body='venus'] { box-shadow: 0 0 0 1px rgba(255, 220, 150, 0.18), 0 0 22px rgba(255, 200, 120, 0.14); }
+.cosmic-globe[data-body='jupiter'], .cosmic-globe[data-body='saturn'] { box-shadow: 0 0 0 1px rgba(255, 220, 170, 0.16), 0 0 22px rgba(255, 210, 160, 0.12); }
+.cosmic-globe[data-body='uranus'] { box-shadow: 0 0 0 1px rgba(150, 230, 240, 0.2), 0 0 22px rgba(120, 220, 240, 0.14); }
+.cosmic-globe[data-body='neptune'] { box-shadow: 0 0 0 1px rgba(110, 150, 255, 0.22), 0 0 22px rgba(80, 120, 255, 0.16); }
 
 /* ── The orrery: a world, and the Moon round it on a tilted orbit. The
    system is one 3D context, so the Moon really passes behind the world. ── */

@@ -11,13 +11,15 @@
 //
 // Inside, the planet is a cube-sphere quadtree of chunks that splits as the
 // camera comes close (planet-globe-tiles.ts), whose heights come from
-// planet-globe-height.ts (procedural Moon and Mars, levelled to the landing
-// site) or from Earth's real elevation streamed as terrarium tiles
-// (planet-globe-terrarium.ts). Chunks are built a row at a time inside a
-// per-frame budget, so a split never stalls a frame; the parent stays drawn
-// until its children are ready. The ground shader, Earth's clouds and the
-// air are in planet-globe-material.ts and planet-globe-atmosphere.ts;
-// optional satellite imagery over Earth in planet-globe-imagery.ts.
+// planet-globe-height.ts (procedural Moon, Mars, Mercury and Venus, levelled
+// to the landing site; the giants' flat 1-bar level) or from Earth's real
+// elevation streamed as terrarium tiles (planet-globe-terrarium.ts). Chunks
+// are built a row at a time inside a per-frame budget, so a split never
+// stalls a frame; the parent stays drawn until its children are ready. The
+// ground shader, the cloud shells (Earth's, and Venus's unbroken deck) and
+// the air are in planet-globe-material.ts and planet-globe-atmosphere.ts;
+// Saturn's rings in planet-globe-rings.ts; optional satellite imagery over
+// Earth in planet-globe-imagery.ts.
 
 import * as THREE from 'three';
 import type { QualityProfile } from '@/game/quality';
@@ -29,7 +31,7 @@ import {
   QuadTree, ChunkBuilder, selectChunks, lodBudget, maxLevelFor, faceToDir, type QuadNode, type ChunkArrays,
 } from '@/lib/solar-system/planet-globe-tiles';
 import {
-  makeProceduralHeight, makeEarthHeight, mareMaskFromLuminance, siteAxes, localToDir, dirToLocal,
+  makeProceduralHeight, makeEarthHeight, makeFlatHeight, isProceduralWorld, mareMaskFromLuminance, siteAxes, localToDir, dirToLocal,
   dirToLatLon, latLonToDir, angleBetween, type HeightField, type SampleContext,
 } from '@/lib/solar-system/planet-globe-height';
 import {
@@ -37,7 +39,10 @@ import {
 } from '@/lib/solar-system/planet-globe-terrarium';
 import { GibsImagery, gibsLevelFor, type ImageryTile } from '@/lib/solar-system/planet-globe-imagery';
 import { GLOBE_AIR, makeAtmosphereShell, type AtmosphereShell } from '@/lib/solar-system/planet-globe-atmosphere';
-import { makeGroundMaterial, makeCloudMaterial, GROUND_LOOK } from '@/lib/solar-system/planet-globe-material';
+import {
+  makeGroundMaterial, makeCloudMaterial, GROUND_LOOK, CLOUD_DETAIL, SUN_FLUX, sunOf, sunIntensityFor,
+} from '@/lib/solar-system/planet-globe-material';
+import { makeGlobeRings, type GlobeRings } from '@/lib/solar-system/planet-globe-rings';
 
 export interface GlobeOptions {
   quality: QualityProfile;
@@ -83,24 +88,44 @@ export interface PlanetGlobe {
   setAtmosphereWeight?: (w: number) => void;
 }
 
-const MAPS: Record<GlobeWorld, { full: string; lite: string }> = {
-  moon: { full: '/solar-system/planets/moon-4k.jpg', lite: '/solar-system/planets/moon.jpg' },
-  mars: { full: '/solar-system/planets/mars-4k.jpg', lite: '/solar-system/planets/mars.jpg' },
-  earth: { full: '/solar-system/planets/earth-4k.jpg', lite: '/solar-system/planets/earth.jpg' },
+const map = (full: string, lite = full) => ({ full: `/solar-system/planets/${full}`, lite: `/solar-system/planets/${lite}` });
+/** The ground's albedo map. Venus has none: its maps show the cloud tops,
+ *  which go on its cloud shell (CLOUD_SHELLS), and its ground is drawn from code. */
+export const MAPS: Record<GlobeWorld, { full: string; lite: string } | null> = {
+  moon: map('moon-4k.jpg', 'moon.jpg'),
+  mars: map('mars-4k.jpg', 'mars.jpg'),
+  earth: map('earth-4k.jpg', 'earth.jpg'),
+  mercury: map('mercury-4k.jpg', 'mercury.jpg'),
+  venus: null,
+  jupiter: map('jupiter-4k.jpg', 'jupiter.jpg'),
+  saturn: map('saturn-4k.jpg', 'saturn.jpg'),
+  uranus: map('uranus.jpg'),
+  neptune: map('neptune.jpg'),
 };
 const EARTH_NIGHT = '/solar-system/planets/earth-night.jpg';
-const EARTH_CLOUDS = { full: '/solar-system/planets/earth-clouds.jpg', lite: '/solar-system/planets/earth-clouds-1k.jpg' };
 /** A small map the Moon's maria are read from (dark = mare). */
 const MOON_MARE_MAP = '/solar-system/planets/moon-512.jpg';
 
-/** Cells as fine as this at the deepest level, m. */
-const FINEST_CELL: Record<GlobeWorld, number> = { moon: 10, mars: 12, earth: 20 };
+/** The cloud shells: height over the datum, km; the map; the camera
+ *  heights over which the shell fades in, km; how fast it drifts (turns
+ *  of the map per second of play). Earth's broken clouds go below 4 km,
+ *  where the surface scene's own sky has them. Venus's deck is unbroken and
+ *  stays drawn down to its base, seen from under it as its dim underside. */
+export const CLOUD_SHELLS: Partial<Record<GlobeWorld, { km: number; maps: { full: string; lite: string }; fade: [number, number]; drift: number }>> = {
+  earth: { km: 8, maps: map('earth-clouds.jpg', 'earth-clouds-1k.jpg'), fade: [4, 12], drift: 4e-6 },
+  venus: { km: 64, maps: map('venus-4k.jpg', 'venus.jpg'), fade: [44, 52], drift: 1.2e-5 },
+};
+
+/** Cells as fine as this at the deepest level, m. The giants' 1-bar level is
+ *  a sphere: a 2 km grid already curves within a hundredth of a metre of it,
+ *  and everything finer is the shader's. */
+const FINEST_CELL: Record<GlobeWorld, number> = {
+  moon: 10, mars: 12, earth: 20, mercury: 10, venus: 12, jupiter: 2000, saturn: 2000, uranus: 2000, neptune: 2000,
+};
 /** Terrarium zoom caps: everywhere, and within `SITE_ZOOM_KM` of the site. */
 const ZOOM_CAP = 11;
 const SITE_ZOOM_CAP = 13;
 const SITE_ZOOM_KM = 60;
-/** Earth's cloud deck, km above the sea. */
-const CLOUD_KM = 8;
 /** Chunks this coarse are never let go of once built (see the cache in `update`). */
 const KEEP_LEVEL = 3;
 /** How long a chunk waits for its terrarium tiles before building with a coarser one, ms. */
@@ -195,13 +220,16 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       const [tx, ty] = tileOf(body.site.lat, body.site.lon, z);
       s.request(tileKey(z, tx, ty), 1e7 - z);
     }
-  } else {
+  } else if (isProceduralWorld(world)) {
     field = makeProceduralHeight(world, body);
+  } else {
+    field = makeFlatHeight(world);
   }
 
   // ── Materials and maps ──────────────────────────────────────────────────
   const air = GLOBE_AIR[world];
-  const ground = makeGroundMaterial(world, air, R, lite);
+  const rings: GlobeRings | null = world === 'saturn' ? makeGlobeRings(R, GROUND_LOOK.saturn.sun, lite) : null;
+  const ground = makeGroundMaterial(world, air, R, lite, rings ? { rings } : {});
   ground.uniforms.uSiteUp.value.set(siteDir[0], siteDir[1], siteDir[2]);
   if (opts.siteColor) {
     ground.uniforms.uSiteColor.value.set(...opts.siteColor);
@@ -227,31 +255,44 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
   // every height the descent flies on a screen that size.
   const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   const smallMaps = lite || coarse;
-  loadMap(smallMaps ? MAPS[world].lite : MAPS[world].full, (t) => {
-    ground.uniforms.uMap.value = t;
-    ground.uniforms.uMapOn.value = 1;
-  });
+  const maps = MAPS[world];
+  if (maps) {
+    loadMap(smallMaps ? maps.lite : maps.full, (t) => {
+      ground.uniforms.uMap.value = t;
+      ground.uniforms.uMapOn.value = 1;
+    });
+  }
+  if (world === 'earth') loadMap(EARTH_NIGHT, (t) => { ground.uniforms.uNight.value = t; ground.uniforms.uNightOn.value = 1; });
 
   let clouds: THREE.Mesh | null = null;
   let cloudMat: THREE.ShaderMaterial | null = null;
   let cloudShift = 0;
-  if (world === 'earth') {
-    loadMap(EARTH_NIGHT, (t) => { ground.uniforms.uNight.value = t; ground.uniforms.uNightOn.value = 1; });
-    cloudMat = makeCloudMaterial(GROUND_LOOK.earth.sun, air ? air.twilight : [1, 0.5, 0.3]);
-    const cg = new THREE.SphereGeometry(R + CLOUD_KM, lite ? 128 : 256, lite ? 64 : 128);
+  const shellDef = CLOUD_SHELLS[world] ?? null;
+  if (shellDef) {
+    // Venus's deck is lit by the full sun over the clouds, not the dim light
+    // its ground gets under them; its drawn structure starts at 24 km, about
+    // twice the cloud map's texel.
+    const sunOver = world === 'venus' ? sunOf(0xfff4e0, sunIntensityFor(SUN_FLUX.venus)) : GROUND_LOOK[world].sun;
+    const detail = CLOUD_DETAIL[world];
+    cloudMat = makeCloudMaterial(sunOver, air ? air.twilight : [1, 0.5, 0.3], world === 'venus' && detail
+      ? { overcast: { shellKm: R + shellDef.km, lam: 24, amp: 0.22, lite } } : {});
+    const cg = new THREE.SphereGeometry(R + shellDef.km, lite ? 128 : 256, lite ? 64 : 128);
     clouds = new THREE.Mesh(cg, cloudMat);
     clouds.name = 'globe-clouds';
     clouds.frustumCulled = false;
     clouds.renderOrder = 2;
     clouds.visible = false;
     scene.add(clouds);
-    loadMap(smallMaps ? EARTH_CLOUDS.lite : EARTH_CLOUDS.full, (t) => {
-      ground.uniforms.uClouds.value = t;
-      ground.uniforms.uCloudsOn.value = 1;
+    loadMap(smallMaps ? shellDef.maps.lite : shellDef.maps.full, (t) => {
+      if (world === 'earth') {
+        ground.uniforms.uClouds.value = t;
+        ground.uniforms.uCloudsOn.value = 1;
+      }
       cloudMat!.uniforms.uClouds.value = t;
       clouds!.visible = true;
     });
   }
+  if (rings) scene.add(rings.mesh);
 
   if (world === 'moon' && typeof document !== 'undefined') {
     // The maria: sunk and smoothed where the map is dark. A small map, read
@@ -291,6 +332,7 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     (ground.uniforms.uSun.value as THREE.Vector3).copy(sunGlobe);
     if (cloudMat) (cloudMat.uniforms.uSun.value as THREE.Vector3).copy(sunGlobe);
     shell?.setSun(sunGlobe);
+    rings?.setSun(sunGlobe);
   };
   setSun(opts.sunDir);
 
@@ -537,14 +579,18 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       ground.uniforms.uCamAlt.value = camAltKm;
       ground.uniforms.uCamAgl.value = Math.max(0, camAltKm - groundUnderKm);
     }
-    if (cloudMat && clouds) {
-      cloudShift = (cloudShift + dt * 4e-6) % 1;
+    if (cloudMat && clouds && shellDef) {
+      cloudShift = (cloudShift + dt * shellDef.drift) % 1;
       cloudMat.uniforms.uCloudShift.value = cloudShift;
-      ground.uniforms.uCloudShift.value = cloudShift;
+      if (world === 'earth') ground.uniforms.uCloudShift.value = cloudShift;
       const a = camAltKm;
-      cloudMat.uniforms.uOpacity.value = Math.max(0, Math.min(1, (a - 4) / 8));
+      const [lo, hi] = shellDef.fade;
+      cloudMat.uniforms.uOpacity.value = Math.max(0, Math.min(1, (a - lo) / (hi - lo)));
+      // Under the deck, its underside: dimmer the further below its middle.
+      if (cloudMat.uniforms.uUnder) cloudMat.uniforms.uUnder.value = 1 - THREE.MathUtils.smoothstep(a, shellDef.km - 4, shellDef.km + 1);
       clouds.visible = !!cloudMat.uniforms.uClouds.value && cloudMat.uniforms.uOpacity.value > 0.01;
     }
+    rings?.setAltitude(camAltKm);
   };
 
   const assignImagery = (c: Chunk) => {
@@ -586,7 +632,10 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     // Far: the horizon over the lowest ground, and on past it to the top of
     // the air (or the highest ground): the last thing a grazing ray meets.
     const r0 = R + Math.max(field.min, field.floor) / 1000;
-    const top = R + Math.max(body.atmosphereKm, field.max / 1000 + 1, world === 'earth' ? CLOUD_KM + 1 : 0);
+    // The shell's mesh is drawn a little larger than the air's top
+    // (planet-globe-atmosphere.ts): on a giant that margin is hundreds of
+    // kilometres, and a grazing ray's back face out there must not be clipped.
+    const top = Math.max(R + Math.max(body.atmosphereKm, field.max / 1000 + 1, shellDef ? shellDef.km + 1 : 0), shell ? shell.radiusKm + 1 : 0);
     const far = (Math.sqrt(Math.max(0, d * d - r0 * r0)) + Math.sqrt(Math.max(0, top * top - r0 * r0))) * 1.02 + 1;
     camera.near = Math.min(near, far * 0.5);
     camera.far = far;
@@ -612,7 +661,7 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
     let deepest = 0;
     for (const c of drawn) deepest = Math.max(deepest, c.node.level);
     return {
-      calls: drawn.length + (clouds?.visible ? 1 : 0) + (shell?.mesh.visible ? 1 : 0),
+      calls: drawn.length + (clouds?.visible ? 1 : 0) + (shell?.mesh.visible ? 1 : 0) + (rings ? 1 : 0),
       tiles: drawn.length,
       built: chunks.size,
       builtTotal,
@@ -658,6 +707,7 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       textures.length = 0;
       if (clouds) { clouds.geometry.dispose(); cloudMat?.dispose(); scene.remove(clouds); }
       if (shell) { scene.remove(shell.mesh); shell.dispose(); }
+      if (rings) { scene.remove(rings.mesh); rings.dispose(); }
       store?.dispose();
       imagery?.dispose();
       scene.remove(group);

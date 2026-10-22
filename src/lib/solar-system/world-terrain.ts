@@ -5,11 +5,19 @@
 // rust with basalt in it and Proxima b can be violet soil with moss where
 // the ground is damp, out of one builder. Dunes ripple the plains; a basin
 // can hold water.
+//
+// The giants have no ground. Over them the floor is the outpost's deck, a
+// flat disc at the site datum (y = 0), and round and under it is a sea of
+// cloud (world-cloud-sea) some tens of metres down: `heightAt` is the deck
+// inside its radius and the cloud tops outside it, so everything that
+// stands on the ground — the crew, the ship's gear, the camera's floor —
+// stands on the deck.
 
 import * as THREE from 'three';
 import { fbm, ringEdge } from '@/lib/solar-system/moon-terrain';
 import { withHaze } from '@/lib/solar-system/world-earth-haze';
-import type { WorldProfile } from '@/lib/solar-system/world-profiles';
+import { makeCloudSea } from '@/lib/solar-system/world-cloud-sea';
+import type { WorldDeck, WorldProfile } from '@/lib/solar-system/world-profiles';
 
 export const WORLD_SIZE = 360;
 export const PAD_RADIUS = 40;
@@ -80,7 +88,45 @@ export interface WorldTerrain {
   grain: THREE.Texture;
   /** Slope 0…1 (1 − normal.y) off the heightfield. */
   slopeAt: (x: number, z: number) => number;
+  /** Anything that moves on its own: the giants' cloud sea. */
+  update?: (dt: number) => void;
   dispose: () => void;
+}
+
+/** Past the deck's edge the camera's floor stays at the deck for this far, m,
+ *  so a camera swung out over the rail does not drop toward the clouds. */
+export const DECK_APRON = 30;
+
+/** The deck's own heights: the deck inside its radius, the cloud tops outside. Pure, for the tests. */
+export function deckHeights(deck: WorldDeck) {
+  const r2 = deck.radius * deck.radius;
+  const apron2 = (deck.radius + DECK_APRON) ** 2;
+  const sea = -deck.seaDepth;
+  return {
+    heightAt: (x: number, z: number) => (x * x + z * z <= r2 ? 0 : sea),
+    floorAt: (x: number, z: number) => (x * x + z * z <= apron2 ? 0 : sea),
+  };
+}
+
+/** A giant's floor: the deck, over a sea of cloud. */
+function makeDeckTerrain(profile: WorldProfile, deck: WorldDeck, lite: boolean, density: number): WorldTerrain {
+  const clouds = makeCloudSea(profile, deck, lite, density);
+  const { heightAt, floorAt } = deckHeights(deck);
+  // Nothing on a giant is made of its ground; this stands in for the grain map.
+  const grain = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
+  grain.needsUpdate = true;
+  const rocks = new THREE.Group();
+  rocks.name = 'world-rocks';
+  rocks.add(clouds.towers);
+  return {
+    mesh: clouds.sea, rocks, horizon: clouds.scud,
+    heightAt, floorAt, groundAt: heightAt,
+    normalAt: (_x, _z, out) => out.set(0, 1, 0),
+    slopeAt: () => 0,
+    grain,
+    update: clouds.update,
+    dispose() { clouds.dispose(); grain.dispose(); },
+  };
 }
 
 /** Grain, pits and clasts, tinted by the world; cached by world. */
@@ -175,6 +221,7 @@ function rockGeometry(seed: number, detail: number): THREE.BufferGeometry {
 
 /** `density` scales the rock count (the preset's prop density). */
 export function makeWorldTerrain(profile: WorldProfile, lite: boolean, density = 1): WorldTerrain {
+  if (profile.deck) return makeDeckTerrain(profile, profile.deck, lite, density);
   // Ultra (prop density 1.5 and up) gets a finer grid: the same field, sampled closer.
   const N = lite ? 160 : density >= 1.5 ? 448 : 320;
   const size = WORLD_SIZE;

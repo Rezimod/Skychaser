@@ -67,7 +67,7 @@ describe('language switch mid-game', () => {
   });
 
   it('a stale or forged value is refused', () => {
-    sessionStorage.setItem('stellar_explore_relocale', 'jupiter');
+    sessionStorage.setItem('stellar_explore_relocale', 'pluto');
     expect(takeRelocale()).toBeNull();
   });
 });

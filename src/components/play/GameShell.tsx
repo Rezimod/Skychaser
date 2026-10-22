@@ -58,7 +58,7 @@ export default function GameShell() {
   /** The governor had to take a level off: say so once, then get out of the way. */
   const [dropped, setDropped] = useState(false);
   const dropTimer = useRef(0);
-  const { state, scene, stage, overlay } = snap;
+  const { state, scene, stage, overlay, seamless } = snap;
   /** The loader fades off the first frames rather than vanishing from over them. */
   const [loaderFading, setLoaderFading] = useState(false);
   const wasLoading = useRef(false);
@@ -153,7 +153,8 @@ export default function GameShell() {
   return (
     <div ref={rootRef} className="game-shell" data-state={state}>
       {inWorld && <GameWorld key={snap.generation} scene={scene} state={state} />}
-      {(state === 'loading' || loaderFading) && (
+      {/* A handover in flight has no loading screen: the scene being left stays up until the next has drawn. */}
+      {(state === 'loading' || loaderFading) && !seamless && (
         <CosmicLoader className={state === 'loading' ? 'game-shell__loader' : 'game-shell__loader is-done'} variant={loaderVariant} body={loaderBody}
           label={loaderVariant === 'ascent' ? tl('ascent') : insertion ? t(`loading.insertion.${scene}`) : t(`loading.scene.${scene}`)} detail={t(scene === 'orbit' && stage === 'build' ? 'loading.buildOrbit' : `loading.${stage}`)} progress={STAGE_PROGRESS[stage]} tips={tips} />
       )}

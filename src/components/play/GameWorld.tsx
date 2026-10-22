@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pause, Play, RotateCcw, Users, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useGameAccount } from '@/game/account';
 import { SolarSystemCanvas, type EpochRef } from '@/components/solar-system/SolarSystemCanvas';
@@ -14,7 +14,7 @@ import { createRoomLink, normalizeRoomCode, type RoomLink } from '@/lib/multipla
 import { useExploreRoom } from '@/lib/multiplayer/useExploreRoom';
 import { ExploreRoomPanel } from '@/components/solar-system/ExploreRoomPanel';
 import { ExploreRoomBadge } from '@/components/solar-system/ExploreRoomBadge';
-import { game, type GameState } from '@/game/state';
+import { game, type GameState, type LoadStage } from '@/game/state';
 import type { GameScene } from '@/game/save';
 import { settle } from '@/game/settle';
 import { useExploreRewards } from './useExploreRewards';
@@ -22,6 +22,8 @@ import { useExploreRewards } from './useExploreRewards';
 /** The climb back to orbit stays up at least this long, and until the deck has flown a few frames. */
 const ORBIT_MIN_MS = 1600;
 const ORBIT_FRAMES = 2;
+/** The cross-fade between the flight and a surface when one hands over to the other, ms (the CSS matches). */
+const HANDOVER_FADE_MS = 1100;
 
 const SPEED_STEPS = [
   { id: 'realtime', rate: 1 },
@@ -54,8 +56,10 @@ export function GameWorld({ scene, state }: GameWorldProps) {
   const epoch = epochRef.current;
   const [clockMs, setClockMs] = useState(epoch.current);
   const [selectedId, setSelectedId] = useState<SolarBodyId | null>(null);
-  const [playing, setPlaying] = useState(true);
-  const [speedIdx, setSpeedIdx] = useState(2);
+  // The orrery runs at an hour a second; the clock keys are gone from the
+  // deck (it keeps only the keys the game needs), so it is not changed here.
+  const playing = true;
+  const speedIdx = 2;
   const [flightActive, setFlightActive] = useState(false);
   const [landscape, setLandscape] = useState(false);
   const [zoomTo, setZoomTo] = useState<number | null>(null);
@@ -97,6 +101,44 @@ export function GameWorld({ scene, state }: GameWorldProps) {
   const zoomToSun = useCallback(() => { setSelectedId(null); setZoomTo(26); }, []);
   const consumeZoom = useCallback(() => setZoomTo(null), []);
   useEffect(() => { if (scene === 'orbit') setOrbitVisited(true); }, [scene]);
+  // ── The handover between the flight and a surface, with no loading screen.
+  // On the way down the surface is built behind the arrival's last leg
+  // (`standby`), drawn but not shown, and revealed by a cross-fade once the
+  // game says it is the scene; on the way up the surface stays on screen
+  // until the orbit has drawn, then fades off it. ──
+  const [standby, setStandby] = useState<LandingSite | null>(null);
+  /** The surface just left, kept up over the orbit while the orbit builds. */
+  const [leaving, setLeaving] = useState<LandingSite | null>(null);
+  const surfaceSite: LandingSite | null = landed ?? standby ?? leaving;
+  const surfaceShown = landed !== null && state !== 'loading';
+  const surfaceReady = useRef<LandingSite | null>(null);
+  const onSurfaceProgress = useCallback((stage: LoadStage) => {
+    if (stage === 'ready') surfaceReady.current = surfaceSiteRef.current;
+    game.progress(stage);
+  }, []);
+  const surfaceSiteRef = useRef(surfaceSite);
+  surfaceSiteRef.current = surfaceSite;
+  useEffect(() => { if (surfaceSite === null) surfaceReady.current = null; }, [surfaceSite]);
+  // Built in standby and already drawn: the moment it becomes the scene it is ready.
+  useEffect(() => {
+    if (state === 'loading' && landed !== null && surfaceReady.current === landed) game.progress('ready');
+  }, [state, landed]);
+  useEffect(() => { if (landed !== null) setStandby(null); }, [landed]);
+  // The orbit has drawn: the surface left behind fades off it, then goes.
+  useEffect(() => {
+    if (leaving === null || scene !== 'orbit' || state === 'loading') return;
+    const id = window.setTimeout(() => setLeaving(null), HANDOVER_FADE_MS);
+    return () => window.clearTimeout(id);
+  }, [leaving, scene, state]);
+  // The surface is shown: the flight under it is let go once the fade is over.
+  const [flightGone, setFlightGone] = useState(landed !== null);
+  useEffect(() => {
+    if (landed === null) { setFlightGone(false); return; }
+    if (!surfaceShown) return;
+    const id = window.setTimeout(() => setFlightGone(true), HANDOVER_FADE_MS);
+    return () => window.clearTimeout(id);
+  }, [landed, surfaceShown]);
+  const flightUp = landed === null || !flightGone;
   // The orbit canvas is torn down while a surface has the screen (its
   // context, maps and galaxy layers would sit under the Moon's renderer) and
   // rebuilt on the way back, so the loader waits for its first frame again.
@@ -133,7 +175,10 @@ export function GameWorld({ scene, state }: GameWorldProps) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [playing, speedIdx, flightActive, landed, paused, epoch]);
-  const returnToOrbit = useCallback(() => game.travel('orbit'), []);
+  const returnToOrbit = useCallback(() => {
+    setLeaving(game.get().scene === 'orbit' ? null : (game.get().scene as LandingSite));
+    game.travel('orbit', { seamless: true });
+  }, []);
   // The climb out of a surface ends in the ship, over the world just left.
   const [returnedFrom, setReturnedFrom] = useState<LandingSite | null>(null);
   const wasLanded = useRef(landed);
@@ -150,23 +195,28 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         <button type="button" className="solar-system__fab solar-system__fab--close" onClick={game.exit} aria-label={t('immersive.exit')}>
           <X size={20} aria-hidden />
         </button>
-        {landed === null && account.available && <button type="button" className="solar-system__fab" onClick={() => setRoomOpen((o) => !o)} aria-label={t('room.open')} aria-expanded={roomOpen}>
-          <Users size={20} aria-hidden />
-        </button>}
         <span className="solar-system__mini-clock">
           {selectedId ? t(`bodies.${selectedId}.name`) : format.dateTime(new Date(clockMs), { month: 'short', day: 'numeric' })}
         </span>
       </div>}
       <div className="solar-system__viewport solar-system__viewport--fill" data-rotate={landscape && flightActive ? 'cw' : undefined}>
         {orbitVisited && <>
-          {landed === null && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
+          {flightUp && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
             onSelect={setSelectedId} onZoomToSun={zoomToSun} zoomTo={zoomTo} onZoomToConsumed={consumeZoom} flight={session}
             room={roomLinkRef.current} onReady={onSceneReady} paused={paused} />}
-          <PlayerShip session={session} onActiveChange={setFlightActive} onLand={(site) => { setLandscape(false); game.travel(site); }} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
+          <PlayerShip session={session} onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={setStandby}
+            onLand={(site) => { setLandscape(false); setStandby(site); game.travel(site, { seamless: true }); }} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
             landscape={landscape} onLandscape={setLandscape} shellPaused={paused} onPauseRequest={game.pause} />
         </>}
-        {landed === 'moon' && <MoonSurface onReturn={returnToOrbit} room={roomLinkRef.current} sink={rewards.sink} paused={paused} onProgress={game.progress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
-        {landed !== null && landed !== 'moon' && <WorldSurface world={landed} onReturn={returnToOrbit} room={roomLinkRef.current} paused={paused} onProgress={game.progress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
+        {/* One place in the tree for the surface, whether it is being built behind the arrival,
+            is the scene, or is being left: React keeps the same scene through all three. */}
+        {surfaceSite !== null && (
+          <div className="game-world__surface" data-shown={surfaceShown || (leaving !== null && (scene !== 'orbit' || state === 'loading'))}>
+            {surfaceSite === 'moon'
+              ? <MoonSurface key="moon" onReturn={returnToOrbit} room={roomLinkRef.current} sink={rewards.sink} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />
+              : <WorldSurface key={surfaceSite} world={surfaceSite} onReturn={returnToOrbit} room={roomLinkRef.current} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
+          </div>
+        )}
       </div>
       {rewards.award && (
         <p className="game-shell__notice game-shell__notice--stars" role="status">
@@ -178,17 +228,6 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         <ExploreRoomPanel room={room} onClose={() => setRoomOpen(false)}
           onSignIn={account.login} />
       )}
-      {showChrome && <div className="solar-system__dockbar" role="group" aria-label={t('time.title')}>
-        <button type="button" className="solar-system__dockbtn" onClick={() => setPlaying((p) => !p)} aria-label={t(playing ? 'time.pause' : 'time.play')}>
-          {playing ? <Pause size={16} aria-hidden /> : <Play size={16} aria-hidden />}
-        </button>
-        <button type="button" className="solar-system__chip solar-system__ratebtn" onClick={() => setSpeedIdx((i) => (i + 1) % SPEED_STEPS.length)} aria-label={t('time.speedAria')}>
-          {t(`time.speed.${SPEED_STEPS[speedIdx].id}`)}
-        </button>
-        <button type="button" className="solar-system__dockbtn" onClick={() => { epoch.current = Date.now(); setClockMs(epoch.current); zoomToSun(); }} aria-label={t('time.now')}>
-          <RotateCcw size={16} aria-hidden />
-        </button>
-      </div>}
     </div>
   );
 }

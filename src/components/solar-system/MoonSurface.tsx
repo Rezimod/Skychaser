@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Camera, ChevronsDown, ChevronsUp, Drill, Eye, EyeOff, Flame, Flashlight, Gauge, HelpCircle,
+  Camera, ChevronsUp, Drill, Flame, Flashlight, Gauge, HelpCircle,
   LogIn, Menu, Package, Rocket, Trophy, Volume2, VolumeX, Wind, X,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -21,7 +21,6 @@ import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
 import type { RewardSink } from '@/lib/solar-system/achievements';
-import { BuildHud } from './BuildHud';
 import { MissionPanel } from './MissionPanel';
 
 interface MoonSurfaceProps {
@@ -31,6 +30,9 @@ interface MoonSurfaceProps {
   sink?: RewardSink;
   /** The game shell's pause: the sim, the sound and the keys all stop. */
   paused?: boolean;
+  /** Built behind the arrival (or being left for orbit) and not on screen:
+   *  it draws, but takes no keys, pointer or touch. */
+  standby?: boolean;
   /** Where the build is; the shell's loading screen follows it and this one stays hidden. */
   onProgress?: (stage: 'build' | 'compile' | 'ready') => void;
   /** The mouse was let go of (Esc under pointer lock): the shell should pause. */
@@ -50,7 +52,7 @@ const fmtApprox = (m: number) => `~${fmtRange(Math.round(m / 10) * 10)}`;
 const PPD = 3.1;
 const TURNS = 3;
 
-export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseRequest, shipKind }: MoonSurfaceProps) {
+export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress, onPauseRequest, shipKind }: MoonSurfaceProps) {
   const t = useTranslations('solarSystem.moon');
   /** The world's own card over the orbit, as the flight deck words it. */
   const tworld = useTranslations('solarSystem.flight.worlds.moon');
@@ -101,7 +103,7 @@ export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseR
   const onPauseRequestRef = useRef(onPauseRequest);
   onPauseRequestRef.current = onPauseRequest;
   const pausedRef = useRef(false);
-  pausedRef.current = !!paused;
+  pausedRef.current = !!paused || !!standby;
   // The translator is read through a ref: a new identity (a locale switch)
   // must not tear the scene down and rebuild it.
   const tRef = useRef(t);
@@ -603,12 +605,6 @@ export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseR
     c.sync();
     setRun(c.touchDeck.run);
   };
-  const toggleCrouch = () => controlsRef.current?.toggleCrouch();
-  const getBuild = useCallback(() => handleRef.current?.build ?? null, []);
-  const canBuild = useCallback(() => {
-    const tel = handleRef.current?.telemetry;
-    return !!tel && tel.phase === 'surface' && !tel.driving && !tel.inside && tel.backrooms.phase === '';
-  }, []);
   const rewards = handleRef.current?.telemetry.mission.rewards ?? [];
   const jobsDone = handleRef.current?.telemetry.jobs.done ?? [];
   const underground = handleRef.current?.telemetry.backrooms;
@@ -748,19 +744,9 @@ export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseR
           <span ref={drillWarnRef} className="moon-hud__drill-warn" hidden />
         </div>
 
-        <BuildHud world="moon" getBuild={getBuild} canOpen={canBuild} mount={mountRef} paused={!!paused} touch={touch} />
 
-        {/* ── Top right: the camera, the eye, the menu. ── */}
-        <button type="button" className="moon-hud__round moon-hud__unhide" onClick={() => setImmersive(false)} aria-label={t('hudShow')} title={t('hudShow')}>
-          <Eye size={19} aria-hidden />
-        </button>
+        {/* ── Top right: the menu. ── */}
         <div className="moon-hud__top">
-          <button type="button" className="moon-hud__round" {...tapKey(cycleView)} aria-label={t('camera')} title={t('camera')}>
-            <Camera size={19} aria-hidden />
-          </button>
-          <button type="button" className="moon-hud__round" onClick={() => { setImmersive(true); setMenu(false); }} aria-label={t('hudHide')} title={t('hudHide')}>
-            <EyeOff size={19} aria-hidden />
-          </button>
           <button type="button" className="moon-hud__round" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
             {menu ? <X size={19} aria-hidden /> : <Menu size={19} aria-hidden />}
           </button>
@@ -853,9 +839,6 @@ export function MoonSurface({ onReturn, room, sink, paused, onProgress, onPauseR
           <div className="moon-hud__stance-keys">
             <button type="button" className="moon-hud__key moon-hud__run" data-on={run} {...tapKey(toggleRun)} aria-pressed={run} title={t('run')}>
               <ChevronsUp size={18} aria-hidden /><span>{t('run')}</span>
-            </button>
-            <button type="button" className="moon-hud__key" data-on={crouch} {...tapKey(toggleCrouch)} aria-pressed={crouch} title={t('crouch')}>
-              <ChevronsDown size={18} aria-hidden /><span>{t('crouch')}</span>
             </button>
           </div>
         </div>

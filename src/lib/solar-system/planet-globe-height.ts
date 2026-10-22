@@ -9,10 +9,13 @@
 // smallest one it can is faded in, so a chunk and its four children agree on
 // everything the parent could draw and the children add only what is new.
 //
-// The Moon and Mars are procedural (deterministic, so every player sees the
-// same planet and a chunk rebuilt from the cache matches the one it
-// replaces). Earth is real elevation, streamed (planet-globe-terrarium.ts);
-// this module only shapes what the terrarium store hands back.
+// The Moon, Mars, Mercury and Venus are procedural (deterministic, so every
+// player sees the same planet and a chunk rebuilt from the cache matches the
+// one it replaces). Earth is real elevation, streamed
+// (planet-globe-terrarium.ts); this module only shapes what the terrarium
+// store hands back. The four giants have no ground: their "surface" is the
+// 1-bar level, a flat sphere at height 0, and the cloud deck on it is the
+// ground shader's work (planet-globe-material.ts).
 //
 // Pure: plain numbers in, plain numbers out. No three.js, nothing drawn.
 
@@ -466,9 +469,10 @@ function gatherAll(
 }
 
 /** The raw Moon: rolling highland fbm, maria sunk and smoothed, craters at
- *  seven scales from 140 km down to 45 m. Metres. */
+ *  seven scales from 140 km down to 45 m (Mercury passes its own). Metres. */
 export function moonRegion(
   cx: number, cy: number, cz: number, angRadius: number, detailM: number, radiusKm: number, mare?: MareMask,
+  scales: CraterScale[] = MOON_CRATERS,
 ): RegionSampler {
   const mareAtKm = mare
     ? (x: number, y: number, z: number) => {
@@ -478,7 +482,7 @@ export function moonRegion(
     }
     : null;
   // The maria are younger: fewer big and middling craters survive on them.
-  const craters = gatherAll(MOON_CRATERS, cx, cy, cz, radiusKm, angRadius, detailM, (s) => {
+  const craters = gatherAll(scales, cx, cy, cz, radiusKm, angRadius, detailM, (s) => {
     if (!mareAtKm) return null;
     const k = s.rMax > 1.5 ? 0.7 : 0.2;
     return (x, y, z) => 1 - k * mareAtKm(x, y, z);
@@ -556,6 +560,140 @@ export function marsRegion(
   };
 }
 
+// ── Mercury ───────────────────────────────────────────────────────────────
+
+/** Mercury's two great basins with smooth volcanic floors: Caloris, and
+ *  Rachmaninoff with its peak ring, whose inner plains hold the landing site. */
+interface PlainsBasin { dir: [number, number, number]; rKm: number; depthM: number; floor: number; ring: number }
+const plainsBasin = (lat: number, lon: number, rKm: number, depthM: number, floor: number, ring = 0): PlainsBasin =>
+  ({ dir: latLonToDir(lat, lon), rKm, depthM, floor, ring });
+const MERCURY_BASINS: PlainsBasin[] = [
+  plainsBasin(30.5, 189.8, 775, 2000, 0.85),
+  plainsBasin(27.6, 57.6, 145, 3000, 0.8, 0.45),
+  plainsBasin(-16, 195, 260, 1800, 0.7),
+];
+
+/** Mercury's craters: the Moon's scales, a little sparser at the big end
+ *  (the plains buried many) and as crowded at the small. */
+const MERCURY_CRATERS: CraterScale[] = [
+  { rMin: 45, rMax: 140, density: 0.45, freshMin: 0.2, seed: 2101 },
+  { rMin: 14, rMax: 45, density: 0.7, freshMin: 0.25, seed: 2203 },
+  { rMin: 4.5, rMax: 14, density: 0.85, freshMin: 0.3, seed: 2309 },
+  { rMin: 1.4, rMax: 4.5, density: 0.85, freshMin: 0.35, seed: 2411 },
+  { rMin: 0.45, rMax: 1.4, density: 0.85, freshMin: 0.4, seed: 2503 },
+  { rMin: 0.14, rMax: 0.45, density: 0.85, freshMin: 0.45, seed: 2609 },
+  { rMin: 0.045, rMax: 0.14, density: 0.8, freshMin: 0.5, seed: 2707 },
+];
+
+/** How much of a basin's smooth floor a direction is on, 0…1. */
+function plainsAt(basins: PlainsBasin[], x: number, y: number, z: number, radiusKm: number): number {
+  let m = 0;
+  for (const b of basins) {
+    const a = (angleBetween(x, y, z, b.dir[0], b.dir[1], b.dir[2]) * radiusKm) / b.rKm;
+    if (a < b.floor) m = Math.max(m, 1 - smoothstep(b.floor * 0.8, b.floor, a));
+  }
+  return m;
+}
+
+/** The raw Mercury: the Moon's cratered highlands (moonRegion) with the
+ *  basins' smooth plains as its maria, the basins' bowls and rims, a peak
+ *  ring in Rachmaninoff, and lobate scarps — long, low, one-sided steps where
+ *  the planet shrank as it cooled. Metres. */
+export function mercuryRegion(
+  cx: number, cy: number, cz: number, angRadius: number, detailM: number, radiusKm: number,
+): RegionSampler {
+  const near = MERCURY_BASINS.filter((b) => angleBetween(cx, cy, cz, b.dir[0], b.dir[1], b.dir[2]) < (1.5 * b.rKm) / radiusKm + angRadius);
+  const plains: MareMask = (lat, lon) => {
+    const d = latLonToDir(lat, lon);
+    return plainsAt(near, d[0], d[1], d[2], radiusKm) * 0.85;
+  };
+  const base = moonRegion(cx, cy, cz, angRadius, detailM, radiusKm, near.length ? plains : undefined, MERCURY_CRATERS);
+  return (x, y, z) => {
+    // The maria's sinking (moonRegion's 1300 m) is the basins' own business here.
+    let h = base(x, y, z) + (near.length ? 1300 * plainsAt(near, x, y, z, radiusKm) * 0.85 : 0);
+    for (const b of near) {
+      const a = (angleBetween(x, y, z, b.dir[0], b.dir[1], b.dir[2]) * radiusKm) / b.rKm;
+      if (a >= 1.5) continue;
+      const bowl = a < 1 ? 1 - smoothstep(b.floor * 0.7, 1, a) : 0;
+      h += -b.depthM * bowl + b.depthM * 0.35 * Math.exp(-((a - 1) * (a - 1)) / 0.015);
+      if (b.ring > 0) h += b.depthM * 0.25 * Math.exp(-((a - b.ring) * (a - b.ring)) / 0.004);
+    }
+    // Lobate scarps: where a slow noise crosses zero, a step of a kilometre or so.
+    const qx = x * radiusKm; const qy = y * radiusKm; const qz = z * radiusKm;
+    const n = noise3(qx / 700 + 3.3, qy / 700, qz / 700 - 1.7);
+    const w = bandWeight(40_000, detailM);
+    if (w > 0) h += 900 * w * smoothstep(-0.03, 0.03, n) * (0.5 + 0.5 * noise3(qx / 2000, qy / 2000 + 5.1, qz / 2000));
+    return h;
+  };
+}
+
+// ── Venus ─────────────────────────────────────────────────────────────────
+
+/** Venus's broad shields: Maat, Sif and Gula, Theia on Beta Regio, Sapas.
+ *  Gentle slopes and wide flanks; the relief of Venus is mostly these and the
+ *  rolling plains. */
+const VENUS_VOLCANOES: Dome[] = [
+  dome(0.5, 194.6, 200, 8000, 0.06),
+  dome(22, 352.4, 150, 2000),
+  dome(21.9, 359.2, 140, 3000),
+  dome(23, 280.6, 115, 4500),
+  dome(8.5, 188.3, 110, 1800),
+];
+/** The highland plateaus: Ishtar (with Maxwell), Aphrodite, Phoebe and Beta Regio. */
+const VENUS_HIGHLANDS: Dome[] = [
+  dome(70, 27.5, 1100, 4000, 0),
+  dome(65, 3.3, 380, 6500, 0),
+  dome(-6, 105, 2400, 2500, 0),
+  dome(-6, 282, 900, 1600, 0),
+  dome(25, 283, 1000, 2000, 0),
+];
+
+/** Venus's craters: under a thousand, all wider than a few kilometres (the
+ *  thick air breaks up anything smaller), young and sharp, set on the plains. */
+const VENUS_CRATERS: CraterScale[] = [
+  { rMin: 20, rMax: 135, density: 0.06, freshMin: 0.6, seed: 3109 },
+  { rMin: 6, rMax: 20, density: 0.05, freshMin: 0.7, seed: 3203 },
+  { rMin: 2, rMax: 6, density: 0.025, freshMin: 0.75, seed: 3301 },
+];
+
+/** The raw Venus: rolling volcanic plains with low wrinkle ridges, the
+ *  highland plateaus (tessera, ridged), a few broad shields, sparse young
+ *  craters, and lava-flow roughness close in. Metres. */
+export function venusRegion(
+  cx: number, cy: number, cz: number, angRadius: number, detailM: number, radiusKm: number,
+): RegionSampler {
+  const near = (dir: [number, number, number], capRad: number) =>
+    angleBetween(cx, cy, cz, dir[0], dir[1], dir[2]) < capRad + angRadius;
+  const volcanoes = VENUS_VOLCANOES.filter((v) => near(v.dir, (1.4 * v.rKm) / radiusKm));
+  const highlands = VENUS_HIGHLANDS.filter((v) => near(v.dir, (1.4 * v.rKm) / radiusKm));
+  const craters = gatherAll(VENUS_CRATERS, cx, cy, cz, radiusKm, angRadius, detailM, () => null);
+  return (x, y, z) => {
+    const qx = x * radiusKm; const qy = y * radiusKm; const qz = z * radiusKm;
+    let h = fbm(qx, qy, qz, 1600, 700, detailM, 0.5, 5, 61.3);
+    let tessera = 0;
+    for (const v of highlands) {
+      const a = (angleBetween(x, y, z, v.dir[0], v.dir[1], v.dir[2]) * radiusKm) / v.rKm;
+      if (a >= 1.4) continue;
+      const k = 1 - smoothstep(0.6, 1.4, a);
+      h += v.hM * k;
+      tessera = Math.max(tessera, k);
+    }
+    for (const v of volcanoes) {
+      const a = (angleBetween(x, y, z, v.dir[0], v.dir[1], v.dir[2]) * radiusKm) / v.rKm;
+      if (a >= 1.4) continue;
+      h += v.hM * Math.pow(1 - a / 1.4, 2.2) - v.hM * 0.1 * (1 - smoothstep(0, v.caldera, a));
+    }
+    // Tessera: the highlands are ridged and folded; the plains carry only low wrinkle ridges.
+    if (tessera > 0) h += tessera * fbm(qx, qy, qz, 120, 700, detailM, 0.5, 4, 73.1, true);
+    const ridgeMask = smoothstep(0.15, 0.5, noise3(qx / 700, qy / 700 + 3.9, qz / 700));
+    if (ridgeMask > 0) h += ridgeMask * (1 - tessera) * fbm(qx, qy, qz, 90, 140, detailM, 0.45, 3, 79.7, true);
+    // Lava flows: lobes and a fine roughness, gentle.
+    h += fbm(qx, qy, qz, 12, 60, detailM, 0.55, 0.5, 83.9);
+    for (let i = 0; i < craters.length; i++) h += cratersAt(craters[i].list, qx, qy, qz, detailM) * craters[i].w;
+    return h;
+  };
+}
+
 /** Height bounds the fields keep inside, m (margins included). */
 export const HEIGHT_BOUNDS: Record<GlobeWorld, { min: number; max: number }> = {
   moon: { min: -12000, max: 10000 },
@@ -563,7 +701,29 @@ export const HEIGHT_BOUNDS: Record<GlobeWorld, { min: number; max: number }> = {
   // Earth is drawn with the sea flat at 0; the deepest dry land is the Dead
   // Sea shore, drawn at the sea too.
   earth: { min: -50, max: 9000 },
+  mercury: { min: -10000, max: 8000 },
+  venus: { min: -5000, max: 15000 },
+  // The giants' 1-bar level is a sphere.
+  jupiter: { min: 0, max: 0 },
+  saturn: { min: 0, max: 0 },
+  uranus: { min: 0, max: 0 },
+  neptune: { min: 0, max: 0 },
 };
+
+/** The worlds whose ground is made here. */
+export type ProceduralWorld = 'moon' | 'mars' | 'mercury' | 'venus';
+
+/** The raw field of a procedural world, before the site is worked in. */
+export function rawRegion(
+  world: ProceduralWorld, cx: number, cy: number, cz: number, angRadius: number, detailM: number, radiusKm: number, mare?: MareMask,
+): RegionSampler {
+  switch (world) {
+    case 'moon': return moonRegion(cx, cy, cz, angRadius, detailM, radiusKm, mare);
+    case 'mars': return marsRegion(cx, cy, cz, angRadius, detailM, radiusKm);
+    case 'mercury': return mercuryRegion(cx, cy, cz, angRadius, detailM, radiusKm);
+    case 'venus': return venusRegion(cx, cy, cz, angRadius, detailM, radiusKm);
+  }
+}
 
 export interface SiteShaping {
   /** Where the flat ground ends and where the planet's own relief is back, km. */
@@ -583,15 +743,14 @@ export const SITE_SHAPING: SiteShaping = { flatKm: 8, blendKm: 20, levelKm: 600 
  * (1.5 km) is drawn over this and its edge must meet it.
  */
 export function makeProceduralHeight(
-  world: 'moon' | 'mars', body: PlanetBody, opts: { mare?: MareMask; shaping?: SiteShaping } = {},
+  world: ProceduralWorld, body: PlanetBody, opts: { mare?: MareMask; shaping?: SiteShaping } = {},
 ): HeightField {
   const R = body.radiusKm;
   const sh = opts.shaping ?? SITE_SHAPING;
   const site = latLonToDir(body.site.lat, body.site.lon);
   const datum = body.datumKm * 1000;
-  const raw = (cx: number, cy: number, cz: number, ang: number, d: number): RegionSampler => world === 'moon'
-    ? moonRegion(cx, cy, cz, ang, d, R, opts.mare)
-    : marsRegion(cx, cy, cz, ang, d, R);
+  const raw = (cx: number, cy: number, cz: number, ang: number, d: number): RegionSampler =>
+    rawRegion(world, cx, cy, cz, ang, d, R, opts.mare);
   // The broad height of the site, read at a coarse grid: what is levelled out.
   const siteBase = raw(site[0], site[1], site[2], 0, 20000)(site[0], site[1], site[2]) - datum;
   const bounds = HEIGHT_BOUNDS[world];
@@ -612,6 +771,24 @@ export function makeProceduralHeight(
     region,
     sample: (x, y, z, detailM) => region(x, y, z, 0, detailM)(x, y, z),
   };
+}
+
+/** A giant's 1-bar level: height 0 everywhere, and a region that is the
+ *  same constant, so a chunk build costs only its sphere. */
+export function makeFlatHeight(world: GlobeWorld): HeightField {
+  const bounds = HEIGHT_BOUNDS[world];
+  const zero = () => 0;
+  return {
+    world, min: bounds.min, max: bounds.max, floor: -Infinity,
+    region: () => zero,
+    sample: zero,
+  };
+}
+
+/** Whether a world's ground is made in this module (the rest are Earth's
+ *  streamed relief and the giants' flat 1-bar level). */
+export function isProceduralWorld(world: GlobeWorld): world is ProceduralWorld {
+  return world === 'moon' || world === 'mars' || world === 'mercury' || world === 'venus';
 }
 
 /** Earth: whatever the terrarium sampler says, at the zoom the chunk wants. */

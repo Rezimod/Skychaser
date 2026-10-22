@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export type LoaderVariant = 'orrery' | 'descent' | 'ascent' | 'hyperspace' | 'entry' | 'insertion';
 /** The world in the middle of the screen, photographed where there is a photograph. */
-export type LoaderBody = 'earth' | 'moon' | 'mars' | 'proximaB';
+export type LoaderBody = 'earth' | 'moon' | 'mars' | 'proximaB' | 'mercury' | 'venus' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
 
 interface CosmicLoaderProps {
   label: string;
@@ -54,6 +54,12 @@ const MAPS: Record<LoaderBody, string> = {
   mars: '/solar-system/planets/mars-1k.jpg',
   // No photograph of Proxima b exists; the Earth's, turned to its colours.
   proximaB: '/solar-system/planets/earth-1k.jpg',
+  mercury: '/solar-system/planets/mercury.jpg',
+  venus: '/solar-system/planets/venus.jpg',
+  jupiter: '/solar-system/planets/jupiter.jpg',
+  saturn: '/solar-system/planets/saturn.jpg',
+  uranus: '/solar-system/planets/uranus.jpg',
+  neptune: '/solar-system/planets/neptune.jpg',
 };
 
 /** A photographed world: its map scrolls behind a round window, lit from
