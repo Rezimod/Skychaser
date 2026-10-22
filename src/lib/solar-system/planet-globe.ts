@@ -270,11 +270,12 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
   const shellDef = CLOUD_SHELLS[world] ?? null;
   if (shellDef) {
     // Venus's deck is lit by the full sun over the clouds, not the dim light
-    // its ground gets under them.
+    // its ground gets under them; its drawn structure starts at 24 km, about
+    // twice the cloud map's texel.
     const sunOver = world === 'venus' ? sunOf(0xfff4e0, sunIntensityFor(SUN_FLUX.venus)) : GROUND_LOOK[world].sun;
     const detail = CLOUD_DETAIL[world];
     cloudMat = makeCloudMaterial(sunOver, air ? air.twilight : [1, 0.5, 0.3], world === 'venus' && detail
-      ? { overcast: { shellKm: R + shellDef.km, lam: detail.lam * 1.6, amp: 0.22, lite } } : {});
+      ? { overcast: { shellKm: R + shellDef.km, lam: 24, amp: 0.22, lite } } : {});
     const cg = new THREE.SphereGeometry(R + shellDef.km, lite ? 128 : 256, lite ? 64 : 128);
     clouds = new THREE.Mesh(cg, cloudMat);
     clouds.name = 'globe-clouds';

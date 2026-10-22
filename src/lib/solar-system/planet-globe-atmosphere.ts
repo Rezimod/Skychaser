@@ -110,7 +110,7 @@ export const GLOBE_AIR: Record<GlobeWorld, GlobeAir | null> = {
     layerA: { beta: [0.014, 0.013, 0.01], h: 5, absorb: [0, 0.002, 0.007] },
     layerB: { beta: [0.0012, 0.0014, 0.0018], h: 9 },
     mie: { beta: 0.012, h: 4, g: 0.75, tint: [1, 0.92, 0.75] },
-    sunIntensity: 10,
+    sunIntensity: 6,
     // Under the deck: ninety bars of carbon dioxide. A grey extinction with a
     // little more taken from the blue, and the light that is left is orange.
     airBeta: [0.045, 0.055, 0.075],
@@ -122,7 +122,7 @@ export const GLOBE_AIR: Record<GlobeWorld, GlobeAir | null> = {
     twilight: [0.8, 0.45, 0.2],
     skyFade: [62, 82],
     shellBaseKm: 65,
-    deck: { baseKm: 47, topKm: 66, beta: 0.55, color: [0.85, 0.74, 0.5] },
+    deck: { baseKm: 47, topKm: 66, beta: 0.55, color: [0.62, 0.46, 0.22] },
   },
   jupiter: {
     // Warm: the ammonia haze over the bands, which eats the blue, on clear hydrogen.

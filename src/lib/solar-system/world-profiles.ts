@@ -438,7 +438,7 @@ export const MERCURY: WorldProfile = {
     stars2: [],
   },
   ground: {
-    plain: [0.30, 0.27, 0.24], dark: [0.17, 0.155, 0.14], pale: [0.46, 0.42, 0.37],
+    plain: [0.26, 0.24, 0.225], dark: [0.17, 0.155, 0.14], pale: [0.46, 0.42, 0.37],
     rockA: 0x4c453e, rockB: 0x8a7e70,
     dust: [0.42, 0.38, 0.33], dunes: 0, craters: 46, relief: 6,
     warp: 14, mesas: 0, terraces: 0,
@@ -555,7 +555,7 @@ export const JUPITER: WorldProfile = {
     stars2: [],
   },
   ground: {
-    plain: [0.66, 0.56, 0.42], dark: [0.42, 0.28, 0.18], pale: [0.86, 0.80, 0.68],
+    plain: [0.58, 0.51, 0.42], dark: [0.42, 0.28, 0.18], pale: [0.86, 0.80, 0.68],
     rockA: 0x6a5a4a, rockB: 0xa08a70,
     dust: [0.7, 0.6, 0.5], dunes: 0, craters: 0, relief: 0,
     warp: 0, mesas: 0, terraces: 0,
@@ -612,7 +612,7 @@ export const SATURN: WorldProfile = {
     rings: { latDeg: SATURN_LAT, inner: 1.24, outer: 2.27, color: [0.95, 0.88, 0.74], opacity: 0.9, kind: 'saturn' },
   },
   ground: {
-    plain: [0.74, 0.66, 0.48], dark: [0.52, 0.42, 0.28], pale: [0.90, 0.85, 0.70],
+    plain: [0.69, 0.575, 0.375], dark: [0.52, 0.42, 0.28], pale: [0.90, 0.85, 0.70],
     rockA: 0x7a6a50, rockB: 0xb0a080,
     dust: [0.7, 0.64, 0.5], dunes: 0, craters: 0, relief: 0,
     warp: 0, mesas: 0, terraces: 0,
@@ -669,7 +669,7 @@ export const URANUS: WorldProfile = {
     rings: { latDeg: URANUS_LAT, inner: 1.62, outer: 2.02, color: [0.30, 0.31, 0.32], opacity: 0.55, kind: 'uranus' },
   },
   ground: {
-    plain: [0.55, 0.76, 0.78], dark: [0.30, 0.50, 0.54], pale: [0.80, 0.92, 0.92],
+    plain: [0.415, 0.63, 0.665], dark: [0.30, 0.50, 0.54], pale: [0.80, 0.92, 0.92],
     rockA: 0x5a7a80, rockB: 0x9abcc0,
     dust: [0.6, 0.75, 0.78], dunes: 0, craters: 0, relief: 0,
     warp: 0, mesas: 0, terraces: 0,
@@ -722,7 +722,7 @@ export const NEPTUNE: WorldProfile = {
     stars2: [],
   },
   ground: {
-    plain: [0.20, 0.34, 0.66], dark: [0.08, 0.16, 0.40], pale: [0.60, 0.72, 0.92],
+    plain: [0.12, 0.25, 0.63], dark: [0.08, 0.16, 0.40], pale: [0.60, 0.72, 0.92],
     rockA: 0x2a3e70, rockB: 0x6a84c0,
     dust: [0.3, 0.4, 0.7], dunes: 0, craters: 0, relief: 0,
     warp: 0, mesas: 0, terraces: 0,

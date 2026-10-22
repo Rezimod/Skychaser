@@ -101,15 +101,16 @@ float vnoise(vec3 x) {
 }
 #ifdef CLOUD_OCTAVES
 // Cloud structure at a point q (km), from wavelength lam0 down, each octave
-// gone once it spans under a few pixels of footprint footKm. The north (z,
-// body-fixed) component is squeezed, so the features stretch along the
-// circles of latitude as the zonal jets draw them out; each octave's domain
-// is warped by the one below it into swirls. About −1…1.
+// gone once it spans under a dozen pixels of footprint footKm (any finer
+// reads as grain, not cloud). The north (z, body-fixed) component is
+// squeezed, so the features stretch along the circles of latitude as the
+// zonal jets draw them out; each octave's domain is warped by the one below
+// it into swirls. About −1…1.
 float cloudDetail(vec3 q, float lam0, float footKm) {
-  q *= vec3(1.0, 1.0, 2.6);
+  q *= vec3(1.0, 1.0, 3.6);
   float sum = 0.0; float amp = 1.0; float norm = 0.0; float lam = lam0;
   for (int i = 0; i < CLOUD_OCTAVES; i++) {
-    float w = smoothstep(2.0, 6.0, lam / max(footKm, 1e-5));
+    float w = smoothstep(4.0, 12.0, lam / max(footKm, 1e-5));
     if (w <= 0.0) break;
     vec3 r = q / lam;
     vec3 warp = vec3(vnoise(r * 0.6 + vec3(3.1, 1.7, 0.4)), vnoise(r * 0.6 + vec3(-2.3, 5.1, 1.9)), 0.0);
@@ -442,14 +443,17 @@ export const GROUND_LOOK: Record<GlobeWorld, GroundLook> = {
 };
 
 /** The cloud structure drawn into a world's ground (the giants' decks,
- *  Venus's mottled plains): its coarsest wavelength, km, and how strongly it
- *  modulates the albedo. Jupiter is the most turbulent; Uranus is nearly bland. */
+ *  Venus's mottled plains): its coarsest wavelength, km — about twice the
+ *  map's texel (Jupiter's 4K map is 107 km a texel, the 2K ice giants'
+ *  about 78), so it adds what the map cannot hold rather than painting over
+ *  what it does — how strongly it modulates the albedo, and the tint its
+ *  darker structure takes. Jupiter is the most turbulent; Uranus is nearly bland. */
 export const CLOUD_DETAIL: Partial<Record<GlobeWorld, { lam: number; amp: number; warm: [number, number, number] }>> = {
-  venus: { lam: 220, amp: 0.3, warm: [1, 0.85, 0.7] },
-  jupiter: { lam: 420, amp: 0.45, warm: [1, 0.8, 0.62] },
-  saturn: { lam: 600, amp: 0.25, warm: [1, 0.88, 0.72] },
-  uranus: { lam: 500, amp: 0.07, warm: [0.92, 1, 1] },
-  neptune: { lam: 380, amp: 0.2, warm: [0.7, 0.8, 1] },
+  venus: { lam: 220, amp: 0.4, warm: [1, 0.82, 0.66] },
+  jupiter: { lam: 220, amp: 0.34, warm: [1, 0.8, 0.62] },
+  saturn: { lam: 200, amp: 0.25, warm: [1, 0.88, 0.72] },
+  uranus: { lam: 170, amp: 0.07, warm: [0.92, 1, 1] },
+  neptune: { lam: 160, amp: 0.2, warm: [0.7, 0.8, 1] },
 };
 
 /** The globe's close-in craters (shader only; the geometry carries its own
