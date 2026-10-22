@@ -1024,16 +1024,18 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-welcome .sd-pay__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
 .sd-welcome .sn-share { display: flex; flex-wrap: wrap; gap: 10px; }
 @media (max-width: 719px) {
-  /* The sheet's phone rules are one class deep; these are two, so each one the sheet sets is set again here. */
+  /* The sheet's phone rules are one class deep; these are two, so each one the sheet sets is set again here.
+     The card stands in flow above the name, not beside it: nothing can run under it. */
   .sd-welcome { width: 100%; grid-template-columns: minmax(0, 1fr); }
-  .sd-welcome .sd-sheet__art { width: 96px; height: 140px; min-height: 0; padding: 0; }
-  .sd-welcome .sd-sheet__body { padding-top: 22px; }
-  .sd-welcome .sd-note { margin-top: 36px; }
-  .sd-welcome .sd-sheet__art .sd-cardplate { width: 84px; }
-  .sd-welcome .sd-eyebrow, .sd-welcome .sd-sheet__name, .sd-welcome .sd-sheet__line { margin-left: 104px; }
-  .sd-welcome .sd-sheet__name { padding-right: 46px; }
+  .sd-welcome .sd-sheet__art { position: static; width: 100%; height: auto; min-height: 0; padding: 22px 0 0; display: grid; place-items: center; border: 0; background: none; }
+  .sd-welcome .sd-sheet__art .sd-cardplate { width: 132px; }
+  .sd-welcome .sd-sheet__body { padding-top: 14px; }
+  .sd-welcome .sd-eyebrow, .sd-welcome .sd-sheet__name, .sd-welcome .sd-sheet__line { margin-left: 0; }
+  .sd-welcome .sd-sheet__name { padding-right: 0; }
   .sd-welcome .sd-sheet__line { min-height: 0; }
+  .sd-welcome .sd-note { margin-top: 10px; }
   .sd-welcome .sd-pay__actions > *, .sd-welcome .sn-share > * { flex: 1 1 100%; }
+}
 }
 
 /* Several editions of one card: each number is its own page. */
