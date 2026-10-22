@@ -65,14 +65,27 @@ holder's card is chosen as the week's target, and when it is photographed. Each
 message carries an unsubscribe link signed for that account. Needs
 `RESEND_API_KEY` and `NOTIFY_FROM`; without them nothing is sent and nothing fails.
 
-### 5. Funding without SOL — planned
+### 5. Funding without SOL — done in code
 When the wallet is short, the pay panel offers Privy's funding flow (card and
 exchange) beside the existing address. Needs funding enabled in the Privy
 dashboard; without it the button opens nothing and the address stays.
 
-### 6. Measurement and the small things — planned
+### 6. Measurement and the small things — done in code
 Funnel steps for the edition and invite pages; `invite` and `edition` in the route
-smoke test; the env example; this document's status.
+smoke test; the env example; the README's route table; this document's status.
+
+### The door, kept shut to the free things — done in code
+With the beta closed, an account that only signed in at `/invite` is given no
+first card and no link of its own until an invitation has let it in
+(`admitted` in `src/lib/invite.ts`). Otherwise a stranger could sign in at the
+door, take a link and open it on themselves.
+
+## Status, 2026-10-22
+
+Every phase is in code on `skychaser/growth`, each as one commit, with
+`npx tsc --noEmit`, `npm test` (the one pre-existing supernova timing failure
+aside) and `npm run build` green at every commit. Nothing has run against a
+database: the container cannot reach Neon. The owner's list follows.
 
 ## What only the owner can do
 

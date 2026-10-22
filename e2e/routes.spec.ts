@@ -20,6 +20,7 @@ const ROUTES = [
   '/privacy',
   '/voyage',
   '/node',
+  '/invite',
 ];
 
 for (const route of ROUTES) {
