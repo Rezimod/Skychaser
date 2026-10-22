@@ -328,3 +328,12 @@ most reversible option; each needs a yes/no from Rezi.
     starts true; each notice carries a signed unsubscribe link. There is no
     opt-in step and no preference page. If the law of a target market wants
     consent first, the welcome panel is where to ask.
+
+37. **Funding goes through Privy's own flow, which the dashboard must allow.**
+    The pay panel's "Add SOL with a card" button calls `useFundWallet` from
+    Privy's Solana module; with no funding method enabled for the app (MoonPay,
+    Coinbase Onramp) the flow opens and closes with nothing, and the address
+    below it is still the way. Privy marks the hook deprecated in favour of
+    `useAddFunds`, which adds Stripe; the Solana-typed hook was chosen because
+    its chain and asset are explicit. Enable a provider before launch and buy
+    one $5 capsule through it.

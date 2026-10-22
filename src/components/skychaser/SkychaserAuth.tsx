@@ -6,8 +6,10 @@ import type { useWallets } from '@privy-io/react-auth/solana';
 
 export type Privy = ReturnType<typeof usePrivy>;
 export type SolanaWallets = ReturnType<typeof useWallets>['wallets'];
+/** Opens Privy's funding flow for a Solana wallet: a card or an exchange, when the dashboard allows it. Resolves when the flow closes. */
+export type FundWallet = (input: { address: string; amountSol?: number }) => Promise<void>;
 /** What Privy knows, read inside its provider and handed out here. */
-export type PrivyState = { privy: Privy; wallets: SolanaWallets };
+export type PrivyState = { privy: Privy; wallets: SolanaWallets; fundWallet: FundWallet | null };
 
 type Auth = {
   /** Privy is loaded and has reported in. */

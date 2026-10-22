@@ -1054,3 +1054,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 .sd-invite__figures dd small { font-size: 14px; color: var(--sd-ink-3); font-weight: 500; }
 .sd-invite__cards { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
 @media (max-width: 520px) { .sd-invite__figures { grid-template-columns: 1fr; } }
+
+/* The wallet is short: the funding button sits above the address. */
+.sd-pay__fund > .sd-btn { margin-bottom: 12px; }
