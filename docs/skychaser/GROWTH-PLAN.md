@@ -1,6 +1,6 @@
 # Skychaser — the growth loop
 
-Written 2026-10-22, after a read of the `skychaser` branch. Branch: `skychaser/growth`.
+Written 2026-10-22, after a read of the `skychaser` branch. Branch: `skychaser-growth`.
 Read `RULES.md` first; nothing here changes the tone, the vocabulary or the fairness of a capsule.
 
 ## Where the product stands
@@ -29,7 +29,7 @@ database before and after this work; this container cannot reach Neon.
       → the week's photograph brings them back
 
 Every phase below is one piece of that chain. Each ships as one commit on
-`skychaser/growth`, with `npx tsc --noEmit`, `npm test` and `npm run build` green,
+`skychaser-growth`, with `npx tsc --noEmit`, `npm test` and `npm run build` green,
 and adds its questions to `docs/skychaser-open-questions.md`.
 
 ## Phases
@@ -82,7 +82,7 @@ door, take a link and open it on themselves.
 
 ## Status, 2026-10-22
 
-Every phase is in code on `skychaser/growth`, each as one commit, with
+Every phase is in code on `skychaser-growth`, each as one commit, with
 `npx tsc --noEmit`, `npm test` (the one pre-existing supernova timing failure
 aside) and `npm run build` green at every commit. Nothing has run against a
 database: the container cannot reach Neon. The owner's list follows.
