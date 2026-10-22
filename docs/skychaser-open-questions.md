@@ -311,9 +311,11 @@ most reversible option; each needs a yes/no from Rezi.
 34. **A holder's link opens the closed beta.** While `STELLAR_INVITE_CODES`
     is set, a holder's code admits whoever opens it, exactly as an owner's
     code does: the cookie carries a signature made with `INVITE_SIGNING_KEY`
-    (or the capsule seal key). If the beta is meant to grow only by the
-    owner's hand, the one line in `src/middleware.ts` that accepts the
-    signature comes out, and holders' links still record who brought whom.
+    (or the capsule seal key). The door stays closed to an account that only
+    signed in at it: no first card and no link of its own until an invitation
+    has let it in (`admitted` in `src/lib/invite.ts`). If the beta is meant
+    to grow only by the owner's hand, the one line in `admitted` that accepts
+    the signature comes out, and holders' links still record who brought whom.
 
 35. **Email goes out from the nightly cron, a day behind the night.** The
     cron at 13:00 UTC closes last night and only then tells the holders their

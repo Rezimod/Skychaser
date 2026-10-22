@@ -49,3 +49,21 @@ export async function inviteSignatureValid(code: string, signature: string | und
   for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ signature.charCodeAt(i);
   return diff === 0;
 }
+
+type CookieJar = { get: (name: string) => { value: string } | undefined };
+
+/**
+ * True when a request may pass the closed door: there is no door, it carries
+ * an owner's code, or a holder's code with its signature. The pages ask
+ * through the middleware; the free things an account can get (the first
+ * card, an invitation link of its own) ask here, so the door stays closed to
+ * an account that only signed in at it.
+ */
+export async function admitted(cookies: CookieJar): Promise<boolean> {
+  const codes = inviteCodes();
+  if (codes.length === 0) return true;
+  const held = cookies.get(INVITE_COOKIE)?.value;
+  if (!held) return false;
+  if (codes.includes(held)) return true;
+  return inviteSignatureValid(held, cookies.get(INVITED_COOKIE)?.value);
+}

@@ -1,6 +1,6 @@
 import { APP_HOST } from '@/lib/skychaser/app-origin';
 import { NextResponse, type NextRequest } from 'next/server';
-import { INVITE_COOKIE, INVITED_COOKIE, inviteCodes, inviteSignatureValid } from '@/lib/invite';
+import { admitted, inviteCodes } from '@/lib/invite';
 import { LEGACY_HOST } from '@/lib/skychaser/legacy';
 
 /** Cards of the first Set 001, replaced by First Light before anything sold. Names First Light reuses are live again. */
@@ -28,12 +28,9 @@ export async function middleware(req: NextRequest) {
   if (LEGACY_PAGES.test(pathname)) return NextResponse.redirect(`${LEGACY_HOST}${pathname}${search}`, 307);
   if (!CARD_PAGES.test(pathname)) return NextResponse.next();
 
-  const codes = inviteCodes();
-  if (codes.length === 0) return NextResponse.next();
+  if (inviteCodes().length === 0) return NextResponse.next();
   if (/\/(opengraph|twitter)-image(\.[a-z]+)?$/.test(pathname)) return NextResponse.next();
-  const held = req.cookies.get(INVITE_COOKIE)?.value;
-  if (held && codes.includes(held)) return NextResponse.next();
-  if (held && (await inviteSignatureValid(held, req.cookies.get(INVITED_COOKIE)?.value))) return NextResponse.next();
+  if (await admitted(req.cookies)) return NextResponse.next();
   return NextResponse.rewrite(new URL('/invite', req.url));
 }
 

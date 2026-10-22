@@ -36,6 +36,7 @@ export default function InviteClient({ gated }: { gated: boolean }) {
       const data = (await res.json().catch(() => ({}))) as (InviteStats & { url: string }) | { error?: string };
       if (!live) return;
       if (!res.ok || !('code' in data)) setState({ kind: 'error', message: ('error' in data && data.error) || 'The invitation cannot be read at the moment.' });
+      // A 403 at the door is the closed beta, not a fault: the message says what is needed.
       else setState({ kind: 'ready', stats: data });
     })().catch(() => live && setState({ kind: 'error', message: 'The invitation cannot be read at the moment.' }));
     return () => {

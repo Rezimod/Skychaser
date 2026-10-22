@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyPrivy } from '@/lib/api-auth';
 import { getDb } from '@/lib/db';
+import { admitted } from '@/lib/invite';
 import { skychaserInviteRateLimit } from '@/lib/rate-limit';
 import { growthTablesMissing } from '@/lib/skychaser/contact';
 import { inviteStats } from '@/lib/skychaser/referral';
@@ -8,12 +9,19 @@ import { holderWallet, limited, NO_LINKED_WALLET } from '@/lib/skychaser/route-g
 
 export const runtime = 'nodejs';
 
-/** The signed-in holder's invitation: its code and link, who came by it and what it brought. Made on first request. */
+/**
+ * The signed-in holder's invitation: its code and link, who came by it and
+ * what it brought. Made on first request, and only for an account the door
+ * has let in: a link made at the door would open it.
+ */
 export async function GET(req: NextRequest) {
   const privyId = await verifyPrivy(req);
   if (!privyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const l = await limited(skychaserInviteRateLimit, privyId);
   if (l) return l;
+  if (!(await admitted(req.cookies))) {
+    return NextResponse.json({ error: 'Skychaser is in a closed beta. An invitation is needed before yours can be made.' }, { status: 403 });
+  }
   const wallet = await holderWallet(privyId, req.nextUrl.searchParams.get('wallet') ?? undefined);
   if (!wallet) return NextResponse.json({ error: NO_LINKED_WALLET }, { status: 403 });
   const db = getDb();

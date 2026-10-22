@@ -28,22 +28,28 @@ beforeEach(() => {
 
 describe("a holder's invitation", () => {
   it('is read for the signed-in account, with its link', async () => {
-    const res = await invite(new NextRequest(`http://localhost/api/skychaser/invite?wallet=${HOLDER}`));
+    const res = await invite(new NextRequest(`http://localhost/api/skychaser/invite?wallet=${HOLDER}`, { headers: { cookie: 'stellar_invite=owner-1' } }));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ code: 'ABCDEFGH', url: 'https://skychaser.io/invite/ABCDEFGH', arrived: 2 });
     expect(mocks.stats).toHaveBeenCalledWith({}, { privyId: 'did:privy:host', wallet: HOLDER });
   });
 
-  it('needs a session with a wallet', async () => {
+  it('needs a session with a wallet, let in at the door', async () => {
     mocks.privy.mockResolvedValueOnce(null);
     expect((await invite(new NextRequest('http://localhost/api/skychaser/invite'))).status).toBe(401);
+    const shut = await invite(new NextRequest('http://localhost/api/skychaser/invite'));
+    expect(shut.status).toBe(403);
+    expect((await shut.json()).error).toMatch(/closed beta/);
+    expect(mocks.stats).not.toHaveBeenCalled();
     mocks.linked.mockResolvedValueOnce([]);
-    expect((await invite(new NextRequest('http://localhost/api/skychaser/invite'))).status).toBe(403);
+    expect((await invite(new NextRequest('http://localhost/api/skychaser/invite', { headers: { cookie: 'stellar_invite=owner-1' } }))).status).toBe(403);
+    delete process.env.STELLAR_INVITE_CODES;
+    expect((await invite(new NextRequest('http://localhost/api/skychaser/invite'))).status).toBe(200);
   });
 
   it('answers 503 until the growth tables exist', async () => {
     mocks.stats.mockRejectedValueOnce(Object.assign(new Error('no table'), { code: '42P01' }));
-    expect((await invite(new NextRequest('http://localhost/api/skychaser/invite'))).status).toBe(503);
+    expect((await invite(new NextRequest('http://localhost/api/skychaser/invite', { headers: { cookie: 'stellar_invite=owner-1' } }))).status).toBe(503);
   });
 });
 

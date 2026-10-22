@@ -34,6 +34,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   delete process.env.STELLAR_PAUSED;
   delete process.env.SKYCHASER_WELCOME;
+  delete process.env.STELLAR_INVITE_CODES;
   mocks.privy.mockResolvedValue('did:privy:1');
   mocks.linked.mockResolvedValue([HOLDER]);
   mocks.email.mockResolvedValue('holder@example.org');
@@ -78,6 +79,18 @@ describe('saying hello', () => {
     expect(mocks.grant).not.toHaveBeenCalled();
     process.env.STELLAR_PAUSED = '1';
     expect((await hello(post({}))).status).toBe(503);
+  });
+
+  it('keeps the first card behind the closed door', async () => {
+    process.env.STELLAR_INVITE_CODES = 'owner-1';
+    const edition = { editionId: 'e1', designation: 'FIRST-LIGHT', name: 'First Light', rarity: 'common', editionNumber: 1, editionSize: 300 };
+    mocks.grant.mockResolvedValue({ edition, fresh: true });
+    const shut = await hello(post({}));
+    expect((await shut.json()).welcome).toEqual({ edition: null, fresh: false });
+    expect(mocks.grant).not.toHaveBeenCalled();
+    expect(mocks.touch).toHaveBeenCalledTimes(1);
+    const open = await hello(post({}, 'stellar_invite=owner-1'));
+    expect((await open.json()).welcome.fresh).toBe(true);
   });
 
   it('answers 503, not 500, until the growth tables exist', async () => {

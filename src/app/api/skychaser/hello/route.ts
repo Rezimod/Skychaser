@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionEmail, verifyPrivy } from '@/lib/api-auth';
 import { getDb } from '@/lib/db';
-import { INVITE_COOKIE } from '@/lib/invite';
+import { admitted, INVITE_COOKIE } from '@/lib/invite';
 import { paused } from '@/lib/kill-switch';
 import { skychaserHelloIpRateLimit, skychaserHelloRateLimit } from '@/lib/rate-limit';
 import { growthTablesMissing, resolveInvite, touchContact } from '@/lib/skychaser/contact';
@@ -15,7 +15,9 @@ export const runtime = 'nodejs';
  * A sign-in says hello: the account's row is made or brought up to date (the
  * wallet Privy lists, the email, the invitation it arrived with), and the
  * first card is given if it has not been. Safe to call again: a second hello
- * finds the card already given and returns it, not fresh.
+ * finds the card already given and returns it, not fresh. While the beta is
+ * closed, the card waits for an invitation: an account that only signed in
+ * at the door is recorded, and given nothing.
  */
 export async function POST(req: NextRequest) {
   const p = await paused();
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
       await recordEvent(db, 'invite_landed', { wallet, path: '/api/skychaser/hello', props: { invite: contact.invitedBy } });
     }
 
-    const welcome = welcomeOn() ? await grantWelcome(db, { privyId, wallet }) : { edition: null, fresh: false };
+    const welcome = welcomeOn() && (await admitted(req.cookies)) ? await grantWelcome(db, { privyId, wallet }) : { edition: null, fresh: false };
     if (welcome.fresh && welcome.edition) {
       await recordEvent(db, 'welcome_granted', {
         wallet,
