@@ -1,26 +1,31 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { useGameAccount } from '@/game/account';
 import { SolarSystemCanvas, type EpochRef } from '@/components/solar-system/SolarSystemCanvas';
 import { PlayerShip, type LandingSite } from '@/components/solar-system/PlayerShip';
-import { MoonSurface } from '@/components/solar-system/MoonSurface';
-import { WorldSurface } from '@/components/solar-system/WorldSurface';
 import { createFlightSession, type FlightSession } from '@/lib/solar-system/player-ship';
 import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
-import { createRoomLink, normalizeRoomCode, type RoomLink } from '@/lib/multiplayer/room-link';
-import { useExploreRoom } from '@/lib/multiplayer/useExploreRoom';
-import { ExploreRoomPanel } from '@/components/solar-system/ExploreRoomPanel';
-import { ExploreRoomBadge } from '@/components/solar-system/ExploreRoomBadge';
+import type { RoomLink } from '@/lib/multiplayer/room-link';
 import { game, type GameState, type LoadStage } from '@/game/state';
 import type { GameScene } from '@/game/save';
+import type { GameMode } from '@/game/mode';
+import { StoryHud } from './StoryHud';
 import { settle } from '@/game/settle';
 import { useExploreRewards } from './useExploreRewards';
 
+/** The surfaces are chunks of their own: the orbit never parses them. They
+ *  are fetched once the orbit is up (see the prefetch below), well before
+ *  an arrival asks one to build. */
+const loadMoon = () => import('@/components/solar-system/MoonSurface');
+const loadWorlds = () => import('@/components/solar-system/WorldSurface');
+const MoonSurface = dynamic(() => loadMoon().then((m) => m.MoonSurface), { ssr: false });
+const WorldSurface = dynamic(() => loadWorlds().then((m) => m.WorldSurface), { ssr: false });
+
 /** The climb back to orbit stays up at least this long, and until the deck has flown a few frames. */
-const ORBIT_MIN_MS = 1600;
+const ORBIT_MIN_MS = 500;
 const ORBIT_FRAMES = 2;
 /** The cross-fade between the flight and a surface when one hands over to the other, ms (the CSS matches). */
 const HANDOVER_FADE_MS = 1100;
@@ -35,11 +40,17 @@ const SPEED_STEPS = [
 interface GameWorldProps {
   scene: GameScene;
   state: GameState;
+  /** Free Fly, the story, or a room (game/mode.ts). */
+  mode: GameMode;
+  /** The multiplayer link, owned by the shell so the lobby can join before the world exists. */
+  room: RoomLink;
+  /** The orrery's clock, owned by the shell so a room can set it. */
+  epoch: EpochRef;
 }
 
 /** The orrery, the ship and the surfaces, composed by the game's scene.
  *  The orbit canvas is not built until the player first goes to orbit. */
-export function GameWorld({ scene, state }: GameWorldProps) {
+export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   const t = useTranslations('solarSystem');
   const tp = useTranslations('play');
   const format = useFormatter();
@@ -52,8 +63,6 @@ export function GameWorld({ scene, state }: GameWorldProps) {
   const session = flightRef.current;
   // The clock the canvas reads is a mutable cell; React only sees it once a
   // second, for the mini-clock, so ticking it never re-renders the deck.
-  const epochRef = useRef<EpochRef>({ current: Date.now() });
-  const epoch = epochRef.current;
   const [clockMs, setClockMs] = useState(epoch.current);
   const [selectedId, setSelectedId] = useState<SolarBodyId | null>(null);
   // The orrery runs at an hour a second; the clock keys are gone from the
@@ -65,39 +74,13 @@ export function GameWorld({ scene, state }: GameWorldProps) {
   const [zoomTo, setZoomTo] = useState<number | null>(null);
   const [orbitReady, setOrbitReady] = useState(false);
   const [orbitVisited, setOrbitVisited] = useState(scene === 'orbit');
-  // ── Playing together: one link, shared by the deck and both surfaces. ──
-  const roomLinkRef = useRef<RoomLink | null>(null);
-  if (!roomLinkRef.current) roomLinkRef.current = createRoomLink(crypto.randomUUID());
-  // Development only: the capture harness puts pretend explorers into the room.
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
-    window.__stellarRoom = roomLinkRef.current!;
-    return () => { delete window.__stellarRoom; };
-  }, []);
-  const account = useGameAccount();
-  const [roomOpen, setRoomOpen] = useState(false);
-  // An invite link carries the room; it is joined once the explorer is signed in.
-  const [pendingRoom, setPendingRoom] = useState(() => normalizeRoomCode(new URLSearchParams(window.location.search).get('room') ?? ''));
-  const room = useExploreRoom(roomLinkRef.current, {
-    name: account.name || t('room.defaultName', { tag: (account.userId ?? '').slice(-4).toUpperCase() }),
-    // The clock is a mutable cell here, read once a second: that is close
-    // enough to share, and it keeps the deck from re-rendering per frame.
-    epochMs: clockMs,
-    watchLobby: roomOpen,
-    onEpoch: (ms: number) => { epoch.current = ms; setClockMs(ms); },
-  });
-  useEffect(() => {
-    if (!pendingRoom) return;
-    if (room.status === 'signedOut') setRoomOpen(true);
-    if (room.status === 'idle') {
-      room.join(pendingRoom);
-      setPendingRoom(null);
-    }
-  }, [pendingRoom, room]);
-  useEffect(() => {
-    if (room.error) setRoomOpen(true);
-  }, [room.error]);
   const onSceneReady = useCallback(() => setOrbitReady(true), []);
+  // The surfaces' code, fetched once the orbit has drawn: an arrival then builds without a wait.
+  useEffect(() => {
+    if (!orbitReady) return;
+    const id = window.setTimeout(() => { void loadMoon(); void loadWorlds(); }, 1500);
+    return () => window.clearTimeout(id);
+  }, [orbitReady]);
   const zoomToSun = useCallback(() => { setSelectedId(null); setZoomTo(26); }, []);
   const consumeZoom = useCallback(() => setZoomTo(null), []);
   useEffect(() => { if (scene === 'orbit') setOrbitVisited(true); }, [scene]);
@@ -203,8 +186,8 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         {orbitVisited && <>
           {flightUp && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
             onSelect={setSelectedId} onZoomToSun={zoomToSun} zoomTo={zoomTo} onZoomToConsumed={consumeZoom} flight={session}
-            room={roomLinkRef.current} onReady={onSceneReady} paused={paused} />}
-          <PlayerShip session={session} onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={setStandby}
+            room={room} onReady={onSceneReady} paused={paused} />}
+          <PlayerShip session={session} autoLaunch onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={setStandby}
             onLand={(site) => { setLandscape(false); setStandby(site); game.travel(site, { seamless: true }); }} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
             landscape={landscape} onLandscape={setLandscape} shellPaused={paused} onPauseRequest={game.pause} />
         </>}
@@ -213,8 +196,8 @@ export function GameWorld({ scene, state }: GameWorldProps) {
         {surfaceSite !== null && (
           <div className="game-world__surface" data-shown={surfaceShown || (leaving !== null && (scene !== 'orbit' || state === 'loading'))}>
             {surfaceSite === 'moon'
-              ? <MoonSurface key="moon" onReturn={returnToOrbit} room={roomLinkRef.current} sink={rewards.sink} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />
-              : <WorldSurface key={surfaceSite} world={surfaceSite} onReturn={returnToOrbit} room={roomLinkRef.current} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
+              ? <MoonSurface key="moon" onReturn={returnToOrbit} room={room} sink={rewards.sink} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />
+              : <WorldSurface key={surfaceSite} world={surfaceSite} onReturn={returnToOrbit} room={room} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
           </div>
         )}
       </div>
@@ -223,11 +206,8 @@ export function GameWorld({ scene, state }: GameWorldProps) {
           {tp('stars.awarded', { n: rewards.award.stars, name: t(`moon.missions.records.${rewards.award.id.split('.').pop()}`) })}
         </p>
       )}
-      {room.code && !roomOpen && <ExploreRoomBadge code={room.code} roster={room.roster} onOpen={() => setRoomOpen(true)} />}
-      {roomOpen && (
-        <ExploreRoomPanel room={room} onClose={() => setRoomOpen(false)}
-          onSignIn={account.login} />
-      )}
+      {/* Story mode: the briefing and the objective in flight, the card when a chapter is done. */}
+      {mode === 'story' && state !== 'loading' && <StoryHud session={session} scene={scene} flying={flightActive} paused={paused} />}
     </div>
   );
 }
