@@ -1036,7 +1036,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
   .sd-welcome .sd-note { margin-top: 10px; }
   .sd-welcome .sd-pay__actions > *, .sd-welcome .sn-share > * { flex: 1 1 100%; }
 }
-}
 
 /* Several editions of one card: each number is its own page. */
 .sd-coll__nums { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; font-size: 12px; }
