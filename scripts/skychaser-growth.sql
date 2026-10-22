@@ -1,5 +1,5 @@
 -- The growth loop (2026-10-22): who each account is, invitations and what they brought.
--- Additive only: three new tables, nothing existing touched. Apply to the card database
+-- Additive only: four new tables, nothing existing touched. Apply to the card database
 -- (Neon endpoint ep-soft-thunder) with the owner's approval. Until it is applied,
 -- /api/skychaser/hello and /api/skychaser/invite answer 503 and no welcome card is given.
 
@@ -43,3 +43,13 @@ CREATE TABLE IF NOT EXISTS referral_reward (
   rewarded_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS referral_reward_referrer_idx ON referral_reward (referrer_privy_id);
+
+-- Word to holders: each notice (the week's card chosen, a card photographed, a card for an
+-- invitation) is recorded here per account before it is sent, so a cron run twice sends once.
+CREATE TABLE IF NOT EXISTS holder_notice (
+  privy_id text NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('week_chosen', 'photographed', 'referral_card')),
+  key text NOT NULL,
+  sent_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (privy_id, kind, key)
+);

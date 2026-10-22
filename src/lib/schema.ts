@@ -1136,3 +1136,12 @@ export const referralReward = pgTable('referral_reward', {
   editionId: uuid('edition_id'),
   rewardedAt: timestamp('rewarded_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index('referral_reward_referrer_idx').on(t.referrerPrivyId)])
+
+/** Each notice sent to an account, by kind and key, so a cron run twice sends once. */
+export const holderNotice = pgTable('holder_notice', {
+  privyId: text('privy_id').notNull(),
+  /** 'week_chosen' | 'photographed' | 'referral_card' */
+  kind: text('kind').notNull(),
+  key: text('key').notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [primaryKey({ columns: [t.privyId, t.kind, t.key] })])

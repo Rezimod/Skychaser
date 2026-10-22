@@ -59,7 +59,7 @@ and it records who brought whom. When the invited account opens its first paid
 capsule, the inviter receives one common edition, up to `REFERRAL_REWARD_CAP`.
 The `/invite` page shows a holder their link, who came and what it brought.
 
-### 4. Word to holders — planned
+### 4. Word to holders — done in code
 Email, through Resend's HTTP API (no package), sent by the nightly cron: when a
 holder's card is chosen as the week's target, and when it is photographed. Each
 message carries an unsubscribe link signed for that account. Needs
@@ -76,7 +76,7 @@ smoke test; the env example; this document's status.
 
 ## What only the owner can do
 
-1. Apply `scripts/skychaser-growth.sql` to the skychaser Neon branch (additive: three tables, nothing existing touched).
+1. Apply `scripts/skychaser-growth.sql` to the skychaser Neon branch (additive: four tables, nothing existing touched).
 2. Set `INVITE_SIGNING_KEY` (or leave it: `CAPSULE_SEAL_KEY` is used), `RESEND_API_KEY`, `NOTIFY_FROM`.
 3. Enable wallet funding (MoonPay or Coinbase) in the Privy dashboard for Solana.
 4. Run the funnel before launch and a week after.

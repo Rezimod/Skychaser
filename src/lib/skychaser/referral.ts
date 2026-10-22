@@ -86,6 +86,7 @@ export async function inviteStats(db: Db, input: { privyId: string; wallet: stri
 
 export type Reward = {
   code: string
+  referrerPrivyId: string
   referrerWallet: string
   edition: { editionId: string; designation: string; name: string; editionNumber: number; editionSize: number } | null
 }
@@ -126,7 +127,7 @@ export async function rewardReferrer(
   `)) as Rows<{ invitee_privy_id: string }>
   if (!claimed[0]) return null
 
-  const reward: Reward = { code, referrerWallet: referrer.wallet, edition: null }
+  const reward: Reward = { code, referrerPrivyId: referrer.privy_id, referrerWallet: referrer.wallet, edition: null }
   const { rows: given } = (await db.execute(sql`
     SELECT count(*)::int AS n FROM referral_reward WHERE referrer_privy_id = ${referrer.privy_id} AND edition_id IS NOT NULL
   `)) as Rows<{ n: number }>

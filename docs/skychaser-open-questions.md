@@ -314,3 +314,15 @@ most reversible option; each needs a yes/no from Rezi.
     (or the capsule seal key). If the beta is meant to grow only by the
     owner's hand, the one line in `src/middleware.ts` that accepts the
     signature comes out, and holders' links still record who brought whom.
+
+35. **Email goes out from the nightly cron, a day behind the night.** The
+    cron at 13:00 UTC closes last night and only then tells the holders their
+    card was photographed; a capture attached at 02:00 is announced at 17:00
+    Tbilisi. `scripts/skychaser-lifecycle.ts` is where the capture attaches,
+    and it could call `notifyPhotographed` itself the moment it does. Left for
+    the cron so one path sends and `holder_notice` keeps it to once.
+
+36. **Every signed-in account takes email until it opts out.** `holder_contact.notify`
+    starts true; each notice carries a signed unsubscribe link. There is no
+    opt-in step and no preference page. If the law of a target market wants
+    consent first, the welcome panel is where to ask.
