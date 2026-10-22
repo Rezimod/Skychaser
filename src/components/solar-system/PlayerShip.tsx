@@ -325,9 +325,14 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
   };
   // Started in the ship: once, the first time the deck is idle over a
   // drawn orbit and nothing (a pause, a surface) is in the way.
+  // Read from the session, not just the deck's state: an unmount cleanup
+  // (React's development double mount included) lets go of the session
+  // while the deck still says it is flying, and the ship must come back.
+  // A pilot who left the ship on purpose (`exit`) is not put back in it.
   const autoLaunched = useRef(false);
   useEffect(() => {
-    if (!autoLaunch || autoLaunched.current || active || landed || shellPaused) return;
+    if (!autoLaunch || landed || shellPaused || session.active) return;
+    if (autoLaunched.current && !active) return;
     autoLaunched.current = true;
     enter();
     // eslint-disable-next-line react-hooks/exhaustive-deps
