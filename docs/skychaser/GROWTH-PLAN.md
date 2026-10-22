@@ -46,7 +46,7 @@ brought them, their welcome edition, whether they take email), `POST
 /api/skychaser/hello` (called once per sign-in by `SkychaserHello`), the welcome
 panel, server-side funnel events.
 
-### 2. The edition page — planned
+### 2. The edition page — done in code
 `/edition/<DESIGNATION>/<n>`: one holder's one card, with its number, holder,
 date, capsule and photograph, and a link preview drawn for it. The reveal, the
 Collection and the welcome panel share this page, not the catalogue.

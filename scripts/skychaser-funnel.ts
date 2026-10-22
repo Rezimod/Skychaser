@@ -5,8 +5,8 @@
  *
  * A visitor counts at a step only if they also reached every step before it,
  * so each line is a true conversion from the one above. A return visitor is
- * one seen on two or more UTC days. Card and night pages are counted but sit
- * outside the chain.
+ * one seen on two or more UTC days. Card, night, edition and invite pages are
+ * counted but sit outside the chain.
  *
  *   STELLAR_DATABASE_CONFIRM=stellar npm run skychaser:funnel -- [--days 30]
  */
@@ -16,7 +16,7 @@ import { getDb } from '../src/lib/db'
 import { requireSkychaserDatabase } from './skychaser-guard'
 
 const CHAIN = ['landing', 'set', 'capsules', 'capsule', 'collection'] as const
-const ASIDE = ['card', 'tonight'] as const
+const ASIDE = ['card', 'tonight', 'edition', 'invite'] as const
 
 function flag(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`)

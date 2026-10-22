@@ -1029,3 +1029,8 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
   .sd-welcome .sd-eyebrow, .sd-welcome .sd-sheet__name { margin-left: 112px; }
   .sd-welcome .sd-sheet__name { padding-right: 46px; }
 }
+
+/* Several editions of one card: each number is its own page. */
+.sd-coll__nums { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; font-size: 12px; }
+.sd-coll__nums a { color: var(--sd-ink-3); }
+.sd-coll__nums a:hover { color: var(--sd-ink); }

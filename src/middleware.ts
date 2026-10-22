@@ -7,7 +7,7 @@ import { LEGACY_HOST } from '@/lib/skychaser/legacy';
 const RETIRED_CARD = /^\/card\/(TRANQUILITY-BASE|TWIN-SUN|TIDE-WORLD|RING-HABITAT|UNIT-7|SENTINEL|BLACK-SLAB)\/?$/i;
 
 /** The pages the card product serves. */
-const CARD_PAGES = /^\/($|(genesis|set|card|collection|capsules?|tonight|vote|node|book|voyage|invite|terms|privacy|contact)(\/|$))/;
+const CARD_PAGES = /^\/($|(genesis|set|card|edition|collection|capsules?|tonight|vote|node|book|voyage|invite|terms|privacy|contact)(\/|$))/;
 
 /** The legacy app's pages, which now live on its own domain. Anything else is the card product's 404. */
 const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|darksky|earn|faq|feed|field|first-light|games|hub|leaderboard|learn|marketplace|missions|moon|network|nfts|observations|observatory|observe|play|profile|proof|returns|security-policy|settings|shop|sky|solar-system|star|u)(\/|$)/;
@@ -29,6 +29,8 @@ export function middleware(req: NextRequest) {
 
   const codes = inviteCodes();
   if (codes.length === 0) return NextResponse.next();
+  // A link preview is drawn for whoever asks: a crawler carries no invitation, and the picture gives nothing away.
+  if (/\/(opengraph|twitter)-image(\.[a-z]+)?$/.test(pathname)) return NextResponse.next();
   const held = req.cookies.get(INVITE_COOKIE)?.value;
   if (held && codes.includes(held)) return NextResponse.next();
   return NextResponse.rewrite(new URL('/invite', req.url));

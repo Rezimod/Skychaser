@@ -16,6 +16,6 @@ it('shows the first card by name and number, and shares its own edition page', (
   expect(html).toContain('First Light');
   expect(html).toContain('No. 042 of 300');
   expect(html).toContain('/collection?wallet=HOLDER');
-  expect(html).toContain(encodeURIComponent('https://skychaser.io/card/FIRST-LIGHT'));
+  expect(html).toContain(encodeURIComponent('https://skychaser.io/edition/FIRST-LIGHT/42'));
   expect(html).not.toMatch(/!/);
 });

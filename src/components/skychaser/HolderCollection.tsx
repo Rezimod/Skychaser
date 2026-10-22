@@ -22,8 +22,9 @@ type Group = { designation: string; name: string; rarity: Rarity; size: number; 
 
 /**
  * A holder's editions, scarcest first. Two editions of one card share a tile
- * that carries both numbers. The rarities above the grid filter it in place;
- * nothing moves but what is shown.
+ * that carries both numbers, each linked to its own page; a single edition's
+ * tile is that page. The rarities above the grid filter it in place; nothing
+ * moves but what is shown.
  */
 export default function HolderCollection({ editions }: { editions: HolderEdition[] }) {
   const [family, setFamily] = useState<'all' | Rarity>('all')
@@ -93,7 +94,7 @@ export default function HolderCollection({ editions }: { editions: HolderEdition
             <li key={g.designation} data-rarity={g.rarity}>
               {plateFor(g.designation) ? (
                 <Link
-                  href={`/card/${g.designation}`}
+                  href={many ? `/card/${g.designation}` : `/edition/${g.designation}/${g.numbers[0]}`}
                   className="sd-tile"
                   data-rarity={g.rarity}
                   aria-label={`${g.name}, ${label} of ${g.size}`}
@@ -113,6 +114,15 @@ export default function HolderCollection({ editions }: { editions: HolderEdition
                 <i aria-hidden="true" />
                 {g.latest ? captureParts(g.latest) : 'Photograph after first light'}
               </p>
+              {many && (
+                <p className="sd-coll__nums sd-data">
+                  {g.numbers.map((n) => (
+                    <Link key={n} href={`/edition/${g.designation}/${n}`} className="sd-link">
+                      {`No. ${pad(n)}`}
+                    </Link>
+                  ))}
+                </p>
+              )}
             </li>
           )
         })}

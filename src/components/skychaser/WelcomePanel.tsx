@@ -27,7 +27,7 @@ export default function WelcomePanel({ edition, wallet, onClose }: { edition: We
   }, [onClose]);
 
   const number = `No. ${pad(edition.editionNumber)} of ${edition.editionSize}`;
-  const url = `https://skychaser.io/card/${edition.designation}`;
+  const url = `https://skychaser.io/edition/${edition.designation}/${edition.editionNumber}`;
 
   return (
     <div className="sd-sheet" role="dialog" aria-modal="true" aria-labelledby="sd-welcome-title" onClick={(e) => e.target === e.currentTarget && onClose()}>
