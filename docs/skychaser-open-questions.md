@@ -300,3 +300,17 @@ most reversible option; each needs a yes/no from Rezi.
     commons at most; the funnel (`welcome_granted` events) will show it if it
     happens. A stronger guard (a phone, a paid capsule first) was not added
     because it would remove the point of the first card.
+
+33. **One common for each invited account's first capsule, up to ten.** The
+    inviter's card is drawn at random among the commons with editions left,
+    never a welcome card, never a sealed or limited one
+    (`src/lib/skychaser/referral.ts`). It is a gift, not a sale, so the draw is
+    not committed to in the public log. Ten is a guess at where generosity
+    turns into farming; the constant is `REFERRAL_REWARD_CAP`.
+
+34. **A holder's link opens the closed beta.** While `STELLAR_INVITE_CODES`
+    is set, a holder's code admits whoever opens it, exactly as an owner's
+    code does: the cookie carries a signature made with `INVITE_SIGNING_KEY`
+    (or the capsule seal key). If the beta is meant to grow only by the
+    owner's hand, the one line in `src/middleware.ts` that accepts the
+    signature comes out, and holders' links still record who brought whom.

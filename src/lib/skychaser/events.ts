@@ -6,7 +6,7 @@ import type { Db } from './attach'
  * through /api/track, which refuses these names, so a browser cannot forge a
  * welcome or a reward. Writing one never fails the request it belongs to.
  */
-export type ServerEvent = 'welcome_granted' | 'invite_landed' | 'referral_rewarded' | 'notice_sent'
+export type ServerEvent = 'welcome_granted' | 'invite_opened' | 'invite_landed' | 'referral_rewarded' | 'notice_sent'
 
 export async function recordEvent(
   db: Db,

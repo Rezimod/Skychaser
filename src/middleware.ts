@@ -1,6 +1,6 @@
 import { APP_HOST } from '@/lib/skychaser/app-origin';
 import { NextResponse, type NextRequest } from 'next/server';
-import { INVITE_COOKIE, inviteCodes } from '@/lib/invite';
+import { INVITE_COOKIE, INVITED_COOKIE, inviteCodes, inviteSignatureValid } from '@/lib/invite';
 import { LEGACY_HOST } from '@/lib/skychaser/legacy';
 
 /** Cards of the first Set 001, replaced by First Light before anything sold. Names First Light reuses are live again. */
@@ -14,12 +14,13 @@ const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|dark
 
 /**
  * The closed beta. While STELLAR_INVITE_CODES names any code, a page opens only
- * to a visitor carrying one of them, set by /invite/<code>. Unset, the gate is
- * not there at all. APIs, assets and the on-chain metadata routes are never
- * behind it: minted cards and the reveal still have to reach them.
+ * to a visitor carrying one of them, or a holder's code with its signature —
+ * both set by /invite/<code>. Unset, the gate is not there at all. APIs,
+ * assets, link previews and the on-chain metadata routes are never behind it:
+ * minted cards, the reveal and a crawler's preview still have to reach them.
  */
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   // The app host has no landing page: its front door is the set.
   if (pathname === '/' && req.headers.get('host')?.split(':')[0] === APP_HOST) return NextResponse.rewrite(new URL('/genesis', req.url));
@@ -29,10 +30,10 @@ export function middleware(req: NextRequest) {
 
   const codes = inviteCodes();
   if (codes.length === 0) return NextResponse.next();
-  // A link preview is drawn for whoever asks: a crawler carries no invitation, and the picture gives nothing away.
   if (/\/(opengraph|twitter)-image(\.[a-z]+)?$/.test(pathname)) return NextResponse.next();
   const held = req.cookies.get(INVITE_COOKIE)?.value;
   if (held && codes.includes(held)) return NextResponse.next();
+  if (held && (await inviteSignatureValid(held, req.cookies.get(INVITED_COOKIE)?.value))) return NextResponse.next();
   return NextResponse.rewrite(new URL('/invite', req.url));
 }
 

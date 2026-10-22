@@ -51,7 +51,7 @@ panel, server-side funnel events.
 date, capsule and photograph, and a link preview drawn for it. The reveal, the
 Collection and the welcome panel share this page, not the catalogue.
 
-### 3. The invitation loop — planned
+### 3. The invitation loop — done in code
 Every holder has an invitation link, `/invite/<code>`, made on first request
 (`GET /api/skychaser/invite`). It opens the closed beta like an owner's code
 (the cookie carries a signature the middleware checks without the database),

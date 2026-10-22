@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { orders } from '@/lib/schema';
@@ -8,6 +8,7 @@ import { skychaserOpenRateLimit } from '@/lib/rate-limit';
 import { openCapsule, readCapsule, settleCapsulePayment } from '@/lib/skychaser/capsule';
 import { findPayment, paymentLedger, paymentNetworkMisconfig, reportExtraTransfers, reportSharedTransfers, unpaidRehearsal } from '@/lib/skychaser/orders';
 import { SoldOutError } from '@/lib/skychaser/randomness';
+import { rewardReferrer } from '@/lib/skychaser/referral';
 import { isUuid, limited } from '@/lib/skychaser/route-guards';
 
 export const runtime = 'nodejs';
@@ -69,6 +70,11 @@ export async function POST(req: NextRequest) {
   try {
     const result = await openCapsule(db, c.id);
     if (!result.ok) return NextResponse.json({ error: 'This capsule cannot be opened' }, { status: 409 });
+    // The first capsule an invited account opens earns its inviter a card; later ones, and a reopening, do not.
+    if (!result.alreadyOpened) {
+      const buyer = c.buyer_wallet;
+      after(() => rewardReferrer(db, { inviteePrivyId: privyId, inviteeWallet: buyer, capsuleId: c.id }).catch((err) => console.error('[skychaser/capsules/open] referral', err)));
+    }
     return NextResponse.json({
       capsuleId: c.id,
       sequence: Number(c.sequence),

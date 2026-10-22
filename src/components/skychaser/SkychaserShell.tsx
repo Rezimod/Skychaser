@@ -34,6 +34,7 @@ const EXPLORE = [
   { href: '/node', label: 'Observatory' },
   { href: '/vote', label: 'Vote' },
   { href: '/voyage', label: 'Voyage' },
+  { href: '/invite', label: 'Invite' },
 ];
 
 const LEGAL = [
