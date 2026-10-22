@@ -4,6 +4,9 @@
 // body binds straight to the joint objects and moon-suit-pose drives it as
 // it drove the old code-built suit. The helmet and the gold visor ride the
 // neck and the visor hinge; on a world with air the pilot's own head does.
+// On the richer presets the suit's fabric takes a soft sheen at grazing
+// light and the gold visor a clear coat over its metal, both lit by the
+// scene's own environment; the lighter presets keep the plain materials.
 //
 // Joints are bones at their pivots: rotation.x negative swings a limb
 // forward, positive folds a knee back; arm abduction is rotation.z = side * k.
@@ -51,6 +54,26 @@ export interface SuitRig {
   /** The helmet lamps and the displays, bright with the headlamp on. */
   setLamps: (on: boolean) => void;
   dispose: () => void;
+}
+
+/** The suit's fabric with a sheen: the authored maps and colours, on a physical material. */
+function fabric(m: THREE.MeshStandardMaterial): THREE.MeshPhysicalMaterial {
+  const f = new THREE.MeshPhysicalMaterial({
+    name: m.name, color: m.color.clone(), map: m.map, normalMap: m.normalMap, normalScale: m.normalScale.clone(),
+    roughness: m.roughness, roughnessMap: m.roughnessMap, metalness: m.metalness, metalnessMap: m.metalnessMap,
+    emissive: m.emissive.clone(), emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity, side: m.side,
+    // Woven cloth catches the light along its edges: a pale, broad sheen.
+    sheen: 0.4, sheenRoughness: 0.8, sheenColor: new THREE.Color(0.92, 0.94, 1),
+  });
+  return f;
+}
+
+/** The gold visor with a clear coat: the gold reflects the world tinted, the coat reflects it white. */
+function coated(m: THREE.MeshStandardMaterial): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    name: m.name, color: m.color.clone(), metalness: 1, roughness: 0.05, side: m.side,
+    clearcoat: 1, clearcoatRoughness: 0.03,
+  });
 }
 
 /** `bareHead`: on a world with air — no pack, no helmet, the pilot's own head. */
@@ -134,7 +157,10 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
     const find = (name: string) => model.getObjectByName(name) as THREE.Mesh | undefined;
     const src = find('Body') as THREE.SkinnedMesh | undefined;
     if (!src?.isSkinnedMesh) throw new Error('cosmonaut.glb: no skinned Body');
-    const mat = (src.material as THREE.MeshStandardMaterial).clone();
+    const level = currentQuality().level;
+    const rich = !lite && (level === 'high' || level === 'ultra');
+    const authored = src.material as THREE.MeshStandardMaterial;
+    const mat = rich ? fabric(authored) : authored.clone();
     // The packed map carries occlusion in R beside roughness and metalness.
     mat.aoMap = mat.roughnessMap;
     suitMat = mat;
@@ -177,9 +203,11 @@ export function buildSuit(lite: boolean, bareHead = false): SuitRig {
       rigid('Head', helmet, 'neck', mat);
     } else {
       rigid('Helmet', helmet, 'neck', mat);
-      const gold = (find('Visor')?.material as THREE.MeshStandardMaterial | undefined)?.clone();
+      const plate = find('Visor')?.material as THREE.MeshStandardMaterial | undefined;
+      const gold = plate ? (rich ? coated(plate) : plate.clone()) : undefined;
       if (gold) {
-        gold.envMapIntensity = 1.8;
+        gold.envMapIntensity = rich ? 2.1 : 1.8;
+        gold.roughness = Math.min(gold.roughness, 0.06);
         owned.push(gold);
         rigid('Visor', visor, 'visor', gold);
         // The fittings reflect what the visor does.

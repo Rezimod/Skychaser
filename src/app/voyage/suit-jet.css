@@ -1,17 +1,10 @@
-/* ── The jetpack on the glass: its meter beside the life support, and its
-      key on the touch deck. The suit block and the deck are laid out in
+/* ── The jetpack on the touch deck. The pack never runs dry, so it has no
+      meter on the glass; its key sits beside the jump key, and in flight
+      the jump key turns into the way down. The deck itself is laid out in
       solar-system.css; this file only adds the jet's own pieces. ── */
 
-.moon-hud__vital--jet .moon-hud__bar i { background: #6fb6ff; transition: width 120ms linear; }
-.moon-hud__suit[data-jet='on'] .moon-hud__vital--jet i:first-child { color: #9fd0ff; }
-.moon-hud__suit[data-jet='on'] .moon-hud__vital--jet .moon-hud__bar i { background: #b8dcff; box-shadow: 0 0 6px rgba(159, 208, 255, 0.8); }
-/* Nearly empty: the meter blinks rather than shouts. */
-.moon-hud__suit[data-jet='low'] .moon-hud__vital--jet { animation: suit-jet-blink 0.7s steps(2, start) infinite; }
-.moon-hud__suit[data-jet='low'] .moon-hud__vital--jet .moon-hud__bar i { background: #ff9b6a; }
-@keyframes suit-jet-blink { to { opacity: 0.35; } }
-
 /* The jet key sits beside the jump key on the deck, in the free cell under
-   the gear key; it is held, like the engine key. */
+   the gear key; it is held, like the engine key, and dragged down it descends. */
 .moon-hud__jet {
   grid-column: 1;
   grid-row: 2;
@@ -30,11 +23,26 @@
   text-transform: uppercase;
   align-self: end;
   margin-bottom: 4px;
+  touch-action: none;
 }
 .moon-hud__jet:active { background: rgba(159, 208, 255, 0.26); }
 .moon-surface:not([data-phase='surface']) .moon-hud__jet,
 .moon-surface[data-inside]:not([data-inside='']) .moon-hud__jet,
 .moon-surface[data-driving='true'] .moon-hud__jet { display: none; }
+/* Flying, the jet key glows: the pack is lit. */
+.moon-surface[data-jet-flying='true'] .moon-hud__jet {
+  background: rgba(159, 208, 255, 0.14);
+  box-shadow: 0 0 14px rgba(159, 208, 255, 0.45);
+}
+
+/* The jump key's two faces: a jump on the ground, the way down in flight. */
+.moon-hud__ico-down, .moon-hud__word-down { display: none; }
+.moon-surface[data-jet-flying='true'] :is(.moon-hud__ico-jump, .moon-hud__word-jump) { display: none; }
+.moon-surface[data-jet-flying='true'] :is(.moon-hud__ico-down, .moon-hud__word-down) { display: block; }
+.moon-surface[data-jet-flying='true'] .moon-hud__jump {
+  border-color: rgba(159, 208, 255, 0.55) !important;
+  color: #9fd0ff !important;
+}
 @media (max-width: 720px) {
   .moon-hud__jet { width: 58px; height: 58px; }
 }

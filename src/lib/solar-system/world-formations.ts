@@ -111,19 +111,19 @@ export function placeFormations(profile: WorldProfile, opts: FormationsOptions):
   return out;
 }
 
-/** Colliders for what a crew could walk into: everything inside the fence, at its footprint. An arch is two legs. */
+/** Colliders for what a crew could walk into: everything inside the fence, at its footprint, as tall as it stands (a flyer passes over). An arch is two legs. */
 export function formationColliders(placed: readonly Formation[], walkRadius: number, pad: { x: number; z: number }): Collider[] {
   const out: Collider[] = [];
   for (const f of placed) {
     if (Math.hypot(f.x - pad.x, f.z - pad.z) > walkRadius + f.r) continue;
     if (f.kind === 'arch') {
       const leg = f.sx * 0.3; const half = f.sx * 0.86;
-      out.push({ x: f.x + Math.cos(f.yaw) * half, z: f.z - Math.sin(f.yaw) * half, r: leg });
-      out.push({ x: f.x - Math.cos(f.yaw) * half, z: f.z + Math.sin(f.yaw) * half, r: leg });
+      out.push({ x: f.x + Math.cos(f.yaw) * half, z: f.z - Math.sin(f.yaw) * half, r: leg, top: f.sy });
+      out.push({ x: f.x - Math.cos(f.yaw) * half, z: f.z + Math.sin(f.yaw) * half, r: leg, top: f.sy });
     } else if (f.kind === 'mesa') {
-      out.push({ x: f.x, z: f.z, r: f.sx * 1.1 });
+      out.push({ x: f.x, z: f.z, r: f.sx * 1.1, top: f.sy });
     } else {
-      out.push({ x: f.x, z: f.z, r: f.sx * (f.kind === 'boulder' ? 0.85 : f.kind === 'spire' ? 0.95 : 0.75) });
+      out.push({ x: f.x, z: f.z, r: f.sx * (f.kind === 'boulder' ? 0.85 : f.kind === 'spire' ? 0.95 : 0.75), top: f.sy });
     }
   }
   return out;

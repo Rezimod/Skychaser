@@ -7,8 +7,8 @@ import { NO_ACCOUNT } from '@/game/account';
 
 const ROOT = path.resolve(__dirname, '..');
 const GAME_DIRS = ['game', 'lib/solar-system', 'lib/multiplayer', 'components/play', 'components/solar-system'];
-/** The one file each host may use to plug its own sign-in in. */
-const HOST_ADAPTERS = new Set(['components/play/StellarAccount.tsx']);
+/** The files each host may use to plug its own sign-in in. */
+const HOST_ADAPTERS = new Set(['components/play/StellarAccount.tsx', 'components/play/StellarPrivyBridge.tsx']);
 
 function files(dir: string): string[] {
   const abs = path.join(ROOT, dir);

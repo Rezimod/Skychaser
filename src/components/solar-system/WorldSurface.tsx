@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronsUp, Flame, Flashlight, Gem, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
+import { Camera, ChevronsDown, ChevronsUp, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeWorldSurface, type WorldSurfaceHandle } from '@/lib/solar-system/world-surface';
 import type { ShipKind } from '@/lib/solar-system/ship-mesh';
 import { WORLDS, type WorldId } from '@/lib/solar-system/world-profiles';
-import { JET_LOW, motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
+import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
 import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
+import { GemHud, type GemHudHandle } from './GemHud';
 import { GameStick, tapKey } from './GameStick';
 import { CosmicLoader } from './CosmicLoader';
 import { ControlsHelp } from './ControlsHelp';
@@ -20,6 +21,9 @@ import { attachSurfaceControls, type SurfaceControls } from '@/game/surface-cont
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
+import { game } from '@/game/state';
+import { hasObjectives } from '@/game/mode';
+import { story, storyLine } from '@/game/story';
 
 interface WorldSurfaceProps {
   world: WorldId;
@@ -66,6 +70,13 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
   const [run, setRun] = useState(false);
   const [crouch, setCrouch] = useState(false);
   const isEarth = world === 'earth';
+  /** Story mode: the chapter's objective goes in the objective card; the
+   *  other modes have no objectives at all (game/mode.ts). Fixed for the scene. */
+  const [storyMode] = useState(() => hasObjectives(game.get().mode));
+  const ts = useTranslations('play.story');
+  const tsRef = useRef(ts);
+  tsRef.current = ts;
+  const objTagRef = useRef<HTMLSpanElement>(null);
   const breathable = !!WORLDS[world].breathable;
   const [earthData, setEarthData] = useState<EarthData | null>(null);
   const [earthError, setEarthError] = useState(false);
@@ -123,10 +134,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
   const o2BarRef = useRef<HTMLElement>(null);
   const hrRef = useRef<HTMLSpanElement>(null);
   const tempRef = useRef<HTMLSpanElement>(null);
-  const jetRef = useRef<HTMLSpanElement>(null);
-  const crystalsRef = useRef<HTMLSpanElement>(null);
-  const crystalsCountRef = useRef<HTMLSpanElement>(null);
-  const jetBarRef = useRef<HTMLElement>(null);
+  const gemHudRef = useRef<GemHudHandle>(null);
   const outRef = useRef<HTMLSpanElement>(null);
   const evaRef = useRef<HTMLSpanElement>(null);
   const distRef = useRef<HTMLSpanElement>(null);
@@ -217,6 +225,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
       paused: () => pausedRef.current,
       wake: handle.startAudio,
       onCrouch: setCrouch,
+      flying: () => !!handleRef.current?.telemetry.flying,
       onPauseRequest: () => onPauseRequestRef.current?.(),
       selectable: '.moon-hud__help, .moon-hud__menu, .moon-hud__log',
     });
@@ -241,8 +250,12 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
       root.dataset.view = tel.view;
+      // In flight the jump key is the way down (suit-jet.css swaps its face).
+      root.dataset.jetFlying = String(tel.flying);
 
       if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+      // Story mode hears what this world is doing (game/story.ts; nothing in the other modes).
+      story.observe({ world, landed: tel.phase === 'touchdown' || tel.phase === 'surface', outside: tel.phase === 'surface', readout: tel.readout, altitude: tel.altitude, distance: tel.distanceM });
       // From orbit, and back up to it: the flight panel, the heat at the
       // edges of the glass and the glass shaking with the air (--heat,
       // --shake), and the world's name over the orbit.
@@ -302,7 +315,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
 
       // ── The suit, on a world that needs one, when it is low or in front of
       // the crew. There is no suit power out here, so the oxygen decides. ──
-      const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet', jetFuel: tel.jetFuel, jetting: tel.jetting };
+      // The pack never runs dry, so it has no meter: the suit block keeps to the life support.
+      const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet' };
       const suit = suitRef.current;
       const suitOn = !breathable && suitShown(glance);
       show(suit, suitOn);
@@ -311,14 +325,10 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         text(o2Ref.current, `${tel.o2.toFixed(1)}%`);
         if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
         text(tempRef.current, `${tel.suitTemp.toFixed(1)}°`);
-        suit.dataset.jet = tel.jetFuel < JET_LOW ? 'low' : tel.jetting ? 'on' : '';
-        text(jetRef.current, `${Math.round(tel.jetFuel * 100)}%`);
-        if (jetBarRef.current) jetBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.jetFuel * 100))}%`;
       }
       show(lampRef.current, tel.headlamp);
-      // The crystal tally: only on worlds that grew any, and only once one is held.
-      show(crystalsRef.current, tel.crystalsTotal > 0 && tel.crystals > 0);
-      text(crystalsCountRef.current, `${tel.crystals} / ${tel.crystalsTotal}`);
+      // The gem tally, and a line on the glass for each one picked up (GemHud).
+      gemHudRef.current?.paint(tel);
       // The rest are read rather than watched: these refs are only mounted
       // while the log is open.
       text(gravRef.current, `${handle.profile.gravity.toFixed(2)} m/s²`);
@@ -365,22 +375,36 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
       const hint = hintRef.current;
       if (hint) {
         show(hint, !!hintKey && !p.active);
-        if (hintKey) text(hint, ttw(hintKey));
+        // The flying lesson is the same everywhere there is a pack: it is the Moon's line.
+        if (hintKey) text(hint, tel.hint === 'fly' ? tt(hintKey) : ttw(hintKey));
       }
       const banner = bannerRef.current;
       if (banner) {
         show(banner, tel.banner !== '');
         if (tel.banner) text(banner.firstElementChild as HTMLElement, ttw(`banner.${tel.banner}`));
       }
+      // The story's objective, while its chapter is on this world: it has the card.
+      const sl = storyMode ? storyLine(story.get(), world) : null;
+      const storyCard = !!sl;
+      if (objRef.current) {
+        objRef.current.dataset.story = String(storyCard);
+        if (sl) {
+          show(objRef.current, true);
+          text(objTagRef.current, tsRef.current('chapterTag', { n: sl.index, name: tsRef.current(`chapters.${sl.chapter}.name`) }));
+          text(objTextRef.current, tsRef.current(sl.key));
+          text(objRangeRef.current, sl.progress);
+        } else if (!isEarth) show(objRef.current, false);
+      }
       const ea = tel.earth;
       if (ea) {
         const ex = ea.expedition;
         text(clockRef.current, ea.clock);
         const obj = objRef.current;
-        if (obj) {
-          const on = !!ex.objective;
+        if (obj && !storyCard) {
+          const on = storyMode && !!ex.objective;
           show(obj, on);
           if (on) {
+            text(objTagRef.current, ttw('expedition.title'));
             text(objTextRef.current, ttw(`expedition.obj.${ex.objective}`));
             const range = ex.stage === 'overlook'
               ? ttw('expedition.found', { n: ex.found.length })
@@ -390,7 +414,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         }
         const pip = pipRef.current;
         if (pip) {
-          const on = ex.bearing >= 0 && ex.distance > 6;
+          const on = storyMode && ex.bearing >= 0 && ex.distance > 6;
           show(pip, on);
           if (on) {
             let rel = ((ex.bearing - tel.heading + 540) % 360) - 180;
@@ -401,8 +425,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         }
         const meter = meterRef.current;
         if (meter) {
-          const spotting = ex.stage === 'overlook' && !!ex.spotting;
-          const working = ex.work > 0 && !spotting;
+          const spotting = storyMode && ex.stage === 'overlook' && !!ex.spotting;
+          const working = storyMode && ex.work > 0 && !spotting;
           show(meter, spotting || working);
           if (spotting) {
             meter.style.setProperty('--v', ex.spotWork.toFixed(3));
@@ -416,7 +440,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
           eyepieceOpen = ex.eyepiece;
           setEyepiece(ex.eyepiece && ea.target ? { target: ea.target, date: new Date(ea.date) } : null);
         }
-        if (!tel.banner && ex.banner) {
+        if (!tel.banner && ex.banner && storyMode) {
           const bannerEl = bannerRef.current;
           if (bannerEl) {
             show(bannerEl, true);
@@ -477,8 +501,35 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
     c.touchDeck[key] = on;
     c.sync();
   });
-  const jumpKey = deck('jump');
-  const jetKey = deck('jet');
+  /** The jump key: a jump on the ground; in flight, held, the way down. */
+  const jumpKey = hold((on) => {
+    const c = controlsRef.current;
+    if (!c) return;
+    const down = on && !!handleRef.current?.telemetry.flying;
+    c.touchDeck.jump = on && !down;
+    c.touchDeck.descend = down;
+    c.sync();
+  });
+  /** The jet key: held, it lifts off and climbs; dragged down a thumb's width, it descends instead. */
+  const jetFrom = useRef(0);
+  const jetSet = (jet: boolean, descend: boolean) => {
+    const c = controlsRef.current;
+    if (!c || (c.touchDeck.jet === jet && c.touchDeck.descend === descend)) return;
+    c.touchDeck.jet = jet; c.touchDeck.descend = descend;
+    c.sync();
+  };
+  const jetHold = hold((on) => jetSet(on, false));
+  const jetKey = {
+    ...jetHold,
+    onPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => { jetFrom.current = e.clientY; jetHold.onPointerDown(e); },
+    onPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => {
+      const c = controlsRef.current;
+      if (!c || !(c.touchDeck.jet || c.touchDeck.descend)) return;
+      const dy = e.clientY - jetFrom.current;
+      if (dy > 26) jetSet(false, true);
+      else if (dy < 14) jetSet(true, false);
+    },
+  };
   const throttleKey = deck('throttle');
   const useKey = deck('use');
   const actionKey = {
@@ -589,9 +640,9 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
               <span ref={altRowRef} className="moon-hud__reading" hidden><span>{t('altitude')}</span><span ref={altRef} /></span>
             </div>
           </div>
-          {isEarth && (
+          {(isEarth || storyMode) && (
             <button ref={objRef} type="button" className="moon-hud__objective" onClick={() => setLog(true)} hidden>
-              <span className="moon-hud__objective-tag">{tw('expedition.title')}</span>
+              <span ref={objTagRef} className="moon-hud__objective-tag">{isEarth ? tw('expedition.title') : ''}</span>
               <span ref={objTextRef} className="moon-hud__objective-text" />
               <span ref={objRangeRef} className="moon-hud__objective-range" />
             </button>
@@ -602,13 +653,12 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         <div ref={suitRef} className="moon-hud__suit" data-level="ok" role="status" hidden>
           <span className="moon-hud__vital"><i>O₂</i><span ref={o2Ref} /><b className="moon-hud__bar"><i ref={o2BarRef} /></b></span>
           <span className="moon-hud__vital"><i>{t('suitTemp')}</i><span ref={tempRef} /></span>
-          <span className="moon-hud__vital moon-hud__vital--jet"><i>{t('jetpack')}</i><span ref={jetRef} /><b className="moon-hud__bar"><i ref={jetBarRef} /></b></span>
         </div>
 
         {/* ── Bottom right: the lamp. ── */}
         <div className="moon-hud__hands">
           <span ref={lampRef} className="moon-hud__carry moon-hud__lamp" hidden><Flashlight size={14} aria-hidden /><i>{tc('lampOn')}</i></span>
-          <span ref={crystalsRef} className="moon-hud__carry moon-hud__crystals" hidden><Gem size={14} aria-hidden /><i>{tw('crystals')}</i><span ref={crystalsCountRef} /></span>
+          <GemHud ref={gemHudRef} />
         </div>
 
         <div className="moon-hud__top">
@@ -702,7 +752,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
             <span ref={actionTextRef} />
           </button>
           <button type="button" className="moon-hud__jump" {...jumpKey} aria-label={t('jump')}>
-            <Wind size={18} aria-hidden /><span>{t('jump')}</span>
+            <Wind className="moon-hud__ico-jump" size={18} aria-hidden /><ChevronsDown className="moon-hud__ico-down" size={18} aria-hidden />
+            <span className="moon-hud__word-jump">{t('jump')}</span><span className="moon-hud__word-down">{t('descend')}</span>
           </button>
           {/* No pack where there is air to breathe: the pilot came out without it. */}
           {!breathable && (

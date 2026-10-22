@@ -7,6 +7,10 @@
 // attach time from primitives and merged, per joint, into one mesh a
 // material — a dozen draw calls, not sixty.
 //
+// The lights live: the console's green status light beats slowly, the amber
+// one blinks while the pack is lit, and the strip up the pack and the rims of
+// the nozzles brighten with the thrust — a handful of uniforms a frame.
+//
 // Two things stay separate on purpose. The flames are live shader meshes the
 // owner scales every frame, so they are kept out of the merge; and the small
 // fittings — bolts, straps, LEDs, the antenna — are a mesh of their own per
@@ -267,6 +271,11 @@ export function buildSuitGear(joints: GearJoints, bareHead = false): SuitGear {
       flameMat.uniforms.uK.value = k;
       flameMat.uniforms.uT.value = t;
       rim.emissiveIntensity = k * 4;
+      // The status lights: a slow double beat on the green, the amber blinking while the pack burns.
+      const beat = t % 2.4;
+      ledGreen.emissiveIntensity = 1.2 + (beat < 0.12 || (beat > 0.3 && beat < 0.42) ? 2.2 : 0);
+      ledAmber.emissiveIntensity = on ? (t % 0.8 < 0.4 ? 3.2 : 0.6) : 1.4;
+      strip.emissiveIntensity = 1.6 + 3 * k;
       for (let i = 0; i < flames.length; i++) {
         const flicker = 0.85 + 0.15 * Math.sin(t * 37 + i * 2.1) + 0.06 * Math.sin(t * 91 + i);
         if (on) flames[i].scale.set(0.8 + 0.2 * k, k * flicker, 0.8 + 0.2 * k); else flames[i].scale.setScalar(OFF);

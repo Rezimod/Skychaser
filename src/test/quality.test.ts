@@ -54,7 +54,7 @@ describe('quality presets', () => {
   });
   it('the screen-space passes and the cloud quality follow the preset', () => {
     const [p, b, h] = QUALITY_LEVELS.map(qualityProfile);
-    expect(p).toMatchObject({ flare: false, godRays: false, grade: false, clouds: 0, anisotropy: 4 });
+    expect(p).toMatchObject({ flare: false, godRays: false, grade: true, clouds: 0, anisotropy: 4 });
     expect(b).toMatchObject({ flare: true, godRays: false, grade: true, clouds: 1, anisotropy: 8 });
     expect(h).toMatchObject({ flare: true, godRays: true, grade: true, clouds: 1, anisotropy: 16 });
   });

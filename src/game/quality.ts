@@ -46,13 +46,14 @@ export interface QualityProfile {
 
 const PROFILES: Record<QualityLevel, QualityProfile> = {
   performance: {
-    level: 'performance', maxPixelRatio: 1.25, shadowMapSize: 1024, shadowRadius: 42,
+    level: 'performance', maxPixelRatio: 1.5, shadowMapSize: 1024, shadowRadius: 42,
     bloom: false, bloomScale: 0.5, msaa: 0, dustMax: 900, printsMax: 400, historyMax: 500,
     stars: 2200, band: 4000, propDensity: 0.5, lodDistance: 25, lite: true,
-    flare: false, godRays: false, grade: false, clouds: 0, anisotropy: 4,
+    // The grade is one low-precision pass, and half of how a world looks: every phone gets it.
+    flare: false, godRays: false, grade: true, clouds: 0, anisotropy: 4,
   },
   balanced: {
-    level: 'balanced', maxPixelRatio: 1.5, shadowMapSize: 2048, shadowRadius: 60,
+    level: 'balanced', maxPixelRatio: 1.75, shadowMapSize: 2048, shadowRadius: 60,
     bloom: true, bloomScale: 0.5, msaa: 0, dustMax: 1600, printsMax: 900, historyMax: 1200,
     stars: 4200, band: 9000, propDensity: 1, lodDistance: 40, lite: false,
     flare: true, godRays: false, grade: true, clouds: 1, anisotropy: 8,
