@@ -1086,3 +1086,53 @@ export const telescopeSlot = pgTable('telescope_slot', {
   slotAt: timestamp('slot_at', { withTimezone: true }).notNull(),
   bookingId: uuid('booking_id').notNull(),
 }, (t) => [primaryKey({ columns: [t.nodeId, t.slotAt] })])
+
+// ─── Growth: who each account is, invitations and what they brought ─────────
+// scripts/skychaser-growth.sql creates these three on the card database.
+
+/**
+ * One row per signed-in account: the wallet Privy lists for it, its email,
+ * the invitation that brought it and the welcome edition it received.
+ */
+export const holderContact = pgTable('holder_contact', {
+  privyId: text('privy_id').primaryKey(),
+  wallet: text('wallet'),
+  email: text('email'),
+  /** Takes email about its cards. Off by the unsubscribe link. */
+  notify: boolean('notify').notNull().default(true),
+  /** The invitation code the account arrived with, if any. */
+  invitedBy: text('invited_by'),
+  invitedAt: timestamp('invited_at', { withTimezone: true }),
+  /** Set while the welcome edition is being allocated, so two sign-ins at once get one card; cleared if nothing could be given. */
+  welcomeClaimedAt: timestamp('welcome_claimed_at', { withTimezone: true }),
+  welcomeEditionId: uuid('welcome_edition_id'),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('holder_contact_wallet_idx').on(t.wallet),
+  index('holder_contact_invited_idx').on(t.invitedBy),
+  uniqueIndex('holder_contact_welcome_unique').on(t.welcomeEditionId).where(sql`welcome_edition_id IS NOT NULL`),
+])
+
+/** A holder's invitation link: one code per account, made on first request. */
+export const inviteCode = pgTable('invite_code', {
+  code: text('code').primaryKey(),
+  privyId: text('privy_id').notNull().unique(),
+  wallet: text('wallet').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * What an invitation brought: the invited account's first opened capsule,
+ * and the edition its inviter received for it. One per invited account.
+ */
+export const referralReward = pgTable('referral_reward', {
+  inviteePrivyId: text('invitee_privy_id').primaryKey(),
+  code: text('code').notNull(),
+  referrerPrivyId: text('referrer_privy_id').notNull(),
+  referrerWallet: text('referrer_wallet').notNull(),
+  capsuleId: uuid('capsule_id'),
+  /** Null when no card was left to give, or the inviter had reached the cap. */
+  editionId: uuid('edition_id'),
+  rewardedAt: timestamp('rewarded_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index('referral_reward_referrer_idx').on(t.referrerPrivyId)])

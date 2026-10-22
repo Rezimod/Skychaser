@@ -283,3 +283,20 @@ most reversible option; each needs a yes/no from Rezi.
     rehearsal builds marked paid — 16 opened capsules, 5 still sealed, 1
     card, all on the owner's two accounts, nothing paid — should be cleared
     with the go-live reset or kept as the owner's own cards.
+
+## Growth (2026-10-22)
+
+31. **The welcome card is First Light.** Every account that signs in receives
+    one edition of `FIRST-LIGHT` (then `BIG-DIPPER`, `ORION`, `SUMMER-TRIANGLE`
+    once each is gone), numbered like any other and counted against supply
+    (`src/lib/skychaser/welcome.ts`). First Light is a former headliner and
+    votes ×3, so 300 welcomes add up to 900 votes a week. If that is too much
+    weight to give away, move a plain-vote common to the front of the list; the
+    order is one constant. `SKYCHASER_WELCOME=off` stops it entirely.
+
+32. **One welcome per account and per wallet is the only sybil guard.** An
+    email sign-in is cheap, so a determined person could collect First Light
+    editions under many addresses, one an hour per IP. The cost of that is 300
+    commons at most; the funnel (`welcome_granted` events) will show it if it
+    happens. A stronger guard (a phone, a paid capsule first) was not added
+    because it would remove the point of the first card.

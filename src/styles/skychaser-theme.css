@@ -1013,3 +1013,19 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 
 /* Where to send SOL when the wallet is short: the address wraps on a phone. */
 .sd-pay__fund code { word-break: break-all; font-size: 0.85em; }
+
+/* ── The welcome: the first card, shown once after sign-in ────── */
+.sd-welcome { --tier: var(--sd-rarity-common); width: min(680px, 100%); grid-template-columns: 250px minmax(0, 1fr); }
+.sd-welcome .sd-sheet__art { min-height: 300px; padding: 26px; }
+.sd-welcome .sd-sheet__art .sd-cardplate { width: 190px; }
+.sd-welcome .sd-sheet__body { padding: 26px 26px 22px; gap: 12px; }
+.sd-welcome .sd-eyebrow { margin-bottom: 2px; }
+.sd-welcome .sd-note { margin-top: 2px; }
+.sd-welcome .sd-pay__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.sd-welcome .sn-share { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 720px) {
+  .sd-welcome .sd-sheet__art { width: 96px; height: 130px; padding: 0; }
+  .sd-welcome .sd-sheet__art .sd-cardplate { width: 92px; }
+  .sd-welcome .sd-eyebrow, .sd-welcome .sd-sheet__name { margin-left: 112px; }
+  .sd-welcome .sd-sheet__name { padding-right: 46px; }
+}
