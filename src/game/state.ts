@@ -6,15 +6,20 @@
 import { setSoundPaused } from '@/lib/solar-system/sound-prefs';
 import { dropPrefetch } from './models';
 import { type GameScene, writeCheckpoint } from './save';
+import { DEFAULT_MODE, type GameMode } from './mode';
 
 export type GameState = 'boot' | 'title' | 'loading' | 'playing' | 'paused' | 'exiting';
 /** What the loading screen is waiting on, in order. */
 export type LoadStage = 'module' | 'build' | 'compile' | 'ready';
-export type Overlay = 'none' | 'settings' | 'controls' | 'missions';
+/** `lobby` is the multiplayer lobby: the room to play in, before the game starts. */
+export type Overlay = 'none' | 'settings' | 'controls' | 'missions' | 'lobby' | 'leaderboard';
 
 export interface GameSnapshot {
   state: GameState;
   scene: GameScene;
+  /** How this game is being played: Free Fly, the story or a room. Chosen on
+   *  the title, saved with the checkpoint, changed only from the title. */
+  mode: GameMode;
   stage: LoadStage;
   overlay: Overlay;
   /** Bumped by "restart checkpoint": the scene remounts fresh. */
@@ -28,7 +33,8 @@ export interface GameSnapshot {
 export const STAGE_PROGRESS: Record<LoadStage, number> = { module: 0.1, build: 0.35, compile: 0.7, ready: 1 };
 
 const listeners = new Set<() => void>();
-let snap: GameSnapshot = { state: 'boot', scene: 'moon', stage: 'module', overlay: 'none', generation: 0, seamless: false };
+const initial = (): GameSnapshot => ({ state: 'boot', scene: 'moon', mode: DEFAULT_MODE, stage: 'module', overlay: 'none', generation: 0, seamless: false });
+let snap: GameSnapshot = initial();
 
 function set(patch: Partial<GameSnapshot>) {
   snap = { ...snap, ...patch };
@@ -42,15 +48,22 @@ export const game = {
     return () => { listeners.delete(fn); };
   },
   /** The shell is mounted: show the title, or go straight to a deep-linked scene. */
-  boot(scene?: GameScene) {
+  boot(scene?: GameScene, mode: GameMode = DEFAULT_MODE) {
     if (snap.state !== 'boot') return;
-    if (scene) { set({ state: 'loading', scene, stage: 'module', overlay: 'none', seamless: false }); return; }
+    if (scene) { set({ state: 'loading', scene, mode, stage: 'module', overlay: 'none', seamless: false }); return; }
     set({ state: 'title', overlay: 'none' });
   },
-  /** Enter from the title into a scene. */
-  start(scene: GameScene) {
+  /** Enter from the title into a scene, in a mode (left out, the one the title last had). */
+  start(scene: GameScene, mode: GameMode = snap.mode) {
     if (snap.state !== 'title') return;
-    set({ state: 'loading', scene, stage: 'module', overlay: 'none', seamless: false });
+    set({ state: 'loading', scene, mode, stage: 'module', overlay: 'none', seamless: false });
+  },
+  /** From the pause menu back to the title, to pick another mode. The world
+   *  is let go (the shell unmounts it); the checkpoint stays where it was. */
+  toTitle() {
+    if (snap.state !== 'paused' && snap.state !== 'playing') return;
+    setSoundPaused(false);
+    set({ state: 'title', overlay: 'none', seamless: false, generation: snap.generation + 1 });
   },
   /** The surface reports where its load is; `ready` is the first drawn frame. */
   progress(stage: LoadStage) {
@@ -58,7 +71,7 @@ export const game = {
     if (stage === 'ready') {
       // The scene has its models now; the arrival's hold on them can go.
       dropPrefetch();
-      writeCheckpoint(snap.scene);
+      writeCheckpoint(snap.scene, snap.mode);
       set({ state: 'playing', stage });
       return;
     }
@@ -105,7 +118,7 @@ export const game = {
   /** Tests only: back to the start. */
   reset() {
     setSoundPaused(false);
-    snap = { state: 'boot', scene: 'moon', stage: 'module', overlay: 'none', generation: 0, seamless: false };
+    snap = initial();
     for (const fn of listeners) fn();
   },
 };

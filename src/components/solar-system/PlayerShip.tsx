@@ -25,7 +25,7 @@ import { getSettings } from '@/game/settings';
 import { eventElement } from '@/game/console';
 
 /** The launch screen stays at least this long, and until the ship has flown a few frames. */
-const LAUNCH_MIN_MS = 1500;
+const LAUNCH_MIN_MS = 600;
 const LAUNCH_FRAMES = 3;
 
 interface PlayerShipProps {
@@ -35,6 +35,9 @@ interface PlayerShipProps {
   onLand: (site: LandingSite) => void;
   /** The arrival is on its last leg: the surface can start building behind it, unseen. */
   onStandby?: (site: LandingSite) => void;
+  /** Take the con as soon as the orbit is up, without the Explore key: the
+   *  game modes start in the ship. */
+  autoLaunch?: boolean;
   /** A surface has the screen; the deck stays paused underneath. */
   landed: boolean;
   /** The crew have just come up from this surface: the deck launches into
@@ -52,7 +55,7 @@ interface PlayerShipProps {
 const SHIPS: ShipKind[] = ['kestrel', 'xfoil', 'cruiser', 'endurance'];
 const BARS = ['shield', 'energy', 'boost'] as const;
 const KEY_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r10', 'r12', 'r13', 'r7', 'r15', 'r8', 'r16', 'r11', 'r14', 'r9'] as const;
-const TOUCH_ROWS = ['t1', 't2', 't3', 't11', 't6', 't15', 't13', 't12', 't9', 't14', 't5'] as const;
+const TOUCH_ROWS = ['t1', 't2', 't3', 't11', 't6', 't15', 't12', 't14', 't5'] as const;
 const HELP_SEEN = 'stellar_explore_help';
 /** The arrival has been watched once; from now on it can be skipped from the first second. */
 const ARRIVAL_SEEN = 'stellar_explore_arrival';
@@ -126,7 +129,7 @@ const saveLayout = (layout: Layout) => {
   }
 };
 
-export function PlayerShip({ session, onActiveChange, onLand, onStandby, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
+export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLaunch, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
   const t = useTranslations('solarSystem.flight');
   const tb = useTranslations('solarSystem.bodies');
   const tl = useTranslations('solarSystem.loading');
@@ -320,6 +323,20 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, landed,
     }
     attach();
   };
+  // Started in the ship: once, the first time the deck is idle over a
+  // drawn orbit and nothing (a pause, a surface) is in the way.
+  // Read from the session, not just the deck's state: an unmount cleanup
+  // (React's development double mount included) lets go of the session
+  // while the deck still says it is flying, and the ship must come back.
+  // A pilot who left the ship on purpose (`exit`) is not put back in it.
+  const autoLaunched = useRef(false);
+  useEffect(() => {
+    if (!autoLaunch || landed || shellPaused || session.active) return;
+    if (autoLaunched.current && !active) return;
+    autoLaunched.current = true;
+    enter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunch, active, landed, shellPaused]);
   const resume = () => {
     session.paused = false;
     session.input.camZoom = zoomRef.current;

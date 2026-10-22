@@ -3,7 +3,6 @@ import { Orbitron, Geist, JetBrains_Mono, Noto_Sans_Georgian, Space_Grotesk } fr
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { headers } from 'next/headers';
-import { SolanaWalletProvider } from '@/components/providers/PrivyProvider';
 import ThemeProvider from '@/components/providers/ThemeProvider';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import './globals.css';
@@ -50,10 +49,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <html lang={locale} className={fonts}>
         <body className="game-body">
           <ErrorBoundary>
+            {/* No Privy around the game: it loads beside it on demand (StellarAccount). */}
             <NextIntlClientProvider locale={locale} messages={messages}>
-              <ThemeProvider>
-                <SolanaWalletProvider>{children}</SolanaWalletProvider>
-              </ThemeProvider>
+              <ThemeProvider>{children}</ThemeProvider>
             </NextIntlClientProvider>
           </ErrorBoundary>
         </body>

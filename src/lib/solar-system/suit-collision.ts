@@ -9,6 +9,8 @@ export interface Collider {
   r: number;
   /** Top of a low obstacle, m above the ground: a crate or a berm a crew can vault. Absent, it is a wall. */
   h?: number;
+  /** How tall a wall is, m above the ground: someone flying higher passes over it. Absent, a flyer takes it as JET.wallTop. */
+  top?: number;
 }
 
 export interface Vec3 { x: number; y: number; z: number }
@@ -23,10 +25,14 @@ export const SLOPE_LIMIT = Math.tan((30 * Math.PI) / 180);
 export const VAULT_MAX = { suited: 0.9, soft: 1.15 };
 const VAULT_REACH = 1.3;
 
-/** Push the body out of every round footprint it overlaps, sliding along rather than stopping. */
-export function slideColliders(p: Vec3, v: Vec3, colliders: readonly Collider[], radius = SUIT_RADIUS): boolean {
+/** Push the body out of every round footprint it overlaps, sliding along rather than stopping.
+ *  `altitude`, for someone flying: how high they are over the ground, so
+ *  what they are above is passed over; `wallTop` is how tall a footprint
+ *  with no top of its own is taken to be. On foot both are left out. */
+export function slideColliders(p: Vec3, v: Vec3, colliders: readonly Collider[], radius = SUIT_RADIUS, altitude = 0, wallTop = Infinity): boolean {
   let touched = false;
   for (const c of colliders) {
+    if (altitude > 0 && altitude > (c.top ?? c.h ?? wallTop)) continue;
     const dx = p.x - c.x; const dz = p.z - c.z;
     const d = Math.hypot(dx, dz);
     const min = c.r + radius;

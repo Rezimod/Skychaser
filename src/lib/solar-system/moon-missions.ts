@@ -12,7 +12,7 @@
 // them are drawn.
 
 import type { Mission } from '@/lib/solar-system/missions';
-import { makeMissions, type MissionsHandle } from '@/lib/solar-system/missions';
+import { makeMissions, type MissionsHandle, type MissionStore } from '@/lib/solar-system/missions';
 import { localMissionStore } from '@/lib/solar-system/mission-store';
 import { academyMissionGate } from '@/lib/academy/gates';
 import { CRATER, RIDGE, makeMissionProps, type MissionPropsHandle, type MissionPropsWorld } from '@/lib/solar-system/moon-mission-props';
@@ -83,16 +83,37 @@ export interface MoonMissionsHandle {
   dispose: () => void;
 }
 
+/** Free Fly: the saved missions as they are, none of them in hand, and
+ *  nothing written back — the story's progress is not the free flight's to
+ *  change. */
+export function freeFlyStore(store: MissionStore): MissionStore {
+  return {
+    load: () => ({ ...store.load(), active: '', progress: [] }),
+    save: () => {},
+  };
+}
+
+export interface MoonMissionsOptions {
+  /** Free Fly (and multiplayer): no mission is taken on, so no premise is
+   *  set on the base (the power stays on, the dish on Earth), nothing is
+   *  held behind the Academy's lessons, and the store is only read. */
+  free?: boolean;
+  /** Tests: where progress lives. Left out, this device. */
+  store?: MissionStore;
+}
+
 /** The props, the engine and the world changes, wired to each other. */
-export function makeMoonMissions(world: MissionPropsWorld): MoonMissionsHandle {
+export function makeMoonMissions(world: MissionPropsWorld, opts: MoonMissionsOptions = {}): MoonMissionsHandle {
   const props = makeMissionProps(world);
+  const store = opts.store ?? localMissionStore(MISSION_IDS);
   const missions = makeMissions({
     missions: MOON_MISSIONS,
     bus: world.bus,
-    store: localMissionStore(MISSION_IDS),
+    store: opts.free ? freeFlyStore(store) : store,
     // In Stellar Academy's children's mode each mission waits for the lesson
-    // that teaches it; everywhere else the gate is always open.
-    gate: academyMissionGate(),
+    // that teaches it; everywhere else the gate is always open. In Free Fly
+    // there are no missions to take on, so nothing waits for anything.
+    gate: opts.free ? () => false : academyMissionGate(),
     onStart: (id) => {
       // The premise of a mission is set when it is taken on, not written into
       // the base: the power mission starts with the base dim, the comms one

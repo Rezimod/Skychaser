@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Check, Circle, Lock } from 'lucide-react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Check, Circle, Lock, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useGameAccount } from '@/game/account';
 import { localMissionStore } from '@/lib/solar-system/mission-store';
@@ -11,6 +11,8 @@ import { localRewardSink } from '@/lib/solar-system/achievements';
 import { academyMissionGate } from '@/lib/academy/gates';
 import { EXPLORE_MAX_STARS, type ExploreProgress } from '@/lib/games/explore';
 import { GamePanel } from './GamePanel';
+import { story, objectiveProgress, type StorySnapshot } from '@/game/story';
+import { STORY_CHAPTERS } from '@/lib/solar-system/story-chapters';
 
 interface MissionsPanelProps {
   onClose: () => void;
@@ -35,6 +37,67 @@ export function missionStates(done: readonly string[], active: string, gate: (id
     if (!next) next = m.id;
     return { id: m.id, state: next === m.id ? 'next' as const : 'open' as const };
   });
+}
+
+/** The Grand Tour's chapters for the log: done, the one in hand, and the
+ *  rest still ahead of it. Pure, so it is tested. */
+export function chapterStates(s: Pick<StorySnapshot, 'active' | 'done'>): { id: string; state: 'done' | 'next' | 'locked' }[] {
+  return STORY_CHAPTERS.map((c) => ({
+    id: c.id,
+    state: s.done.includes(c.id) ? 'done' as const : c.id === s.active ? 'next' as const : 'locked' as const,
+  }));
+}
+
+/** Story mode's campaign: the chapters, the objectives of the one in hand, and the way to start over. */
+function Campaign() {
+  const t = useTranslations('play.story');
+  const tp = useTranslations('play');
+  const s = useSyncExternalStore(story.subscribe, story.get, story.get);
+  const [confirm, setConfirm] = useState(false);
+  const chapters = chapterStates(s);
+  return (
+    <>
+      <div className="game-missions__head">
+        <span>{t('panelTitle')}</span>
+        <b>{tp('missionsPanel.count', { n: s.done.length, total: chapters.length })}</b>
+      </div>
+      <p className="game-missions__empty">{t('panelLead')}</p>
+      <ol className="game-missions__list">
+        {chapters.map((c, i) => (
+          <li key={c.id} className="game-missions__item" data-state={c.state}>
+            <span className="game-missions__mark" aria-hidden>
+              {c.state === 'done' ? <Check size={14} /> : c.state === 'locked' ? <Lock size={12} /> : <Circle size={10} />}
+            </span>
+            <span className="game-missions__name">
+              {t('chapterTag', { n: i + 1, name: t(`chapters.${c.id}.name`) })}
+              {c.state === 'next' && (
+                <span className="story-steps">
+                  {s.objectives.map((o) => (
+                    <small key={o.id} className="story-steps__item" data-done={o.done} data-now={o.id === s.objective}>
+                      {o.done ? '✓ ' : ''}{t(`chapters.${c.id}.obj.${o.id}`)}{objectiveProgress(o) ? ` · ${objectiveProgress(o)}` : ''}
+                    </small>
+                  ))}
+                </span>
+              )}
+            </span>
+            <small className="game-missions__state">{tp(`missionsPanel.state.${c.state}`)}</small>
+          </li>
+        ))}
+      </ol>
+      {s.complete && <p className="game-missions__empty">{t('panelDone')}</p>}
+      {(s.done.length > 0 || s.objectives.some((o) => o.progress > 0)) && (
+        confirm ? (
+          <p className="game-missions__signin">
+            {t('restartAsk')}
+            <button type="button" className="game-missions__signin-btn" onClick={() => { story.restart(); setConfirm(false); }}>{t('restartYes')}</button>
+            <button type="button" className="game-missions__signin-btn" onClick={() => setConfirm(false)}>{t('restartNo')}</button>
+          </p>
+        ) : (
+          <button type="button" className="game-setting__reset" onClick={() => setConfirm(true)}><RotateCcw size={14} aria-hidden /> {t('restart')}</button>
+        )
+      )}
+    </>
+  );
 }
 
 /** What the saves say — the same mission store the Moon reads and writes —
@@ -68,6 +131,7 @@ export function MissionsPanel({ onClose }: MissionsPanelProps) {
   const stars = credited?.totalStars ?? 0;
   return (
     <GamePanel title={t('missions')} onClose={onClose}>
+      <Campaign />
       {p && (
         <>
           <div className="game-missions__head">

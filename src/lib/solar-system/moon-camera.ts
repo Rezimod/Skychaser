@@ -12,7 +12,9 @@
 // and lets it back out gently. Speed widens the lens a little; shake is a
 // smooth decaying wobble rather than per-frame noise. Weight comes from the
 // feet, not a sine: each footfall and each landing kicks a small spring that
-// dips the view and lets it come back.
+// dips the view and lets it come back. In flight the view eases back and up,
+// follows the climb tightly instead of softly, leads the travel further, and
+// stops treating what the crew is flying over as being in the way.
 
 import * as THREE from 'three';
 import type { Collider } from '@/lib/solar-system/moon-cosmonaut';
@@ -30,6 +32,8 @@ export interface ChaseTarget {
   speedFrac: number;
   /** Extra lens, degrees: a sprint. */
   fovExtra?: number;
+  /** 1 in flight on the jetpack, 0 on foot: the camera eases between the two framings itself. */
+  flying?: number;
 }
 
 export interface ChaseTuning {
@@ -52,6 +56,8 @@ export interface ChaseTuning {
   /** Look past the crew's shoulder rather than through their pack: the
    *  focus sits this far to the side the rig has chosen, m. */
   shoulder?: number;
+  /** The camera's own floor, in place of the one the rig was made with (a giant's deck seen from below it). */
+  floor?: ((x: number, z: number) => number) | null;
 }
 
 export interface CameraRig {
@@ -109,6 +115,14 @@ export function springTo(pos: THREE.Vector3, vel: THREE.Vector3, goal: THREE.Vec
 }
 /** Seconds after the last look input before the view recentres behind the movement. */
 const RECENTER_AFTER = 1.5;
+/** In flight: how much further back the view sits, how much higher it looks
+ *  from (rad of pitch), and how far ahead of a climb or a dive it leads (s, m). */
+const FLY_BACK = 0.45;
+const FLY_PITCH = 0.1;
+const FLY_LEAD_Y = 0.12;
+const FLY_LEAD_Y_MAX = 1.4;
+/** Higher than this over the ground, nothing on it is between the camera and the crew, m. */
+const CLEAR_ABOVE = 14;
 
 export function makeCameraRig(
   camera: THREE.PerspectiveCamera,
@@ -135,6 +149,9 @@ export function makeCameraRig(
   /** How far over the shoulder the view sits: all the way on the move, half standing. */
   let framing = 0.5;
   let desiredNow = -1;
+  /** The flight framing, eased: 0 on foot, 1 flying. */
+  let flyK = 0;
+  let floorFn = floorAt;
   const wrap = (a: number) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
 
   /** How far along focus→want the view is clear, 0…1. */
@@ -148,13 +165,18 @@ export function makeCameraRig(
       return 1;
     }
     const cols = colliders();
+    // Flying high, what stands on the ground is below the line of sight.
+    const high = focus.y - floorFn(focus.x, focus.z) > CLEAR_ABOVE;
     for (let i = 1; i <= steps; i++) {
       const f = i / steps;
       probe.lerpVectors(focus, want, f);
-      if (probe.y < floorAt(probe.x, probe.z) + 0.35) return (i - 1) / steps;
-      if (roomY !== null) continue;
+      const floor = floorFn(probe.x, probe.z);
+      if (probe.y < floor + 0.35) return (i - 1) / steps;
+      if (roomY !== null || high) continue;
       for (const c of cols) {
         if (probe.y > focus.y + 5) break;
+        // Over a wall's top, the view is clear of it.
+        if (c.top !== undefined && probe.y - floor > c.top + 0.5) continue;
         const rr = c.r + 0.3;
         // What the target is standing in (a ramp, the rover it drives) is not in the way.
         const fx = focus.x - c.x; const fz = focus.z - c.z;
@@ -215,9 +237,15 @@ export function makeCameraRig(
           rig.yaw += wrap(target.yaw + Math.PI - rig.yaw) * (1 - Math.exp(-dt * rate));
         }
       }
-      const leadX = THREE.MathUtils.clamp(vx * tune.lead, -tune.leadMax, tune.leadMax);
-      const leadZ = THREE.MathUtils.clamp(vz * tune.lead, -tune.leadMax, tune.leadMax);
-      goal.set(target.position.x + leadX, target.position.y + target.height, target.position.z + leadZ);
+      floorFn = tune.floor ?? floorAt;
+      const flyGoal = target.flying ?? 0;
+      flyK = snapNext ? flyGoal : flyK + (flyGoal - flyK) * (1 - Math.exp(-dt * 1.6));
+      // A flyer outruns a walker's lead: it reaches further, and up and down too.
+      const leadK = 1 + flyK; const leadCap = tune.leadMax * (1 + 2 * flyK);
+      const leadX = THREE.MathUtils.clamp(vx * tune.lead * leadK, -leadCap, leadCap);
+      const leadZ = THREE.MathUtils.clamp(vz * tune.lead * leadK, -leadCap, leadCap);
+      const leadY = THREE.MathUtils.clamp(target.velocity.y * FLY_LEAD_Y, -FLY_LEAD_Y_MAX, FLY_LEAD_Y_MAX) * flyK;
+      goal.set(target.position.x + leadX, target.position.y + target.height + leadY + 0.25 * flyK, target.position.z + leadZ);
       framing += ((sp > 0.6 ? 1 : 0.5) - framing) * (1 - Math.exp(-dt * 1.8));
       if (tune.shoulder) {
         const side = tune.shoulder * shoulderK * framing;
@@ -227,15 +255,17 @@ export function makeCameraRig(
         focus.copy(goal);
         focusVel.set(0, 0, 0);
       } else {
-        springTo(focus, focusVel, goal, tune.horizontal, tune.vertical, dt);
+        // On foot a bound must not yank the horizon; in flight the climb is the point, so it is followed tightly.
+        springTo(focus, focusVel, goal, tune.horizontal, THREE.MathUtils.lerp(tune.vertical, tune.horizontal * 0.9, flyK), dt);
       }
       // The preferred distance itself eases — into a tighter interior framing, back out through a door.
-      const wantDist = target.distance * (1 + 0.14 * target.speedFrac);
+      const wantDist = target.distance * (1 + 0.14 * target.speedFrac) * (1 + FLY_BACK * flyK);
       if (snapNext || desiredNow < 0) desiredNow = wantDist;
       else desiredNow += (wantDist - desiredNow) * (1 - Math.exp(-dt * 3.5));
       const desired = desiredNow;
-      const cp = Math.cos(rig.pitch);
-      want.set(focus.x + Math.sin(rig.yaw) * desired * cp, focus.y + Math.sin(rig.pitch) * desired, focus.z + Math.cos(rig.yaw) * desired * cp);
+      const pitch = Math.min(1.25, rig.pitch + FLY_PITCH * flyK);
+      const cp = Math.cos(pitch);
+      want.set(focus.x + Math.sin(rig.yaw) * desired * cp, focus.y + Math.sin(pitch) * desired, focus.z + Math.cos(rig.yaw) * desired * cp);
       if (tune.room) {
         const dx = want.x - tune.room.x; const dz = want.z - tune.room.z;
         const r = Math.hypot(dx, dz);
@@ -257,7 +287,7 @@ export function makeCameraRig(
       // than filling the frame with the pack.
       const tuck = tune.blocked ? THREE.MathUtils.clamp(1 - actualDist / 1.4, 0, 1) : 0;
       camera.position.y += tuck * 0.42;
-      const floor = floorAt(camera.position.x, camera.position.z) + 0.45;
+      const floor = floorFn(camera.position.x, camera.position.z) + 0.45;
       if (camera.position.y < floor) camera.position.y = floor;
       if (shakeAmp > 0.002) {
         const a = shakeAmp * 0.2;

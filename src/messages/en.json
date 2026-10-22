@@ -1411,8 +1411,8 @@
         "t9": "Eye key — the deck goes, the view stays; the pads still steer where they were",
         "t10": "Phone key — turn the whole deck to landscape and back",
         "r11": "I — hide the deck for the view alone",
-        "t11": "Fire, boost, brake and the gear sit under the right thumb",
-        "t12": "Menu, top right — targets, camera, landscape, and Customize the deck: drag every control where you want it, size it, save",
+        "t11": "Boost, brake and the gear key sit under the right thumb",
+        "t12": "Menu, top right — targets, the cockpit view, landscape, sound and help",
         "r12": "K — docking computer: bring the ship in to a station nearby",
         "t13": "Dock key — near a station it appears; tap and the computer brings you in. Push forward to leave.",
         "r13": "L — down to the surface. The landing card comes up over every planet, the Moon and Proxima b, and lights when you are low enough.",
@@ -1420,7 +1420,7 @@
         "t14": "Sound — on and off in the menu",
         "r15": "Z — flight assist · V — step out in the suit, and back aboard · R — clear the target",
         "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
-        "t15": "Fly low over the Moon, Mars or Proxima b — the amber key by the stick takes you down"
+        "t15": "Fly low over any planet or moon you can land on — the amber key by the stick takes you down"
       },
       "dockedAt": "Docked at {body} — push forward to leave",
       "supplying": "Taking on fuel and stores",
@@ -1560,7 +1560,9 @@
         "walk": "W A S D — jog. Shift to sprint, Alt to walk.",
         "jump": "Space — jump. One sixth g: you will be up there a while.",
         "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
-        "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while."
+        "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while.",
+        "fly": "Hold Space to fly: Space climbs, C goes down, Shift flies faster. The pack never runs dry.",
+        "flyTouch": "Hold Jet to fly. In the air the Jump key takes you down — or drag the Jet key down."
       },
       "keys": {
         "r7": "Meteoroids land now and then. They never land on you.",
@@ -1970,7 +1972,8 @@
         "coupling": "Cable coupling",
         "feed": "Feed horn",
         "sample": "Regolith sample"
-      }
+      },
+      "descend": "Down"
     },
     "loading": {
       "title": "Opening the solar system",
@@ -2577,14 +2580,14 @@
         "mouse": "Mouse",
         "wheel": "Wheel"
       },
-      "move": "walk; how far you push picks walk, jog or run",
+      "move": "walk, or fly; how far you push picks walk, jog or run",
       "look": "look around (click once to take the mouse; Esc lets go and pauses)",
       "zoom": "zoom; out past the far stop is the wide view",
       "jump": "jump; on the way down, the descent engine",
-      "jet": "the jetpack: hold in the air to climb; the jump key held does the same. A few seconds of burn, refilled on the ground",
-      "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound",
+      "jet": "the jetpack: hold to take off and climb (the jump key held does the same); let go to hover. It never runs dry",
+      "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound. In flight, faster",
       "walk": "walk on purpose",
-      "crouch": "crouch: slow, low and steady",
+      "crouch": "crouch: slow, low and steady. In flight, hold it to go down",
       "interact": "the thing in front of you: tap to use, hold to work",
       "headlamp": "headlamp on and off",
       "view": "in and out of the helmet",
@@ -2595,8 +2598,8 @@
       "touch": {
         "move": "Left stick — walk; push it to the rim to lope",
         "look": "Right half — drag to look around",
-        "jump": "Jump — bottom right; on the way down, hold the engine key",
-        "jet": "Jet — beside Jump; hold it in the air, or keep holding Jump",
+        "jump": "Jump — bottom right; in flight it takes you down; on the way down, hold the engine key",
+        "jet": "Jet — beside Jump; hold it to fly, drag it down to descend",
         "sprint": "Lope — the key beside the stick",
         "crouch": "Crouch — beside the stick",
         "interact": "The amber key — tap to use, hold to work",
@@ -2659,6 +2662,21 @@
       "rotate": "Rotate",
       "remove": "Remove",
       "keys": "E or click: place · R: rotate · 1–6: module · T: my base / colony · X: remove · B or Esc: leave"
+    },
+    "gems": {
+      "label": "Gems",
+      "points": "{n} pts",
+      "picked": "+{points} · {kind}",
+      "hint": "Gems glow on every world. Walk into one, or fly through it with the jetpack. Follow the beams of light: the rarest ones sit up high.",
+      "kinds": {
+        "diamond": "Diamond",
+        "emerald": "Emerald",
+        "ruby": "Ruby",
+        "sapphire": "Sapphire",
+        "gold": "Gold nugget",
+        "meteorite": "Meteorite",
+        "ice": "Ice crystal"
+      }
     }
   },
   "missionsPage": {
@@ -4562,7 +4580,7 @@
   },
   "play": {
     "title": "Stellar Explore",
-    "tagline": "A lunar expedition from Georgia",
+    "tagline": "Fly the solar system from Georgia",
     "enter": "Enter the solar system",
     "enterSub": "Look around, then Explore to fly",
     "continue": "Continue",
@@ -4662,6 +4680,211 @@
       "credited": "{n} of {max} Stars credited to your account",
       "signIn": "Sign in and each mission you finish is credited as Stars — up to {max} for the expedition.",
       "signInAction": "Sign in"
+    },
+    "modesLabel": "Choose how to play",
+    "modes": {
+      "free": {
+        "name": "Free Fly",
+        "sub": "Explore anywhere — no objectives"
+      },
+      "story": {
+        "name": "Story",
+        "sub": "The Grand Tour — a guided journey"
+      },
+      "multi": {
+        "name": "Multiplayer",
+        "sub": "Play online with friends"
+      }
+    },
+    "continueMode": "{mode} · {place}",
+    "continueShip": "In the ship",
+    "toTitle": "Main menu",
+    "exitShort": "Exit",
+    "lobby": {
+      "title": "Multiplayer",
+      "lead": "Fly the solar system with friends. Make a room and send the code, or join one.",
+      "launch": "Launch",
+      "share": "Share",
+      "shareTitle": "Stellar Explore",
+      "shareText": "Fly with me in Stellar Explore — room {code}",
+      "checking": "Checking your account…",
+      "inRoom": "Room {code} · {n} aboard",
+      "leaveToTitle": "Leave room"
+    },
+    "story": {
+      "panelTitle": "The Grand Tour",
+      "panelLead": "Nine worlds, one journey: from the Moon past every planet, and home to Tbilisi.",
+      "panelDone": "The Grand Tour is complete. Every world is still there to visit in Free Fly.",
+      "chapterTag": "Chapter {n} · {name}",
+      "titleChapter": "Chapter {n} of {total} · {name}",
+      "titleDone": "Tour complete — fly it again any time",
+      "commsFrom": "Mission Control · Tbilisi",
+      "replay": "Play the briefing again",
+      "cardKicker": "Chapter {n} complete",
+      "cardNext": "Next: {name}. Take off when you're ready.",
+      "onward": "Onward",
+      "finaleKicker": "The Grand Tour",
+      "finaleTitle": "Welcome home",
+      "finaleLine": "Nine worlds, and back again. Thank you for flying with us.",
+      "finaleClose": "Close",
+      "restart": "Start the tour over",
+      "restartAsk": "Start again from the Moon? Your gems stay yours.",
+      "restartYes": "Start over",
+      "restartNo": "Keep going",
+      "chapters": {
+        "moon": {
+          "name": "The Moon",
+          "brief": {
+            "l1": "Good morning, crew. This is Tbilisi. Your first stop is close by: the Moon, about 384,000 km away.",
+            "l2": "Light gets there in just over a second. The Moon has no air, so no wind or rain ever wears its footprints away.",
+            "l3": "Land at Stellar Base, check your suit and take your first steps. We're listening."
+          },
+          "obj": {
+            "land": "Fly to the Moon and land at Stellar Base",
+            "firstSteps": "Finish First Steps at the base"
+          },
+          "done": "Footprints on the Moon can last for millions of years — there is no wind or rain to wipe them out."
+        },
+        "mars": {
+          "name": "Mars",
+          "brief": {
+            "l1": "Next stop: Mars, the red planet. Its colour comes from iron in the dust — Mars is, quite literally, rusty.",
+            "l2": "The air is thin and mostly carbon dioxide, and a day there lasts 24 hours and 37 minutes.",
+            "l3": "Land at Mars Base, see how the greenhouse feeds the crew, and pick up 3 gems."
+          },
+          "obj": {
+            "land": "Fly to Mars and land at Mars Base",
+            "out": "Step out of the ship",
+            "read": "Read the greenhouse panel",
+            "gems": "Collect gems on Mars"
+          },
+          "done": "Olympus Mons on Mars is the tallest volcano we know of — about two and a half times as tall as Everest."
+        },
+        "venus": {
+          "name": "Venus",
+          "brief": {
+            "l1": "Now for Venus. It is nearly Earth's twin in size, but the hottest planet of all: about 464 °C on the ground.",
+            "l2": "Its thick carbon dioxide air traps the Sun's heat, and the pressure is like being 900 metres under the sea.",
+            "l3": "Land at the outpost, find out how the cooler keeps the crew alive, then light your jetpack and climb."
+          },
+          "obj": {
+            "land": "Fly to Venus and land at the outpost",
+            "out": "Step out of the ship",
+            "read": "Read the cooler panel",
+            "high": "Fly 15 m up on your jetpack"
+          },
+          "done": "Venus spins backwards, and so slowly that one day there lasts longer than its whole year."
+        },
+        "mercury": {
+          "name": "Mercury",
+          "brief": {
+            "l1": "Mercury is the smallest planet and the closest to the Sun. From its ground the Sun looks up to three times wider than from Earth.",
+            "l2": "With almost no air to hold the heat, it swings from about 430 °C in sunlight to −180 °C at night.",
+            "l3": "Land in the Rachmaninoff basin, see how the sun wall shades the outpost, and gather 3 gems."
+          },
+          "obj": {
+            "land": "Fly to Mercury and land at the outpost",
+            "out": "Step out of the ship",
+            "read": "Read the sun wall panel",
+            "gems": "Collect gems on Mercury"
+          },
+          "done": "A year on Mercury is only 88 Earth days — the quickest trip round the Sun of any planet."
+        },
+        "jupiter": {
+          "name": "Jupiter",
+          "brief": {
+            "l1": "Jupiter is the giant: more than twice as heavy as all the other planets put together.",
+            "l2": "There is no ground to land on — only clouds of hydrogen and helium, thousands of kilometres deep. Our outpost floats on top.",
+            "l3": "Set down on the floating deck, learn what keeps it up, then take a jetpack flight over the clouds."
+          },
+          "obj": {
+            "land": "Fly to Jupiter and land on the floating outpost",
+            "out": "Step out onto the deck",
+            "read": "Read the balloon panel",
+            "high": "Fly 15 m above the deck on your jetpack"
+          },
+          "done": "Jupiter's Great Red Spot is a storm wider than the whole Earth, and it has been blowing for centuries."
+        },
+        "saturn": {
+          "name": "Saturn",
+          "brief": {
+            "l1": "Saturn, the ringed planet. Its rings are ice and rock, from specks of dust to chunks as big as a house.",
+            "l2": "Saturn is so light for its size that, in a big enough bath, it would float.",
+            "l3": "Land on the outpost under the rings, check the radio link home, and collect 3 gems."
+          },
+          "obj": {
+            "land": "Fly to Saturn and land on the floating outpost",
+            "out": "Step out onto the deck",
+            "read": "Read the comms panel",
+            "gems": "Collect gems on Saturn"
+          },
+          "done": "Saturn's main rings are more than 270,000 km across, yet in places only about ten metres thick."
+        },
+        "uranus": {
+          "name": "Uranus",
+          "brief": {
+            "l1": "Uranus is tipped right over on its side, so it rolls round the Sun like a ball.",
+            "l2": "That gives each pole about 42 years of daylight, followed by 42 years of night.",
+            "l3": "Land at the outpost, read how the habitat stays warm at −197 °C, then jetpack up and look around."
+          },
+          "obj": {
+            "land": "Fly to Uranus and land on the floating outpost",
+            "out": "Step out onto the deck",
+            "read": "Read the habitat panel",
+            "high": "Fly 15 m above the deck on your jetpack"
+          },
+          "done": "Uranus was the first planet found with a telescope — by William Herschel, in 1781."
+        },
+        "neptune": {
+          "name": "Neptune",
+          "brief": {
+            "l1": "Neptune is the farthest planet: about 30 times farther from the Sun than Earth is.",
+            "l2": "Its winds are the fastest in the solar system — more than 2,000 km an hour.",
+            "l3": "Land at the last outpost, see what keeps its balloons warm, and collect 3 gems. Then come home."
+          },
+          "obj": {
+            "land": "Fly to Neptune and land on the floating outpost",
+            "out": "Step out onto the deck",
+            "read": "Read the power panel",
+            "gems": "Collect gems on Neptune"
+          },
+          "done": "Neptune takes 165 Earth years to go once round the Sun: in 2011 it finished its first lap since it was discovered."
+        },
+        "earth": {
+          "name": "Home",
+          "brief": {
+            "l1": "That's every planet, crew. Time to come home — to Earth, and to Tbilisi.",
+            "l2": "Earth is the only world we know with seas of liquid water on its surface and air you can breathe.",
+            "l3": "Land in Tbilisi, step out without a helmet, and take a short walk through the city."
+          },
+          "obj": {
+            "land": "Fly home to Earth and land in Tbilisi",
+            "out": "Step out — no helmet needed",
+            "walk": "Take a 100 m walk through Tbilisi"
+          },
+          "done": "From the Moon to Neptune and back again: you have visited every planet in the solar system."
+        }
+      }
+    },
+    "leaderboard": {
+      "title": "Leaderboard",
+      "board": "Top gem hunters",
+      "yours": "Your gems",
+      "count": "{n} of {total} gems",
+      "players": "{n, plural, one {# player} other {# players}}",
+      "gems": "{n, plural, one {# gem} other {# gems}}",
+      "rank": "Rank {n} of {total}",
+      "you": "You",
+      "anon": "Explorer {tag}",
+      "loading": "Loading the board…",
+      "unavailable": "The leaderboard can't be reached right now. Your gems are safe on this device and will be added when it's back.",
+      "empty": "Nobody is on the board yet. Pick up a gem to be the first!",
+      "signIn": "Sign in to put your gems on the leaderboard. The ones you've already found count too.",
+      "signInAction": "Sign in",
+      "unranked": "Pick up a gem to get on the board.",
+      "localOnly": "Your gems are kept on this device.",
+      "worlds": "World by world",
+      "values": "What each gem is worth"
     }
   },
   "exploreSite": {
