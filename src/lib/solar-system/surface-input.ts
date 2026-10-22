@@ -3,7 +3,8 @@
 // length picks the gait — a nudge is a walk, most of the way is a jog, hard
 // over is a run — and Shift is a sprint whether held or tapped: a tap
 // latches until the stick is let go, so a thumb on a phone gets the same
-// deal as a finger on a key.
+// deal as a finger on a key. In flight the same stick flies, the jet key
+// climbs and the descend key sinks; Shift (or the stick at its rim) boosts.
 
 import type { LightPool } from '@/lib/solar-system/moon-lights';
 import type { WalkInput } from '@/lib/solar-system/suit-locomotion';
@@ -17,8 +18,10 @@ export interface FootStick {
   sprint: boolean;
   walk: boolean;
   crouch: boolean;
-  /** Held: the jetpack (the jump key kept down in the air, or its own key). */
+  /** Held: the jetpack (the jump key kept down, or its own key); in flight, climb. */
   jet?: boolean;
+  /** Held, in flight: sink toward the ground. */
+  descend?: boolean;
 }
 
 export interface SprintLatch {
@@ -54,8 +57,20 @@ export function walkFromStick(out: WalkInput, s: FootStick, camYaw: number, jump
   out.crouch = s.crouch;
   out.jump = jumpEdge;
   out.jet = !!s.jet && !s.crouch;
+  out.descend = !!s.descend;
   out.work = work;
   return out;
+}
+
+/**
+ * A finger dragging the view on glass: one event's movement, in pixels, with
+ * a gentle acceleration on top. Slow drags stay exact for aiming; a quick
+ * flick turns up to 70 % further, so a thumb can swing round behind the crew
+ * without three swipes.
+ */
+export function touchLook(delta: number): number {
+  const a = Math.abs(delta);
+  return delta * (1 + Math.min(0.7, Math.max(0, a - 6) / 30));
 }
 
 /** The walk's clock: frames of any length in, whole fixed steps out, so

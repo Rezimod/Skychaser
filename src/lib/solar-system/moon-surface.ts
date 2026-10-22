@@ -22,7 +22,7 @@ import { makeMoonDust } from '@/lib/solar-system/moon-fx';
 import { makeCosmonaut, type SuitAnim, type WalkInput } from '@/lib/solar-system/moon-cosmonaut';
 import { makeRemoteCrew, writeSurfacePose, type RemoteCrew } from '@/lib/multiplayer/remote-crew';
 import { seedFromCode, type RoomLink } from '@/lib/multiplayer/room-link';
-import type { Gait, Mode, Track } from '@/lib/solar-system/suit-locomotion';
+import { flightEnvelope, JET, type Gait, type Mode, type Track } from '@/lib/solar-system/suit-locomotion';
 import { walkTrack } from '@/lib/solar-system/suit-scripted';
 import { headlamp, jetLight, makeFixedStep, makePressEdge, makeSprintLatch, sprintFrom, walkFromStick, type FootStick } from '@/lib/solar-system/surface-input';
 import { makeAirlockRun, EQUALISE_SECONDS, type AirlockContext, type AirlockRun } from '@/lib/solar-system/moon-airlock';
@@ -48,6 +48,8 @@ import { onQualityChange } from '@/game/quality';
 import { makeKit } from '@/lib/solar-system/moon-kit';
 import { makeCameraRig, type ChaseTarget, type ChaseTuning } from '@/lib/solar-system/moon-camera';
 import { getSettings, onSettingsChange } from '@/game/settings';
+import { game } from '@/game/state';
+import { hasObjectives } from '@/game/mode';
 import { makeInteractions, type InteractionContext, type InteractionPrompt } from '@/lib/solar-system/moon-interactions';
 import { makeSinkhole, makeFall, SINKHOLE, HATCH, HINT_RANGE } from '@/lib/solar-system/moon-sinkhole';
 import { makeBackrooms, type BackroomsHandle, type BackroomsTelemetry } from '@/lib/solar-system/backrooms-scene';
@@ -57,6 +59,9 @@ import { MOON_G } from '@/lib/solar-system/moon-fx';
 import { makeBuildMode, type BuildHandle } from '@/lib/solar-system/build-mode';
 import { BUILD_SITES } from '@/lib/solar-system/build-rules';
 import { attachOrbitView, patchTiers } from '@/lib/solar-system/surface-orbit';
+import { makeGems } from '@/lib/solar-system/world-gems';
+import { makeGemChime } from '@/lib/solar-system/gem-audio';
+import { GEM_INFO, type GemKind } from '@/lib/solar-system/gem-layout';
 
 /** Three ways to watch the crew, three to ride the rover. */
 export type SurfaceView = 'chase' | 'helmet' | 'wide' | 'rover' | 'cockpit' | 'mast';
@@ -68,8 +73,10 @@ export interface SurfaceInput {
   moveX: number;
   moveY: number;
   jump: boolean;
-  /** Held: the jetpack — the jump key kept down in the air, or its own key. */
+  /** Held: the jetpack — the jump key kept down, or its own key. In flight, climb. */
   jet: boolean;
+  /** Held, in flight: sink toward the ground (the crouch key, or the deck's descend). */
+  descend?: boolean;
   run: boolean;
   /** Held: the sprint key (a tap latches while the stick is held); the walk key. */
   sprint: boolean;
@@ -143,10 +150,12 @@ export interface SurfaceTelemetry {
   airborne: boolean;
   altitude: number;
   speed: number;
-  /** The jetpack: 0…1 in the tank, and lit. */
+  /** The jetpack: 0…1 in the tank (it never runs dry), and lit. */
   jetFuel: number;
   jetting: boolean;
-  hint: 'walk' | 'jump' | '';
+  /** In flight on the pack: the touch deck's jump key is the way down. */
+  flying: boolean;
+  hint: 'walk' | 'jump' | 'fly' | '';
   craters: number;
   o2: number;
   /** Per cent left in the suit's battery: the lamp and the cold both cost. */
@@ -198,6 +207,12 @@ export interface SurfaceTelemetry {
   readout: string;
   readoutHold: number;
   inside: string;
+  /** Gems picked up on the Moon (world-gems, gem-progress) and how many there are; their points; the last one and a count of pickups this visit. */
+  gems: number;
+  gemsTotal: number;
+  gemPoints: number;
+  gemLast: GemKind | '';
+  gemPicks: number;
   backrooms: UndergroundTelemetry;
 }
 
@@ -435,6 +450,8 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
 
   const cosmonaut = makeCosmonaut(dust, lite);
   cosmonaut.setCeiling(base.ceilingAt);
+  // The jetpack's envelope: half as far again as the walk fence, up to the Moon's ceiling.
+  cosmonaut.setFlight(flightEnvelope(TERRAIN_WALK_RADIUS, cosmonaut.profile.g));
   cosmonaut.position.copy(base.spawn);
   cosmonaut.yaw = Math.PI;
   cosmonaut.settle();
@@ -490,6 +507,22 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   const saved = loadBackrooms();
   sinkhole.setHatchOpen(saved.escaped);
   scene.add(jobs.group);
+  // ── The gems (gem-layout): on the regolith round the base, out on the
+  // mare, on the three domes and up in the black, for the jetpack. ──
+  const gemChime = makeGemChime();
+  const gems = makeGems({
+    world: 'moon', floorAt: terrain.heightAt, lite, haze: false, far: 900,
+    colliders: base.colliders,
+    onCollect: (g) => {
+      telemetry.gems = gems.count;
+      telemetry.gemPoints = gems.points;
+      telemetry.gemLast = g.kind;
+      telemetry.gemPicks += 1;
+      gemChime.play(g.kind);
+      dust.burst({ x: g.px, y: g.py, z: g.pz, count: GEM_INFO[g.kind].points >= 30 ? 40 : 26, speedMin: 0.8, speedMax: 3.2, cone: 1.2, size: 0.12, brightness: 2.2 });
+    },
+  });
+  scene.add(gems.group);
 
   /** The ground under the crew: the base's own floors where it has them. */
   const floorHeight = (x: number, z: number) => {
@@ -524,7 +557,8 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     setStatus: base.zones.setStatus,
     carry: interactions.carry,
     bus: interactions.bus,
-  });
+  // Free Fly and multiplayer: the missions are not run (game/mode.ts).
+  }, { free: !hasObjectives(game.get().mode) });
   scene.add(moonMissions.props.group);
   // ── The Moon under the patch, from the ground to orbit (surface-orbit):
   // the sky on its own layer, the ground and the base under the ceiling. ──
@@ -534,12 +568,12 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     // patch, so the edge of the walkable ground does not show from above.
     sky: [sky.group], sunDir: SUN_DIR, groundAt: terrain.heightAt, curve: [horizon.material], siteColor: [0.4, 0.39, 0.375],
     tiers: patchTiers('moon', [terrain.mesh, terrain.rocks, horizon, sinkhole.group, dust.points, prints.mesh, history.mesh, base.group,
-      mission.group, meteors.group, jobs.group, moonMissions.props.group]),
+      mission.group, meteors.group, jobs.group, moonMissions.props.group, gems.group]),
   });
   const telemetry: SurfaceTelemetry = {
     ready: false, phase: 'orbit', orbital: flight.telemetry, ascended: false, exitReady: false, touchdownIn: 0, landing: lander.telemetry, grade: '',
     view: 'chase', driving: false, headlamp: false, poiId: '', poiDist: 0, impactDist: 0, impactHold: 0,
-    airborne: false, altitude: 0, speed: 0, jetFuel: 1, jetting: false, hint: 'walk', craters: 0,
+    airborne: false, altitude: 0, speed: 0, jetFuel: 1, jetting: false, flying: false, hint: 'walk', craters: 0,
     o2: 97.4, suitPower: 100, pressureAgo: 1e4, heartRate: 64, suitTemp: 21.5, evaSeconds: 0, distanceM: 0,
     roverSpeed: 0, gear: rover.gear, gears: rover.gears, roverTop: rover.top, battery: 1, charging: false, roverFault: false,
     crouched: false, stumbling: false, sliding: false, anim: 'idle', gait: 'stand', mode: 'idle', sprinting: false, stamina: 1, gravity: cosmonaut.state.gravity, stride: 0, cadence: 0,
@@ -547,6 +581,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     mission: mission.telemetry, missions: moonMissions.missions.telemetry, props: moonMissions.props.telemetry,
     jobs: jobs.telemetry, prompt: interactions.prompt, achievements: sink.list(),
     airlock: { near: false, state: 'closed', cycle: 0 }, readout: '', readoutHold: 0, inside: '',
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0,
     backrooms: {
       phase: '', black: 0, crack: false, helmet: true, gravity: MOON_G, prompt: { active: false, label: '', kind: 'tap', progress: -1 },
       radio: '', radioHold: 0, readout: '', glitch: 0, guiding: false, seconds: 0, escaped: saved.escaped, bestSeconds: saved.bestSeconds,
@@ -896,6 +931,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   const jumpPress = makePressEdge();
   let jumped = false;
   let walked = false;
+  let flown = false;
   let lastPoi = '';
   let exertion = 0;
   /** Air moving in the chamber: set when a cycle starts, gone when it ends. */
@@ -905,6 +941,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   let descentRoll = 0;
   const walk: WalkInput = { moveX: 0, moveZ: 0, jump: false, run: false, crouch: false, work: false };
   const tmp = new THREE.Vector3();
+  const shadowFocus = new THREE.Vector3();
   const roverVel = new THREE.Vector3();
   const descentFocus = new THREE.Vector3();
   const descentPos = new THREE.Vector3();
@@ -925,12 +962,14 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     }
     rover.update(h, 0, 0, base.colliders, TERRAIN_WALK_RADIUS);
     const moving = Math.hypot(input.moveX, input.moveY) > 0.2;
-    stick.moveX = input.moveX; stick.moveY = input.moveY; stick.run = input.run; stick.walk = input.walk; stick.crouch = input.crouch; stick.jet = input.jet;
+    stick.moveX = input.moveX; stick.moveY = input.moveY; stick.run = input.run; stick.walk = input.walk; stick.crouch = input.crouch; stick.jet = input.jet && !base.inside; stick.descend = !!input.descend;
     stick.sprint = sprintFrom(sprintLatch, input.sprint, moving, h);
     walkFromStick(walk, stick, cam.yaw, jump, interactions.prompt.holding);
     const wasTracking = tracking();
     cosmonaut.update(h, walk, floorHeight, base.walkColliders, TERRAIN_WALK_RADIUS);
-    if (!wasTracking && !tracking()) base.confine(cosmonaut.position);
+    // Flying over the habitats, their walls are below: they confine only someone low enough to meet them.
+    const overhead = cosmonaut.state.flying && cosmonaut.state.altitude > JET.wallTop;
+    if (!wasTracking && !tracking() && !overhead) base.confine(cosmonaut.position);
     if (cosmonaut.state.impact > 1) cam.land(cosmonaut.state.impact);
     if (cosmonaut.state.landing === 'hard' || cosmonaut.state.landing === 'fall') cam.shake(0.5);
   };
@@ -1151,7 +1190,9 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       if (!driving()) cosmonaut.indoors = !!base.inside;
 
       // ── The one key. ──
-      ictx.x = crew.x; ictx.z = crew.z; ictx.yaw = driving() ? rover.yaw : cosmonaut.yaw; ictx.driving = driving(); ictx.press = press; ictx.held = !building && (input.use || press);
+      // Up in the air, nothing on the ground is in reach.
+      const aloft = cosmonaut.state.flying && cosmonaut.state.altitude > 2.5;
+      ictx.x = aloft ? 1e6 : crew.x; ictx.z = aloft ? 1e6 : crew.z; ictx.yaw = driving() ? rover.yaw : cosmonaut.yaw; ictx.driving = driving(); ictx.press = press; ictx.held = !building && (input.use || press);
       interactions.update(dt, ictx);
       if (!interactions.prompt.holding) bailHold = 0;
       mctx.crewX = crew.x; mctx.crewZ = crew.z; mctx.driving = driving();
@@ -1174,7 +1215,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       }
       bt.distance = bt.known && !bt.escaped ? hole : -1;
       bt.bearing = Math.atan2(SINKHOLE.x - crew.x, crew.z - SINKHOLE.z);
-      if (!driving() && !tracking() && sinkhole.onEdge(crew.x, crew.z)) startFall();
+      if (!driving() && !tracking() && !cosmonaut.state.flying && sinkhole.onEdge(crew.x, crew.z)) startFall();
       jobs.update(dt, mctx);
       moonMissions.props.update(dt, { x: crew.x, z: crew.z, yaw: driving() ? rover.yaw : cosmonaut.yaw });
       moonMissions.missions.update(dt, { x: crew.x, z: crew.z, driving: driving() });
@@ -1207,14 +1248,20 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
         chaseTarget.position = cosmonaut.group.position; chaseTarget.velocity = cosmonaut.velocity; chaseTarget.yaw = cosmonaut.yaw;
         chaseTarget.height = wide ? 2.2 : 1.35;
         chaseTarget.distance = wide ? cam.distance * 4.2 + 14 : inside ? Math.min(cam.distance, 2.8) : cam.distance;
-        chaseTarget.speedFrac = cosmonaut.state.speedFrac;
-        chaseTarget.fovExtra = cosmonaut.state.sprinting ? 5 : 0;
+        const flying = cosmonaut.state.flying;
+        chaseTarget.speedFrac = flying ? cosmonaut.state.flySpeed : cosmonaut.state.speedFrac;
+        // A boost widens the lens further than a sprint does.
+        chaseTarget.fovExtra = flying ? 6 * cosmonaut.state.flySpeed : cosmonaut.state.sprinting ? 5 : 0;
+        chaseTarget.flying = flying ? 1 : 0;
         FOOT_CHASE.blocked = nearHab ? base.blocked : null;
         cam.chase(dt, chaseTarget, wide ? WIDE_CHASE : FOOT_CHASE);
+        // The head glances after the camera's look.
+        cosmonaut.gaze(wrap(cam.yaw + Math.PI - cosmonaut.yaw), 0.3 - cam.pitch);
       }
       if (!walked && cosmonaut.state.speed > 0.5) walked = true;
       if (!jumped && cosmonaut.state.airborne && cosmonaut.state.altitude > 0.3) jumped = true;
-      telemetry.hint = !walked ? 'walk' : !jumped ? 'jump' : '';
+      if (!flown && cosmonaut.state.flying && cosmonaut.state.altitude > 4) flown = true;
+      telemetry.hint = !walked ? 'walk' : !jumped ? 'jump' : !flown ? 'fly' : '';
     }
     cam.shake(meteors.shake * 0.8);
 
@@ -1223,7 +1270,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     telemetry.driving = onRover;
     telemetry.airborne = cosmonaut.state.airborne;
     telemetry.altitude = cosmonaut.state.altitude;
-    telemetry.jetFuel = cosmonaut.state.jetFuel; telemetry.jetting = cosmonaut.state.jetting;
+    telemetry.jetFuel = cosmonaut.state.jetFuel; telemetry.jetting = cosmonaut.state.jetting; telemetry.flying = cosmonaut.state.flying;
     telemetry.speed = onRover ? Math.abs(rover.speed) : cosmonaut.state.speed;
     telemetry.roverSpeed = rover.speed;
     telemetry.gear = rover.gear;
@@ -1313,12 +1360,16 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     if (!driving()) jetLight(lightPool, crew, cosmonaut.yaw, cosmonaut.state.jetK);
     base.update(dt, t, sky.earthDir, crew.x, crew.z);
     sinkhole.update(dt, t);
+    gems.update(dt, crew.x, crew.y, crew.z, lightPool, telemetry.phase === 'surface' && !br);
     terrain.setSunView(tmp.copy(SUN_DIR).transformDirection(camera.matrixWorldInverse));
     if (devCam) {
       camera.position.set(crew.x + devCam[0], crew.y + devCam[1], crew.z + devCam[2]);
       camera.lookAt(crew.x, crew.y + 1.0, crew.z);
     }
-    host.followShadow(crew, SUN_DIR);
+    // High in flight, the shadows stay on the ground below rather than round the crew in mid-air.
+    shadowFocus.copy(crew);
+    if (cosmonaut.state.flying && cosmonaut.state.altitude > 6) shadowFocus.y -= cosmonaut.state.altitude - 6;
+    host.followShadow(shadowFocus, SUN_DIR);
     lightPool.flush(crew.x, crew.y, crew.z);
     sky.update(dt, camera, renderer.getPixelRatio());
     if (surfacing > 0) { surfacing = Math.max(0, surfacing - dt * 0.7); post.setBlack(surfacing); }
@@ -1338,6 +1389,8 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     jobs.dispose();
     moonMissions.dispose();
     meteors.dispose();
+    gems.dispose();
+    gemChime.dispose();
     crowd?.dispose();
     cosmonaut.dispose();
     base.dispose();

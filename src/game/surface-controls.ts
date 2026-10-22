@@ -8,6 +8,7 @@
 import { deadZone, footActionOf, footBinding, padButtons, standardPad, type FootAction } from '@/game/bindings';
 import { eventElement, lockPointer } from '@/game/console';
 import { setSoundOn, soundOn } from '@/lib/solar-system/sound-prefs';
+import { touchLook } from '@/lib/solar-system/surface-input';
 
 /** What the Moon and every world take from their controls. */
 export interface FootInputs {
@@ -16,6 +17,8 @@ export interface FootInputs {
   jump: boolean;
   /** Held: the jetpack — the jump key kept down, or its own key or deck button. Optional for a caller with no pack. */
   jet?: boolean;
+  /** Held, in flight: sink — the crouch key or button, or the deck's descend. */
+  descend?: boolean;
   run: boolean;
   sprint: boolean;
   walk: boolean;
@@ -39,12 +42,14 @@ export interface FootIntent {
   y: number;
   jump: boolean;
   jet: boolean;
+  /** The crouch key or button held: in flight, descend. */
+  descend: boolean;
   sprint: boolean;
   walk: boolean;
   use: boolean;
 }
 
-const idle = (): FootIntent => ({ x: 0, y: 0, jump: false, jet: false, sprint: false, walk: false, use: false });
+const idle = (): FootIntent => ({ x: 0, y: 0, jump: false, jet: false, descend: false, sprint: false, walk: false, use: false });
 const held = (a: FootAction, down: (code: string) => boolean) => footBinding(a).keys.some(down);
 
 /** The keyboard's held controls. */
@@ -54,7 +59,7 @@ export function intentFromKeys(pressed: ReadonlySet<string>, out: FootIntent = i
   const y = (has('KeyW') || has('ArrowUp') ? 1 : 0) - (has('KeyS') || has('ArrowDown') ? 1 : 0);
   const len = Math.hypot(x, y) || 1;
   out.x = x / len; out.y = y / len;
-  out.jump = held('jump', has); out.jet = held('jet', has); out.sprint = held('sprint', has); out.walk = held('walk', has); out.use = held('interact', has);
+  out.jump = held('jump', has); out.jet = held('jet', has); out.descend = held('crouch', has); out.sprint = held('sprint', has); out.walk = held('walk', has); out.use = held('interact', has);
   return out;
 }
 
@@ -62,7 +67,7 @@ export function intentFromKeys(pressed: ReadonlySet<string>, out: FootIntent = i
 export function intentFromPad(axes: readonly number[], down: (i: number) => boolean, out: FootIntent = idle()): FootIntent {
   const any = (a: FootAction) => padButtons(footBinding(a)).some(down);
   out.x = deadZone(axes[0] ?? 0); out.y = -deadZone(axes[1] ?? 0);
-  out.jump = any('jump'); out.jet = any('jet'); out.sprint = any('sprint'); out.walk = any('walk'); out.use = any('interact');
+  out.jump = any('jump'); out.jet = any('jet'); out.descend = any('crouch'); out.sprint = any('sprint'); out.walk = any('walk'); out.use = any('interact');
   return out;
 }
 
@@ -73,6 +78,8 @@ export interface TouchDeck {
   jump: boolean;
   /** The jet key, held. */
   jet: boolean;
+  /** In flight: the jump key held, or the jet key dragged down. */
+  descend: boolean;
   use: boolean;
   throttle: boolean;
   /** The lope key. */
@@ -89,6 +96,8 @@ export interface SurfaceControlsOptions {
   /** Any input at all: the audio context may start. */
   wake: () => void;
   onCrouch: (on: boolean) => void;
+  /** The crew is flying on the pack: the crouch key descends instead of crouching. */
+  flying?: () => boolean;
   onPauseRequest: () => void;
   /** The mission and map panel (the Moon's expedition log). */
   onMap?: () => void;
@@ -124,7 +133,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
   const keys = idle();
   const pad = idle();
   const padWas: boolean[] = [];
-  const deck: TouchDeck = { x: 0, y: 0, jump: false, jet: false, use: false, throttle: false, run: false };
+  const deck: TouchDeck = { x: 0, y: 0, jump: false, jet: false, descend: false, use: false, throttle: false, run: false };
   let crouch = false;
 
   const sync = () => {
@@ -135,6 +144,8 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     input.jump = keys.jump || pad.jump || deck.jump;
     // The jump key kept down in the air is the jet; so is its own key.
     input.jet = input.jump || keys.jet || pad.jet || deck.jet;
+    // In flight the crouch key held is the way down.
+    input.descend = keys.descend || pad.descend || deck.descend;
     // On the way down the jump is the descent engine.
     input.throttle = input.jump || deck.throttle ? 1 : 0;
     input.sprint = keys.sprint || pad.sprint;
@@ -151,7 +162,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     else if (a === 'view') input.viewToggle = true;
     else if (a === 'shoulder') input.shoulderSwap = true;
     else if (a === 'headlamp') input.headlamp = true;
-    else if (a === 'crouch') toggleCrouch();
+    else if (a === 'crouch') { if (!o.flying?.()) toggleCrouch(); }
     else if (a === 'sound') setSoundOn(!soundOn());
     else if (a === 'map') o.onMap?.();
     else if (a === 'gears') {
@@ -179,7 +190,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     pressed.clear();
     Object.assign(pad, idle());
     // The lope key is a toggle on the deck, not a held key: it stays as it is.
-    deck.x = deck.y = 0; deck.jump = deck.jet = deck.use = deck.throttle = false;
+    deck.x = deck.y = 0; deck.jump = deck.jet = deck.descend = deck.use = deck.throttle = false;
     input.orbitDX = input.orbitDY = 0;
     orbitId = -1;
     sync();
@@ -218,8 +229,10 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
       return;
     }
     if (e.pointerId === orbitId) {
-      input.orbitDX += e.clientX - lastX;
-      input.orbitDY += e.clientY - lastY;
+      // A finger gets a gentle acceleration: exact when slow, quick on a flick.
+      const dx = e.clientX - lastX; const dy = e.clientY - lastY;
+      input.orbitDX += o.touch ? touchLook(dx) : dx;
+      input.orbitDY += o.touch ? touchLook(dy) : dy;
       lastX = e.clientX; lastY = e.clientY;
     }
   };
@@ -239,12 +252,12 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     const p = standardPad();
     if (!p || o.paused()) {
       // Unplugged mid-stride: whatever it was holding is let go.
-      if (!p && (pad.x !== 0 || pad.y !== 0 || pad.jump || pad.jet || pad.sprint || pad.walk || pad.use)) { Object.assign(pad, idle()); sync(); }
+      if (!p && (pad.x !== 0 || pad.y !== 0 || pad.jump || pad.jet || pad.descend || pad.sprint || pad.walk || pad.use)) { Object.assign(pad, idle()); sync(); }
       return;
     }
     const down = (i: number) => !!p.buttons[i]?.pressed;
     const wasMoving = pad.x !== 0 || pad.y !== 0;
-    const j = pad.jump; const jt = pad.jet; const s = pad.sprint; const w = pad.walk; const u = pad.use;
+    const j = pad.jump; const jt = pad.jet; const dn = pad.descend; const s = pad.sprint; const w = pad.walk; const u = pad.use;
     intentFromPad(p.axes, down, pad);
     const moving = pad.x !== 0 || pad.y !== 0;
     if (moving) o.wake();
@@ -260,7 +273,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
         padWas[i] = on;
       }
     }
-    if (moving || wasMoving || pad.jump !== j || pad.jet !== jt || pad.sprint !== s || pad.walk !== w || pad.use !== u) sync();
+    if (moving || wasMoving || pad.jump !== j || pad.jet !== jt || pad.descend !== dn || pad.sprint !== s || pad.walk !== w || pad.use !== u) sync();
   };
 
   window.addEventListener('keydown', onKeyDown);

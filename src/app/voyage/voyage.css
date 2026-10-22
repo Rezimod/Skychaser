@@ -579,3 +579,338 @@ body[data-solar-immersive] .sd-backdrop { display: none; }
 @media (pointer: coarse) {
   .game-pause { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(5, 8, 18, 0.82); }
 }
+
+/* ══ Game modes: the title's three choices, the pause menu's mode, the
+   multiplayer lobby, and Story mode's comms, objective chip and chapter
+   card (TitleScreen, PauseMenu, ExploreRoomPanel, StoryHud). Phone first:
+   every key is at least 48 px tall and the cards read in portrait and on
+   the side. ══ */
+.game-title__list { gap: 10px; }
+.game-modes { display: grid; gap: 10px; width: 100%; }
+.game-mode {
+  --mode: #5eead4;
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 78px;
+  padding: 12px 14px 12px 12px;
+  border: 1px solid color-mix(in srgb, var(--mode) 45%, transparent);
+  border-radius: 18px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--mode) 16%, rgba(10, 18, 34, 0.9)), rgba(6, 11, 22, 0.92));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 14px 40px -22px color-mix(in srgb, var(--mode) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--menu-ink, #eef3fc);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  animation: game-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.game-mode::before { content: none; }
+.game-mode[data-mode='story'] { --mode: #ffb347; }
+.game-mode[data-mode='multi'] { --mode: #7cb8ff; }
+.game-mode:nth-child(1) { animation-delay: 0.5s; }
+.game-mode:nth-child(2) { animation-delay: 0.58s; }
+.game-mode:nth-child(3) { animation-delay: 0.66s; }
+.game-mode:hover, .game-mode:focus-visible { border-color: var(--mode); transform: translate3d(3px, 0, 0); outline: none; box-shadow: 0 18px 50px -20px var(--mode), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+.game-mode:active { transform: translate3d(2px, 1px, 0) scale(0.99); }
+.game-mode__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--mode) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mode) 40%, transparent);
+  color: var(--mode);
+}
+.game-mode__text { display: grid; gap: 4px; min-width: 0; }
+.game-mode__name { font: 600 18px/1.15 var(--font-display, system-ui), sans-serif; letter-spacing: 0.02em; color: #f4f8ff; }
+.game-mode__sub { font: 500 13px/1.35 var(--font-body, system-ui), sans-serif; color: var(--menu-dim, rgba(190, 206, 230, 0.82)); }
+.game-mode__go { color: var(--mode); transition: transform 0.18s ease; }
+.game-mode:hover .game-mode__go, .game-mode:focus-visible .game-mode__go { transform: translate3d(3px, 0, 0); }
+.game-title__row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.game-title__row .game-menu__item { min-height: 48px; justify-content: center; }
+@media (max-width: 380px) {
+  .game-mode { grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; min-height: 70px; padding: 10px 12px 10px 10px; }
+  .game-mode__icon { width: 40px; height: 40px; border-radius: 12px; }
+  .game-mode__name { font-size: 16px; }
+  .game-title .game-title__mark { margin-bottom: -6px; }
+}
+/* A phone on its side: the three modes side by side under the wordmark's column. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .game-title__list { gap: 6px; }
+  .game-modes { gap: 6px; }
+  .game-mode { min-height: 56px; padding: 6px 12px 6px 8px; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; border-radius: 14px; }
+  .game-mode__icon { width: 38px; height: 38px; border-radius: 11px; }
+  .game-mode__name { font-size: 15px; }
+  .game-mode__sub { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .game-title__row .game-menu__item { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-mode { animation: none; transition: none; }
+}
+
+/* The pause menu says how the game is being played. */
+.game-pause__mode {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  margin: -14px 0 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(94, 234, 212, 0.35);
+  background: rgba(94, 234, 212, 0.08);
+  color: #5eead4;
+  font: 600 12px/1.2 var(--font-mono, ui-monospace), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.game-pause__mode[data-mode='story'] { border-color: rgba(255, 179, 71, 0.4); background: rgba(255, 179, 71, 0.08); color: #ffb347; }
+.game-pause__mode[data-mode='multi'] { border-color: rgba(124, 184, 255, 0.4); background: rgba(124, 184, 255, 0.08); color: #9ccaff; }
+.game-pause__mode small { display: inline-flex; align-items: center; gap: 4px; font-weight: 500; text-transform: none; letter-spacing: 0.04em; color: rgba(220, 232, 248, 0.86); }
+.game-menu__item--leave { color: #ffb4a8; }
+.game-menu__item--leave > svg { color: #ff9a8a; }
+
+/* The multiplayer lobby: the room panel's own parts, set into the title's sheet. */
+.room-panel.room-panel--lobby {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  gap: 14px;
+  font-size: 15px;
+}
+.room-panel__lead { margin: 0; font: 500 14px/1.5 var(--font-body, system-ui), sans-serif; color: rgba(214, 228, 246, 0.92); }
+.room-panel--lobby .room-panel__primary, .room-panel--lobby .room-panel__secondary, .room-panel--lobby .room-panel__leave { min-height: 52px; border-radius: 14px; font-size: 15px; }
+.room-panel--lobby .room-panel__input { min-height: 52px; font-size: 18px; }
+.room-panel--lobby .room-panel__item { min-height: 52px; }
+.room-panel__launch { min-height: 60px !important; font-size: 17px !important; box-shadow: 0 14px 40px -16px rgba(255, 150, 40, 0.7); }
+.room-panel__keys { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; gap: 6px; }
+.room-panel--lobby .room-panel__bigcode { font-size: 34px; }
+@media (max-width: 380px) {
+  .room-panel__invite { grid-template-columns: 1fr; }
+  .room-panel__keys { grid-column: 1; grid-row: auto; flex-direction: row; flex-wrap: wrap; }
+}
+
+/* ── Story mode in flight: the briefing on the comms, then one line of
+   what to do. Top centre on a desk; under the deck's head on a phone. ── */
+.story-comms, .story-chip {
+  position: absolute;
+  z-index: 41;
+  left: 50%;
+  top: calc(max(10px, env(safe-area-inset-top)) + 6px);
+  transform: translateX(-50%);
+  width: min(460px, 46vw);
+  border: 1px solid rgba(255, 179, 71, 0.38);
+  background: rgba(8, 12, 22, 0.84);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #eef3fc;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  animation: story-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.story-comms::before, .story-chip::before { content: none; }
+.story-comms { display: grid; gap: 6px; padding: 12px 16px; border-radius: 14px; }
+.story-comms__from { display: inline-flex; align-items: center; gap: 6px; font: 600 11px/1 var(--font-mono, ui-monospace), monospace; letter-spacing: 0.14em; text-transform: uppercase; color: #ffb347; }
+.story-comms__text { font: 500 14px/1.5 var(--font-body, system-ui), sans-serif; }
+.story-comms__dots { display: flex; gap: 4px; justify-content: flex-end; }
+.story-comms__dots i { width: 14px; height: 3px; border-radius: 2px; background: rgba(255, 179, 71, 0.25); }
+.story-comms__dots i[data-on='true'] { background: #ffb347; }
+.story-chip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px 12px;
+  min-height: 48px;
+  width: auto;
+  max-width: min(440px, 46vw);
+  padding: 7px 14px;
+  border-radius: 14px;
+}
+.story-chip__tag { grid-column: 1; display: inline-flex; align-items: center; gap: 5px; font: 600 10px/1.2 var(--font-mono, ui-monospace), monospace; letter-spacing: 0.12em; text-transform: uppercase; color: #ffb347; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.story-chip__text { grid-column: 1; font: 500 13px/1.35 var(--font-body, system-ui), sans-serif; }
+.story-chip__count { grid-column: 2; grid-row: 1 / span 2; font: 600 13px/1 var(--font-mono, ui-monospace), monospace; color: #ffb347; }
+@keyframes story-in { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (max-width: 599px) {
+  .story-comms, .story-chip { top: calc(max(10px, env(safe-area-inset-top)) + 112px); width: calc(100% - 24px); max-width: none; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  .story-comms, .story-chip { top: calc(max(8px, env(safe-area-inset-top)) + 4px); width: min(420px, 44vw); }
+  .story-comms { padding: 8px 12px; gap: 4px; }
+  .story-comms__text { font-size: 13px; line-height: 1.4; }
+}
+
+/* A chapter done: one card in the middle of the glass, a fact, the next world, one key. */
+.story-card {
+  position: absolute;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: radial-gradient(80% 60% at 50% 50%, rgba(5, 8, 18, 0.35), rgba(5, 8, 18, 0.7));
+  pointer-events: auto;
+}
+.story-card__panel {
+  width: min(100%, 400px);
+  max-height: 100%;
+  overflow-y: auto;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 22px 20px;
+  border: 1px solid rgba(255, 179, 71, 0.5);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(40, 26, 10, 0.92), rgba(8, 10, 18, 0.95));
+  box-shadow: 0 30px 80px -24px rgba(255, 150, 40, 0.45), inset 0 1px 0 rgba(255, 230, 190, 0.12);
+  text-align: center;
+  color: #f4f8ff;
+  animation: game-card 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.story-card__icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255, 179, 71, 0.16); color: #ffb347; }
+.story-card__kicker { margin: 0; font: 600 11px/1.2 var(--font-mono, ui-monospace), monospace; letter-spacing: 0.16em; text-transform: uppercase; color: #ffb347; }
+.story-card__title { margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 0.04em; }
+.story-card__fact { margin: 0; font: 500 15px/1.55 var(--font-body, system-ui), sans-serif; color: rgba(232, 238, 248, 0.94); }
+.story-card__next { margin: 0; font: 500 13px/1.45 var(--font-body, system-ui), sans-serif; color: rgba(196, 212, 236, 0.86); }
+.story-card__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  min-height: 52px;
+  margin-top: 6px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 14px;
+  background: #ffb347;
+  color: #1a1206;
+  font: 600 16px/1 var(--font-body, system-ui), sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.story-card__go::before { content: none; }
+@media (max-height: 500px) and (orientation: landscape) {
+  .story-card__panel { padding: 14px 18px; gap: 6px; }
+  .story-card__icon { display: none; }
+  .story-card__title { font-size: 22px; }
+  .story-card__go { min-height: 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-comms, .story-chip, .story-card__panel { animation: none; }
+}
+
+/* On a world's surface the chapter's objective has the surface's own card;
+   a phone on its side keeps it (the HUD hides the other objectives there). */
+@media (max-height: 460px) {
+  .moon-hud__objective[data-story='true']:not([hidden]) { display: grid; padding: 5px 10px; max-width: min(260px, 44vw); }
+  .moon-hud__objective[data-story='true'] .moon-hud__objective-text { font-size: 12px; }
+}
+
+/* The campaign in the Missions sheet: the steps of the chapter in hand. */
+.story-steps { display: grid; gap: 3px; margin-top: 4px; }
+.story-steps__item { font: 500 12px/1.4 var(--font-body, system-ui), sans-serif; color: rgba(196, 210, 232, 0.72); }
+.story-steps__item[data-now='true'] { color: #ffb347; }
+.story-steps__item[data-done='true'] { color: #5eead4; }
+
+/* ── Gems: the leaderboard sheet, and the tally and pickup line on the surfaces' glass. ── */
+.game-board { display: grid; gap: 10px; }
+.game-board__mine {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(94, 234, 212, 0.32);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(14, 52, 60, 0.72), rgba(8, 16, 32, 0.72));
+}
+.game-board__mine-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: rgba(94, 234, 212, 0.14); color: var(--seafoam, #5eead4); }
+.game-board__mine-text { display: grid; gap: 2px; min-width: 0; }
+.game-board__mine-text small { font: 500 11px/1.2 var(--font-mono, ui-monospace), monospace; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(176, 196, 222, 0.8); }
+.game-board__mine-text b { font: 600 22px/1.1 var(--font-display, system-ui), sans-serif; color: #eef3fc; font-variant-numeric: tabular-nums; }
+.game-board__mine-text span { font: 500 12px/1.3 var(--font-body, system-ui), sans-serif; color: rgba(186, 214, 240, 0.9); }
+.game-board__rank { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; background: rgba(255, 179, 71, 0.14); color: var(--terracotta, #ffb347); font: 600 14px/1 var(--font-mono, ui-monospace), monospace; white-space: nowrap; }
+.game-board__list { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.game-board__row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 12px 4px 6px;
+  border: 1px solid rgba(132, 170, 222, 0.14);
+  border-radius: 10px;
+  background: rgba(8, 14, 28, 0.6);
+}
+.game-board__pos { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font: 600 12px/1 var(--font-mono, ui-monospace), monospace; color: rgba(196, 212, 236, 0.9); background: rgba(132, 170, 222, 0.12); }
+.game-board__row[data-top='1'] .game-board__pos { background: #ffd36b; color: #2a1a00; }
+.game-board__row[data-top='2'] .game-board__pos { background: #d7e1ee; color: #18202c; }
+.game-board__row[data-top='3'] .game-board__pos { background: #e0a26a; color: #2a1404; }
+.game-board__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 14px/1.3 var(--font-body, system-ui), sans-serif; color: #eef3fc; }
+.game-board__gems { font: 500 11px/1.2 var(--font-mono, ui-monospace), monospace; color: rgba(176, 196, 222, 0.8); white-space: nowrap; }
+.game-board__pts { font: 600 13px/1 var(--font-mono, ui-monospace), monospace; color: var(--terracotta, #ffb347); font-variant-numeric: tabular-nums; min-width: 3ch; text-align: right; }
+.game-board__row[data-me] { border-color: rgba(94, 234, 212, 0.6); background: rgba(10, 50, 52, 0.6); }
+.game-board__row[data-me] .game-board__name { color: var(--seafoam, #5eead4); font-weight: 600; }
+.game-board__row--me { margin-top: 6px; border-style: dashed; }
+.game-board__worlds { gap: 8px; }
+.game-board__world { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: center; gap: 12px; }
+.game-board__world dt { min-width: 0; }
+.game-board__world dd { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.game-board__world dd > span:first-child { white-space: nowrap; }
+.game-board__world[data-done] dd { color: var(--seafoam, #5eead4); }
+.game-board__world[data-done] .game-missions__track i { background: var(--seafoam, #5eead4); }
+.game-board__kinds { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px 14px; }
+.game-board__kinds li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; align-items: center; gap: 8px; font: 500 13px/1.3 var(--font-body, system-ui), sans-serif; color: rgba(214, 228, 246, 0.95); }
+.game-board__kinds i { width: 10px; height: 10px; transform: rotate(45deg); border-radius: 2px; box-shadow: 0 0 8px currentColor; }
+.game-board__kinds b { font: 600 12px/1 var(--font-mono, ui-monospace), monospace; color: var(--terracotta, #ffb347); }
+.game-board__hint { margin-top: 10px; font-size: 12px; color: rgba(166, 190, 220, 0.8); }
+
+.moon-hud__gems span { margin-left: 4px; color: var(--hud-accent, #5eead4); font-variant-numeric: tabular-nums; }
+.moon-hud__gems-points { font: 600 11px/1 var(--font-mono, ui-monospace), monospace; color: var(--terracotta, #ffb347); font-variant-numeric: tabular-nums; }
+.moon-hud__gems[data-tick] { animation: gem-tick 0.45s ease-out; }
+.moon-hud__gems[data-tick='2'] { animation-name: gem-tick-b; }
+@keyframes gem-tick { 0% { transform: scale(1.18); box-shadow: 0 0 18px rgba(94, 234, 212, 0.65); } 100% { transform: none; box-shadow: none; } }
+@keyframes gem-tick-b { 0% { transform: scale(1.18); box-shadow: 0 0 18px rgba(94, 234, 212, 0.65); } 100% { transform: none; box-shadow: none; } }
+.moon-hud__gem-toast {
+  position: fixed;
+  left: 50%;
+  top: 26%;
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(6, 12, 24, 0.62);
+  border: 1px solid rgba(94, 234, 212, 0.45);
+  color: #f2fbff;
+  font: 600 15px/1.2 var(--font-display, system-ui), sans-serif;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+  text-shadow: 0 0 12px rgba(160, 240, 255, 0.8);
+  animation: gem-toast 2.6s ease-out both;
+}
+.moon-hud__gem-toast[hidden] { display: none; }
+.moon-hud__gem-toast[data-kind='diamond'] { border-color: rgba(220, 240, 255, 0.85); }
+.moon-hud__gem-toast[data-kind='ruby'] { border-color: rgba(255, 70, 90, 0.7); }
+.moon-hud__gem-toast[data-kind='emerald'] { border-color: rgba(60, 255, 130, 0.7); }
+.moon-hud__gem-toast[data-kind='sapphire'] { border-color: rgba(80, 130, 255, 0.75); }
+.moon-hud__gem-toast[data-kind='gold'], .moon-hud__gem-toast[data-kind='meteorite'] { border-color: rgba(255, 179, 71, 0.75); }
+@keyframes gem-toast { 0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.04); } 20% { transform: translate(-50%, 0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .moon-hud__gems[data-tick], .moon-hud__gem-toast { animation: none; }
+}

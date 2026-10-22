@@ -12,7 +12,7 @@ import {
 } from '@/lib/solar-system/suit-locomotion';
 import { SLOPE_LIMIT } from '@/lib/solar-system/suit-collision';
 import {
-  makeFixedStep, makePressEdge, makeSprintLatch, sprintFrom, walkFromStick, type FootStick,
+  makeFixedStep, makePressEdge, makeSprintLatch, sprintFrom, touchLook, walkFromStick, type FootStick,
 } from '@/lib/solar-system/surface-input';
 import { springTo } from '@/lib/solar-system/moon-camera';
 import { makeLander } from '@/lib/solar-system/moon-lander';
@@ -396,10 +396,18 @@ describe('one table, every controller', () => {
     // The thumb's side of the glass: the stick's, not the camera's.
     drag(40, 140);
     expect(inputs.orbitDX).toBe(0);
-    // The other side turns it.
+    // The other side turns it, a quick flick a little further than the finger went.
     drag(300, 340);
-    expect(inputs.orbitDX).toBe(40);
+    expect(inputs.orbitDX).toBe(touchLook(40));
     c.detach();
+  });
+
+  it('turns the view exactly on a slow drag, and up to 70 % further on a flick', () => {
+    expect(touchLook(3)).toBe(3);
+    expect(touchLook(-6)).toBe(-6);
+    expect(touchLook(21)).toBeCloseTo(21 * 1.5, 9);
+    expect(touchLook(-200)).toBeCloseTo(-200 * 1.7, 9);
+    for (let d = 0; d < 100; d += 1) expect(touchLook(d + 1)).toBeGreaterThan(touchLook(d));
   });
 
   it('presses the headlamp, the view and the map from their keys and buttons', () => {

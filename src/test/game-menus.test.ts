@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { markRelocale, takeRelocale, writeCheckpoint, readCheckpoint } from '@/game/save';
 import { missionStates } from '@/components/play/MissionsPanel';
-import { resumableScene } from '@/components/play/TitleScreen';
+import { continueTarget } from '@/components/play/TitleScreen';
 
 describe('missions panel: the five Moon missions as the store has them', () => {
   it('a fresh crew has First Steps up next and the rest locked behind it', () => {
@@ -42,12 +42,19 @@ describe('missions panel: the five Moon missions as the store has them', () => {
 describe('title: continue from the checkpoint', () => {
   beforeEach(() => localStorage.clear());
 
-  it('offers a surface, never orbit (Enter already opens it), and nothing without a save', () => {
-    expect(resumableScene(readCheckpoint()?.scene)).toBeNull();
-    writeCheckpoint('mars');
-    expect(resumableScene(readCheckpoint()?.scene)).toBe('mars');
-    writeCheckpoint('orbit');
-    expect(resumableScene(readCheckpoint()?.scene)).toBeNull();
+  it('goes back to the checkpoint in the mode it was played in, and offers nothing without a save', () => {
+    expect(continueTarget(readCheckpoint(), true)).toBeNull();
+    writeCheckpoint('mars', 'story');
+    expect(continueTarget(readCheckpoint(), true)).toEqual({ scene: 'mars', mode: 'story' });
+    // Orbit is a place to continue too now: the title's choices are modes, not "enter".
+    writeCheckpoint('orbit', 'free');
+    expect(continueTarget(readCheckpoint(), true)).toEqual({ scene: 'orbit', mode: 'free' });
+  });
+
+  it("a room's checkpoint plays on as Free Fly where there are no rooms", () => {
+    writeCheckpoint('venus', 'multi');
+    expect(continueTarget(readCheckpoint(), true)).toEqual({ scene: 'venus', mode: 'multi' });
+    expect(continueTarget(readCheckpoint(), false)).toEqual({ scene: 'venus', mode: 'free' });
   });
 });
 

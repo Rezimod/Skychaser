@@ -5,21 +5,23 @@
 // that in suit-locomotion. This file names the state the suit is in, eases
 // the blend weights the poser mixes by, puts dust under the boots and a
 // jolt into the camera on a hard landing, and draws the suit between the
-// last two simulation steps.
+// last two simulation steps. In flight it names a hover or a flight, blows
+// the regolith about under a low pass, and lets the poser lean and bank the
+// body; standing, the head turns a little after the camera's look.
 
 import * as THREE from 'three';
 import { makeSparkStream, MOON_G, type DustBurst, type DustHandle } from '@/lib/solar-system/moon-fx';
 import { buildSuit } from '@/lib/solar-system/moon-suit-mesh';
 import { makeSuitPoser, type PoseBlend } from '@/lib/solar-system/moon-suit-pose';
 import {
-  gaitProfile, makeLocomotion, type Collider, type Foot, type Gait, type GaitProfile, type Landing, type Mode, type StepEvent, type Track, type WalkInput,
+  gaitProfile, makeLocomotion, type Collider, type FlightEnvelope, type Foot, type Gait, type GaitProfile, type Landing, type Mode, type StepEvent, type Track, type WalkInput,
 } from '@/lib/solar-system/suit-locomotion';
 
 export type { Collider, StepEvent, WalkInput };
 
 export type SuitAnim =
   | 'idle' | 'idleLook' | 'start' | 'walk' | 'jog' | 'run' | 'sprint' | 'stop' | 'pivot' | 'turn' | 'crouch' | 'crouchMove'
-  | 'jump' | 'air' | 'jet' | 'fall' | 'landSoft' | 'roll' | 'landHard' | 'stumble' | 'fallen' | 'getUp' | 'work' | 'climb'
+  | 'jump' | 'air' | 'jet' | 'hover' | 'fly' | 'fall' | 'landSoft' | 'roll' | 'landHard' | 'stumble' | 'fallen' | 'getUp' | 'work' | 'climb'
   | 'vault' | 'enterDoor' | 'exitDoor' | 'enterVehicle' | 'seated' | 'exitVehicle' | 'bail';
 
 export interface CosmonautState {
@@ -48,10 +50,14 @@ export interface CosmonautState {
   /** Effort, 0…1, eased the way breathing follows it. */
   effort: number;
   anim: SuitAnim;
-  /** The jetpack: 0…1 in the tank, lit this step, and the eased throttle the flame and the roar follow. */
+  /** The jetpack: 0…1 in the tank (always full), lit this step, and the eased throttle the flame and the roar follow. */
   jetFuel: number;
   jetting: boolean;
   jetK: number;
+  /** In flight on the pack. */
+  flying: boolean;
+  /** In flight: horizontal speed as a fraction of the boost, 0…1. */
+  flySpeed: number;
 }
 
 export interface CosmonautHandle {
@@ -70,9 +76,13 @@ export interface CosmonautHandle {
   setProfile: (p: GaitProfile) => void;
   /** A roof over the crew (a habitat), or null in the open. */
   setCeiling: (ceilingAt: ((x: number, z: number) => number | null) | null) => void;
+  /** Where the jetpack may take the crew (suit-jetpack's flightEnvelope). */
+  setFlight: (env: FlightEnvelope) => void;
   eye: (out: THREE.Vector3) => THREE.Vector3;
   setHelmetView: (on: boolean) => void;
   look: (yaw: number, pitch: number) => void;
+  /** The chase camera's look, relative to the body's facing (rad, 0 straight ahead): the head turns a little toward it. */
+  gaze: (yaw: number, pitch: number) => void;
   /** Visor up (pressurised habitat) or down. */
   visor: (open: boolean) => void;
   /** The helmet lamps, lit with the headlamp. */
@@ -119,10 +129,11 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
   const state: CosmonautState = {
     mode: 'idle', airborne: false, grounded: true, speed: 0, speedFrac: 0, altitude: 0, landed: false, impact: 0, landing: '', crouched: false,
     sprinting: false, stamina: 1, stumble: 0, fallen: false, grade: 0, sliding: false, gait: 'stand', gravity: g, stride: 0, cadence: 0, effort: 0, anim: 'idle',
-    jetFuel: 1, jetting: false, jetK: 0,
+    jetFuel: 1, jetting: false, jetK: 0, flying: false, flySpeed: 0,
   };
   const b: PoseBlend = {
     crouch: 0, work: 0, climb: 0, brake: 0, look: 0, fall: 0, run: 0, sprint: 0, vault: 0, seat: 0, roll: 0, tuck: 0, squat: 0, jet: 0,
+    fly: 0, flyPitch: 0, flyBank: 0, flySpeed: 0, idle: 0, gaze: 0, gazeYaw: 0, gazePitch: 0,
     airT: 0, clock: 0, lookYaw: null, lookPitch: 0, breath: 0, visor: 0,
   };
   const puff: DustBurst = { x: 0, y: 0, z: 0, count: 1, speedMin: 0.4, speedMax: 1, cone: 0.7, size: 0.09 };
@@ -132,6 +143,10 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
   let held = false;
   let helmetView = false;
   let lookYaw = 0; let lookPitch = 0;
+  /** The camera's look, and how long since the owner last said what it is, s. */
+  let gazeYaw = 0; let gazePitch = 0; let gazeAge = 9;
+  /** The regolith the exhaust blows about, owed in particles. */
+  let washDebt = 0;
   let visorOpen = false;
   /** The pack has been lit this flight: the landing kicks up more. */
   let flown = false;
@@ -161,16 +176,20 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
     setGravity(gravity, pressurised) { loco.setProfile(gaitProfile(gravity, pressurised)); handle.profile = loco.profile; state.gravity = gravity; },
     setProfile(p) { loco.setProfile(p); handle.profile = loco.profile; state.gravity = p.worldG; },
     setCeiling(c) { loco.ceilingAt = c; },
+    setFlight(env) { loco.envelope = env; },
     // Only the chain from the root to the neck: the rest of the rig is not needed for one point.
     eye(out) { rig.neck.updateWorldMatrix(true, false); return rig.neck.localToWorld(out.copy(poser.eyeLocal)); },
     setHelmetView(on) { helmetView = on; helmet.visible = !on; },
     look(y, p) { lookYaw = y; lookPitch = p; },
+    gaze(y, p) { gazeYaw = y; gazePitch = p; gazeAge = 0; },
     visor(open) { visorOpen = open; },
     lamps(on) { rig.setLamps(on); },
     script(track, then) { loco.yaw = handle.yaw; loco.script(track, then); },
     release(vx, vy, vz, mode) { loco.release(vx, vy, vz, mode); },
     hold(on) { held = on; },
     settle() {
+      // Put somewhere new, the crew stands there: a flight does not carry over a teleport.
+      if (loco.jet.state.flying) loco.jet.land();
       loco.yaw = handle.yaw;
       loco.settleFeet();
       prev.copy(position); prevYaw = handle.yaw;
@@ -215,20 +234,34 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
       wasJumping = ls.jumping;
       // ── The jet: its flame, its sparks, and the regolith it blows about on touching down. ──
       state.jetFuel = ls.jetFuel; state.jetting = ls.jetting; state.jetK = ls.jetK;
+      state.flying = ls.flying; state.flySpeed = ls.flySpeed;
       rig.gear.setThrottle(ls.jetK, b.clock);
       if (ls.jetting) flown = true;
-      else if (flown && ls.grounded) { flown = false; burst(heightAt, 34, 3.2); }
+      else if (flown && ls.grounded) { flown = false; burst(heightAt, 34, 3.2); squatVel += 0.8; }
       if (ls.jetK > 0.05 && rig.gear.nozzles.length) {
-        sparkDebt += dt * 70 * ls.jetK;
+        // More sparks, and faster, the harder the pack pushes.
+        sparkDebt += dt * (30 + 70 * ls.jetK) * ls.jetK;
         const n = Math.floor(sparkDebt);
         if (n > 0) {
           sparkDebt -= n;
           for (const mouth of rig.gear.nozzles) {
             mouth.getWorldPosition(nozzleAt);
-            sparks.emit(nozzleAt.x, nozzleAt.y, nozzleAt.z, 0, -1, 0, vel.x, vel.y, vel.z, n, 4.5);
+            sparks.emit(nozzleAt.x, nozzleAt.y, nozzleAt.z, 0, -1, 0, vel.x, vel.y, vel.z, n, 2.5 + 3.5 * ls.jetK);
           }
         }
       }
+      // A low pass blows the regolith out from under the exhaust; a metal deck has none to blow.
+      const wash = ls.flying && !handle.indoors ? ls.jetK * Math.max(0, 1 - ls.altitude / 5) : 0;
+      if (wash > 0.05) {
+        washDebt += dt * 60 * wash;
+        if (washDebt >= 4) {
+          const n = Math.floor(washDebt);
+          washDebt -= n;
+          puff.x = position.x; puff.y = heightAt(position.x, position.z); puff.z = position.z;
+          puff.count = n; puff.speedMin = 1; puff.speedMax = 2 + 3 * wash; puff.cone = 1.4; puff.size = 0.11; puff.bias = 0;
+          dust.burst(puff);
+        }
+      } else washDebt = 0;
       sparks.update(dt, heightAt);
       const working = input.work && ls.grounded && want < 0.05 && ls.stumble <= 0 && authority > 0 && !ls.fallen;
 
@@ -239,6 +272,7 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
       else if (ls.fallen) anim = ls.getUp > 0 ? 'getUp' : 'fallen';
       else if (ls.stumble > 0) anim = 'stumble';
       else if (m === 'land') anim = ls.landing === 'roll' || (state.anim === 'roll' && ls.landT < 0.7) ? 'roll' : state.anim === 'landHard' || ls.landing === 'hard' ? 'landHard' : 'landSoft';
+      else if (ls.flying) anim = ls.flySpeed > 0.12 ? 'fly' : 'hover';
       else if (ls.jetting) anim = 'jet';
       else if (m === 'jump') anim = b.airT < 0.25 && vel.y > 0 ? 'jump' : 'air';
       else if (m === 'fall') anim = 'fall';
@@ -268,7 +302,21 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
       b.seat += ((m === 'seated' || (m === 'enterVehicle' && ls.scriptK > 0.6) || (m === 'exitVehicle' && ls.scriptK < 0.3) ? 1 : 0) - b.seat) * ease(6, dt);
       b.roll += ((anim === 'roll' ? 1 : 0) - b.roll) * ease(anim === 'roll' ? 14 : 5, dt);
       b.tuck += ((airborne && m !== 'vault' && !ls.jetting ? Math.min(1, b.airT / 0.35) : 0) - b.tuck) * ease(10, dt);
-      b.jet += ((ls.jetting ? 1 : 0) - b.jet) * ease(ls.jetting ? 6 : 4, dt);
+      // In flight the body leans and banks; low over the ground the legs come
+      // down under it to take the landing, so the touchdown is not a pop.
+      const reach = ls.flying ? Math.min(1, Math.max(0, (ls.altitude - 0.25) / 1.4)) : 0;
+      const jetW = ls.flying ? reach : ls.jetting ? 1 : 0;
+      b.jet += (jetW - b.jet) * ease(jetW > b.jet ? 6 : 4, dt);
+      b.fly += (reach - b.fly) * ease(ls.flying ? 3.5 : 6, dt);
+      b.flyPitch = ls.flyPitch; b.flyBank = ls.flyBank;
+      b.flySpeed += (ls.flySpeed - b.flySpeed) * ease(3, dt);
+      b.idle += ((anim === 'idle' || anim === 'idleLook' ? 1 : 0) - b.idle) * ease(1.5, dt);
+      // The head after the camera: only when the view is from behind, and never while looking about on its own.
+      gazeAge += dt;
+      const gazeWant = gazeAge < 0.3 && !helmetView && Math.abs(gazeYaw) < 1.9 && !ls.fallen && m !== 'seated' ? 1 - b.look : 0;
+      b.gaze += (gazeWant - b.gaze) * ease(2.5, dt);
+      b.gazeYaw += (Math.max(-1.6, Math.min(1.6, gazeYaw)) - b.gazeYaw) * ease(4, dt);
+      b.gazePitch += (gazePitch - b.gazePitch) * ease(4, dt);
       b.visor += ((visorOpen ? 1 : 0) - b.visor) * ease(3, dt);
       squatVel += (-b.squat * 48 - squatVel * 9.5) * dt;
       b.squat += squatVel * dt;
