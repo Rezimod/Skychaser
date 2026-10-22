@@ -6,8 +6,10 @@
 // takes over, directly over the pad and moving the way the lander expects
 // to be moving. Over a world with air that is an orbit, a retro burn to
 // drop out of it, the entry — plasma, heating, the air shaking the hull —
-// and a glide that ends in a flare on the engines. Over the Moon the entry
-// is a long braking burn instead, and the glide is the approach.
+// and a glide that ends in a flare on the engines. Over the airless worlds
+// (the Moon, Mercury) the entry is a long braking burn instead, and the
+// glide is the approach. On the giants the "pad" is the outpost platform on
+// the cloud deck at the 1-bar level, and the flight down to it is the same.
 //
 // It is not an integrator. A free-flying re-entry from 400 km covers eight
 // thousand kilometres and half an hour; this is a corridor — a smooth curve
@@ -16,7 +18,7 @@
 // it by the guidance, so that it always arrives where the lander starts.
 // What the HUD shows is still true: the height above the reference sphere,
 // the speed along the path, and the rate the clock is running at. The clock
-// runs fast (up to ×20 in orbit) and eases to real time below ten
+// runs fast (×20 to ×30 in orbit) and eases to real time below ten
 // kilometres or so, which is how ninety seconds of play holds the whole
 // way down. The time warp is exposed so the glass can say so.
 //
@@ -31,12 +33,13 @@
 
 import * as THREE from 'three';
 import {
-  PLANET_BODIES, airDensity, altitudeOf, globeToLocal, localUpAt, orbitalSpeed, siteBasis,
+  PLANET_BODIES, airDensity, altitudeOf, globeToLocal, hasAir, localUpAt, orbitalSpeed, siteBasis,
   type GlobeWorld, type PlanetBody, type SiteBasis,
 } from '@/lib/solar-system/planet-frame';
 
 /** The legs of the way down. `entry` and `glide` are the air worlds';
- *  `braking` and `approach` the Moon's; `done` is the handover. */
+ *  `braking` and `approach` the airless ones' (the Moon, Mercury); `done`
+ *  is the handover. */
 export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'done';
 /** The legs of the way back up. */
 export type AscentPhase = 'climb' | 'ascent' | 'orbit' | 'done';
@@ -81,7 +84,7 @@ export interface OrbitalTelemetry {
   turbulence: number;
   /** Speed over the local speed of sound; 0 where there is no air. */
   mach: number;
-  /** How fast the clock is running, ×1…×20. */
+  /** How fast the clock is running, ×1…×30. */
   timeWarp: number;
   /** 0…1: how hard the engines are burning. */
   burn: number;
@@ -155,6 +158,12 @@ interface WorldFlight {
   gate: number;
   /** Bank limit for the cross-range turn, rad. */
   bank: number;
+  /** How hard the plasma and the buffet hit, as gains on the shared curves
+   *  (1.12 and 0.9 by default): above the default the heat holds at full
+   *  for longer either side of its peak and the shaking saturates sooner.
+   *  The giants' entries, at tens of kilometres a second, are the hardest. */
+  heatGain?: number;
+  buffet?: number;
   descent: (vOrbit: number) => Knot[];
   ascent: (vOrbit: number) => Knot[];
 }
@@ -165,7 +174,22 @@ interface WorldFlight {
 // the speed of sound around ten kilometres, and the last kilometre or two
 // is a flare on the engines onto the pad. `w` is the clock at each knot:
 // fast where nothing changes quickly (a coast in orbit), slower where the
-// air is doing its work, and real time for the flare. ──
+// air is doing its work, and real time for the flare.
+//
+// Venus flies Earth's shape a scale height higher: the heating peaks near
+// 100 km, the ship goes into the cloud tops at about Mach 2 and comes out
+// under the deck subsonic, and glides down through the thick lower air.
+// Mercury flies the Moon's braking burn from a faster orbit (2.9 km/s).
+//
+// The giants are flown at their real orbital speeds — 41 km/s at Jupiter,
+// 24 at Saturn, 15 and 16 at Uranus and Neptune — and the ground covered is
+// thousands of kilometres, so the clock runs at up to ×24 in orbit; the
+// entry sheds nearly all of that speed in a few hundred kilometres of
+// height, centred some five or six scale heights over the 1-bar level
+// (Jupiter ~150 km at 30 km/s), where the plasma is at full for many
+// seconds of play. The speed of sound in hydrogen is high (900 m/s on
+// Jupiter and Saturn, 580 on the ice giants), so the boom comes early and
+// high, and the glide to the platform is the long, calm end. ──
 const FLIGHTS: Record<GlobeWorld, WorldFlight> = {
   earth: {
     sound: 300, lockLow: 700, lockHigh: 4000, gate: 150, bank: 0.45,
@@ -246,6 +270,185 @@ const FLIGHTS: Record<GlobeWorld, WorldFlight> = {
       { g: 95, h: 24, v: 1200, w: 18, aoa: 2, burn: 1, phase: 'orbit' },
       { g: 260, h: 58, v: 1540, w: 20, aoa: 2, burn: 0.6, phase: 'orbit' },
       { g: 470, h: 100, v: vo, w: 20, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  mercury: {
+    sound: 0, lockLow: 250, lockHigh: 1800, gate: 60, bank: 0.35,
+    descent: (vo) => [
+      { g: 2300, h: 200, v: vo, w: 20, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 1950, h: 200, v: vo, w: 20, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 1860, h: 199.4, v: vo - 4, w: 20, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1760, h: 196, v: vo - 40, w: 24, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1300, h: 60, v: vo + 20, w: 30, aoa: 10, burn: 0, phase: 'deorbit' },
+      { g: 930, h: 21, v: vo + 75, w: 28, aoa: 'retro', burn: 0.2, phase: 'braking' },
+      { g: 870, h: 19.5, v: vo + 55, w: 28, aoa: 'retro', burn: 1, phase: 'braking' },
+      { g: 430, h: 13.5, v: 1850, w: 28, aoa: 'retro', burn: 1, phase: 'braking' },
+      { g: 120, h: 7.5, v: 760, w: 23, aoa: 'retro', burn: 0.95, phase: 'braking' },
+      { g: 8, h: 2.2, v: 160, w: 10, aoa: 'retro', burn: 0.9, phase: 'approach', rel: true },
+      { g: 1.6, h: 0.55, v: 48, w: 5, aoa: 100, burn: 0.7, phase: 'approach', rel: true },
+      { g: 0.16, h: 0.075, v: 20, w: 1.6, aoa: 95, burn: 0.6, phase: 'approach', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.04, h: 0.25, v: 34, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 1.4, h: 1.8, v: 170, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 24, h: 8.5, v: 750, w: 12, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 130, h: 32, v: 1700, w: 18, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 400, h: 95, v: 2500, w: 20, aoa: 2, burn: 0.6, phase: 'orbit' },
+      { g: 780, h: 200, v: vo, w: 20, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  venus: {
+    sound: 380, lockLow: 700, lockHigh: 4000, gate: 150, bank: 0.45, heatGain: 1.25, buffet: 1.1,
+    descent: (vo) => [
+      { g: 2600, h: 250, v: vo, w: 20, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 1750, h: 250, v: vo, w: 20, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 1520, h: 249, v: vo - 8, w: 16, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1300, h: 236, v: vo - 110, w: 16, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1000, h: 212, v: vo - 60, w: 20, aoa: 40, burn: 0, phase: 'deorbit' },
+      { g: 760, h: 185, v: vo + 10, w: 13, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 600, h: 145, v: vo + 30, w: 10, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 470, h: 118, v: 6700, w: 8, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 285, h: 97, v: 4300, w: 5.5, aoa: 38, burn: 0, phase: 'entry' },
+      { g: 160, h: 81, v: 2100, w: 5, aoa: 32, burn: 0, phase: 'entry' },
+      { g: 80, h: 66, v: 850, w: 7, aoa: 22, burn: 0, phase: 'glide' },
+      { g: 40, h: 50, v: 430, w: 11, aoa: 14, burn: 0, phase: 'glide' },
+      { g: 18, h: 30, v: 250, w: 16, aoa: 10, burn: 0, phase: 'glide' },
+      { g: 7, h: 12, v: 200, w: 12, aoa: 8, burn: 0, phase: 'glide' },
+      { g: 2.6, h: 1.6, v: 130, w: 3, aoa: 10, burn: 0.1, phase: 'glide', rel: true },
+      { g: 0.55, h: 0.45, v: 70, w: 1.4, aoa: 55, burn: 0.75, phase: 'glide', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.12, h: 0.9, v: 150, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 2.5, h: 6, v: 300, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 14, h: 18, v: 620, w: 9, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 50, h: 45, v: 1500, w: 13, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 160, h: 92, v: 3300, w: 17, aoa: 2, burn: 1, phase: 'ascent' },
+      { g: 400, h: 140, v: 5600, w: 20, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 800, h: 210, v: 6950, w: 20, aoa: 2, burn: 0.8, phase: 'orbit' },
+      { g: 1250, h: 250, v: vo, w: 20, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  jupiter: {
+    sound: 930, lockLow: 450, lockHigh: 3000, gate: 60, bank: 0.45, heatGain: 2, buffet: 1.6,
+    descent: (vo) => [
+      { g: 13000, h: 1500, v: vo, w: 24, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 8200, h: 1500, v: vo, w: 24, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 6800, h: 1497, v: vo - 30, w: 20, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 5400, h: 1440, v: vo - 500, w: 20, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 3300, h: 760, v: vo, w: 24, aoa: 40, burn: 0, phase: 'deorbit' },
+      { g: 1900, h: 320, v: vo + 700, w: 10, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 1150, h: 200, v: 41000, w: 4.5, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 650, h: 150, v: 35000, w: 3, aoa: 38, burn: 0, phase: 'entry' },
+      { g: 330, h: 115, v: 21000, w: 3, aoa: 36, burn: 0, phase: 'entry' },
+      { g: 150, h: 85, v: 7000, w: 3.5, aoa: 32, burn: 0, phase: 'entry' },
+      { g: 60, h: 55, v: 1900, w: 6, aoa: 26, burn: 0, phase: 'glide' },
+      { g: 22, h: 28, v: 600, w: 9, aoa: 16, burn: 0, phase: 'glide' },
+      { g: 7, h: 9, v: 250, w: 6.5, aoa: 10, burn: 0, phase: 'glide' },
+      { g: 2.4, h: 1.7, v: 140, w: 3.8, aoa: 12, burn: 0.15, phase: 'glide', rel: true },
+      { g: 0.32, h: 0.28, v: 45, w: 1.5, aoa: 60, burn: 0.8, phase: 'glide', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.06, h: 0.5, v: 70, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 2, h: 4, v: 300, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 20, h: 18, v: 1100, w: 10, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 110, h: 60, v: 4500, w: 15, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 450, h: 160, v: 13000, w: 20, aoa: 2, burn: 1, phase: 'ascent' },
+      { g: 1400, h: 420, v: 28000, w: 24, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 3200, h: 950, v: 38000, w: 26, aoa: 2, burn: 0.7, phase: 'orbit' },
+      { g: 5600, h: 1500, v: vo, w: 26, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  saturn: {
+    sound: 870, lockLow: 450, lockHigh: 3000, gate: 60, bank: 0.45, heatGain: 1.8, buffet: 1.5,
+    descent: (vo) => [
+      { g: 9000, h: 1200, v: vo, w: 24, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 5600, h: 1200, v: vo, w: 24, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 4700, h: 1198, v: vo - 20, w: 20, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 3800, h: 1160, v: vo - 300, w: 20, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 2500, h: 900, v: vo - 100, w: 24, aoa: 40, burn: 0, phase: 'deorbit' },
+      { g: 1850, h: 700, v: vo + 100, w: 14, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 1350, h: 470, v: vo + 250, w: 9, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 900, h: 330, v: 24300, w: 4.5, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 500, h: 255, v: 20000, w: 3, aoa: 38, burn: 0, phase: 'entry' },
+      { g: 250, h: 195, v: 11000, w: 3, aoa: 36, burn: 0, phase: 'entry' },
+      { g: 110, h: 135, v: 3500, w: 4, aoa: 32, burn: 0, phase: 'entry' },
+      { g: 45, h: 75, v: 1000, w: 7, aoa: 26, burn: 0, phase: 'glide' },
+      { g: 16, h: 32, v: 450, w: 9, aoa: 16, burn: 0, phase: 'glide' },
+      { g: 6, h: 10, v: 230, w: 7, aoa: 10, burn: 0, phase: 'glide' },
+      { g: 2.4, h: 1.7, v: 140, w: 3.8, aoa: 12, burn: 0.15, phase: 'glide', rel: true },
+      { g: 0.32, h: 0.28, v: 45, w: 1.5, aoa: 60, burn: 0.8, phase: 'glide', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.06, h: 0.5, v: 70, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 2, h: 4, v: 280, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 20, h: 20, v: 1000, w: 10, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 120, h: 80, v: 4000, w: 15, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 500, h: 260, v: 11000, w: 20, aoa: 2, burn: 1, phase: 'ascent' },
+      { g: 1500, h: 600, v: 19000, w: 24, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 3000, h: 1000, v: 23500, w: 26, aoa: 2, burn: 0.7, phase: 'orbit' },
+      { g: 4600, h: 1200, v: vo, w: 26, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  uranus: {
+    sound: 580, lockLow: 450, lockHigh: 3000, gate: 60, bank: 0.45, heatGain: 1.6, buffet: 1.4,
+    descent: (vo) => [
+      { g: 6000, h: 800, v: vo, w: 22, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 3800, h: 800, v: vo, w: 22, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 3200, h: 799, v: vo - 12, w: 18, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 2700, h: 780, v: vo - 180, w: 18, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1700, h: 480, v: vo - 60, w: 22, aoa: 40, burn: 0, phase: 'deorbit' },
+      { g: 1250, h: 330, v: vo + 120, w: 12, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 950, h: 250, v: vo + 200, w: 8, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 620, h: 175, v: 14200, w: 5.5, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 340, h: 135, v: 10500, w: 4, aoa: 38, burn: 0, phase: 'entry' },
+      { g: 170, h: 105, v: 5000, w: 4, aoa: 34, burn: 0, phase: 'entry' },
+      { g: 75, h: 75, v: 1500, w: 6, aoa: 28, burn: 0, phase: 'entry' },
+      { g: 30, h: 40, v: 650, w: 8, aoa: 18, burn: 0, phase: 'glide' },
+      { g: 11, h: 15, v: 300, w: 8, aoa: 12, burn: 0, phase: 'glide' },
+      { g: 4.5, h: 5.5, v: 210, w: 6, aoa: 9, burn: 0, phase: 'glide' },
+      { g: 2.4, h: 1.7, v: 140, w: 3.8, aoa: 12, burn: 0.15, phase: 'glide', rel: true },
+      { g: 0.32, h: 0.28, v: 45, w: 1.5, aoa: 60, burn: 0.8, phase: 'glide', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.06, h: 0.5, v: 70, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 2, h: 4, v: 260, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 16, h: 15, v: 800, w: 9, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 80, h: 50, v: 2800, w: 14, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 300, h: 150, v: 7000, w: 18, aoa: 2, burn: 1, phase: 'ascent' },
+      { g: 900, h: 380, v: 11500, w: 22, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 1800, h: 650, v: 14000, w: 22, aoa: 2, burn: 0.7, phase: 'orbit' },
+      { g: 2800, h: 800, v: vo, w: 22, aoa: 2, burn: 0, phase: 'orbit' },
+    ],
+  },
+  neptune: {
+    sound: 580, lockLow: 450, lockHigh: 3000, gate: 60, bank: 0.45, heatGain: 1.6, buffet: 1.4,
+    descent: (vo) => [
+      { g: 6200, h: 800, v: vo, w: 22, aoa: 4, burn: 0, phase: 'orbit' },
+      { g: 3900, h: 800, v: vo, w: 22, aoa: 4, burn: 0, phase: 'deorbit' },
+      { g: 3300, h: 799, v: vo - 12, w: 18, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 2750, h: 780, v: vo - 200, w: 18, aoa: 'retro', burn: 1, phase: 'deorbit' },
+      { g: 1650, h: 420, v: vo - 60, w: 22, aoa: 40, burn: 0, phase: 'deorbit' },
+      { g: 1200, h: 240, v: vo + 150, w: 12, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 900, h: 185, v: vo + 250, w: 8, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 600, h: 135, v: 15800, w: 5.5, aoa: 40, burn: 0, phase: 'entry' },
+      { g: 330, h: 105, v: 11500, w: 4, aoa: 38, burn: 0, phase: 'entry' },
+      { g: 165, h: 80, v: 5400, w: 4, aoa: 34, burn: 0, phase: 'entry' },
+      { g: 72, h: 55, v: 1600, w: 6, aoa: 28, burn: 0, phase: 'entry' },
+      { g: 28, h: 30, v: 650, w: 8, aoa: 18, burn: 0, phase: 'glide' },
+      { g: 10, h: 12, v: 300, w: 8, aoa: 12, burn: 0, phase: 'glide' },
+      { g: 4.5, h: 5, v: 210, w: 6, aoa: 9, burn: 0, phase: 'glide' },
+      { g: 2.4, h: 1.7, v: 140, w: 3.8, aoa: 12, burn: 0.15, phase: 'glide', rel: true },
+      { g: 0.32, h: 0.28, v: 45, w: 1.5, aoa: 60, burn: 0.8, phase: 'glide', rel: true },
+    ],
+    ascent: (vo) => [
+      { g: 0.06, h: 0.5, v: 70, w: 3, aoa: 4, burn: 1, phase: 'ascent', rel: true },
+      { g: 2, h: 4, v: 260, w: 6, aoa: 4, burn: 1, phase: 'ascent' },
+      { g: 16, h: 14, v: 820, w: 9, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 80, h: 45, v: 3000, w: 14, aoa: 3, burn: 1, phase: 'ascent' },
+      { g: 300, h: 130, v: 7600, w: 18, aoa: 2, burn: 1, phase: 'ascent' },
+      { g: 900, h: 360, v: 12500, w: 22, aoa: 2, burn: 1, phase: 'orbit' },
+      { g: 1800, h: 640, v: 15500, w: 22, aoa: 2, burn: 0.7, phase: 'orbit' },
+      { g: 2800, h: 800, v: vo, w: 22, aoa: 2, burn: 0, phase: 'orbit' },
     ],
   },
 };
@@ -500,11 +703,11 @@ function makeFlight(
     telemetry.vertical = velocity.dot(rad);
     telemetry.downrangeKm = Math.hypot(g, cr) / 1000;
     telemetry.timeWarp = corridor.read(corridor.warp, s);
-    telemetry.heat = cfg.heatRef > 0 ? THREE.MathUtils.clamp(1.12 * Math.pow((rho * v * v * v) / cfg.heatRef, 0.7), 0, 1) * cfg.heatScale : 0;
+    telemetry.heat = cfg.heatRef > 0 ? THREE.MathUtils.clamp((f.heatGain ?? 1.12) * Math.pow((rho * v * v * v) / cfg.heatRef, 0.7), 0, 1) * cfg.heatScale : 0;
     const mach = f.sound > 0 && rho > 0 ? v / f.sound : 0;
     const transonic = Math.exp(-(((mach - 1) / 0.2) ** 2)) * Math.min(1, rho / 0.05);
     const q = cfg.qRef > 0 ? Math.pow((rho * v * v) / cfg.qRef, 0.8) : 0;
-    telemetry.turbulence = rho > 0 ? THREE.MathUtils.clamp(0.9 * q + 0.6 * transonic, 0, 1) * (cfg.ascent ? 0.6 : 1) : 0;
+    telemetry.turbulence = rho > 0 ? THREE.MathUtils.clamp((f.buffet ?? 0.9) * q + 0.6 * transonic, 0, 1) * (cfg.ascent ? 0.6 : 1) : 0;
     if (!cfg.ascent && dtSim > 0 && lastMach >= 1 && mach < 1 && mach > 0) telemetry.booms += 1;
     lastMach = mach;
     telemetry.mach = mach;
@@ -702,7 +905,7 @@ export function makeOrbitalDescent(world: GlobeWorld, handover: Handover, opts: 
   const flight = makeFlight(world, frame, corridor, finalYaw, opts, {
     heatScale: 1, heatRef: pk.heat, qRef: pk.q, levelFrom, ascent: false,
   });
-  const entryPhase: OrbitalPhase = world === 'moon' ? 'braking' : 'entry';
+  const entryPhase: OrbitalPhase = hasAir(world) ? 'entry' : 'braking';
   return Object.assign(flight, {
     skipToEntry() {
       const span = corridor.spans.get(entryPhase);

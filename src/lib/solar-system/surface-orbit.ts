@@ -46,14 +46,36 @@ export const CEILINGS: Record<GlobeWorld, { local: number; far: number }> = {
   // edge shows against the sphere through thinning haze, and the globe
   // already carries the same Terrarium relief out there, so it takes over.
   earth: { local: 12000, far: 12000 },
+  // The rest are patches like the Moon's and Mars's: the ground square (or
+  // the giants' outpost deck on its clouds) and the ring 1.5 km out.
+  mercury: { local: 8000, far: 8000 },
+  venus: { local: 8000, far: 8000 },
+  jupiter: { local: 8000, far: 8000 },
+  saturn: { local: 8000, far: 8000 },
+  uranus: { local: 8000, far: 8000 },
+  neptune: { local: 8000, far: 8000 },
 };
 
 /** The air, for the skies: how much of it glows (1 on the ground, 0 in
- *  space) — the density scale height, and the height the sky is black by. */
+ *  space) — the density scale height, and the height the sky is black by —
+ *  and the height the sky's own clouds are gone by. Venus's sky clouds are
+ *  the underside of its deck, fading from 28 km and gone by 56 km as the
+ *  globe's cloud shell takes over across the deck (47–66 km); what glows
+ *  under the deck is mostly the deck, so its "scale" is the brightness's,
+ *  not the gas's (15.9 km), and its sky is black only well above the haze
+ *  over the deck. The giants' scale heights are long (hydrogen is light), so
+ *  their skies hold their colour a long way up; the scenes' clouds round the
+ *  outpost are gone by 15 km, where the globe's cloud deck is the picture. */
 export const SKY_AIR: Record<GlobeWorld, { scale: number; top: number; cloudsGone: number }> = {
   moon: { scale: 0, top: 0, cloudsGone: 0 },
   mars: { scale: 11100, top: 50000, cloudsGone: 10000 },
   earth: { scale: 8500, top: 60000, cloudsGone: 5000 },
+  mercury: { scale: 0, top: 0, cloudsGone: 0 },
+  venus: { scale: 40000, top: 100000, cloudsGone: 56000 },
+  jupiter: { scale: 27000, top: 200000, cloudsGone: 15000 },
+  saturn: { scale: 59500, top: 320000, cloudsGone: 15000 },
+  uranus: { scale: 27700, top: 180000, cloudsGone: 15000 },
+  neptune: { scale: 19700, top: 140000, cloudsGone: 15000 },
 };
 
 /** A part of the patch with a ceiling of its own. */
@@ -181,8 +203,8 @@ export function curvatureDropAt(d: number, radiusM: number): number {
   return (d * d) / (2 * radiusM);
 }
 
-/** The Moon's and Mars's patch: the ground square, the horizon ring 1.5 km
- *  out and all that stands on them, under the one ceiling. */
+/** The patch of every world but Earth: the ground square, the horizon ring
+ *  1.5 km out and all that stands on them, under the one ceiling. */
 export function patchTiers(world: GlobeWorld, objects: readonly (THREE.Object3D | null | undefined)[], reach = 1500): OrbitTier[] {
   return [{ objects, ceiling: CEILINGS[world].local, reach, patch: reach }];
 }

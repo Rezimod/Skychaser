@@ -14,7 +14,7 @@ interface ExploreRoomPanelProps {
   onClose: () => void;
 }
 
-const PLACES = new Set(['orbit', 'flight', 'surface', 'moon', 'mars', 'proximaB', 'earth', 'backrooms']);
+const PLACES = new Set(['orbit', 'flight', 'surface', 'moon', 'mars', 'proximaB', 'earth', 'mercury', 'venus', 'jupiter', 'saturn', 'uranus', 'neptune', 'backrooms']);
 /** Where a roster entry is, as a message key under solarSystem.room.places. */
 export const placeKey = (scene: string, world: string) => {
   // Each room's maze is its own world, `backrooms-<seed>`.

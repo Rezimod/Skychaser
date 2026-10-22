@@ -16,11 +16,12 @@
 // moment is. player-ship.ts turns that into a pose and the deck paints
 // the curves; the surface loads underneath it all.
 //
-// The Moon, Mars and Earth are flown all the way down from orbit in the
-// surface scene itself (orbital-descent.ts): the entry, the plasma and the
-// title card are there. For them the arrival here ends at orbit insertion —
-// transit, approach, and a short burn onto a low orbit (`orbit`) — calm,
-// with nothing on the hull. Proxima b keeps the whole run here.
+// The Moon, Mars, Earth, Mercury, Venus and the four giants are flown all
+// the way down from orbit in the surface scene itself (orbital-descent.ts):
+// the entry, the plasma and the title card are there. For them the arrival
+// here ends at orbit insertion — transit, approach, and a short burn onto a
+// low orbit (`orbit`) — calm, with nothing on the hull. Proxima b keeps the
+// whole run here.
 
 import { isGlobeWorld } from '@/lib/solar-system/planet-frame';
 
@@ -73,7 +74,10 @@ export const APPROACH_END_RADII = 1.02;
 /** Top of the air over each landing site, as a multiple of its radius
  *  (1 = airless) — the flight world's bodies carry the same number for the
  *  planets the orrery draws; this is the source for the sites it does not. */
-export const SITE_ATMOSPHERE: Record<string, number> = { moon: 1, mars: 1.15, proximaB: 1.12, earth: 1.1 };
+export const SITE_ATMOSPHERE: Record<string, number> = {
+  moon: 1, mars: 1.15, proximaB: 1.12, earth: 1.1,
+  mercury: 1, venus: 1.06, jupiter: 1.03, saturn: 1.04, uranus: 1.05, neptune: 1.05,
+};
 /** Whether the way down to `site` has air to burn in. The site's own table
  *  wins over the body the flight world found, so the Moon is airless even
  *  where a body of that id says otherwise. */

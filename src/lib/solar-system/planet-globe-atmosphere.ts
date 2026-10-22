@@ -12,7 +12,19 @@
 // On the ground the haze is an optical depth along the view ray through two
 // exponential layers (the air and a thinner, low haze), in the colour the
 // surface scene's own haze uses, so that where the globe meets the surface
-// scene at the horizon the two are the same colour. The Moon has none.
+// scene at the horizon the two are the same colour. The Moon and Mercury
+// have none.
+//
+// Venus is the odd one: its sulphuric cloud deck, 47 to 66 km up, hides the
+// ground from space. The shell is measured from the cloud tops there (what
+// glows at the limb is the haze above them), and the ground's haze carries
+// the deck as a slab of its own, so that coming down through it the world
+// goes white-yellow and murky and then opens out, dim and orange, below.
+// The giants' "ground" is their cloud deck at 1 bar; their air is the clear
+// hydrogen above it, tinted by what each one's haze and methane do. Their
+// shells' layers are given two to three times the gas's scale height: seen
+// from an orbit thousands of kilometres up, a true one is a hairline at the
+// limb, and what reads in the photographs is the haze standing far higher.
 //
 // Levels are linear HDR, a little over 1 at most, for ACES and the post chain.
 
@@ -45,6 +57,12 @@ export interface GlobeAir {
    *  `skyFade[0]` km, where the surface scene's sky dome has taken over,
    *  and is whole above `skyFade[1]`. */
   skyFade: [number, number];
+  /** Height the shell's layers are measured from, and where its rays stop
+   *  as if at the ground, km over the datum: Venus's opaque cloud tops. 0 elsewhere. */
+  shellBaseKm?: number;
+  /** A cloud deck in the ground's haze: a slab from `baseKm` to `topKm`
+   *  with extinction `beta` per km, lit `color` from above (and dimmer seen from under it). */
+  deck?: { baseKm: number; topKm: number; beta: number; color: RGB };
 }
 
 export const GLOBE_AIR: Record<GlobeWorld, GlobeAir | null> = {
@@ -86,6 +104,86 @@ export const GLOBE_AIR: Record<GlobeWorld, GlobeAir | null> = {
     twilight: [1.0, 0.45, 0.25],
     skyFade: [10, 30],
   },
+  mercury: null,
+  venus: {
+    // Above the cloud tops: a pale yellow-white haze, the blue eaten out of it.
+    layerA: { beta: [0.014, 0.013, 0.01], h: 5, absorb: [0, 0.002, 0.007] },
+    layerB: { beta: [0.0012, 0.0014, 0.0018], h: 9 },
+    mie: { beta: 0.012, h: 4, g: 0.75, tint: [1, 0.92, 0.75] },
+    sunIntensity: 6,
+    // Under the deck: ninety bars of carbon dioxide. A grey extinction with a
+    // little more taken from the blue, and the light that is left is orange.
+    airBeta: [0.045, 0.055, 0.075],
+    airH: 15.9,
+    hazeBeta: 0.02,
+    hazeH: 2,
+    hazeColor: [0.42, 0.24, 0.09],
+    hazeSun: [0.62, 0.4, 0.16],
+    twilight: [0.8, 0.45, 0.2],
+    skyFade: [62, 82],
+    shellBaseKm: 65,
+    deck: { baseKm: 47, topKm: 66, beta: 0.55, color: [0.62, 0.46, 0.22] },
+  },
+  jupiter: {
+    // Warm: the ammonia haze over the bands, which eats the blue, on clear hydrogen.
+    layerA: { beta: [0.0022, 0.0019, 0.0014], h: 70, absorb: [0, 0.0003, 0.0009] },
+    layerB: { beta: [0.0004, 0.0004, 0.0005], h: 60 },
+    mie: { beta: 0.004, h: 20, g: 0.7, tint: [1, 0.9, 0.75] },
+    sunIntensity: 6,
+    airBeta: [0.0016, 0.0015, 0.0013],
+    airH: 27,
+    hazeBeta: 0.008,
+    hazeH: 3,
+    hazeColor: [0.6, 0.5, 0.36],
+    hazeSun: [0.95, 0.84, 0.64],
+    twilight: [0.9, 0.55, 0.3],
+    skyFade: [15, 60],
+  },
+  saturn: {
+    // Cream and butterscotch: a thicker, paler haze than Jupiter's.
+    layerA: { beta: [0.0024, 0.0021, 0.0016], h: 110, absorb: [0, 0.0002, 0.0008] },
+    layerB: { beta: [0.0003, 0.0003, 0.0004], h: 110 },
+    mie: { beta: 0.0035, h: 40, g: 0.7, tint: [1, 0.94, 0.8] },
+    sunIntensity: 5,
+    airBeta: [0.0012, 0.0011, 0.001],
+    airH: 59.5,
+    hazeBeta: 0.008,
+    hazeH: 4,
+    hazeColor: [0.7, 0.62, 0.45],
+    hazeSun: [0.98, 0.9, 0.7],
+    twilight: [0.9, 0.6, 0.35],
+    skyFade: [15, 60],
+  },
+  uranus: {
+    // Cyan: methane takes the red, the haze scatters what is left.
+    layerA: { beta: [0.001, 0.0027, 0.0031], h: 55, absorb: [0.0028, 0.0003, 0] },
+    layerB: { beta: [0.0002, 0.0005, 0.0006], h: 50 },
+    mie: { beta: 0.003, h: 15, g: 0.7, tint: [0.75, 0.95, 1] },
+    sunIntensity: 4,
+    airBeta: [0.0022, 0.0014, 0.0013],
+    airH: 27.7,
+    hazeBeta: 0.007,
+    hazeH: 3,
+    hazeColor: [0.42, 0.68, 0.74],
+    hazeSun: [0.75, 0.92, 0.95],
+    twilight: [0.4, 0.6, 0.7],
+    skyFade: [15, 60],
+  },
+  neptune: {
+    // Deep blue: more methane over a clearer air than Uranus's.
+    layerA: { beta: [0.0006, 0.0017, 0.0044], h: 45, absorb: [0.004, 0.0007, 0] },
+    layerB: { beta: [0.0002, 0.0004, 0.0009], h: 40 },
+    mie: { beta: 0.0025, h: 12, g: 0.7, tint: [0.7, 0.85, 1] },
+    sunIntensity: 3.5,
+    airBeta: [0.0026, 0.0016, 0.0011],
+    airH: 19.7,
+    hazeBeta: 0.006,
+    hazeH: 2.5,
+    hazeColor: [0.12, 0.25, 0.62],
+    hazeSun: [0.4, 0.6, 0.95],
+    twilight: [0.3, 0.4, 0.8],
+    skyFade: [15, 60],
+  },
 };
 
 /** The ground's aerial perspective, GLSL. Needs the uniforms below. */
@@ -99,6 +197,8 @@ uniform vec3 uHazeSun;
 uniform vec3 uTwilight;
 uniform float uCamAlt;
 uniform float uCamAgl;
+uniform vec4 uDeck;
+uniform vec3 uDeckColor;
 
 // Mean density of an exponential layer along a straight path from height a
 // to height b (both over the scale height), times the path length.
@@ -128,7 +228,19 @@ vec3 aerial(vec3 col, float L, float hp, vec3 viewDir, vec3 up, vec3 sun) {
   float glow = pow(max(dot(viewDir, sun), 0.0), 8.0);
   vec3 tint = mix(uTwilight, vec3(1.0), smoothstep(0.0, 0.3, mu));
   vec3 inscatter = mix(uHazeColor, uHazeSun, glow) * tint * day * mix(1.0, 0.6, above);
-  return col * T + inscatter * (1.0 - T);
+  col = col * T + inscatter * (1.0 - T);
+  // A cloud deck (uDeck: base, top, extinction per km, on): the share of the
+  // path inside the slab, by height, times its length. Lit from above, and
+  // a third as bright seen from under it.
+  if (uDeck.w > 0.5) {
+    float lo = min(hc, hp); float hi = max(hc, hp);
+    float inside = max(0.0, min(hi, uDeck.y) - max(lo, uDeck.x));
+    float frac = hi - lo > 1e-3 ? inside / (hi - lo) : step(uDeck.x, hc) * step(hc, uDeck.y);
+    float td = exp(-uDeck.z * L * frac);
+    float lit = mix(0.3, 1.0, smoothstep(uDeck.x, uDeck.y, hc));
+    col = col * td + uDeckColor * tint * day * lit * (1.0 - td);
+  }
+  return col;
 }
 `;
 
@@ -143,6 +255,8 @@ export function aerialUniforms(air: GlobeAir): Record<string, THREE.IUniform> {
     uTwilight: { value: new THREE.Vector3(...air.twilight) },
     uCamAlt: { value: 0 },
     uCamAgl: { value: 0 },
+    uDeck: { value: air.deck ? new THREE.Vector4(air.deck.baseKm, air.deck.topKm, air.deck.beta, 1) : new THREE.Vector4() },
+    uDeckColor: { value: new THREE.Vector3(...(air.deck ? air.deck.color : [0, 0, 0])) },
   };
 }
 
@@ -230,6 +344,8 @@ void main() {
 
 export interface AtmosphereShell {
   mesh: THREE.Mesh;
+  /** The drawn sphere's radius, km: a little over the air's top. */
+  radiusKm: number;
   /** Sun direction, globe frame (unit). */
   setSun: (dir: THREE.Vector3) => void;
   /** Camera altitude above the reference sphere, km: fades the shell's sky. */
@@ -242,13 +358,17 @@ export interface AtmosphereShell {
 
 export function makeAtmosphereShell(body: PlanetBody, air: GlobeAir, lite: boolean, lowestGroundM = 0): AtmosphereShell {
   const top = body.radiusKm + body.atmosphereKm;
+  // Venus: the layers stand on the cloud tops, and the rays stop there.
+  const base = body.radiusKm + (air.shellBaseKm ?? 0);
+  const ground = air.shellBaseKm ? base : body.radiusKm + Math.min(0, lowestGroundM) / 1000;
   // Inscribed facets would shave the faint outer edge of the limb; the
   // sphere is drawn a hair large and the shader intersects the true one.
-  const geom = new THREE.SphereGeometry(top * 1.003, lite ? 96 : 160, lite ? 48 : 80);
+  const radiusKm = top * 1.003;
+  const geom = new THREE.SphereGeometry(radiusKm, lite ? 96 : 160, lite ? 48 : 80);
   const mat = new THREE.ShaderMaterial({
     uniforms: {
-      uR: { value: body.radiusKm },
-      uGround: { value: body.radiusKm + Math.min(0, lowestGroundM) / 1000 },
+      uR: { value: base },
+      uGround: { value: ground },
       uTop: { value: top },
       uSun: { value: new THREE.Vector3(1, 0, 0) },
       uBetaA: { value: new THREE.Vector3(...air.layerA.beta) }, uHA: { value: air.layerA.h },
@@ -281,6 +401,7 @@ export function makeAtmosphereShell(body: PlanetBody, air: GlobeAir, lite: boole
   };
   return {
     mesh,
+    radiusKm,
     setSun: (d) => { (mat.uniforms.uSun.value as THREE.Vector3).copy(d).normalize(); },
     setAltitude: (km) => { alt = km; apply(); },
     setWeight: (w) => { extra = Math.max(0, w); apply(); },

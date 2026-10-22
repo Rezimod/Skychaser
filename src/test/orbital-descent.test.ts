@@ -2,7 +2,9 @@
 // exactly where the lander's powered descent begins (so the lander can take
 // it on and set it down), what the air does on the way (heat, turbulence,
 // the speed of sound), how far the pilot can lean on it, the skip, the
-// clock, and the way back up.
+// clock, and the way back up — for every world flown down from orbit: the
+// Moon, Mars and Earth, Mercury and Venus, and the four giants, whose "pad"
+// is the outpost platform at the 1-bar level.
 
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
@@ -11,19 +13,30 @@ import {
   type OrbitalDescent, type OrbitalInput,
 } from '@/lib/solar-system/orbital-descent';
 import {
-  PLANET_BODIES, altitudeOf, localUpAt, orbitalSpeed, siteBasis, type GlobeWorld,
+  GLOBE_WORLDS, PLANET_BODIES, altitudeOf, hasAir, localUpAt, orbitalSpeed, siteBasis, type GlobeWorld,
 } from '@/lib/solar-system/planet-frame';
 import { makeLander, type DescentStart, type LanderHandle } from '@/lib/solar-system/moon-lander';
 import type { DustHandle } from '@/lib/solar-system/moon-fx';
 import { makeSurfaceFlight } from '@/lib/solar-system/surface-flight';
 
 const DT = 1 / 60;
-const WORLDS: GlobeWorld[] = ['moon', 'mars', 'earth'];
-/** The powered descents the scenes start: the Moon's and Mars's default, Earth's own (world-earth EARTH_DESCENT). */
+const WORLDS: GlobeWorld[] = [...GLOBE_WORLDS];
+/** The three worlds the descent was first tuned on, and the six added after them. */
+const FIRST: GlobeWorld[] = ['moon', 'mars', 'earth'];
+const NEW: GlobeWorld[] = WORLDS.filter((w) => !FIRST.includes(w));
+const AIR = WORLDS.filter((w) => hasAir(w));
+const AIRLESS = WORLDS.filter((w) => !hasAir(w));
+/** The powered descents the scenes start: the default everywhere but Earth, Earth's own (world-earth EARTH_DESCENT). */
 const EARTH_DESCENT: DescentStart = { alt: 600, descent: 38, offsetX: -35, offsetZ: -52, driftX: 2, driftZ: 3 };
-/** Ground under the pad: the Moon's mare, Jezero, Tbilisi at about 480 m above the sea. */
-const GROUND: Record<GlobeWorld, number> = { moon: 0, mars: 0, earth: 480 };
-const PAD: Record<GlobeWorld, [number, number]> = { moon: [0, 26], mars: [12, 40], earth: [-20, 30] };
+/** Ground under the pad: the Moon's mare, Jezero, Tbilisi at about 480 m above the sea; the datum elsewhere
+ *  (the giants' platform deck rides at the 1-bar level). */
+const GROUND: Record<GlobeWorld, number> = {
+  moon: 0, mars: 0, earth: 480, mercury: 0, venus: 0, jupiter: 0, saturn: 0, uranus: 0, neptune: 0,
+};
+const PAD: Record<GlobeWorld, [number, number]> = {
+  moon: [0, 26], mars: [12, 40], earth: [-20, 30], mercury: [0, 26], venus: [12, 40],
+  jupiter: [0, 26], saturn: [-8, 30], uranus: [0, 26], neptune: [6, 26],
+};
 
 beforeAll(() => {
   const ctx: unknown = new Proxy({}, { get: () => () => ctx, set: () => true });
@@ -110,7 +123,9 @@ describe('the way down from orbit', () => {
     for (let i = 0; i < 60 * 120 && !lander.telemetry.landed; i++) lander.update(DT, { throttle: 0, moveX: 0, moveY: 0 }, ground);
     expect(lander.telemetry.landed).toBe(true);
     expect(lander.telemetry.touchdown).toBeLessThan(2.5);
-    expect(lander.telemetry.offset).toBeLessThan(20);
+    // The lander's own guidance (moon-lander) lands wider of the pad's centre
+    // under a giant's pull (Jupiter's 24.8 m/s²) than it does at Earth's.
+    expect(lander.telemetry.offset).toBeLessThan(PLANET_BODIES[world].gravity > 10 ? 35 : 20);
     // The crew step off beside the hull, on the heading it landed on.
     const off = Math.hypot(lander.telemetry.egressX - lander.position.x, lander.telemetry.egressZ - lander.position.z);
     expect(off).toBeGreaterThan(lander.hull);
@@ -120,7 +135,7 @@ describe('the way down from orbit', () => {
 
   it('takes a minute and a half of play or so, Earth the longest', () => {
     const secs: Record<string, number> = {};
-    for (const w of WORLDS) {
+    for (const w of FIRST) {
       const { d } = descentFor(w);
       secs[w] = flyOut(d);
       expect(secs[w]).toBeGreaterThan(65);
@@ -138,9 +153,9 @@ describe('the way down from orbit', () => {
       flyOut(d, undefined, () => { if (seen[seen.length - 1] !== d.telemetry.phase) seen.push(d.telemetry.phase); });
       return seen;
     };
-    expect(legs('earth')).toEqual(['orbit', 'deorbit', 'entry', 'glide', 'done']);
-    expect(legs('mars')).toEqual(['orbit', 'deorbit', 'entry', 'glide', 'done']);
-    expect(legs('moon')).toEqual(['orbit', 'deorbit', 'braking', 'approach', 'done']);
+    for (const w of AIR) expect(legs(w)).toEqual(['orbit', 'deorbit', 'entry', 'glide', 'done']);
+    for (const w of AIRLESS) expect(legs(w)).toEqual(['orbit', 'deorbit', 'braking', 'approach', 'done']);
+    expect(AIRLESS).toEqual(['moon', 'mercury']);
   });
 
   it.each(WORLDS)('%s keeps "down" the planet\'s radial all the way, and the height it reports is the true one', (world) => {
@@ -159,15 +174,17 @@ describe('the way down from orbit', () => {
     });
   });
 
-  it('heats nothing over the Moon, nothing above the air, and fully in the entry', () => {
-    const moon = descentFor('moon').d;
-    flyOut(moon, undefined, () => {
-      expect(moon.telemetry.heat).toBe(0);
-      expect(moon.telemetry.turbulence).toBe(0);
-      expect(moon.telemetry.mach).toBe(0);
-    });
-    expect(moon.telemetry.booms).toBe(0);
-    for (const w of ['mars', 'earth'] as const) {
+  it('heats nothing over the airless worlds, nothing above the air, and fully in the entry', () => {
+    for (const w of AIRLESS) {
+      const airless = descentFor(w).d;
+      flyOut(airless, undefined, () => {
+        expect(airless.telemetry.heat).toBe(0);
+        expect(airless.telemetry.turbulence).toBe(0);
+        expect(airless.telemetry.mach).toBe(0);
+      });
+      expect(airless.telemetry.booms).toBe(0);
+    }
+    for (const w of AIR) {
       const top = PLANET_BODIES[w].atmosphereKm * 1000;
       const { d } = descentFor(w);
       let peak = 0; let peakPhase = '';
@@ -186,7 +203,7 @@ describe('the way down from orbit', () => {
   });
 
   it('shakes hardest in the thick of the entry and through the speed of sound', () => {
-    for (const w of ['mars', 'earth'] as const) {
+    for (const w of AIR) {
       const { d } = descentFor(w);
       let inEntry = 0; let transonic = 0; let inOrbit = 0; let atEnd = 1;
       flyOut(d, undefined, () => {
@@ -239,6 +256,86 @@ describe('the way down from orbit', () => {
     // The belly (−Y) faces into the flow, well off the nose (angle of attack ~40°).
     expect(entryDot).toBeGreaterThan(0.4);
     expect(entryDot).toBeLessThan(0.85);
+  });
+});
+
+describe('the six worlds added after the first three', () => {
+  it.each(NEW)('%s comes down in a similar time to Mars and Earth, never NaN, and ends at the handover', (world) => {
+    const { d, lander } = descentFor(world);
+    let finite = true;
+    const secs = flyOut(d, undefined, () => {
+      const t = d.telemetry;
+      for (const v of [d.position.x, d.position.y, d.position.z, d.velocity.x, d.velocity.y, d.velocity.z, t.altitude, t.speed, t.heat, t.turbulence, t.mach, t.timeWarp]) {
+        if (!Number.isFinite(v)) finite = false;
+      }
+      expect(t.timeWarp).toBeLessThanOrEqual(30);
+    });
+    expect(finite).toBe(true);
+    expect(d.telemetry.done).toBe(true);
+    expect(secs).toBeGreaterThan(70);
+    expect(secs).toBeLessThan(115);
+    expect(d.nominalSeconds).toBeCloseTo(secs, 0);
+    expect(d.position.distanceTo(lander.start.position)).toBeLessThan(0.5);
+    lander.dispose();
+  });
+
+  it('flies the giants at their real orbital speeds, Jupiter fastest', () => {
+    const speed = (w: GlobeWorld) => descentFor(w).d.telemetry.speed;
+    expect(speed('jupiter')).toBeGreaterThan(40_000);
+    expect(speed('jupiter')).toBeLessThan(43_000);
+    expect(speed('saturn')).toBeGreaterThan(23_000);
+    expect(speed('uranus')).toBeGreaterThan(14_000);
+    expect(speed('neptune')).toBeGreaterThan(15_000);
+    expect(speed('mercury')).toBeGreaterThan(2800);
+    expect(speed('venus')).toBeGreaterThan(7000);
+  });
+
+  it('holds the giants\' plasma at full for as long as Earth\'s, and fades it in from the top of the air', () => {
+    const atFull = (w: GlobeWorld) => {
+      const { d } = descentFor(w);
+      let full = 0; let first = -1;
+      flyOut(d, undefined, () => {
+        if (first < 0 && d.telemetry.heat > 0) first = d.telemetry.heat;
+        if (d.telemetry.heat > 0.9) full += DT;
+      });
+      return { full, first };
+    };
+    const earth = atFull('earth').full;
+    for (const w of ['jupiter', 'saturn', 'uranus', 'neptune', 'venus'] as GlobeWorld[]) {
+      const { full, first } = atFull(w);
+      expect(full).toBeGreaterThan(earth * 0.8);
+      // No step at the top of the air: the glow comes up from nearly nothing.
+      expect(first).toBeLessThan(0.1);
+    }
+  });
+
+  it('brakes rather than enters over Mercury: the engines burn through the braking leg', () => {
+    const { d } = descentFor('mercury');
+    let burning = 0; let braking = 0;
+    flyOut(d, undefined, () => {
+      if (d.telemetry.phase !== 'braking') return;
+      braking++;
+      if (d.telemetry.burn > 0.85) burning++;
+    });
+    expect(braking).toBeGreaterThan(60 * 20);
+    expect(burning / braking).toBeGreaterThan(0.8);
+  });
+
+  it('comes through the speed of sound high on the giants, where it is fast in hydrogen, and under the deck on Venus', () => {
+    const boomAt = (w: GlobeWorld) => {
+      const { d } = descentFor(w);
+      let at = 0; let last = 0;
+      flyOut(d, undefined, () => {
+        const m = d.telemetry.mach;
+        if (last >= 1 && m < 1 && m > 0) at = d.telemetry.altitude;
+        last = m;
+      });
+      return at;
+    };
+    expect(boomAt('jupiter')).toBeGreaterThan(20_000);
+    expect(boomAt('saturn')).toBeGreaterThan(20_000);
+    expect(boomAt('venus')).toBeGreaterThan(30_000);
+    expect(boomAt('venus')).toBeLessThan(50_000);
   });
 });
 
@@ -318,10 +415,20 @@ describe('the skips and the clock', () => {
     expect(earth.telemetry.phase).toBe('entry');
     expect(earth.telemetry.altitude).toBeGreaterThan(90_000);
     expect(earth.telemetry.altitude).toBeLessThan(110_000);
-    const moon = descentFor('moon').d;
-    moon.skipToEntry();
-    expect(moon.telemetry.phase).toBe('braking');
-    expect(moon.telemetry.altitude).toBeLessThan(20_000);
+    for (const w of AIRLESS) {
+      const d = descentFor(w).d;
+      d.skipToEntry();
+      expect(d.telemetry.phase).toBe('braking');
+      expect(d.telemetry.altitude).toBeLessThan(25_000);
+    }
+    // Every world with air: the top of the entry is in the upper air, under its drawn top.
+    for (const w of AIR) {
+      const d = descentFor(w).d;
+      d.skipToEntry();
+      expect(d.telemetry.phase).toBe('entry');
+      expect(d.telemetry.altitude).toBeLessThanOrEqual(PLANET_BODIES[w].atmosphereKm * 1000 + 1);
+      expect(d.telemetry.altitude).toBeGreaterThan(PLANET_BODIES[w].scaleHeightKm * 1000 * 6);
+    }
   });
 
   it('is deterministic for a given sequence of steps', () => {
@@ -429,7 +536,7 @@ describe('the flight in a surface scene', () => {
     expect(lander.telemetry.landed).toBe(false);
     expect(camera.up.y).toBe(1);
     expect(scene.getObjectByName('entry-fx')!.visible).toBe(false);
-    if (world === 'moon') { expect(roar).toBe(0); expect(booms).toEqual([]); }
+    if (!hasAir(world)) { expect(roar).toBe(0); expect(booms).toEqual([]); }
     else { expect(hot).toBe(true); expect(roar).toBeGreaterThan(0.9); expect(booms).toEqual([1]); }
     // The descent camera can take the yaw the chase ended on.
     expect(Number.isFinite(flight.cameraYaw())).toBe(true);

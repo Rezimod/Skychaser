@@ -8,7 +8,8 @@
 // into the dome above the horizon. The moons cross it, any second suns sit
 // in it, the starfield shows through by however much the sky lets it, and,
 // where the star flares, aurora curtains roll overhead. A ringed giant
-// (world-giant) hangs in Proxima b's.
+// (world-giant) hangs in Proxima b's; from inside Saturn and Uranus their
+// own rings arch across the sky (world-ring-arc).
 //
 // From height (surface-orbit), the dome is laid out against the true
 // horizon, which sinks below the level as the camera climbs, and the air in
@@ -20,6 +21,7 @@ import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { starfield } from '@/lib/solar-system/moon-surface';
 import { CLOUD_GLSL, cloudSteps, cloudUniforms, driftClouds } from '@/lib/solar-system/world-clouds';
 import { makeGiant } from '@/lib/solar-system/world-giant';
+import { makeRingArc } from '@/lib/solar-system/world-ring-arc';
 import type { WorldProfile } from '@/lib/solar-system/world-profiles';
 import { isGlobeWorld } from '@/lib/solar-system/planet-frame';
 import { skyAt } from '@/lib/solar-system/surface-orbit';
@@ -30,6 +32,8 @@ export interface WorldSky {
   environment: THREE.Texture;
   /** The star's light as it reaches the ground, after the air: for the key light's tint. */
   sunTint: THREE.Color;
+  /** The planet's own rings arching across the sky (Saturn, Uranus), or null. */
+  rings: THREE.Mesh | null;
   update: (dt: number, cameraPos: THREE.Vector3) => void;
   /** The camera's height above the planet's reference sphere, m: the air
    *  thins to space, the horizon sinks, the cloud deck goes. Globe worlds only. */
@@ -259,6 +263,12 @@ export function makeWorldSky(renderer: THREE.WebGLRenderer, profile: WorldProfil
   // The ringed giant, where the profile has one.
   const giant = profile.giant ? makeGiant(profile.giant, profile.sunDir, profile.atmosphere.hazeColor, lite) : null;
   if (giant) group.add(giant.group);
+  // The planet's own rings, seen from inside it: lit as bright as the sky
+  // round them allows, and dimmed by the air's optical depth overhead.
+  const A0 = profile.atmosphere;
+  const ringArc = S.rings ? makeRingArc(S.rings, profile.sunDir, A0.sunIntensity * 0.06,
+    (A0.rayleigh[0] + A0.rayleigh[1] + A0.rayleigh[2]) / 3 + A0.mie * A0.turbidity, lite) : null;
+  if (ringArc) group.add(ringArc.mesh);
 
   // The visor's environment: this sky (without the clouds, which move), this ground, this sun.
   const envScene = new THREE.Scene();
@@ -283,6 +293,7 @@ export function makeWorldSky(renderer: THREE.WebGLRenderer, profile: WorldProfil
     group,
     environment,
     sunTint: sunAtGround(profile),
+    rings: ringArc?.mesh ?? null,
     setAltitude(altitudeM, cameraPos) {
       if (!isGlobeWorld(profile.id)) return;
       const k = skyAt(profile.id, altitudeM);
@@ -309,6 +320,7 @@ export function makeWorldSky(renderer: THREE.WebGLRenderer, profile: WorldProfil
     },
     dispose() {
       giant?.dispose();
+      ringArc?.dispose();
       for (const g of geoms) g.dispose();
       for (const m of owned) m.dispose();
       stars.geometry.dispose();

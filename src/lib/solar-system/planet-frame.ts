@@ -13,10 +13,19 @@
 
 import * as THREE from 'three';
 
-/** The worlds that can be flown down to from orbit, for now. */
-export type GlobeWorld = 'moon' | 'mars' | 'earth';
+/** The worlds that can be flown down to from orbit. */
+export type GlobeWorld =
+  | 'moon' | 'mars' | 'earth'
+  | 'mercury' | 'venus' | 'jupiter' | 'saturn' | 'uranus' | 'neptune';
 
-export const GLOBE_WORLDS: readonly GlobeWorld[] = ['moon', 'mars', 'earth'];
+export const GLOBE_WORLDS: readonly GlobeWorld[] = ['moon', 'mars', 'earth', 'mercury', 'venus', 'jupiter', 'saturn', 'uranus', 'neptune'];
+
+/** The giants: no ground, a floating platform at the 1-bar level instead. */
+export const GAS_GIANTS: readonly GlobeWorld[] = ['jupiter', 'saturn', 'uranus', 'neptune'];
+
+export function isGasGiant(world: GlobeWorld): boolean {
+  return GAS_GIANTS.includes(world);
+}
 
 export function isGlobeWorld(id: string): id is GlobeWorld {
   return (GLOBE_WORLDS as readonly string[]).includes(id);
@@ -44,9 +53,23 @@ export interface PlanetBody {
 /**
  * The bodies. Sites: the Moon's Stellar Base near the south pole (moon-sky
  * BASE_SITE), Mars at Jezero crater, Earth at the Tbilisi data's origin
- * (public/explore/tbilisi/manifest.json). Radii and gravity are the IAU
- * means; atmosphere tops are where the limb glow and heating are drawn to
- * begin, not a physical edge.
+ * (public/explore/tbilisi/manifest.json), Mercury on the smooth volcanic
+ * plains inside the peak ring of Rachmaninoff basin, Venus on the lowland
+ * plain where Venera 13 landed (east of Phoebe Regio), Jupiter in the South
+ * Equatorial Belt just north of the Great Red Spot, Saturn in the northern
+ * tropics where the rings stand high in the southern sky, Uranus at 30° S
+ * (the hemisphere Voyager 2 saw lit), and Neptune by the bright companion
+ * clouds north-west of the Great Dark Spot. The giants' spots are placed
+ * where the albedo maps in public/solar-system/planets/ draw them, not at
+ * any date's real longitude: the maps are the planet here.
+ *
+ * Radii and gravity are the IAU means; for the giants the reference sphere
+ * is the 1-bar level, where the outpost platform rides (datum 0), and the
+ * gravity is the 1-bar value. Atmosphere tops are where the limb glow and
+ * heating are drawn to begin, not a physical edge: about twelve scale
+ * heights up, as Earth's is, so the plasma fades in rather than switching
+ * on. The scale heights are the lower air's (Venus's at the surface, the
+ * giants' at 1 bar).
  */
 export const PLANET_BODIES: Record<GlobeWorld, PlanetBody> = {
   moon: {
@@ -61,7 +84,36 @@ export const PLANET_BODIES: Record<GlobeWorld, PlanetBody> = {
     radiusKm: 6371.0, site: { lat: 41.6935274, lon: 44.8104684 }, datumKm: 0,
     atmosphereKm: 100, scaleHeightKm: 8.5, gravity: 9.81, orbitKm: 400, rotationHours: 23.934,
   },
+  mercury: {
+    radiusKm: 2439.4, site: { lat: 27.4, lon: 58.1 }, datumKm: 0,
+    atmosphereKm: 0, scaleHeightKm: 0, gravity: 3.7, orbitKm: 200, rotationHours: 1407.6,
+  },
+  venus: {
+    radiusKm: 6051.8, site: { lat: -7.55, lon: 303.69 }, datumKm: 0,
+    atmosphereKm: 185, scaleHeightKm: 15.9, gravity: 8.87, orbitKm: 250, rotationHours: -5832.6,
+  },
+  jupiter: {
+    radiusKm: 69911, site: { lat: -14, lon: -48 }, datumKm: 0,
+    atmosphereKm: 320, scaleHeightKm: 27, gravity: 24.79, orbitKm: 1500, rotationHours: 9.925,
+  },
+  saturn: {
+    radiusKm: 58232, site: { lat: 24, lon: 30 }, datumKm: 0,
+    atmosphereKm: 700, scaleHeightKm: 59.5, gravity: 10.44, orbitKm: 1200, rotationHours: 10.656,
+  },
+  uranus: {
+    radiusKm: 25362, site: { lat: -30, lon: 0 }, datumKm: 0,
+    atmosphereKm: 330, scaleHeightKm: 27.7, gravity: 8.69, orbitKm: 800, rotationHours: -17.24,
+  },
+  neptune: {
+    radiusKm: 24622, site: { lat: -12, lon: 14 }, datumKm: 0,
+    atmosphereKm: 240, scaleHeightKm: 19.7, gravity: 11.15, orbitKm: 800, rotationHours: 16.11,
+  },
 };
+
+/** Whether a world has air to enter (and so an entry, plasma and a speed of sound). */
+export function hasAir(world: GlobeWorld): boolean {
+  return PLANET_BODIES[world].atmosphereKm > 0 && PLANET_BODIES[world].scaleHeightKm > 0;
+}
 
 const DEG = Math.PI / 180;
 

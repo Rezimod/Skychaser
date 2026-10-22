@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Anchor, ArrowDownToLine, Check, ChevronsUp, Crosshair, Eye, EyeOff, Globe, HelpCircle, LayoutGrid, LogOut, Menu, Minus, Moon,
+  ArrowDownToLine, Check, ChevronsUp, Crosshair, Eye, Globe, HelpCircle, LogOut, Menu, Minus, Moon,
   Orbit, Pause, Play, Plus, Radio, Rocket, RotateCcw, Ruler, Satellite, Shield, Smartphone, Sparkles, Star, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { attachDesktopControls, clearFlightInput, zoomFlightCamera } from '@/lib/solar-system/flight-input';
+import { attachDesktopControls, clearFlightInput } from '@/lib/solar-system/flight-input';
 import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, titleCard } from '@/lib/solar-system/flight-approach';
 import { assetsFor, SURFACE_GROUPS } from '@/lib/solar-system/surface-assets';
 import { prefetchModels, prefetchDone } from '@/game/models';
@@ -33,6 +33,8 @@ interface PlayerShipProps {
   onActiveChange: (active: boolean) => void;
   /** The ship is low over a world with a surface to fly down to, and the pilot asked to go down. */
   onLand: (site: LandingSite) => void;
+  /** The arrival is on its last leg: the surface can start building behind it, unseen. */
+  onStandby?: (site: LandingSite) => void;
   /** A surface has the screen; the deck stays paused underneath. */
   landed: boolean;
   /** The crew have just come up from this surface: the deck launches into
@@ -56,6 +58,8 @@ const HELP_SEEN = 'stellar_explore_help';
 const ARRIVAL_SEEN = 'stellar_explore_arrival';
 /** On the first run the way out opens once the transit is behind them. */
 const ARRIVAL_SKIP_AFTER = APPROACH_LEGS[0].seconds + 1;
+/** How far through the arrival the surface starts building behind it, 0…1: the last leg, about five seconds out. */
+const STANDBY_AT = 0.62;
 const ICONS = [Shield, Zap, ChevronsUp];
 /** How long a passing moment stays up in the popup. */
 const POPUP_MS = 4200;
@@ -122,7 +126,7 @@ const saveLayout = (layout: Layout) => {
   }
 };
 
-export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
+export function PlayerShip({ session, onActiveChange, onLand, onStandby, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
   const t = useTranslations('solarSystem.flight');
   const tb = useTranslations('solarSystem.bodies');
   const tl = useTranslations('solarSystem.loading');
@@ -327,6 +331,10 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const landLabelRef = useRef('');
   const onLandRef = useRef(onLand);
   onLandRef.current = onLand;
+  const onStandbyRef = useRef(onStandby);
+  onStandbyRef.current = onStandby;
+  /** The site the surface has been asked to build for, once per arrival. */
+  const standbyRef = useRef<LandingSite | null>(null);
   /** Asked for the ground: the ship flies the arrival itself — transit,
    *  approach, pitch-over — and the surface's files come down while it does. */
   const land = () => {
@@ -342,6 +350,7 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
     }
     arrivalArmedRef.current = performance.now();
     arrivalRef.current = site;
+    standbyRef.current = null;
     session.input.approachRequest = site;
     setArrival(site);
   };
@@ -576,6 +585,13 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
         // The sim names the leg from its first frame; until then there is
         // nothing to say, and nothing to ask the translator for.
         if (ph !== '') text(arrPhaseRef.current, t(`arrival.${ph}`));
+        // The last leg: the surface builds behind it, so the handover at the
+        // end of it needs no loading screen.
+        const site = arrivalRef.current;
+        if (standbyRef.current !== site && (ph === 'orbit' || ph === 'glide' || tel.approachT >= STANDBY_AT)) {
+          standbyRef.current = site;
+          onStandbyRef.current?.(site);
+        }
         if (arrBoxRef.current && arrBoxRef.current.dataset.phase !== ph) arrBoxRef.current.dataset.phase = ph;
         text(arrPlaceRef.current, name(arrivalRef.current));
         arrBarRef.current?.style.setProperty('--t', tel.approachT.toFixed(3));
@@ -778,17 +794,8 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
   const railLabel = (key: string) =>
     key === 'earth' ? tb('earth.name') : key === 'planets' || key === 'stars' ? t(`groups.${key}`) : t(`bodies.${key}`);
 
-  // ── The layout editor. ──
-  const openEditor = () => {
-    setMenu(false);
-    setHelp(false);
-    onLandscape(false);
-    pausedBefore.current = session.paused;
-    holdDeck();
-    layoutBefore.current = layout;
-    setPicked(null);
-    setEditing(true);
-  };
+  // ── The layout editor: no longer offered in the menu (the deck keeps
+  // only the keys it needs); a layout saved before still applies. ──
   const closeEditor = (keep: boolean) => {
     if (keep) saveLayout(layout);
     else setLayout(layoutBefore.current);
@@ -924,18 +931,10 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
             <span ref={statusRef} className="flight-hud__status" role="status" />
           </div>
 
-          {/* The one key that survives the immersive view: bring the deck back. */}
-          <button type="button" className="flight-hud__round flight-hud__unhide" onClick={() => setImmersive(false)} aria-label={t('hudShow')} title={t('hudShow')}>
-            <Eye size={19} aria-hidden />
-          </button>
-
-          {/* Top right: the menu and the eye. Everything else lives in the menu. */}
+          {/* Top right: the menu. Everything else lives in it. */}
           <div className="flight-hud__top-keys" {...placed('topkeys')}>
             <button type="button" className="flight-hud__round" onClick={() => { setMenu((m) => !m); setHelp(false); }} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
               {menu ? <X size={19} aria-hidden /> : <Menu size={19} aria-hidden />}
-            </button>
-            <button type="button" className="flight-hud__round" onClick={() => { setImmersive(true); setMenu(false); }} aria-label={t('hudHide')} title={t('hudHide')}>
-              <EyeOff size={19} aria-hidden />
             </button>
             {menu && (
               <div className="flight-hud__menu" role="menu" aria-label={t('menu')}>
@@ -952,11 +951,9 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
                     </button>
                   ); })}
                 </div>
-                <div className="flight-hud__menu-row">
-                  <button type="button" role="menuitem" disabled={paused} onClick={() => zoomFlightCamera(session.input, -1)} aria-label={t('camIn')} title={t('camIn')}><Plus size={16} aria-hidden /></button>
-                  <button type="button" role="menuitem" disabled={paused} onClick={() => zoomFlightCamera(session.input, 1)} aria-label={t('camOut')} title={t('camOut')}><Minus size={16} aria-hidden /></button>
-                  <button type="button" role="menuitem" disabled={paused} className="flight-hud__view" onClick={() => { session.input.viewToggle = true; setMenu(false); }} aria-label={t('view')} title={t('view')}>3D</button>
-                </div>
+                <button type="button" role="menuitem" disabled={paused} onClick={() => { session.input.viewToggle = true; setMenu(false); }}>
+                  <Eye size={16} aria-hidden /><span>{t('view')}</span>
+                </button>
                 {touch && (upright || landscape) && (
                   <button type="button" role="menuitem" className="flight-hud__turn" data-on={landscape} onClick={() => { onLandscape(!landscape); setMenu(false); }}>
                     <Smartphone size={16} aria-hidden /><span>{t(landscape ? 'portrait' : 'landscape')}</span>
@@ -964,9 +961,6 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
                 )}
                 <button type="button" role="menuitem" onClick={toggleSound} aria-pressed={sound}>
                   {sound ? <Volume2 size={16} aria-hidden /> : <VolumeX size={16} aria-hidden />}<span>{t(sound ? 'soundOn' : 'soundOff')}</span>
-                </button>
-                <button type="button" role="menuitem" onClick={openEditor}>
-                  <LayoutGrid size={16} aria-hidden /><span>{t('customize')}</span>
                 </button>
                 <button type="button" role="menuitem" onClick={() => { setHelp((h) => !h); setMenu(false); }}>
                   <HelpCircle size={16} aria-hidden /><span>{t('help')}</span>
@@ -1020,9 +1014,6 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
                 </span>
                 {!touch && <kbd className="flight-hud__land-key">L</kbd>}
               </button>
-              <button ref={dockRef} type="button" className="flight-hud__prompt flight-hud__dock-key" {...tapKey(() => { session.input.dockRequest = true; })} hidden>
-                <Anchor size={16} aria-hidden /><span ref={dockTextRef} />
-              </button>
             </div>
             {touch && (
               <div className="flight-hud__move" {...placed('move')}>
@@ -1045,9 +1036,6 @@ export function PlayerShip({ session, onActiveChange, onLand, landed, returnedFr
               ) : (
                 <>
                   <div className="flight-hud__gear-slot" {...placed('gear')}><FlightGear session={session} paused={keysOff} touch={touch} /></div>
-                  <button type="button" className="flight-hud__key" onClick={() => { session.input.foilsToggle = true; }} aria-label={t('foils')} title={t('foils')} disabled={keysOff}>
-                    <ChevronsUp size={18} aria-hidden /><span>{t('foils')}</span>
-                  </button>
                 </>
               )}
             </div>

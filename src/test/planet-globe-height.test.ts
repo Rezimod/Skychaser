@@ -3,10 +3,11 @@
 // leans on. Pure maths, no WebGL.
 
 import { describe, expect, it } from 'vitest';
-import { PLANET_BODIES } from '@/lib/solar-system/planet-frame';
+import { GLOBE_WORLDS, GAS_GIANTS, PLANET_BODIES } from '@/lib/solar-system/planet-frame';
 import {
   noise3, hash3, bandWeight, fbm, craterProfile, craterDepthM, craterField, gatherCraters, cratersAt,
-  makeProceduralHeight, makeEarthHeight, moonRegion, marsRegion, latLonToDir, dirToLatLon, angleBetween,
+  makeProceduralHeight, makeEarthHeight, makeFlatHeight, moonRegion, marsRegion, mercuryRegion, venusRegion, isProceduralWorld,
+  latLonToDir, dirToLatLon, angleBetween,
   siteAxes, localToDir, dirToLocal, mareMaskFromLuminance, HEIGHT_BOUNDS, SITE_SHAPING, type Crater,
 } from '@/lib/solar-system/planet-globe-height';
 
@@ -205,6 +206,117 @@ describe('the Moon and Mars', () => {
     const t0 = performance.now();
     for (let j = 0; j < 35; j++) for (let i = 0; i < 35; i++) r(...latLonToDir(-30 + j * 1e-3, 60 + i * 1e-3));
     expect(performance.now() - t0).toBeLessThan(60);
+  });
+});
+
+describe('Mercury, Venus and the giants', () => {
+  const mercury = makeProceduralHeight('mercury', PLANET_BODIES.mercury);
+  const venus = makeProceduralHeight('venus', PLANET_BODIES.venus);
+  const fields = [mercury, venus];
+
+  it('every world has height bounds, and every world but Earth is drawn from here', () => {
+    for (const w of GLOBE_WORLDS) {
+      expect(HEIGHT_BOUNDS[w], w).toBeDefined();
+      expect(HEIGHT_BOUNDS[w].max).toBeGreaterThanOrEqual(HEIGHT_BOUNDS[w].min);
+      expect(isProceduralWorld(w)).toBe(['moon', 'mars', 'mercury', 'venus'].includes(w));
+    }
+  });
+
+  it('are deterministic, and a region agrees with the point sampler', () => {
+    for (const [f, lat, lon] of [[mercury, 10, 100], [mercury, 27.6, 57.6], [venus, 0.5, 194.6], [venus, -20, 40]] as const) {
+      const d = latLonToDir(lat, lon);
+      expect(f.sample(d[0], d[1], d[2], 100)).toBe(makeProceduralHeight(f.world as 'mercury' | 'venus', PLANET_BODIES[f.world]).sample(d[0], d[1], d[2], 100));
+      const ang = 0.005;
+      const r = f.region(d[0], d[1], d[2], ang, 60);
+      for (let i = 0; i < 16; i++) {
+        const [la, lo] = offset(lat, lon, ((i % 4) - 1.5) * 3, (Math.floor(i / 4) - 1.5) * 3, PLANET_BODIES[f.world].radiusKm);
+        const p = latLonToDir(la, lo);
+        expect(r(p[0], p[1], p[2])).toBeCloseTo(f.sample(p[0], p[1], p[2], 60), 6);
+      }
+    }
+  });
+
+  it('stay inside their bounds, and never return NaN', () => {
+    for (const f of fields) {
+      const b = HEIGHT_BOUNDS[f.world];
+      for (let i = 0; i < 1200; i++) {
+        const d = latLonToDir(Math.asin(2 * ((i * 0.618034) % 1) - 1) * (180 / Math.PI), (i * 137.508) % 360 - 180);
+        const h = f.sample(d[0], d[1], d[2], i % 2 ? 2000 : 150);
+        expect(Number.isFinite(h)).toBe(true);
+        expect(h).toBeGreaterThanOrEqual(b.min);
+        expect(h).toBeLessThanOrEqual(b.max);
+      }
+    }
+  });
+
+  it('keep the site flat at its datum, so the surface scene meets the globe there', () => {
+    for (const f of fields) {
+      const body = PLANET_BODIES[f.world];
+      const { lat, lon } = body.site;
+      for (const km of [0, 2, 5, SITE_SHAPING.flatKm - 0.1]) {
+        for (const bearing of [0, 2, 4]) {
+          const [la, lo] = offset(lat, lon, km * Math.cos(bearing), km * Math.sin(bearing), body.radiusKm);
+          const d = latLonToDir(la, lo);
+          expect(f.sample(d[0], d[1], d[2], 10)).toBeCloseTo(body.datumKm * 1000, 6);
+        }
+      }
+    }
+  });
+
+  it('Mercury is cratered at every scale, with Rachmaninoff\'s rim standing over its smooth floor', () => {
+    const R = PLANET_BODIES.mercury.radiusKm;
+    const c = latLonToDir(-40, 140);
+    const r = mercuryRegion(c[0], c[1], c[2], 0.02, 200, R);
+    let lo = Infinity; let hi = -Infinity;
+    for (let i = 0; i < 400; i++) {
+      const d = latLonToDir(-40 + (i % 20) * 0.05, 140 + Math.floor(i / 20) * 0.05);
+      const h = r(d[0], d[1], d[2]);
+      lo = Math.min(lo, h); hi = Math.max(hi, h);
+    }
+    expect(hi - lo).toBeGreaterThan(1000);
+    // The rim, 145 km from the basin's centre, over the floor where the site is.
+    const body = PLANET_BODIES.mercury;
+    const site = latLonToDir(body.site.lat, body.site.lon);
+    const [rl, ro] = offset(27.6, 57.6, 0, 145, R);
+    const rim = latLonToDir(rl, ro);
+    expect(mercury.sample(rim[0], rim[1], rim[2], 500) - mercury.sample(site[0], site[1], site[2], 500)).toBeGreaterThan(400);
+  });
+
+  it('Venus is gentle plains with a few great shields: Maat Mons kilometres over the plains round it', () => {
+    const R = PLANET_BODIES.venus.radiusKm;
+    const at = (lat: number, lon: number) => venusRegion(...latLonToDir(lat, lon), 0, 5000, R)(...latLonToDir(lat, lon));
+    expect(at(0.5 + 0.4, 194.6) - at(0.5 + 6, 194.6)).toBeGreaterThan(4000);
+    // The lowland plains: rolling, not mountainous.
+    let lo = Infinity; let hi = -Infinity;
+    for (let i = 0; i < 100; i++) {
+      const h = at(-30 + (i % 10) * 0.3, 160 + Math.floor(i / 10) * 0.3);
+      lo = Math.min(lo, h); hi = Math.max(hi, h);
+    }
+    expect(hi - lo).toBeLessThan(2500);
+  });
+
+  it('the giants are a flat sphere at the 1-bar level, and cost nothing to build', () => {
+    for (const w of GAS_GIANTS) {
+      const f = makeFlatHeight(w);
+      expect(f.world).toBe(w);
+      expect(f.min).toBe(0);
+      expect(f.max).toBe(0);
+      const d = latLonToDir(-14, -48);
+      expect(f.sample(d[0], d[1], d[2], 10)).toBe(0);
+      const r = f.region(d[0], d[1], d[2], 0.01, 10);
+      expect(r(d[0], d[1], d[2])).toBe(0);
+    }
+  });
+
+  it('a Mercury or Venus chunk builds fast enough for the frame budget', () => {
+    for (const [fn, R, lat, lon] of [[mercuryRegion, PLANET_BODIES.mercury.radiusKm, 27.4, 58.1], [venusRegion, PLANET_BODIES.venus.radiusKm, -7.5, 303.7]] as const) {
+      const c = latLonToDir(lat, lon);
+      const r = fn(c[0], c[1], c[2], 0.0005, 30, R);
+      for (let i = 0; i < 2000; i++) r(...latLonToDir(lat + (i % 40) * 1e-4, lon));
+      const t0 = performance.now();
+      for (let j = 0; j < 35; j++) for (let i = 0; i < 35; i++) r(...latLonToDir(lat + j * 1e-3, lon + i * 1e-3));
+      expect(performance.now() - t0).toBeLessThan(80);
+    }
   });
 });
 

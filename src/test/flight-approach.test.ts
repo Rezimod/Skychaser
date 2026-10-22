@@ -126,6 +126,13 @@ describe('the arrival to orbit insertion', () => {
     expect(approachProfileFor('earth', 1.1)).toBe('orbit');
     expect(approachProfileFor('proximaB')).toBe('air');
     expect(approachProfileFor('ceres', 1)).toBe('airless');
+    // Mercury, Venus and the giants are flown down from orbit in their own scene now.
+    for (const w of ['mercury', 'venus', 'jupiter', 'saturn', 'uranus', 'neptune']) expect(approachProfileFor(w)).toBe('orbit');
+  });
+
+  it('knows which of the new sites have air, whatever the body says', () => {
+    expect(isAirlessSite('mercury', 1.2)).toBe(true);
+    for (const w of ['venus', 'jupiter', 'saturn', 'uranus', 'neptune']) expect(isAirlessSite(w, 1)).toBe(false);
   });
 
   it('runs transit, approach and orbit on the same clock and ends above the drawn air', () => {
