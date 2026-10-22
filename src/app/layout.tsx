@@ -147,10 +147,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <html lang={locale} className={fonts}>
         <body className="game-body">
           <ErrorBoundary>
+            {/* No Privy around the game: it loads beside it on demand (StellarAccount). */}
             <NextIntlClientProvider locale={locale} messages={messages}>
-              <ThemeProvider>
-                <SolanaWalletProvider>{children}</SolanaWalletProvider>
-              </ThemeProvider>
+              <ThemeProvider>{children}</ThemeProvider>
             </NextIntlClientProvider>
           </ErrorBoundary>
         </body>

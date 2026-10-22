@@ -25,7 +25,7 @@ import { getSettings } from '@/game/settings';
 import { eventElement } from '@/game/console';
 
 /** The launch screen stays at least this long, and until the ship has flown a few frames. */
-const LAUNCH_MIN_MS = 1500;
+const LAUNCH_MIN_MS = 600;
 const LAUNCH_FRAMES = 3;
 
 interface PlayerShipProps {
@@ -35,6 +35,9 @@ interface PlayerShipProps {
   onLand: (site: LandingSite) => void;
   /** The arrival is on its last leg: the surface can start building behind it, unseen. */
   onStandby?: (site: LandingSite) => void;
+  /** Take the con as soon as the orbit is up, without the Explore key: the
+   *  game modes start in the ship. */
+  autoLaunch?: boolean;
   /** A surface has the screen; the deck stays paused underneath. */
   landed: boolean;
   /** The crew have just come up from this surface: the deck launches into
@@ -126,7 +129,7 @@ const saveLayout = (layout: Layout) => {
   }
 };
 
-export function PlayerShip({ session, onActiveChange, onLand, onStandby, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
+export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLaunch, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
   const t = useTranslations('solarSystem.flight');
   const tb = useTranslations('solarSystem.bodies');
   const tl = useTranslations('solarSystem.loading');
@@ -320,6 +323,15 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, landed,
     }
     attach();
   };
+  // Started in the ship: once, the first time the deck is idle over a
+  // drawn orbit and nothing (a pause, a surface) is in the way.
+  const autoLaunched = useRef(false);
+  useEffect(() => {
+    if (!autoLaunch || autoLaunched.current || active || landed || shellPaused) return;
+    autoLaunched.current = true;
+    enter();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLaunch, active, landed, shellPaused]);
   const resume = () => {
     session.paused = false;
     session.input.camZoom = zoomRef.current;
