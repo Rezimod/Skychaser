@@ -56,6 +56,11 @@ describe('ceilings', () => {
     expect(CEILINGS.earth).toEqual({ local: 12000, far: 12000 });
     expect(CEILINGS.moon.local).toBe(8000);
     expect(CEILINGS.mars.local).toBe(8000);
+    // Every other world's patch is the Moon's and Mars's shape: a square and a ring 1.5 km out.
+    for (const w of ['mercury', 'venus', 'jupiter', 'saturn', 'uranus', 'neptune'] as const) {
+      expect(CEILINGS[w]).toEqual({ local: 8000, far: 8000 });
+      expect(patchTiers(w, [])[0].ceiling).toBe(8000);
+    }
   });
 });
 
@@ -116,6 +121,13 @@ describe('air', () => {
     expect(skyAt('mars', 10000).clouds).toBe(0);
     expect(skyAt('mars', 250000).air).toBe(0);
     expect(skyAt('moon', 0).air).toBe(0);
+    expect(skyAt('mercury', 0).air).toBe(0);
+    // The giants' long scale heights keep their skies coloured far higher than Earth's.
+    expect(skyAt('jupiter', 40_000).air).toBeGreaterThan(skyAt('earth', 40_000).air);
+    expect(skyAt('saturn', 15_000).clouds).toBe(0);
+    expect(skyAt('neptune', 400_000).air).toBe(0);
+    // The horizon dips less over a bigger world from the same height.
+    expect(skyAt('jupiter', 100_000).dip).toBeLessThan(skyAt('earth', 100_000).dip);
   });
 });
 

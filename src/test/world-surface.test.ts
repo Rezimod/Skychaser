@@ -160,11 +160,15 @@ describe('the air and the sky over the other worlds', () => {
 });
 
 describe('where a ship may go down', () => {
-  it('knows the four surfaces and nothing else', () => {
-    expect(Object.keys(LANDING_SITES).sort()).toEqual(['earth', 'mars', 'moon', 'proximaB']);
+  it('knows the ten surfaces and nothing else', () => {
+    expect(Object.keys(LANDING_SITES).sort()).toEqual(['earth', 'jupiter', 'mars', 'mercury', 'moon', 'neptune', 'proximaB', 'saturn', 'uranus', 'venus']);
     expect(isWorldId('mars')).toBe(true);
     expect(isWorldId('earth')).toBe(true);
+    expect(isWorldId('venus')).toBe(true);
+    expect(isWorldId('saturn')).toBe(true);
+    // The Moon has a scene of its own; Pluto and the Sun have no landing.
     expect(isWorldId('moon')).toBe(false);
-    expect(isWorldId('venus')).toBe(false);
+    expect(isWorldId('pluto')).toBe(false);
+    expect(isWorldId('sun')).toBe(false);
   });
 });

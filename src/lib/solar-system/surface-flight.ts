@@ -15,11 +15,11 @@
 // turbulence.
 
 import * as THREE from 'three';
-import type { GlobeWorld } from '@/lib/solar-system/planet-frame';
+import { hasAir, type GlobeWorld } from '@/lib/solar-system/planet-frame';
 import {
   makeOrbitalAscent, makeOrbitalDescent, type OrbitalDescent, type OrbitalFlight, type OrbitalInput, type OrbitalTelemetry,
 } from '@/lib/solar-system/orbital-descent';
-import { makeEntryFx, PLASMA } from '@/lib/solar-system/entry-fx';
+import { makeEntryFx, plasmaFor } from '@/lib/solar-system/entry-fx';
 import type { LanderHandle } from '@/lib/solar-system/moon-lander';
 
 export interface SurfaceFlightSounds {
@@ -68,9 +68,9 @@ const INTRO = 7;
 
 export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
   const { world, lander, scene, camera, lite } = opts;
-  const fx = makeEntryFx(lander.hull, lite, world === 'earth' ? PLASMA.earth : world === 'mars' ? PLASMA.mars : PLASMA.default);
+  const fx = makeEntryFx(lander.hull, lite, plasmaFor(world));
   scene.add(fx.group);
-  const air = world !== 'moon';
+  const air = hasAir(world);
   const handoverAt = {
     position: lander.start.position.clone(),
     velocity: lander.start.velocity.clone(),

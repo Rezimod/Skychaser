@@ -1431,7 +1431,13 @@
         "moon": "Land on the Moon",
         "mars": "Land at Mars Base",
         "proximaB": "Land on Proxima b",
-        "earth": "Land in Tbilisi"
+        "earth": "Land in Tbilisi",
+        "mercury": "Land at Mercury Outpost",
+        "venus": "Land at Venus Outpost",
+        "jupiter": "Land at Jupiter Outpost",
+        "saturn": "Land at Saturn Outpost",
+        "uranus": "Land at Uranus Outpost",
+        "neptune": "Land at Neptune Outpost"
       },
       "jumpLabel": "Light-year jump",
       "jumpShort": "Jump",
@@ -1502,6 +1508,36 @@
           "name": "Earth",
           "descriptors": "Blue world · Tbilisi · Breathable air",
           "temp": "18 °C"
+        },
+        "mercury": {
+          "name": "Mercury",
+          "descriptors": "Airless · Scorched craters · A huge Sun",
+          "temp": "80 °C"
+        },
+        "venus": {
+          "name": "Venus",
+          "descriptors": "Crushing air · Acid clouds · Orange murk",
+          "temp": "464 °C"
+        },
+        "jupiter": {
+          "name": "Jupiter",
+          "descriptors": "Gas giant · No ground · Floating station",
+          "temp": "−108 °C"
+        },
+        "saturn": {
+          "name": "Saturn",
+          "descriptors": "Gas giant · Rings overhead · Floating station",
+          "temp": "−139 °C"
+        },
+        "uranus": {
+          "name": "Uranus",
+          "descriptors": "Ice giant · Tipped on its side · Floating station",
+          "temp": "−197 °C"
+        },
+        "neptune": {
+          "name": "Neptune",
+          "descriptors": "Ice giant · Fastest winds · Floating station",
+          "temp": "−201 °C"
         }
       }
     },
@@ -2185,6 +2221,304 @@
         },
         "entry": "Entry interface",
         "crystals": "Crystals"
+      },
+      "mercury": {
+        "place": "Mercury Outpost · Rachmaninoff",
+        "loading": "Descending to Mercury Outpost",
+        "loadingDetail": "Preparing the dawn line — 0.38 g, no air, a Sun two and a half times as wide",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Mercury pulls almost exactly as hard as Mars.",
+          "jump": "Space — jump. Higher than on Earth, lower than on the Moon.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. Higher than on Earth, lower than on the Moon."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "The outpost is north of the pad: habitats, the sun wall, the dish, the solar array",
+          "r7": "The Sun is only six degrees up, so the shadows are long. In the shade the ground is far below freezing.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "The outpost is north of the pad: habitats, the sun wall, the dish, the solar array"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters under white insulation",
+          "habitat1": "Habitat 2 — lab and workshop",
+          "power": "Solar array — sunlight here is nearly seven times stronger than on Earth",
+          "dish": "Comms — dish on Earth, 4 to 12 minutes away",
+          "sunshade": "Sun wall — keeps the habitats in shade",
+          "sign": "Stellar Outpost — Mercury",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Array status",
+            "comms": "Comms status",
+            "sunshade": "Sun wall status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 22 °C · CO₂ 0.4 % · in the sun wall's shadow · 2 crew asleep",
+          "power": "ARRAY-1 · 8 panels facing a Sun 6° up · 9 kW of sunlight per m², 6.7 × Earth's · 38 kWe · panels at 120 °C",
+          "comms": "COMMS · dish on Earth · 0.9 au away · signal 7.5 minutes each way",
+          "sunshade": "SUN WALL · sunlit face 120 °C · back face −60 °C · keeps the habitats in shade all morning, and a morning here lasts six Earth weeks"
+        },
+        "banner": {
+          "arrived": "Mercury Outpost — Rachmaninoff basin · welcome down"
+        }
+      },
+      "venus": {
+        "place": "Venus Outpost · Venera 13 plain",
+        "loading": "Descending to Venus Outpost",
+        "loadingDetail": "Preparing the plain — 0.9 g, 92 times Earth's air pressure, 464 °C",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Venus pulls nearly as hard as Earth.",
+          "jump": "Space — jump. Not far: this is 0.9 g.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. Not far: this is 0.9 g."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "The outpost is north of the pad: habitats, the cooler, the dish, the generator",
+          "r7": "Venera 13 landed on this plain in 1982 and lasted 127 minutes. This outpost survives by pumping its heat out without a pause.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "The outpost is north of the pad: habitats, the cooler, the dish, the generator"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — a steel pressure hull, built for 92 bar",
+          "habitat1": "Habitat 2 — lab and electronics bay, kept cool",
+          "power": "Stirling generator — plutonium heat turned into power",
+          "cooler": "Cooler — pumps the heat out into 464 °C air",
+          "dish": "Comms — radio goes straight through the clouds",
+          "sign": "Stellar Outpost — Venus",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Generator status",
+            "comms": "Comms status",
+            "cooler": "Cooler status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · inside 101 kPa, 24 °C · outside 9,200 kPa, 464 °C · hull 18 cm of steel · 2 crew",
+          "power": "STIRLING 1–4 · plutonium-238 heat · 12 kWe · nearly all of it runs the cooler",
+          "comms": "COMMS · dish on Earth · 0.7 au away · signal 6 minutes each way",
+          "cooler": "COOLER-1 · pulling 6 kW of heat out of the habitats · radiators at 540 °C — hotter than the air, or the heat could not leave"
+        },
+        "banner": {
+          "arrived": "Venus Outpost — Venera 13 plain · welcome down"
+        }
+      },
+      "jupiter": {
+        "place": "Jupiter Outpost · floating station",
+        "loading": "Descending to Jupiter Outpost",
+        "loadingDetail": "Preparing the floating station — 2.5 g, no ground, the cloud tops 55 m below",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Jupiter pulls two and a half times as hard as Earth: every step is heavy.",
+          "jump": "Space — jump. You will barely leave the deck.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. You will barely leave the deck."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it",
+          "r7": "Look up: Io, Europa, Ganymede and Callisto stand in a line across the northern sky.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters",
+          "habitat1": "Habitat 2 — lab and weather station",
+          "power": "Fission plant — power for the station, heat for the balloons",
+          "dish": "Comms — dish on Earth, 35 to 52 minutes away",
+          "envelope": "Balloons — hot hydrogen holds the station up",
+          "railing": "Railing — the cloud tops are 55 m below, and there is no ground under them",
+          "sign": "Stellar Outpost — Jupiter",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Plant status",
+            "comms": "Comms status",
+            "envelope": "Balloon status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 21 °C · outside −108 °C, 1 bar of hydrogen and helium · 2 crew",
+          "power": "FISSION-1 · 40 kWe · 300 kW of heat to the balloons · core 800 °C",
+          "comms": "COMMS · dish on Earth · 4.4 au away · signal 37 minutes each way",
+          "envelope": "BALLOONS 1–3 · hydrogen heated to 90 °C in −108 °C air · the air is mostly hydrogen, so only heat gives real lift · height steady at 1.0 bar"
+        },
+        "banner": {
+          "arrived": "Jupiter Outpost — floating on the cloud tops · welcome aboard"
+        }
+      },
+      "saturn": {
+        "place": "Saturn Outpost · floating station",
+        "loading": "Descending to Saturn Outpost",
+        "loadingDetail": "Preparing the floating station — 1.07 g, no ground, the cloud tops 60 m below",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Saturn pulls only a little harder than Earth.",
+          "jump": "Space — jump. About as high as at home.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. About as high as at home."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it",
+          "r7": "Look south: Saturn's rings arch across the sky from one horizon to the other.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters",
+          "habitat1": "Habitat 2 — lab and weather station",
+          "power": "Fission plant — power for the station, heat for the balloons",
+          "dish": "Comms — dish on Earth, 67 to 92 minutes away",
+          "envelope": "Balloons — hot hydrogen holds the station up",
+          "railing": "Railing — the cloud tops are 60 m below, and there is no ground under them",
+          "sign": "Stellar Outpost — Saturn",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Plant status",
+            "comms": "Comms status",
+            "envelope": "Balloon status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 21 °C · outside −139 °C, 1 bar of hydrogen and helium · 2 crew",
+          "power": "FISSION-1 · 40 kWe · 300 kW of heat to the balloons · core 800 °C",
+          "comms": "COMMS · dish on Earth · 9.5 au away · signal 79 minutes each way",
+          "envelope": "BALLOONS 1–3 · hydrogen heated to 60 °C in −139 °C air · the air is mostly hydrogen, so only heat gives real lift · height steady at 1.0 bar"
+        },
+        "banner": {
+          "arrived": "Saturn Outpost — under the rings · welcome aboard"
+        }
+      },
+      "uranus": {
+        "place": "Uranus Outpost · floating station",
+        "loading": "Descending to Uranus Outpost",
+        "loadingDetail": "Preparing the floating station — 0.89 g, no ground, the cloud tops 50 m below",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Uranus pulls a little less than Earth.",
+          "jump": "Space — jump. A little higher than at home.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. A little higher than at home."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it",
+          "r7": "Uranus spins on its side, so each season lasts 21 years. Its thin, dark rings cross the northern sky.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters",
+          "habitat1": "Habitat 2 — lab and weather station",
+          "power": "Fission plant — power for the station, heat for the balloons",
+          "dish": "Comms — dish on Earth, 2.5 to 2.8 hours away",
+          "envelope": "Balloons — hot hydrogen holds the station up",
+          "railing": "Railing — the cloud tops are 50 m below, and there is no ground under them",
+          "sign": "Stellar Outpost — Uranus",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Plant status",
+            "comms": "Comms status",
+            "envelope": "Balloon status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 21 °C · outside −197 °C, 1 bar of hydrogen and helium · 2 crew",
+          "power": "FISSION-1 · 40 kWe · 300 kW of heat to the balloons · core 800 °C",
+          "comms": "COMMS · dish on Earth · 19.2 au away · signal 2 hours 40 minutes each way",
+          "envelope": "BALLOONS 1–3 · hydrogen heated to 20 °C in −197 °C air · the air is mostly hydrogen, so only heat gives real lift · height steady at 1.0 bar"
+        },
+        "banner": {
+          "arrived": "Uranus Outpost — on a world tipped on its side · welcome aboard"
+        }
+      },
+      "neptune": {
+        "place": "Neptune Outpost · floating station",
+        "loading": "Descending to Neptune Outpost",
+        "loadingDetail": "Preparing the floating station — 1.14 g, no ground, the cloud tops 50 m below",
+        "outside": "Outside",
+        "crystals": "Crystals",
+        "run": "Run",
+        "hints": {
+          "walk": "W A S D — walk. Hold Shift to run. Neptune pulls a little harder than Earth.",
+          "jump": "Space — jump. A little lower than at home.",
+          "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
+          "jumpTouch": "Jump is bottom right. A little lower than at home."
+        },
+        "keys": {
+          "r5": "E — read the panel in front of you",
+          "r6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it",
+          "r7": "The winds here are the fastest in the Solar System, over 2,000 km/h. The station rides with them, so on the deck it is calm.",
+          "t5": "The amber key reads the panel in front of you",
+          "t6": "This is a floating station, not ground: the deck rides on the clouds, and the railing keeps you on it"
+        },
+        "pois": {
+          "habitat0": "Habitat 1 — crew quarters",
+          "habitat1": "Habitat 2 — lab and weather station",
+          "power": "Fission plant — power for the station, heat for the balloons",
+          "dish": "Comms — dish on Earth, 4 to 4.3 hours away",
+          "envelope": "Balloons — hot hydrogen holds the station up",
+          "railing": "Railing — the cloud tops are 50 m below, and there is no ground under them",
+          "sign": "Stellar Outpost — Neptune",
+          "landingZone": "Landing pad — keep clear",
+          "ourLander": "Your ship"
+        },
+        "act": {
+          "read": {
+            "habitat": "Habitat status",
+            "power": "Plant status",
+            "comms": "Comms status",
+            "envelope": "Balloon status"
+          },
+          "boardLander": "Board ship — Take off"
+        },
+        "readout": {
+          "habitat": "HAB-1 · 101 kPa · 21 °C · outside −201 °C, 1 bar of hydrogen and helium · 2 crew",
+          "power": "FISSION-1 · 40 kWe · 300 kW of heat to the balloons · core 800 °C",
+          "comms": "COMMS · dish on Earth · 30 au away · signal 4 hours 10 minutes each way",
+          "envelope": "BALLOONS 1–3 · hydrogen heated to 20 °C in −201 °C air · the air is mostly hydrogen, so only heat gives real lift · height steady at 1.0 bar"
+        },
+        "banner": {
+          "arrived": "Neptune Outpost — the windiest planet · welcome aboard"
+        }
       }
     },
     "room": {
@@ -2221,7 +2555,13 @@
         "mars": "On Mars",
         "proximaB": "On Proxima b",
         "earth": "In Tbilisi",
-        "backrooms": "In the Backrooms"
+        "backrooms": "In the Backrooms",
+        "mercury": "On Mercury",
+        "venus": "On Venus",
+        "jupiter": "Over Jupiter",
+        "saturn": "Over Saturn",
+        "uranus": "Over Uranus",
+        "neptune": "Over Neptune"
       },
       "toast": {
         "joined": "{name} joined the room",
@@ -4247,12 +4587,24 @@
         "moon": "Descending to Stellar Base",
         "mars": "Descending to Mars",
         "proximaB": "Descending to Proxima b",
-        "earth": "Descending to Tbilisi"
+        "earth": "Descending to Tbilisi",
+        "mercury": "Descending to Mercury",
+        "venus": "Descending to Venus",
+        "jupiter": "Descending to Jupiter Outpost",
+        "saturn": "Descending to Saturn Outpost",
+        "uranus": "Descending to Uranus Outpost",
+        "neptune": "Descending to Neptune Outpost"
       },
       "insertion": {
         "moon": "Orbit insertion — the Moon",
         "mars": "Orbit insertion — Mars",
-        "earth": "Orbit insertion — Earth"
+        "earth": "Orbit insertion — Earth",
+        "mercury": "Orbit insertion — Mercury",
+        "venus": "Orbit insertion — Venus",
+        "jupiter": "Orbit insertion — Jupiter",
+        "saturn": "Orbit insertion — Saturn",
+        "uranus": "Orbit insertion — Uranus",
+        "neptune": "Orbit insertion — Neptune"
       }
     },
     "settingsPanel": {
