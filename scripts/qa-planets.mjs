@@ -55,8 +55,9 @@ async function land(page, site) {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(`${BASE}/play?orbit`, { waitUntil: 'domcontentloaded' });
   if (!(await waitFor(page, () => window.__stellarGame?.get().state === 'playing', `[${site}] orbit to play`, 300))) return;
-  await waitFor(page, () => !!document.querySelector('.flight-hud__explore'), `[${site}] the Explore key`);
-  await page.$eval('.flight-hud__explore', (el) => el.click());
+  // The modes start in the ship by themselves; an older build needs the Explore key.
+  await waitFor(page, () => !!document.querySelector('.flight-hud__explore') || !!window.__stellarFlight?.session.active, `[${site}] the ship or the Explore key`);
+  await page.evaluate(() => { if (!window.__stellarFlight?.session.active) document.querySelector('.flight-hud__explore')?.click(); });
   await waitFor(page, () => !!window.__stellarFlight?.session.active, `[${site}] the ship`);
   await waitFor(page, () => !document.querySelector('.flight-hud__launching:not(.is-done)'), `[${site}] the launch screen to clear`, 180);
   const placed = await page.evaluate((id) => {
