@@ -50,6 +50,11 @@ export const subscribeRateLimit = { limit: (id: string) => makeLimit('3600 s', 1
 // Placing a base piece in Explore writes one row. 30/min/account is a fast
 // builder's pace and stops a script from carpeting the colony.
 export const basePlaceRateLimit = { limit: (id: string) => makeLimit('60 s', 30, 'rl:base:place').limit(id) };
+// Explore gem pickups: the game batches them, so 30 reports/min/account is
+// far more than play needs and stops a script from hammering the table.
+export const exploreGemsRateLimit = { limit: (id: string) => makeLimit('60 s', 30, 'rl:explore:gems').limit(id) };
+// The gem leaderboard is read by every open panel; 60/min/IP covers reloads.
+export const exploreGemsBoardRateLimit = { limit: (id: string) => makeLimit('60 s', 60, 'rl:explore:gems:board').limit(id) };
 export const clubActivateRateLimit = { limit: (id: string) => makeLimit('3600 s', 5, 'rl:club').limit(id) };
 
 // Daily ceilings (24h sliding) — bound the worst-case AI cost / token

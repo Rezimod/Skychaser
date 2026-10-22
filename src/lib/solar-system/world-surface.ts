@@ -19,7 +19,7 @@
 import * as THREE from 'three';
 import { makeMoonDust, type DustHandle } from '@/lib/solar-system/moon-fx';
 import { makeCosmonaut, type WalkInput } from '@/lib/solar-system/moon-cosmonaut';
-import { headlamp, jetLight, makeFixedStep, makePressEdge, makeSprintLatch, sprintFrom, walkFromStick } from '@/lib/solar-system/surface-input';
+import { headlamp, jetLight, makeFixedStep, makePressEdge, makeSprintLatch, sprintFrom, walkFromStick, type FootStick } from '@/lib/solar-system/surface-input';
 import { makePrints } from '@/lib/solar-system/moon-prints';
 import { makeSuitAudio } from '@/lib/solar-system/moon-audio';
 import { makeLander, type LanderTelemetry } from '@/lib/solar-system/moon-lander';
@@ -28,15 +28,18 @@ import type { PerfSample } from '@/lib/solar-system/moon-perf';
 import { makeSurfaceHost } from '@/lib/solar-system/surface-host';
 import { onQualityChange } from '@/game/quality';
 import { makeKit } from '@/lib/solar-system/moon-kit';
-import { makeCameraRig } from '@/lib/solar-system/moon-camera';
+import { makeCameraRig, type ChaseTarget, type ChaseTuning } from '@/lib/solar-system/moon-camera';
 import { makeInteractions, type InteractionPrompt } from '@/lib/solar-system/moon-interactions';
 import type { Collider } from '@/lib/solar-system/moon-cosmonaut';
 import type { PointOfInterest } from '@/lib/solar-system/moon-base';
-import { makeWorldTerrain } from '@/lib/solar-system/world-terrain';
+import { DECK_APRON, makeWorldTerrain } from '@/lib/solar-system/world-terrain';
+import { deckCameraFloor, flightEnvelope } from '@/lib/solar-system/suit-jetpack';
 import { makeWorldSky } from '@/lib/solar-system/world-sky';
 import { setGroundSun } from '@/lib/solar-system/world-terrain';
-import { makeFormations } from '@/lib/solar-system/world-formations';
-import { COLLECT_RANGE, makeCrystals } from '@/lib/solar-system/world-crystals';
+import { formationColliders, makeFormations } from '@/lib/solar-system/world-formations';
+import { makeGems } from '@/lib/solar-system/world-gems';
+import { makeGemChime } from '@/lib/solar-system/gem-audio';
+import { GEM_INFO, type GemKind } from '@/lib/solar-system/gem-layout';
 import { makeMarsBase } from '@/lib/solar-system/world-mars-base';
 import { hasOutpost, holdOverDeck, landingPad, makeOutpost } from '@/lib/solar-system/world-outpost';
 import { makeFlora } from '@/lib/solar-system/world-flora';
@@ -64,8 +67,10 @@ export interface WorldInput {
   moveX: number;
   moveY: number;
   jump: boolean;
-  /** Held: the jetpack — the jump key kept down in the air, or its own key. */
+  /** Held: the jetpack — the jump key kept down, or its own key. In flight, climb. */
   jet: boolean;
+  /** Held, in flight: sink toward the ground (the crouch key, or the deck's descend). */
+  descend?: boolean;
   run: boolean;
   sprint: boolean;
   walk: boolean;
@@ -114,10 +119,12 @@ export interface WorldTelemetry {
   poiId: string;
   altitude: number;
   speed: number;
-  /** The jetpack: 0…1 in the tank, and lit. Always full where the pilot has no pack. */
+  /** The jetpack: 0…1 in the tank (it never runs dry), and lit. Always full where the pilot has no pack. */
   jetFuel: number;
   jetting: boolean;
-  hint: 'walk' | 'jump' | 'drive' | '';
+  /** In flight on the pack: the touch deck's jump key is the way down. */
+  flying: boolean;
+  hint: 'walk' | 'jump' | 'fly' | 'drive' | '';
   /** At the wheel of the car (Earth). */
   driving: boolean;
   o2: number;
@@ -142,10 +149,14 @@ export interface WorldTelemetry {
   earth: EarthState | null;
   /** Coming in hot: the entry leg of the flight down from orbit. */
   entry: boolean;
-  /** Crystal clusters collected on this world (world-crystals), restored from the device; 0 where there are none. The HUD paints it under the world's `crystals` label. */
-  crystals: number;
-  /** How many clusters this world grew, so the glass can say "3 / 22". */
-  crystalsTotal: number;
+  /** Gems picked up on this world (world-gems, gem-progress), restored from the device, and how many it has, so the glass can say "3 / 28". */
+  gems: number;
+  gemsTotal: number;
+  /** The points those gems are worth (gem-layout GEM_INFO). */
+  gemPoints: number;
+  /** The last gem picked up, and a count of pickups this visit so the glass can tell a new one. */
+  gemLast: GemKind | '';
+  gemPicks: number;
 }
 
 export interface WorldSurfaceHandle {
@@ -322,29 +333,26 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     scene.add(formations.group);
     colliders.push(...formations.colliders);
   }
-  const crystals = terrain ? makeCrystals(profile, terrain, {
-    density: quality.propDensity, lite, walkRadius: profile.walkRadius,
-    keepOut: [...keepOut, ...(formations ? formations.placed.map((f) => ({ x: f.x, z: f.z, r: f.r })) : [])],
-  }) : null;
-  if (crystals && crystals.total > 0) {
-    scene.add(crystals.group);
-    interactions.add({
-      id: 'collectCrystal', priority: 3,
-      where: () => {
-        if (telemetry.phase !== 'surface') return null;
-        const c = crystals.nearest(cosmonaut.position.x, cosmonaut.position.z, COLLECT_RANGE);
-        return c ? { x: c.x, z: c.z, r: COLLECT_RANGE } : null;
-      },
-      kind: () => 'tap', label: () => 'collectCrystal',
-      use: () => {
-        const c = crystals.nearest(cosmonaut.position.x, cosmonaut.position.z, COLLECT_RANGE);
-        if (!c || !crystals.collect(c.id)) return;
-        telemetry.crystals = crystals.count;
-        audio.bleep();
-        dust.burst({ x: c.x, y: c.y + 0.3, z: c.z, count: 26, speedMin: 0.8, speedMax: 2.6, cone: 0.9, size: 0.12, brightness: 1.6 });
-      },
-    });
-  }
+  // ── The gems (gem-layout): the same on every device; touched to pick up,
+  // on foot or flying. Ground gems step off anything solid; the high ones
+  // out on Mars and Proxima b sit on the spires and hoodoos where there are any. ──
+  const gemChime = makeGemChime();
+  const gems = makeGems({
+    world, floorAt, lite, haze: true, far: earth ? 1400 : deck ? 400 : 700,
+    colliders: earth ? undefined : colliders,
+    perches: formations && terrain ? formations.placed
+      .filter((f) => (f.kind === 'spire' || f.kind === 'hoodoo' || f.kind === 'arch') && Math.hypot(f.x, f.z) < profile.walkRadius - 8)
+      .map((f) => ({ x: f.x, z: f.z, top: terrain.groundAt(f.x, f.z) + f.sy * 0.97 })) : undefined,
+    onCollect: (g) => {
+      telemetry.gems = gems.count;
+      telemetry.gemPoints = gems.points;
+      telemetry.gemLast = g.kind;
+      telemetry.gemPicks += 1;
+      gemChime.play(g.kind);
+      if (!deck) dust.burst({ x: g.px, y: g.py, z: g.pz, count: GEM_INFO[g.kind].points >= 30 ? 40 : 26, speedMin: 0.8, speedMax: 3.2, cone: 1.2, size: 0.12, brightness: 2.2 });
+    },
+  });
+  scene.add(gems.group);
 
   if (earth) {
     colliders.push(...earth.colliders);
@@ -360,7 +368,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     siteColor: earth ? undefined : profile.ground.plain,
     curve: [terrain?.horizon.material],
     tiers: earth ? earthTiers(earth, [dust.points, prints.mesh])
-      : patchTiers(world, [terrain?.mesh, terrain?.rocks, terrain?.horizon, dust.points, prints.mesh, base?.group, formations?.group, crystals?.group]),
+      : patchTiers(world, [terrain?.mesh, terrain?.rocks, terrain?.horizon, dust.points, prints.mesh, base?.group, formations?.group, gems.group]),
   }) : null;
   // Saturn's globe draws its own rings, from orbit to the cloud tops
   // (planet-globe-rings); the sky's arch stands in only where there is no globe.
@@ -388,6 +396,22 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     sounds: { reentry: (k) => flightAudio?.reentry(k), boom: () => flightAudio?.sonicBoom() },
   }) : null;
   const walkRadius = earth ? EARTH_WALK_RADIUS : profile.walkRadius;
+  // Where the jetpack may take the crew: past the fence, up to this world's
+  // ceiling, and over a giant out across the clouds but never into them.
+  const envelope = flightEnvelope(walkRadius, cosmonaut.profile.g, deck);
+  cosmonaut.setFlight(envelope);
+  // Out past the fence only a flyer meets the formations there: their footprints, for the flight alone.
+  const flightRocks: Collider[] = formations
+    ? formationColliders(formations.placed, envelope.radius, profile.pad).filter((c) => !formations.colliders.some((w) => w.x === c.x && w.z === c.z))
+    : [];
+  const flyList: Collider[] = [];
+  const withFlight = (list: Collider[]) => {
+    if (!cosmonaut.state.flying || flightRocks.length === 0) return list;
+    flyList.length = 0;
+    for (const c of list) flyList.push(c);
+    for (const c of flightRocks) flyList.push(c);
+    return flyList;
+  };
 
   // The collider lists are rebuilt into the same arrays: the camera asks
   // every frame and the walk asks every sim step.
@@ -399,7 +423,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     for (const c of extra) out.push(c);
     return out;
   };
-  const cameraColliders = () => (aliens ? gather(camList, aliens.colliders)
+  const cameraColliders = () => withFlight(aliens ? gather(camList, aliens.colliders)
     : earth ? gather(camList, earth.cameraColliders(cosmonaut.position.x, cosmonaut.position.z)) : colliders);
   const cam = makeCameraRig(camera, floorAt, cameraColliders, baseFov);
   const unsubSettings = onSettingsChange((s) => { baseFov = s.fov; cam.setBaseFov(s.fov); });
@@ -411,13 +435,13 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   };
   const telemetry: WorldTelemetry = {
     ready: false, phase: flight ? 'orbit' : 'descent', orbital: flight?.telemetry ?? null, ascended: false, exitReady: false, landing: lander.telemetry, grade: '', view: 'chase', headlamp: false, poiId: '',
-    altitude: 0, speed: 0, jetFuel: 1, jetting: false, hint: 'walk', driving: false, o2: 97.4, heartRate: 64, suitTemp: 21.5, outsideC: profile.ambientC,
+    altitude: 0, speed: 0, jetFuel: 1, jetting: false, flying: false, hint: 'walk', driving: false, o2: 97.4, heartRate: 64, suitTemp: 21.5, outsideC: profile.ambientC,
     evaSeconds: 0, distanceM: 0, crouched: false, stumbling: false, sliding: false, heading: 0,
     prompt: interactions.prompt, readout: '', readoutHold: 0, banner: '', bannerHold: 0,
     aliens: aliens ? aliens.telemetry : null,
     earth: earth ? earth.state : null,
     entry: false,
-    crystals: crystals ? crystals.count : 0, crystalsTotal: crystals ? crystals.total : 0,
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0,
   };
   function banner(key: string) { telemetry.banner = key; telemetry.bannerHold = 5; }
 
@@ -475,6 +499,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   const clock = makeFixedStep(STEP, MAX_STEPS);
   const jumpPress = makePressEdge();
   let jumped = false;
+  let flown = false;
   let walked = false;
   let lastPoi = '';
   let exertion = 0;
@@ -508,6 +533,14 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   }
   const stepFrom = new THREE.Vector3();
   const sprintLatch = makeSprintLatch();
+  const stick: FootStick = { moveX: 0, moveY: 0, jump: false, run: false, sprint: false, walk: false, crouch: false };
+  // The chase on foot and in flight: one target and one tuning, filled every frame.
+  const footTarget: ChaseTarget = { position: cosmonaut.group.position, velocity: cosmonaut.velocity, yaw: 0, height: 1.35, distance: 5, speedFrac: 0, fovExtra: 0, flying: 0 };
+  const FOOT_TUNE: ChaseTuning = { follow: 2.6, lead: 0.16, leadMax: 0.8, fovKick: 4, horizontal: 14, vertical: 6.5, shoulder: 0.4 };
+  const WIDE_TUNE: ChaseTuning = { follow: 1, lead: 0, leadMax: 0, fovKick: 0, horizontal: 4, vertical: 3 };
+  // Over a giant, the camera keeps out of the deck's column from below and off the clouds.
+  const deckFloor = deck ? deckCameraFloor(deck, deck.radius + DECK_APRON, () => cosmonaut.position.y) : null;
+  FOOT_TUNE.floor = deckFloor; WIDE_TUNE.floor = deckFloor;
   const place = (x: number, y: number, z: number) => {
     cosmonaut.position.set(x, y, z);
     cosmonaut.velocity.set(0, 0, 0);
@@ -524,10 +557,14 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     }
     const moving = Math.hypot(input.moveX, input.moveY) > 0.2;
     const sprint = sprintFrom(sprintLatch, input.sprint, moving, h);
-    walkFromStick(walk, { moveX: input.moveX, moveY: input.moveY, jump: false, jet: input.jet, run: input.run, sprint, walk: input.walk, crouch: input.crouch }, cam.yaw, jump, interactions.prompt.holding);
+    stick.moveX = input.moveX; stick.moveY = input.moveY; stick.jet = input.jet; stick.descend = !!input.descend;
+    stick.run = input.run; stick.sprint = sprint; stick.walk = input.walk; stick.crouch = input.crouch;
+    walkFromStick(walk, stick, cam.yaw, jump, interactions.prompt.holding);
     stepFrom.copy(cosmonaut.position);
     cosmonaut.update(h, walk, floorAt, walkColliders(), walkRadius);
     earth?.confine(cosmonaut.position, stepFrom);
+    // Over water the boots and the exhaust raise no dust.
+    if (terrain && !deck) cosmonaut.indoors = floorAt(cosmonaut.position.x, cosmonaut.position.z) > heightAt(cosmonaut.position.x, cosmonaut.position.z) + 0.05;
     if (cosmonaut.state.impact > 1) cam.land(cosmonaut.state.impact);
     if (cosmonaut.state.landing === 'hard' || cosmonaut.state.landing === 'fall') cam.shake(0.5);
   };
@@ -689,7 +726,9 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       if (atWheel && earth) earth.car.present(alpha);
       else cosmonaut.present(alpha);
 
-      interactions.update(dt, { x: crew.x, z: crew.z, yaw: atWheel && earth ? earth.car.yaw : cosmonaut.yaw, driving: atWheel, press, held: !building && (input.use || press) });
+      // Up in the air, nothing on the ground is in reach.
+      const aloft = cosmonaut.state.flying && cosmonaut.state.altitude > 2.5;
+      interactions.update(dt, { x: aloft ? 1e6 : crew.x, z: aloft ? 1e6 : crew.z, yaw: atWheel && earth ? earth.car.yaw : cosmonaut.yaw, driving: atWheel, press, held: !building && (input.use || press) });
 
       if (atWheel && earth) {
         const car = earth.car;
@@ -707,27 +746,30 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
         cam.firstPerson(dt, tmp, 0);
       } else {
         const wide = view === 'wide';
-        cam.chase(dt, {
-          position: cosmonaut.group.position, velocity: cosmonaut.velocity, yaw: cosmonaut.yaw,
-          height: wide ? 2.2 : earth ? EARTH_CHASE.height : 1.35,
-          distance: wide ? cam.distance * 4.2 + 14 : cam.distance,
-          speedFrac: cosmonaut.state.speedFrac,
-          fovExtra: cosmonaut.state.sprinting ? 5 : 0,
-        }, wide
-          ? { follow: 1, lead: 0, leadMax: 0, fovKick: 0, horizontal: 4, vertical: 3 }
-          : earth ? EARTH_CHASE
-            : { follow: 2.6, lead: 0.16, leadMax: 0.8, fovKick: 4, horizontal: 14, vertical: 6.5, shoulder: 0.4 });
+        const flying = cosmonaut.state.flying;
+        footTarget.yaw = cosmonaut.yaw;
+        footTarget.height = wide ? 2.2 : earth ? EARTH_CHASE.height : 1.35;
+        footTarget.distance = wide ? cam.distance * 4.2 + 14 : cam.distance;
+        footTarget.speedFrac = flying ? cosmonaut.state.flySpeed : cosmonaut.state.speedFrac;
+        footTarget.fovExtra = cosmonaut.state.sprinting ? 5 : 0;
+        footTarget.flying = flying ? 1 : 0;
+        cam.chase(dt, footTarget, wide ? WIDE_TUNE : earth ? EARTH_CHASE : FOOT_TUNE);
+        // The head glances after the camera's look.
+        cosmonaut.gaze(wrap(cam.yaw + Math.PI - cosmonaut.yaw), 0.3 - cam.pitch);
       }
       if (!walked && cosmonaut.state.speed > 0.5) walked = true;
       if (!jumped && cosmonaut.state.airborne && cosmonaut.state.altitude > 0.3) jumped = true;
-      telemetry.hint = atWheel ? 'drive' : !walked ? 'walk' : !jumped ? 'jump' : '';
+      if (!flown && cosmonaut.state.flying && cosmonaut.state.altitude > 4) flown = true;
+      // Where there is a pack, the last lesson is that it flies.
+      const flyNext = !profile.breathable && !flown;
+      telemetry.hint = atWheel ? 'drive' : !walked ? 'walk' : !jumped ? 'jump' : flyNext ? 'fly' : '';
       if (earth && !welcomed && earth.cheering() > 0.5) { welcomed = true; banner('welcome'); }
     }
 
     // ── The glass. ──
     telemetry.driving = !!earth?.driving();
     telemetry.altitude = cosmonaut.state.altitude;
-    telemetry.jetFuel = cosmonaut.state.jetFuel; telemetry.jetting = cosmonaut.state.jetting;
+    telemetry.jetFuel = cosmonaut.state.jetFuel; telemetry.jetting = cosmonaut.state.jetting; telemetry.flying = cosmonaut.state.flying;
     telemetry.speed = telemetry.driving && earth ? Math.abs(earth.car.speed) : cosmonaut.state.speed;
     telemetry.crouched = cosmonaut.state.crouched;
     telemetry.stumbling = cosmonaut.state.stumble > 0;
@@ -780,7 +822,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     }
     base?.update(dt, t, crew.x, crew.z, lightPool);
     flora?.update(dt, t);
-    crystals?.update(dt, crew.x, crew.y, crew.z, lightPool);
+    gems.update(dt, crew.x, crew.y, crew.z, lightPool, telemetry.phase === 'surface');
     if (aliens && telemetry.phase === 'surface') aliens.update(dt, t, crew.x, crew.z, lightPool);
     host.followShadow(crew, SUN_DIR);
     if (telemetry.headlamp && !earth?.driving()) headlamp(lightPool, crew, view === 'helmet' ? cam.yaw + Math.PI : cosmonaut.yaw);
@@ -811,7 +853,8 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     kit.dispose();
     prints.dispose();
     dust.dispose();
-    crystals?.dispose();
+    gems.dispose();
+    gemChime.dispose();
     formations?.dispose();
     terrain?.dispose();
     sky?.dispose();

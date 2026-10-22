@@ -12,15 +12,21 @@
 //
 // The feet are placed, not animated (suit-feet); the body slides along
 // walls, steps over small rises and falls off big drops (suit-collision);
-// root motion is a track it is carried along (suit-scripted).
+// root motion is a track it is carried along (suit-scripted). Flying is its
+// own branch: the jetpack (suit-jetpack) says what it pushes and where the
+// envelope lets the crew go, and this file carries the body along it, keeps
+// it out of what it flies into and sets it down.
 
 import { classifyLanding, gaitProfile, landRecovery, PIVOT_ANGLE, turnRate, type GaitProfile, type Landing } from '@/lib/solar-system/gait-profile';
 import { makeFeet, type Foot, type FootMode, type StepEvent } from '@/lib/solar-system/suit-feet';
-import { slideColliders, slopeAt, stepGround, vaultProbe, SLOPE_LIMIT, VAULT_MAX, type Collider, type Vec3 } from '@/lib/solar-system/suit-collision';
+import { slideColliders, slopeAt, stepGround, vaultProbe, SLOPE_LIMIT, SUIT_RADIUS, VAULT_MAX, type Collider, type Vec3 } from '@/lib/solar-system/suit-collision';
 import { poseAt, vaultTrack, type Track, type TrackPose } from '@/lib/solar-system/suit-scripted';
-import { makeJetpack, type Jetpack } from '@/lib/solar-system/suit-jetpack';
+import { confineToDeck, makeJetpack, JET, OPEN_SKY, type FlightBody, type FlightControl, type FlightEnvelope, type Jetpack } from '@/lib/solar-system/suit-jetpack';
 
-export { JET, jetThrust, makeJetpack, type Jetpack, type JetState } from '@/lib/solar-system/suit-jetpack';
+export {
+  JET, OPEN_SKY, confineToDeck, flightEnvelope, flightTuning, jetThrust, makeJetpack,
+  type FlightEnvelope, type FlightTuning, type Jetpack, type JetState,
+} from '@/lib/solar-system/suit-jetpack';
 export { gaitProfile, EARTH_G, LUNAR_G, MARS_G, JUMP_MIN_APEX, classifyLanding, landRecovery, turnRate, type GaitProfile, type Landing } from '@/lib/solar-system/gait-profile';
 export type { Collider, Vec3 } from '@/lib/solar-system/suit-collision';
 export type { Foot, StepEvent } from '@/lib/solar-system/suit-feet';
@@ -39,12 +45,14 @@ export interface WalkInput {
   crouch: boolean;
   /** Using a tool at a work site. */
   work: boolean;
-  /** Held: the jetpack — the jump key kept down in the air, or its own key. */
+  /** Held: the jetpack — the jump key kept down, or its own key. In flight, climb. */
   jet?: boolean;
+  /** Held, in flight: sink toward the ground. */
+  descend?: boolean;
 }
 
 export type Mode =
-  | 'idle' | 'start' | 'move' | 'stop' | 'pivot' | 'jump' | 'fall' | 'land' | 'vault'
+  | 'idle' | 'start' | 'move' | 'stop' | 'pivot' | 'jump' | 'fall' | 'land' | 'vault' | 'fly'
   | 'enterDoor' | 'exitDoor' | 'enterVehicle' | 'seated' | 'exitVehicle' | 'bail';
 export type Gait = 'stand' | 'walk' | 'jog' | 'run' | 'sprint' | 'air' | 'fallen';
 
@@ -90,12 +98,19 @@ export interface LocoState {
   stepUp: number;
   /** 0…1 through a scripted track. */
   scriptK: number;
-  /** The jetpack: 0…1 in the tank, lit this step, and its eased throttle for the flame and the roar. */
+  /** The jetpack: 0…1 in the tank (always full), lit this step, and its eased throttle for the flame and the roar. */
   jetFuel: number;
   jetting: boolean;
   jetK: number;
   /** Lit this step and not the last. */
   jetIgnited: boolean;
+  /** In flight on the pack. */
+  flying: boolean;
+  /** In flight: the body's pitch into the travel (+ forward) and its bank into a turn (+ rolls the head toward local −x), rad. */
+  flyPitch: number;
+  flyBank: number;
+  /** In flight: horizontal speed as a fraction of the boost, 0…1. */
+  flySpeed: number;
 }
 
 export interface Locomotion {
@@ -110,6 +125,8 @@ export interface Locomotion {
   onStep: ((e: StepEvent) => void) | null;
   /** A roof over the body, or null in the open. */
   ceilingAt: ((x: number, z: number) => number | null) | null;
+  /** Where the pack may take the crew (suit-jetpack's flightEnvelope). */
+  envelope: FlightEnvelope;
   setProfile: (p: GaitProfile) => void;
   settleFeet: () => void;
   /** Carry the body along a track, then be in `then`. */
@@ -137,13 +154,17 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
     mode: 'idle', gait: 'stand', grounded: true, airborne: false, speed: 0, speedFrac: 0, altitude: 0, landed: false, impact: 0, landing: '', landT: 9,
     crouched: false, sprinting: false, stamina: 1, stumble: 0, fallen: false, getUp: 0, grade: 0, sliding: false, lean: 0, leanSide: 0,
     stride: 0, cadence: 0, stepPhase: 0, stepSide: 1, effort: 0, turning: false, jumping: false, striding: false, bounding: false, stepUp: 0, scriptK: 0,
-    jetFuel: 1, jetting: false, jetK: 0, jetIgnited: false,
+    jetFuel: 1, jetting: false, jetK: 0, jetIgnited: false, flying: false, flyPitch: 0, flyBank: 0, flySpeed: 0,
   };
-  const jet = makeJetpack();
+  const jet = makeJetpack(initial.g);
   /** The pack's readouts onto the state, after each step of it. */
   const syncJet = () => {
     state.jetFuel = jet.state.fuel; state.jetting = jet.state.jetting; state.jetK = jet.state.throttle; state.jetIgnited = jet.state.ignited;
+    state.flying = jet.state.flying;
   };
+  const flightIn: FlightControl = { moveX: 0, moveZ: 0, climb: false, descend: false, boost: false };
+  const push = { x: 0, y: 0, z: 0 };
+  const flyBody: FlightBody = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0 };
   let coyote = 0;
   let jumpBuffer = 0;
   let stanceT = 0;
@@ -173,15 +194,15 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
   };
 
   const loco: Locomotion = {
-    profile: P, jet, position, velocity, yaw: 0, feet: feet.feet, state, onStep: null, ceilingAt: null,
-    setProfile(p) { P = p; loco.profile = p; },
+    profile: P, jet, position, velocity, yaw: 0, feet: feet.feet, state, onStep: null, ceilingAt: null, envelope: OPEN_SKY,
+    setProfile(p) { P = p; loco.profile = p; jet.setGravity(p.g); },
     settleFeet() {
       feet.settle(loco.yaw);
       stanceT = 0; turnT = 0;
       state.striding = false;
       if (state.mode !== 'seated' && !track) state.mode = 'idle';
     },
-    script(t, next) { track = t; trackT = 0; then = next; state.mode = t.kind; state.jumping = false; state.striding = false; feet.liftAll(); },
+    script(t, next) { jet.land(); track = t; trackT = 0; then = next; state.mode = t.kind; state.jumping = false; state.striding = false; feet.liftAll(); },
     release(vx, vy, vz, mode = 'fall') {
       track = null;
       velocity.x = vx; velocity.y = vy; velocity.z = vz;
@@ -202,8 +223,8 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
         if (state.getUp === 0) { state.fallen = false; state.mode = 'idle'; loco.settleFeet(); }
       }
 
-      // ── Carried along a track, or sitting: no physics. The pack refills meanwhile. ──
-      if (track || state.mode === 'seated') { jet.update(dt, false, true, g, 0); syncJet(); }
+      // ── Carried along a track, or sitting: no physics, and the pack is out. ──
+      if (track || state.mode === 'seated') { if (jet.state.flying) jet.land(); jet.hold(dt, false, true); syncJet(); }
       if (track) {
         trackT += dt;
         poseAt(track, trackT, pose);
@@ -252,6 +273,25 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
         fallenT += dt;
         if (state.getUp === 0 && fallenT > 0.8 && authority > 0 && (Math.hypot(input.moveX, input.moveZ) > 0.3 || input.jump)) state.getUp = P.getUp;
       }
+
+      // ── The jetpack. Held a fifth of a second, it lights — in the air, or
+      // with the boots down, when it lifts the crew off — and from then on
+      // the body flies until it is set down. ──
+      if (!jet.state.flying) {
+        const held = !!input.jet && authority > 0.5 && !state.fallen && state.stumble <= 0 && !(input.crouch && wasGrounded);
+        if (jet.hold(dt, held, wasGrounded)) {
+          if (position.y - ground < 0.05) { velocity.y = Math.max(velocity.y, JET.liftOff); position.y = Math.max(position.y, ground) + 0.01; }
+          state.jumping = false; state.striding = false; state.bounding = false;
+          state.mode = 'fly';
+          coyote = 0; jumpBuffer = 0; stanceT = 0;
+          feet.liftAll();
+        }
+      }
+      if (jet.state.flying) {
+        flyStep(dt, input, heightAt, colliders, authority, wantX, wantZ);
+        return;
+      }
+      state.flyPitch *= Math.exp(-dt * 6); state.flyBank *= Math.exp(-dt * 6); state.flySpeed = 0;
 
       // ── The ground: its slope, and the grade a stride ahead. ──
       const { sx, sz, steep } = slopeAt(heightAt, position.x, position.z);
@@ -379,25 +419,19 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
         feet.liftAll();
       }
 
-      // ── The jetpack: held in the air it lifts; on the ground it refills.
-      // Only a real flight lights it — a jump, a fall, a bail — never the
-      // short hop between two running strides, which the held key would
-      // otherwise turn into a stutter of puffs. ──
-      const jetWant = !!input.jet && !wasGrounded && !state.fallen && authority > 0.5 && !crouched
-        && (state.jumping || state.mode === 'fall' || state.mode === 'bail');
-      const jetAccel = jet.update(dt, jetWant, wasGrounded, g, velocity.y);
-      if (jetAccel > 0) {
-        velocity.y += jetAccel * dt;
-        effort = Math.max(effort, 0.6);
-      }
       syncJet();
 
       // ── Integrate, and meet the world. ──
       const prevX = position.x; const prevZ = position.z;
       velocity.y -= g * dt;
       position.x += velocity.x * dt; position.z += velocity.z * dt; position.y += velocity.y * dt;
+      // The walk fence. Someone set down outside it (off a flight) may walk
+      // back in, but no further out.
       const rr = Math.hypot(position.x, position.z);
-      if (rr > walkRadius) { position.x *= walkRadius / rr; position.z *= walkRadius / rr; velocity.x *= 0.2; velocity.z *= 0.2; }
+      if (rr > walkRadius) {
+        const lim = Math.max(walkRadius, Math.hypot(prevX, prevZ));
+        if (rr > lim) { position.x *= lim / rr; position.z *= lim / rr; velocity.x *= 0.2; velocity.z *= 0.2; }
+      }
       const touched = slideColliders(position, velocity, colliders);
       const roof = loco.ceilingAt?.(position.x, position.z) ?? null;
       if (roof !== null && position.y + HEAD > roof) { position.y = roof - HEAD; if (velocity.y > 0) velocity.y = 0; }
@@ -482,6 +516,87 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
       state.cadence += (0 - state.cadence) * (1 - Math.exp(-dt * 0.4));
     },
   };
+  /**
+   * One step of flight: the pack's push and gravity, the envelope, walls
+   * low down, a roof only from below, and the ground — set down on where it
+   * may be landed on, skimmed where it may not.
+   */
+  function flyStep(dt: number, input: WalkInput, heightAt: (x: number, z: number) => number, colliders: Collider[], authority: number, wantX: number, wantZ: number) {
+    const g = P.g;
+    const env = loco.envelope;
+    const ground = heightAt(position.x, position.z);
+    flightIn.moveX = wantX; flightIn.moveZ = wantZ;
+    flightIn.climb = !!input.jet && authority > 0.5;
+    flightIn.descend = !!input.descend && authority > 0.5;
+    flightIn.boost = !!input.sprint || input.run;
+    const body = flyBody;
+    body.x = position.x; body.y = position.y; body.z = position.z; body.vx = velocity.x; body.vy = velocity.y; body.vz = velocity.z;
+    jet.fly(dt, flightIn, body, ground, env, push);
+    velocity.x += push.x * dt; velocity.z += push.z * dt; velocity.y += (push.y - g) * dt;
+    const prevY = position.y;
+    position.x += velocity.x * dt; position.z += velocity.z * dt; position.y += velocity.y * dt;
+    confineToDeck(position, velocity, env, SUIT_RADIUS);
+    const alt = position.y - heightAt(position.x, position.z);
+    slideColliders(position, velocity, colliders, SUIT_RADIUS, Math.max(1e-3, alt), JET.wallTop);
+    // A roof stops a climb only from beneath it: flying over a dome is not flying into it.
+    const roof = loco.ceilingAt?.(position.x, position.z) ?? null;
+    if (roof !== null && prevY + HEAD <= roof + 0.05 && position.y + HEAD > roof) { position.y = roof - HEAD; if (velocity.y > 0) velocity.y = 0; }
+    const g2 = heightAt(position.x, position.z);
+    let landed = false;
+    if (position.y <= g2) {
+      const r = Math.hypot(position.x, position.z);
+      const impact = Math.max(0, -velocity.y);
+      position.y = g2;
+      if (velocity.y < 0) velocity.y = 0;
+      if (!flightIn.climb && r <= env.landRadius) {
+        // ── Set down. The pack lowered the crew, so the legs only soak it up. ──
+        landed = true;
+        jet.land();
+        state.impact = impact; state.landing = 'soft'; lastLanding = 'soft'; state.landT = 0;
+        recoverFor = landRecovery(P, impact);
+        state.mode = 'land';
+        state.jumping = false; state.striding = false; state.bounding = false;
+        feet.land(Math.min(1, 0.35 + impact * 0.25), false);
+        // The legs take over from the pack at no more than a run.
+        const sp = Math.hypot(velocity.x, velocity.z);
+        if (sp > P.run) { velocity.x *= P.run / sp; velocity.z *= P.run / sp; }
+      }
+    }
+    syncJet();
+    if (!landed) state.mode = 'fly';
+    // ── Facing: toward the stick, or the way the body is going; slower to come round on a heavy world. ──
+    const hs = Math.hypot(velocity.x, velocity.z);
+    const T = jet.tuning;
+    if (authority > 0) {
+      const wl = Math.hypot(wantX, wantZ);
+      if (wl > 0.1 || hs > 2) {
+        const want = wl > 0.1 ? Math.atan2(wantX, wantZ) : Math.atan2(velocity.x, velocity.z);
+        const d = wrap(want - loco.yaw);
+        const cap = (2.2 + 18 / (T.accel + 4)) * dt;
+        loco.yaw = wrap(loco.yaw + clamp(d * (1 - Math.exp(-dt * 5)), -cap, cap));
+      }
+    }
+    // ── Lean into the travel and bank into the turn, as a flyer does. ──
+    const fx = Math.sin(loco.yaw); const fz = Math.cos(loco.yaw);
+    const vf = velocity.x * fx + velocity.z * fz;
+    const aF = push.x * fx + push.z * fz;
+    const aL = push.x * fz - push.z * fx;
+    const pitch = clamp(0.06 + 0.8 * (vf / T.boost) + Math.atan2(aF, g + T.lift) * 0.7, -0.35, 1.05);
+    const bank = clamp(-Math.atan2(aL, g + T.lift) * 1.5, -0.6, 0.6);
+    const k = 1 - Math.exp(-dt * 4);
+    state.flyPitch += (pitch - state.flyPitch) * k;
+    state.flyBank += (bank - state.flyBank) * k;
+    state.flySpeed = clamp(hs / T.boost, 0, 1);
+    state.lean += (0 - state.lean) * k; state.leanSide += (0 - state.leanSide) * k;
+    state.crouched = false; state.sprinting = false; state.sliding = false; state.turning = false;
+    state.stamina = clamp(state.stamina + dt / P.recover, 0, 1);
+    finish(landed ? 0.5 : 0.35 + 0.4 * jet.state.thrust, g2, heightAt);
+    // Skimming the ground is still flying: the boots are down only once the pack has set them down.
+    state.grounded = landed; state.airborne = !landed;
+    feet.update(dt, { mode: landed ? 'walk' : 'air', P, yaw: loco.yaw, speed: state.speed, airborne: !landed, altitude: state.altitude, turnTo: null, turnK: 0, heightAt });
+    state.stepPhase = feet.stepPhase; state.stepSide = feet.stepSide;
+    lastSpeed = hs;
+  }
   /** How long the last landing keeps the body in it, s. */
   function landFor() { return lastLanding === 'roll' ? 0.7 : lastLanding === 'soft' ? recoverFor : 0.25; }
   /** The readouts every path ends on. */
@@ -494,7 +609,7 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
     state.altitude = position.y - heightAt(position.x, position.z);
     state.effort = effort;
     if (state.mode === 'land' && state.landT > landFor()) state.mode = speed > 0.15 ? 'move' : 'idle';
-    state.gait = state.fallen ? 'fallen' : airborne && !state.striding ? 'air'
+    state.gait = state.fallen ? 'fallen' : (airborne || jet.state.flying) && !state.striding ? 'air'
       : speed < 0.1 ? 'stand' : state.sprinting && speed > P.run ? 'sprint' : speed > (P.jog + P.run) / 2 ? 'run' : speed > (P.walk + P.jog) / 2 ? 'jog' : 'walk';
   }
 

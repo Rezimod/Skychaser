@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronsUp, Flame, Flashlight, Gem, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
+import { Camera, ChevronsUp, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeWorldSurface, type WorldSurfaceHandle } from '@/lib/solar-system/world-surface';
 import type { ShipKind } from '@/lib/solar-system/ship-mesh';
@@ -11,6 +11,7 @@ import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } 
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
+import { GemHud, type GemHudHandle } from './GemHud';
 import { GameStick, tapKey } from './GameStick';
 import { CosmicLoader } from './CosmicLoader';
 import { ControlsHelp } from './ControlsHelp';
@@ -20,6 +21,9 @@ import { attachSurfaceControls, type SurfaceControls } from '@/game/surface-cont
 import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
+import { game } from '@/game/state';
+import { hasObjectives } from '@/game/mode';
+import { story, storyLine } from '@/game/story';
 
 interface WorldSurfaceProps {
   world: WorldId;
@@ -66,6 +70,13 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
   const [run, setRun] = useState(false);
   const [crouch, setCrouch] = useState(false);
   const isEarth = world === 'earth';
+  /** Story mode: the chapter's objective goes in the objective card; the
+   *  other modes have no objectives at all (game/mode.ts). Fixed for the scene. */
+  const [storyMode] = useState(() => hasObjectives(game.get().mode));
+  const ts = useTranslations('play.story');
+  const tsRef = useRef(ts);
+  tsRef.current = ts;
+  const objTagRef = useRef<HTMLSpanElement>(null);
   const breathable = !!WORLDS[world].breathable;
   const [earthData, setEarthData] = useState<EarthData | null>(null);
   const [earthError, setEarthError] = useState(false);
@@ -124,8 +135,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
   const hrRef = useRef<HTMLSpanElement>(null);
   const tempRef = useRef<HTMLSpanElement>(null);
   const jetRef = useRef<HTMLSpanElement>(null);
-  const crystalsRef = useRef<HTMLSpanElement>(null);
-  const crystalsCountRef = useRef<HTMLSpanElement>(null);
+  const gemHudRef = useRef<GemHudHandle>(null);
   const jetBarRef = useRef<HTMLElement>(null);
   const outRef = useRef<HTMLSpanElement>(null);
   const evaRef = useRef<HTMLSpanElement>(null);
@@ -243,6 +253,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
       root.dataset.view = tel.view;
 
       if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+      // Story mode hears what this world is doing (game/story.ts; nothing in the other modes).
+      story.observe({ world, landed: tel.phase === 'touchdown' || tel.phase === 'surface', outside: tel.phase === 'surface', readout: tel.readout, altitude: tel.altitude, distance: tel.distanceM });
       // From orbit, and back up to it: the flight panel, the heat at the
       // edges of the glass and the glass shaking with the air (--heat,
       // --shake), and the world's name over the orbit.
@@ -316,9 +328,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         if (jetBarRef.current) jetBarRef.current.style.width = `${Math.max(0, Math.min(100, tel.jetFuel * 100))}%`;
       }
       show(lampRef.current, tel.headlamp);
-      // The crystal tally: only on worlds that grew any, and only once one is held.
-      show(crystalsRef.current, tel.crystalsTotal > 0 && tel.crystals > 0);
-      text(crystalsCountRef.current, `${tel.crystals} / ${tel.crystalsTotal}`);
+      // The gem tally, and a line on the glass for each one picked up (GemHud).
+      gemHudRef.current?.paint(tel);
       // The rest are read rather than watched: these refs are only mounted
       // while the log is open.
       text(gravRef.current, `${handle.profile.gravity.toFixed(2)} m/s²`);
@@ -372,15 +383,28 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         show(banner, tel.banner !== '');
         if (tel.banner) text(banner.firstElementChild as HTMLElement, ttw(`banner.${tel.banner}`));
       }
+      // The story's objective, while its chapter is on this world: it has the card.
+      const sl = storyMode ? storyLine(story.get(), world) : null;
+      const storyCard = !!sl;
+      if (objRef.current) {
+        objRef.current.dataset.story = String(storyCard);
+        if (sl) {
+          show(objRef.current, true);
+          text(objTagRef.current, tsRef.current('chapterTag', { n: sl.index, name: tsRef.current(`chapters.${sl.chapter}.name`) }));
+          text(objTextRef.current, tsRef.current(sl.key));
+          text(objRangeRef.current, sl.progress);
+        } else if (!isEarth) show(objRef.current, false);
+      }
       const ea = tel.earth;
       if (ea) {
         const ex = ea.expedition;
         text(clockRef.current, ea.clock);
         const obj = objRef.current;
-        if (obj) {
-          const on = !!ex.objective;
+        if (obj && !storyCard) {
+          const on = storyMode && !!ex.objective;
           show(obj, on);
           if (on) {
+            text(objTagRef.current, ttw('expedition.title'));
             text(objTextRef.current, ttw(`expedition.obj.${ex.objective}`));
             const range = ex.stage === 'overlook'
               ? ttw('expedition.found', { n: ex.found.length })
@@ -390,7 +414,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         }
         const pip = pipRef.current;
         if (pip) {
-          const on = ex.bearing >= 0 && ex.distance > 6;
+          const on = storyMode && ex.bearing >= 0 && ex.distance > 6;
           show(pip, on);
           if (on) {
             let rel = ((ex.bearing - tel.heading + 540) % 360) - 180;
@@ -401,8 +425,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         }
         const meter = meterRef.current;
         if (meter) {
-          const spotting = ex.stage === 'overlook' && !!ex.spotting;
-          const working = ex.work > 0 && !spotting;
+          const spotting = storyMode && ex.stage === 'overlook' && !!ex.spotting;
+          const working = storyMode && ex.work > 0 && !spotting;
           show(meter, spotting || working);
           if (spotting) {
             meter.style.setProperty('--v', ex.spotWork.toFixed(3));
@@ -416,7 +440,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
           eyepieceOpen = ex.eyepiece;
           setEyepiece(ex.eyepiece && ea.target ? { target: ea.target, date: new Date(ea.date) } : null);
         }
-        if (!tel.banner && ex.banner) {
+        if (!tel.banner && ex.banner && storyMode) {
           const bannerEl = bannerRef.current;
           if (bannerEl) {
             show(bannerEl, true);
@@ -589,9 +613,9 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
               <span ref={altRowRef} className="moon-hud__reading" hidden><span>{t('altitude')}</span><span ref={altRef} /></span>
             </div>
           </div>
-          {isEarth && (
+          {(isEarth || storyMode) && (
             <button ref={objRef} type="button" className="moon-hud__objective" onClick={() => setLog(true)} hidden>
-              <span className="moon-hud__objective-tag">{tw('expedition.title')}</span>
+              <span ref={objTagRef} className="moon-hud__objective-tag">{isEarth ? tw('expedition.title') : ''}</span>
               <span ref={objTextRef} className="moon-hud__objective-text" />
               <span ref={objRangeRef} className="moon-hud__objective-range" />
             </button>
@@ -608,7 +632,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, onProgres
         {/* ── Bottom right: the lamp. ── */}
         <div className="moon-hud__hands">
           <span ref={lampRef} className="moon-hud__carry moon-hud__lamp" hidden><Flashlight size={14} aria-hidden /><i>{tc('lampOn')}</i></span>
-          <span ref={crystalsRef} className="moon-hud__carry moon-hud__crystals" hidden><Gem size={14} aria-hidden /><i>{tw('crystals')}</i><span ref={crystalsCountRef} /></span>
+          <GemHud ref={gemHudRef} />
         </div>
 
         <div className="moon-hud__top">

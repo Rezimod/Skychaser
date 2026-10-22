@@ -680,3 +680,32 @@ export const basePieces = pgTable('base_pieces', {
   index('base_pieces_world_scope_idx').on(t.world, t.scope),
   index('base_pieces_owner_idx').on(t.ownerPrivyId),
 ])
+
+// Explore gems: each gem a signed-in player has picked up, once per account
+// (gem ids come from src/lib/solar-system/gem-layout.ts; `points` is the
+// gem's value when it was stored). The leaderboard is the sum per account.
+// Created on first use by ensureExploreGemsTable() in
+// src/lib/games/explore-gems-store.ts, so no manual step is needed; the SQL,
+// for reference:
+//   CREATE TABLE IF NOT EXISTS explore_gems (
+//     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//     privy_id text NOT NULL,
+//     world text NOT NULL,
+//     gem_id text NOT NULL,
+//     points integer NOT NULL,
+//     created_at timestamptz NOT NULL DEFAULT now()
+//   );
+//   CREATE UNIQUE INDEX IF NOT EXISTS explore_gems_owner_gem_unique
+//     ON explore_gems (privy_id, world, gem_id);
+//   CREATE INDEX IF NOT EXISTS explore_gems_owner_idx ON explore_gems (privy_id);
+export const exploreGems = pgTable('explore_gems', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  privyId: text('privy_id').notNull(),
+  world: text('world').notNull(),
+  gemId: text('gem_id').notNull(),
+  points: integer('points').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('explore_gems_owner_gem_unique').on(t.privyId, t.world, t.gemId),
+  index('explore_gems_owner_idx').on(t.privyId),
+])

@@ -22,6 +22,10 @@ import { useSoundPref } from './useSoundPref';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
 import type { RewardSink } from '@/lib/solar-system/achievements';
 import { MissionPanel } from './MissionPanel';
+import { GemHud, type GemHudHandle } from './GemHud';
+import { game } from '@/game/state';
+import { hasObjectives } from '@/game/mode';
+import { story } from '@/game/story';
 
 interface MoonSurfaceProps {
   onReturn: () => void;
@@ -68,6 +72,9 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
   const [help, setHelp] = useState(false);
   const [menu, setMenu] = useState(false);
   const [log, setLog] = useState(false);
+  /** Free Fly and multiplayer keep no mission log (game/mode.ts); the mode does not change under a scene. */
+  const [freeFly] = useState(() => !hasObjectives(game.get().mode));
+  const freeFlyRef = useRef(freeFly);
   const [immersive, setImmersive] = useState(false);
   const [run, setRun] = useState(false);
   const [crouch, setCrouch] = useState(false);
@@ -166,6 +173,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
   const evaRef = useRef<HTMLSpanElement>(null);
   const distRef = useRef<HTMLSpanElement>(null);
   const lampRef = useRef<HTMLSpanElement>(null);
+  const gemHudRef = useRef<GemHudHandle>(null);
   const actionRef = useRef<HTMLButtonElement>(null);
   const actionTextRef = useRef<HTMLSpanElement>(null);
   const workRef = useRef<HTMLDivElement>(null);
@@ -229,7 +237,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       wake: handle.startAudio,
       onCrouch: setCrouch,
       onPauseRequest: () => onPauseRequestRef.current?.(),
-      onMap: () => setLog((v) => !v),
+      onMap: () => { if (!freeFlyRef.current) setLog((v) => !v); },
       onGearCycle: () => cycleGear(),
       selectable: '.moon-hud__help, .moon-hud__menu, .moon-hud__log',
     });
@@ -237,6 +245,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
 
     // HUD paint at ~30 Hz off the telemetry, no React state churn.
     const tel = handle.telemetry;
+    // Free Fly and multiplayer: no objective, mission pips or mission banners (game/mode.ts).
+    const free = !hasObjectives(game.get().mode);
     const text = (el: HTMLElement | null, v: string) => { if (el && el.textContent !== v) el.textContent = v; };
     const show = (el: HTMLElement | null, on: boolean) => { if (el && el.hidden === on) el.hidden = !on; };
     const setVar = (el: HTMLElement | null, name: string, v: string) => { if (el && el.style.getPropertyValue(name) !== v) el.style.setProperty(name, v); };
@@ -299,6 +309,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
 
       // ── The way down. ──
       if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+      // Story mode hears what the Moon is doing (game/story.ts; nothing in the other modes).
+      story.observe({ world: 'moon', landed: tel.phase === 'touchdown' || tel.phase === 'surface', outside: tel.phase === 'surface', readout: tel.readout, altitude: tel.altitude, distance: tel.distanceM, missionsDone: tel.missions.done });
       // From orbit, and back up to it: the flight panel, the heat at the
       // edges of the glass and the glass shaking with the air (--heat,
       // --shake), and the world's name over the orbit.
@@ -352,9 +364,10 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       // The questline takes the compass when it has somewhere to send the
       // crew; the old expedition keeps it the rest of the time.
       const onMission = ms.active !== '' && ms.objective !== '';
-      if (onMission && ms.distance >= 0) pipAt(pipRef.current, ms.bearing, heading, true);
+      if (free) pipAt(pipRef.current, 0, heading, false);
+      else if (onMission && ms.distance >= 0) pipAt(pipRef.current, ms.bearing, heading, true);
       else pipAt(pipRef.current, m.bearing, heading, m.distance >= 0 && (m.task === '' || !m.atSite));
-      pipAt(jobPipRef.current, j.bearing, heading, j.active !== '' && j.distance >= 0);
+      pipAt(jobPipRef.current, j.bearing, heading, !free && j.active !== '' && j.distance >= 0);
       // The hum on channel two, once the base has mentioned it.
       pipAt(holePipRef.current, bt.bearing, heading, bt.known && !bt.escaped && bt.distance >= 0 && tel.phase === 'surface');
       // One meter under the compass: a job's alignment when there is one,
@@ -376,7 +389,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
             : tt('mission.scanner'));
         }
       }
-      show(objRef.current, (onMission || m.distance >= 0 || m.complete || j.active !== '') && !m.banner && !j.banner && !ms.banner);
+      show(objRef.current, !free && (onMission || m.distance >= 0 || m.complete || j.active !== '') && !m.banner && !j.banner && !ms.banner);
       text(objTextRef.current, onMission ? tt(`missions.${ms.active}.${ms.objective}`) : tt(`mission.${m.objective || 'obj.done'}`));
       text(objRangeRef.current,
         onMission ? (ms.distance >= 0 ? fmtRange(ms.distance) : '')
@@ -415,6 +428,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       show(handsRef.current, carried !== '');
       if (carried) text(handsTextRef.current, tt(`items.${carried}`));
       show(lampRef.current, tel.headlamp);
+      // The gem tally, and a line on the glass for each one picked up (GemHud).
+      gemHudRef.current?.paint(tel);
       // The rest of the suit's numbers live in the log; these refs are only
       // mounted while it is open.
       text(hrRef.current, `${Math.round(tel.heartRate)}`);
@@ -507,13 +522,13 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       }
       const banner = bannerRef.current;
       if (banner) {
-        const key = ms.banner ? `missions.${ms.banner}` : m.banner ? `mission.${m.banner}` : j.banner ? `jobs.${j.banner}` : '';
+        const key = free ? '' : ms.banner ? `missions.${ms.banner}` : m.banner ? `mission.${m.banner}` : j.banner ? `jobs.${j.banner}` : '';
         show(banner, key !== '');
         if (key) text(banner.firstElementChild as HTMLElement, tt(key));
       }
       const radio = radioRef.current;
       if (radio) {
-        const line = bt.radio ? tt(`backrooms.radio.${bt.radio}`) : m.radio ? tt(`mission.${m.radio}`) : '';
+        const line = bt.radio ? tt(`backrooms.radio.${bt.radio}`) : m.radio && !free ? tt(`mission.${m.radio}`) : '';
         show(radio, line !== '');
         if (line) text(radio, line);
         radio.dataset.static = String(!!bt.radio);
@@ -733,6 +748,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
         <div className="moon-hud__hands">
           <span ref={handsRef} className="moon-hud__carry" hidden><Package size={14} aria-hidden /><span ref={handsTextRef} /></span>
           <span ref={lampRef} className="moon-hud__carry moon-hud__lamp" hidden><Flashlight size={14} aria-hidden /><i>{tc('lampOn')}</i></span>
+          <GemHud ref={gemHudRef} />
         </div>
 
         {/* ── Right rail: the drill's instruments while it runs. ── */}
@@ -752,9 +768,9 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
           </button>
           {menu && (
             <div className="moon-hud__menu" role="menu" aria-label={t('menu')}>
-              <button type="button" role="menuitem" onClick={() => { setLog(true); setMenu(false); }}>
+              {!freeFly && <button type="button" role="menuitem" onClick={() => { setLog(true); setMenu(false); }}>
                 <Trophy size={16} aria-hidden /><span>{t('mission.log')}</span>
-              </button>
+              </button>}
               <button type="button" role="menuitem" onClick={() => { cycleView(); setMenu(false); }}>
                 <Camera size={16} aria-hidden /><span>{t('camera')}</span>
               </button>

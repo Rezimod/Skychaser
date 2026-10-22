@@ -405,9 +405,10 @@ describe('the jetpack in the air', () => {
     const w = walker(moon);
     const { maxVy, maxY } = flight(w, 1.5);
     expect(w.loco.state.jetting).toBe(true);
+    expect(w.loco.state.flying).toBe(true);
     expect(w.loco.state.gait).toBe('air');
     expect(maxVy).toBeGreaterThan(2.5);
-    expect(maxVy).toBeLessThan(JET.climb * 1.05);
+    expect(maxVy).toBeLessThan(w.loco.jet.tuning.climb * 1.05);
     expect(maxY).toBeGreaterThan((moon.hop * moon.hop) / (2 * moon.g) + 2);
     const plain = walker(moon);
     const p = flight(plain, 1.5, { jet: false });
@@ -424,45 +425,41 @@ describe('the jetpack in the air', () => {
     }
   });
 
-  it('gives nothing without fuel, and the tank comes back on the ground', () => {
+  it('never runs dry', () => {
     const w = walker(moon);
-    w.loco.jet.state.fuel = 0;
-    const { maxVy } = flight(w, 1);
-    expect(maxVy).toBeLessThanOrEqual(0.05);
-    expect(w.loco.state.jetting).toBe(false);
-    let t = 0;
-    while ((!w.loco.state.grounded || t < 0.2) && t < 10) { w.run(DT); t += DT; }
-    expect(w.loco.state.grounded).toBe(true);
-    w.run(JET.regenDelay + 1 / JET.regen + 0.2);
+    flight(w, 30);
+    expect(w.loco.state.jetting).toBe(true);
     expect(w.loco.state.jetFuel).toBe(1);
   });
 
-  it('never lights on the ground, in a lope\'s stride, or while the jump key is merely tapped', () => {
+  it('stays out through a lope\'s strides and a tap of jump, and lights once the key is held', () => {
     const w = walker(moon);
-    w.run(1, { jet: true });
-    expect(w.loco.state.jetting).toBe(false);
-    expect(w.loco.state.jetFuel).toBe(1);
-    // A jog's flights are short hops between steps: the held key stays quiet through them.
+    // A jog's flights are short hops between steps: without the key they stay hops.
     let lit = false;
-    w.run(4, { moveZ: 0.6, jet: true }, () => { lit ||= w.loco.state.jetting; });
+    w.run(4, { moveZ: 0.6 }, () => { lit ||= w.loco.state.jetting; });
     expect(lit).toBe(false);
-    expect(w.loco.state.jetFuel).toBe(1);
     // One step of jump with the key let go the step after: a jump, no burn.
     const j = walker(moon);
     j.loco.update(DT, input({ jump: true, jet: true }), flat, [], 999);
     j.run(2);
-    expect(j.loco.state.jetFuel).toBe(1);
+    expect(j.loco.state.jetting).toBe(false);
+    expect(j.loco.state.flying).toBe(false);
+    // Held a fifth of a second, even mid-lope, it lights.
+    w.run(JET.arm + 0.05, { moveZ: 0.6, jet: true });
+    expect(w.loco.state.flying).toBe(true);
   });
 
   it('burns from the throttle, eased, so the flame and the roar never snap', () => {
     const w = walker(moon);
     w.loco.update(DT, input({ jump: true }), flat, [], 999);
-    w.run(0.3, { jet: true });
-    expect(w.loco.state.jetK).toBeGreaterThan(0.5);
-    expect(w.loco.state.jetK).toBeLessThan(1);
-    w.run(DT, { jet: false });
-    expect(w.loco.state.jetting).toBe(false);
+    w.run(JET.arm + 0.1, { jet: true });
     expect(w.loco.state.jetK).toBeGreaterThan(0.3);
+    expect(w.loco.state.jetK).toBeLessThan(1);
+    const k = w.loco.state.jetK;
+    w.run(DT, { jet: false });
+    // Let go, the pack hovers: still lit, the flame eased rather than cut.
+    expect(w.loco.state.jetting).toBe(true);
+    expect(Math.abs(w.loco.state.jetK - k)).toBeLessThan(0.1);
   });
 });
 
@@ -507,11 +504,12 @@ describe('the suit on the mesh', () => {
     scene.add(c.group);
     c.settle();
     c.update(DT, input({ jump: true }), flat, [], 999);
-    for (let i = 0; i < 60; i++) { c.update(DT, input({ jet: true }), flat, [], 999); c.present(1); }
+    for (let i = 0; i < 90; i++) { c.update(DT, input({ jet: true }), flat, [], 999); c.present(1); }
     expect(c.state.jetting).toBe(true);
-    expect(c.state.anim).toBe('jet');
-    expect(c.state.jetFuel).toBeLessThan(1);
-    expect(c.state.jetK).toBeGreaterThan(0.5);
+    expect(c.state.flying).toBe(true);
+    expect(['hover', 'fly']).toContain(c.state.anim);
+    expect(c.state.jetFuel).toBe(1);
+    expect(c.state.jetK).toBeGreaterThan(0.4);
     // The sparks ride under the suit's group but stay in world space: their
     // world matrix is identity when they draw, whatever the suit has done.
     const sparks = c.group.children.find((o) => o.name === 'jet-sparks') as THREE.Points;
@@ -525,7 +523,7 @@ describe('the suit on the mesh', () => {
     // Down again: the landing after a flight kicks up a bigger cloud than a step.
     (dust.burst as ReturnType<typeof vi.fn>).mockClear();
     let t = 0;
-    while (!c.state.grounded && t < 10) { c.update(DT, input(), flat, [], 999); t += DT; }
+    while (!c.state.grounded && t < 20) { c.update(DT, input({ descend: true }), flat, [], 999); t += DT; }
     expect(dust.burst).toHaveBeenCalled();
     const counts = (dust.burst as ReturnType<typeof vi.fn>).mock.calls.map((a) => (a[0] as { count: number }).count);
     expect(Math.max(...counts)).toBeGreaterThanOrEqual(34);
