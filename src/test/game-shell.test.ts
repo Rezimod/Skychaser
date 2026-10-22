@@ -67,6 +67,23 @@ describe('game state machine', () => {
     expect(game.get().state).toBe('exiting');
   });
 
+  it('a handover in flight is seamless, and only that one load', () => {
+    game.boot('orbit');
+    expect(game.get().seamless).toBe(false);
+    game.progress('ready');
+    game.travel('mars', { seamless: true });
+    expect(game.get()).toMatchObject({ state: 'loading', scene: 'mars', seamless: true });
+    game.progress('ready');
+    // Still marked while it plays: the shell keeps its loader off the fade-in.
+    expect(game.get()).toMatchObject({ state: 'playing', seamless: true });
+    game.travel('orbit');
+    expect(game.get().seamless).toBe(false);
+    game.progress('ready');
+    game.pause();
+    game.restart();
+    expect(game.get().seamless).toBe(false);
+  });
+
   it('overlays open from the title and the pause menu only', () => {
     game.boot();
     game.openOverlay('missions');
