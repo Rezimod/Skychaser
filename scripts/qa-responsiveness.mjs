@@ -234,7 +234,8 @@ async function play(browser, profile) {
       worstFrames: loafs.sort((a, b) => b.ms - a.ms).slice(0, 5),
       contexts: after ? { made: after.contextsMade, lost: after.contextsLost, alive: after.contextsMade - after.contextsLost } : null,
       memory: m0 && m1 ? { heapMB: [m0.heapMB, m1.heapMB], nodes: [m0.nodes, m1.nodes], listeners: [m0.listeners, m1.listeners] } : null,
-      errors: pageErrors.slice(errorsBefore).concat((after?.errors ?? []).slice(before?.errors.length ?? 0)),
+      // The sign-in service is not configured in a local build (production has its key).
+      errors: pageErrors.slice(errorsBefore).concat((after?.errors ?? []).slice(before?.errors.length ?? 0)).filter((e) => !/PRIVY|privy|walletconnect/.test(e)),
       ...detail,
     };
     run.phases.push(rec);
