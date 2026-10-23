@@ -10,6 +10,7 @@ import { createFlightSession, type FlightSession } from '@/lib/solar-system/play
 import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
 import { game, type GameState, type LoadStage } from '@/game/state';
+import { canOverlapScenes } from '@/game/quality';
 import type { GameScene } from '@/game/save';
 import type { GameMode } from '@/game/mode';
 import { StoryHud } from './StoryHud';
@@ -29,6 +30,8 @@ const ORBIT_MIN_MS = 500;
 const ORBIT_FRAMES = 2;
 /** The cross-fade between the flight and a surface when one hands over to the other, ms (the CSS matches). */
 const HANDOVER_FADE_MS = 1100;
+/** The veil's way in, ms: the scene being left goes once it is opaque (the CSS matches). */
+const VEIL_IN_MS = 450;
 
 const SPEED_STEPS = [
   { id: 'realtime', rate: 1 },
@@ -89,6 +92,18 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   // (`standby`), drawn but not shown, and revealed by a cross-fade once the
   // game says it is the scene; on the way up the surface stays on screen
   // until the orbit has drawn, then fades off it. ──
+  //
+  // Holding two scenes at once doubles what the game holds, and a phone's
+  // browser kills a tab that grows like that (it reloads: the game seemed to
+  // restart on its own, worst on Earth). So only a desktop with room
+  // overlaps them (`overlap`); everywhere else the scene being left goes
+  // first, behind a veil: the entry's plasma on the way down, the dark of
+  // space on the way up, lifted once the next scene has drawn.
+  const overlap = useRef<boolean | null>(null);
+  if (overlap.current === null) overlap.current = canOverlapScenes();
+  const [veil, setVeil] = useState<null | { kind: 'entry' | 'ascent'; to: GameScene; lifting: boolean }>(null);
+  /** The world the ship flew into: its surface picks the flight up at the top of the entry. */
+  const [entryInto, setEntryInto] = useState<LandingSite | null>(null);
   const [standby, setStandby] = useState<LandingSite | null>(null);
   /** The surface just left, kept up over the orbit while the orbit builds. */
   const [leaving, setLeaving] = useState<LandingSite | null>(null);
@@ -121,7 +136,29 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     const id = window.setTimeout(() => setFlightGone(true), HANDOVER_FADE_MS);
     return () => window.clearTimeout(id);
   }, [landed, surfaceShown]);
-  const flightUp = landed === null || !flightGone;
+  // Without the overlap the flight is never up under a surface.
+  const flightUp = landed === null || (!!overlap.current && !flightGone);
+  // The veil is opaque: the scene being left can go, and the game travels.
+  useEffect(() => {
+    if (!veil || veil.lifting) return;
+    if (game.get().scene === veil.to) return;
+    const id = window.setTimeout(() => {
+      if (veil.kind === 'ascent') setLeaving(null);
+      game.travel(veil.to, { seamless: true });
+    }, VEIL_IN_MS);
+    return () => window.clearTimeout(id);
+  }, [veil]);
+  // The next scene has drawn: the veil lifts off it, then goes.
+  useEffect(() => {
+    if (!veil || veil.lifting || scene !== veil.to || state === 'loading') return;
+    setVeil({ ...veil, lifting: true });
+  }, [veil, scene, state]);
+  useEffect(() => {
+    if (!veil?.lifting) return;
+    const id = window.setTimeout(() => setVeil(null), HANDOVER_FADE_MS);
+    return () => window.clearTimeout(id);
+  }, [veil]);
+  useEffect(() => { if (landed === null) setEntryInto(null); }, [landed]);
   // The orbit canvas is torn down while a surface has the screen (its
   // context, maps and galaxy layers would sit under the Moon's renderer) and
   // rebuilt on the way back, so the loader waits for its first frame again.
@@ -159,9 +196,23 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     return () => cancelAnimationFrame(raf);
   }, [playing, speedIdx, flightActive, landed, paused, epoch]);
   const returnToOrbit = useCallback(() => {
+    if (!overlap.current) { setVeil({ kind: 'ascent', to: 'orbit', lifting: false }); return; }
     setLeaving(game.get().scene === 'orbit' ? null : (game.get().scene as LandingSite));
     game.travel('orbit', { seamless: true });
   }, []);
+  /** Into a world's air: straight down from the flight, no key and no loading screen. */
+  const enterWorld = useCallback((site: LandingSite) => {
+    setLandscape(false);
+    setEntryInto(site);
+    if (overlap.current) {
+      setStandby(site);
+      game.travel(site, { seamless: true });
+      return;
+    }
+    setStandby(null);
+    setVeil({ kind: 'entry', to: site, lifting: false });
+  }, []);
+  const onStandbyChange = useCallback((site: LandingSite | null) => setStandby(overlap.current ? site : null), []);
   // The climb out of a surface ends in the ship, over the world just left.
   const [returnedFrom, setReturnedFrom] = useState<LandingSite | null>(null);
   const wasLanded = useRef(landed);
@@ -187,8 +238,8 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
           {flightUp && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
             onSelect={setSelectedId} onZoomToSun={zoomToSun} zoomTo={zoomTo} onZoomToConsumed={consumeZoom} flight={session}
             room={room} onReady={onSceneReady} paused={paused} />}
-          <PlayerShip session={session} autoLaunch onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={setStandby}
-            onLand={(site) => { setLandscape(false); setStandby(site); game.travel(site, { seamless: true }); }} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
+          <PlayerShip session={session} autoLaunch onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={onStandbyChange}
+            onLand={enterWorld} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
             landscape={landscape} onLandscape={setLandscape} shellPaused={paused} onPauseRequest={game.pause} />
         </>}
         {/* One place in the tree for the surface, whether it is being built behind the arrival,
@@ -196,10 +247,11 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
         {surfaceSite !== null && (
           <div className="game-world__surface" data-shown={surfaceShown || (leaving !== null && (scene !== 'orbit' || state === 'loading'))}>
             {surfaceSite === 'moon'
-              ? <MoonSurface key="moon" onReturn={returnToOrbit} room={room} sink={rewards.sink} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />
-              : <WorldSurface key={surfaceSite} world={surfaceSite} onReturn={returnToOrbit} room={room} paused={paused} standby={!surfaceShown} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
+              ? <MoonSurface key="moon" onReturn={returnToOrbit} room={room} sink={rewards.sink} paused={paused} standby={!surfaceShown} startAt={entryInto === 'moon' ? 'entry' : undefined} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />
+              : <WorldSurface key={surfaceSite} world={surfaceSite} onReturn={returnToOrbit} room={room} paused={paused} standby={!surfaceShown} startAt={entryInto === surfaceSite ? 'entry' : undefined} onProgress={onSurfaceProgress} onPauseRequest={game.pause} shipKind={session.shipKind} />}
           </div>
         )}
+        {veil && <div className="game-world__veil" data-kind={veil.kind} data-lifting={veil.lifting} data-world={veil.to} aria-hidden />}
       </div>
       {rewards.award && (
         <p className="game-shell__notice game-shell__notice--stars" role="status">

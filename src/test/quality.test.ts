@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   budgetedPixelRatio, clearQualityGovernor, currentQuality, detectQuality, governedQuality, onQualityChange, qualityProfile,
-  QUALITY_LEVELS, resetQualityDetection, setDetectedQuality, stepQualityDown, type DeviceSignals,
+  overlapAllowed, QUALITY_LEVELS, resetQualityDetection, setDetectedQuality, stepQualityDown, type DeviceSignals,
 } from '@/game/quality';
 import { resetSettings, updateSettings } from '@/game/settings';
 
@@ -163,5 +163,17 @@ describe('the pixel budget', () => {
   });
   it('a screen of ratio 1 stays at 1', () => {
     expect(budgetedPixelRatio(1, 1.5, iris, 800, 600)).toBe(1);
+  });
+});
+
+describe('two scenes at once', () => {
+  it('only a roomy desktop at high quality holds the flight and a surface together', () => {
+    expect(overlapAllowed(desktop, 'high')).toBe(true);
+    expect(overlapAllowed(desktop, 'ultra')).toBe(true);
+    expect(overlapAllowed(desktop, 'balanced')).toBe(false);
+    expect(overlapAllowed({ ...desktop, touch: true }, 'ultra')).toBe(false);
+    expect(overlapAllowed({ ...desktop, memoryGB: 4 }, 'high')).toBe(false);
+    // A browser that does not say how much memory it has: the level decides.
+    expect(overlapAllowed({ ...desktop, memoryGB: 0 }, 'high')).toBe(true);
   });
 });

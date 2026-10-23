@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   AIRLESS_LEGS, APPROACH_END_RADII, APPROACH_LEGS, APPROACH_MAX_RADII, APPROACH_MIN_RADII, APPROACH_SECONDS, approachPose,
-  approachProfileFor, descentBurn, entryHeat, isAirlessSite, ORBIT_END_RADII, ORBIT_LEGS, titleCard,
+  approachProfileFor, descentBurn, entryAltitudeKm, entryHeat, isAirlessSite, ORBIT_END_RADII, ORBIT_LEGS, titleCard,
 } from '@/lib/solar-system/flight-approach';
 import { SURFACE_ASSETS, SURFACE_GROUPS, assetsFor, shipAssetFor } from '@/lib/solar-system/surface-assets';
 
@@ -217,5 +217,23 @@ describe('what the arrival loads while it flies', () => {
       expect(keepFor.has(item.url), `${item.url} is not acquired by any surface`).toBe(true);
       expect(keepFor.get(item.url), `${item.url} prefetch keepNodes`).toBe(item.keepNodes);
     }
+  });
+});
+
+describe('the dive into the air', () => {
+  const sites = ['moon', 'mars', 'proximaB', 'earth', 'mercury', 'venus', 'jupiter', 'saturn', 'uranus', 'neptune'] as const;
+  it('every world has a height where the way down begins, under the landing ceiling', async () => {
+    const { LANDING_SITES } = await import('@/lib/solar-system/world-profiles');
+    for (const s of sites) {
+      const km = entryAltitudeKm(s);
+      expect(km, s).toBeGreaterThan(0);
+      expect(km, s).toBeLessThan(LANDING_SITES[s]);
+    }
+  });
+  it('is inside the air where there is air, and low over the ground where there is none', () => {
+    // Earth: 0.1 radius of air drawn, the entry at 70% of that.
+    expect(entryAltitudeKm('earth')).toBeCloseTo(6371 * 0.1 * 0.7, -1);
+    expect(entryAltitudeKm('moon')).toBeCloseTo(1737 * 0.06, -1);
+    expect(entryAltitudeKm('nowhere')).toBe(0);
   });
 });

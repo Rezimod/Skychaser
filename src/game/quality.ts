@@ -237,3 +237,21 @@ export function resetQualityDetection() {
   detected = null;
   governed = null;
 }
+
+/** Whether two scenes may be held at once: the orbit drawing while a
+ *  surface builds behind it, then a cross-fade. That doubles the GPU and
+ *  heap the game holds for a few seconds, which a phone's browser answers by
+ *  killing the tab (it reloads, and the game seems to restart by itself).
+ *  So only a desktop on `high` or `ultra` with room to spare overlaps them;
+ *  everything else lets the scene being left go first and hands over
+ *  through the entry's plasma (or the climb's dark). Pure, so it is tested. */
+export function overlapAllowed(s: Pick<DeviceSignals, 'touch' | 'memoryGB'>, level: QualityLevel): boolean {
+  if (s.touch) return false;
+  if (s.memoryGB > 0 && s.memoryGB < 8) return false;
+  return level === 'high' || level === 'ultra';
+}
+
+export function canOverlapScenes(): boolean {
+  if (typeof window === 'undefined') return false;
+  return overlapAllowed(deviceSignals(), currentQuality().level);
+}
