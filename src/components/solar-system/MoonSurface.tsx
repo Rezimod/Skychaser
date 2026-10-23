@@ -308,7 +308,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
       root.dataset.autoland = String(tel.autoland);
-      root.dataset.far = String(tel.baseDistance > 40 && !tel.backrooms);
+      root.dataset.far = String(tel.baseDistance > 40 && tel.backrooms.phase === '');
       root.dataset.view = tel.view;
       // In flight the jump key is the way down (suit-jet.css swaps its face).
       root.dataset.jetFlying = String(tel.flying);

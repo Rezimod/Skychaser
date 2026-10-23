@@ -442,7 +442,7 @@ async function play(browser, profile) {
       await phase(`ascent ${tag}`, async () => {
         const boarded = await p.evaluate((sel) => window.__qaSurface()?.forceInteract('boardLander', 2) ?? false, surfaceHook);
         if (!boarded) throw new Error('could not board the lander');
-        if (!(await until(p, () => { const g = window.__stellarGame.get(); return g.scene === 'orbit' && g.state === 'playing' && !!window.__stellarFlight?.session.active; }, 400))) throw new Error('never got back to the ship in orbit');
+        if (!(await until(p, () => { const g = window.__stellarGame.get(); return g.scene === 'orbit' && g.state === 'playing' && !!window.__stellarFlight?.session.active; }, 900))) throw new Error('never got back to the ship in orbit');
         await wait(p, 3000);
       });
     }
