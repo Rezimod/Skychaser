@@ -23,7 +23,7 @@
 .sd-tabs { display: none; }
 
 @media (max-width: 767px) {
-  .skychaser { --sd-bar-h: 56px; --sd-tabs-h: calc(62px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--sd-tabs-h); }
+  .skychaser { --sd-bar-h: 56px; --sd-tabs-h: calc(76px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--sd-tabs-h); }
 
   /* The top bar: the mark and the account, nothing else. */
   .sd-bar__inner { grid-template-columns: 1fr auto; grid-template-areas: "mark account"; padding-top: 0; min-height: var(--sd-bar-h); }
@@ -35,27 +35,36 @@
   .sd-bar .sd-acct__in span { display: none; }
   .sd-bar .sd-avatar { width: 36px; height: 36px; }
 
-  /* The bottom bar. */
-  .sd-tabs {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
-    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
-    height: var(--sd-tabs-h); padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: var(--sd-bar-bg, rgba(13, 13, 13, 0.97)); border-top: 1px solid var(--sd-rule);
+  /* The bottom bar: a floating capsule, its tabs sharing the width equally. */
+  .skychaser .sd-tabs {
+    position: fixed; z-index: 45;
+    left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    max-width: 440px; margin-inline: auto;
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px;
+    height: 60px; padding: 6px;
+    background: rgba(12, 12, 16, 0.78);
+    backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 20px;
+    box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
-  .sd-tab {
-    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-    min-width: 0; color: var(--sd-ink-3); text-decoration: none;
-    font: 600 11px/1 var(--sd-sans); letter-spacing: 0.01em;
+  .skychaser .sd-tab {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-width: 0; border-radius: 14px; border: 1px solid transparent;
+    color: var(--sd-ink-small, var(--sd-ink-3)); text-decoration: none;
+    font: 600 14px/1 var(--sd-sans); letter-spacing: 0.01em;
     -webkit-tap-highlight-color: transparent;
-    transition: color var(--sd-dur-fast) var(--sd-ease);
+    transition: color var(--sd-dur-fast) var(--sd-ease), background-color var(--sd-dur-fast) var(--sd-ease), border-color var(--sd-dur-fast) var(--sd-ease);
   }
-  .sd-tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sd-tab[aria-current="page"] { color: var(--sd-ink); background: linear-gradient(180deg, color-mix(in srgb, var(--sd-accent) 14%, transparent), transparent 85%); }
-  .sd-tab[aria-current="page"] svg { color: var(--sd-accent); }
-  .sd-tab[aria-current="page"]::before {
-    content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 2px; border-radius: 0 0 2px 2px; background: var(--sd-accent);
+  .skychaser .sd-tab svg { flex: none; }
+  .skychaser .sd-tab span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .skychaser .sd-tab[aria-current="page"] {
+    color: var(--sd-ink);
+    background: color-mix(in srgb, var(--sd-accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--sd-accent) 38%, transparent);
   }
-  .sd-tab:active { color: var(--sd-ink); }
+  .skychaser .sd-tab[aria-current="page"] svg { color: var(--sd-accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--sd-accent) 55%, transparent)); }
+  .skychaser .sd-tab:not([aria-current]):active { color: var(--sd-ink); background: rgba(255, 255, 255, 0.06); }
+  .skychaser .sd-tab:focus-visible { outline: 2px solid var(--sd-accent); outline-offset: 2px; }
 
   /* The footer repeats the bottom bar's job; it can be shorter. */
   .sd-foot { margin-top: 56px; padding-block: 28px 24px; }
@@ -66,14 +75,18 @@
 
 @media (max-width: 767px) {
   /* Anything pinned to the foot of the screen sits above the bottom bar. */
-  .sd-buybar { bottom: var(--sd-tabs-h); }
+  .sd-buybar {
+    bottom: var(--sd-tabs-h); left: 12px; right: 12px; max-width: 440px; margin-inline: auto;
+    padding: 10px 10px 10px 16px; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 16px;
+    background: rgba(12, 12, 16, 0.86); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 14px 34px -10px rgba(0, 0, 0, 0.75);
+  }
   .skychaser:has(.sd-buybar) { padding-bottom: calc(var(--sd-tabs-h) + 68px); }
 }
 @media (min-width: 768px) and (max-width: 1023px) { .skychaser:has(.sd-buybar) { padding-bottom: 68px; } }
 
 /* Small type and small targets the audit found, at phone width. */
 @media (max-width: 767px) {
-  .sd-tab { font-size: 12px; }
   .sd-hero2__stats dt { font-size: 12px; letter-spacing: 0.12em; }
 
   .sd-counter__fair { min-height: 44px; display: inline-flex; align-items: center; }

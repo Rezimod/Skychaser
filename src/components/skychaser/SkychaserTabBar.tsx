@@ -19,7 +19,7 @@ export default function SkychaserTabBar() {
         const current = match.some((p) => pathname.startsWith(p));
         return (
           <Link key={href} href={href} className="sd-tab" aria-current={current ? 'page' : undefined}>
-            <Icon aria-hidden="true" size={22} strokeWidth={current ? 2.2 : 1.7} />
+            <Icon aria-hidden="true" size={20} strokeWidth={current ? 2.2 : 1.8} />
             <span>{label}</span>
           </Link>
         );

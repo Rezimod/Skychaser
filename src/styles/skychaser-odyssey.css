@@ -332,10 +332,6 @@ body .skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { backg
 
   .skychaser .sd-fl__grid { gap: 22px 12px; }
 
-
-  /* The bottom bar: cockpit labels, the current one lit red. */
-  .skychaser .sd-tabs { background: var(--sd-bar-bg); border-top-color: var(--sd-line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
-  .skychaser .sd-tab[aria-current='page'] svg { filter: drop-shadow(0 0 6px var(--sd-hal-glow)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .skychaser .sd-hero3::after { animation: none; }
