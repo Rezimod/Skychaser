@@ -118,7 +118,7 @@ async function land(page, site) {
   await page.waitForTimeout(1600);
   await shot(page, `${site}-3-orbit`);
   // The surface took the flight up at the top of the entry, not in orbit.
-  const phase1 = await page.evaluate(() => ({ phase: window.__stellarWorld?.telemetry.phase, orbital: window.__stellarWorld?.telemetry.orbital?.phase ?? '' }));
+  const phase1 = await page.evaluate(() => ({ phase: (window.__stellarWorld ?? window.__stellarMoon)?.telemetry.phase, orbital: (window.__stellarWorld ?? window.__stellarMoon)?.telemetry.orbital?.phase ?? '' }));
   const heap = await page.evaluate(() => Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1048576));
   say(`${site}: card "${card}"; dive → surface playing in ${((Date.now() - t0) / 1000).toFixed(1)} s (handover at ${((handedOver - t0) / 1000).toFixed(1)} s), loader samples ${sawLoader}, veil samples ${sawVeil}, heap ${heap} MB, phase ${phase1.phase}/${phase1.orbital}`);
   if (phase1.orbital === 'orbit' || phase1.orbital === 'deorbit') fail(`[${site}] the surface started in orbit, not at the entry (${phase1.orbital})`);
@@ -126,19 +126,19 @@ async function land(page, site) {
   await shot(page, `${site}-4-entry`);
   await page.waitForTimeout(8000);
   await shot(page, `${site}-5-entry-later`);
-  await page.evaluate(() => window.__stellarWorld?.skipOrbit());
+  await page.evaluate(() => (window.__stellarWorld ?? window.__stellarMoon)?.skipOrbit());
   await page.waitForTimeout(6000);
   await shot(page, `${site}-6-powered-descent`);
-  await page.evaluate(() => window.__stellarWorld?.skipDescent());
-  await waitFor(page, () => window.__stellarWorld?.telemetry.phase === 'surface' || window.__stellarWorld?.telemetry.exitReady, `[${site}] touchdown`, 120);
+  await page.evaluate(() => (window.__stellarWorld ?? window.__stellarMoon)?.skipDescent());
+  await waitFor(page, () => (window.__stellarWorld ?? window.__stellarMoon)?.telemetry.phase === 'surface' || (window.__stellarWorld ?? window.__stellarMoon)?.telemetry.exitReady, `[${site}] touchdown`, 120);
   await page.waitForTimeout(2500);
   await shot(page, `${site}-7-parked`);
   // Out of the ship.
-  await page.evaluate(() => { const w = window.__stellarWorld; if (w) w.input.interact = true; });
+  await page.evaluate(() => { const w = (window.__stellarWorld ?? window.__stellarMoon); if (w) w.input.interact = true; });
   await page.waitForTimeout(5000);
   await shot(page, `${site}-8-outside`);
   const tel = await page.evaluate(() => {
-    const t = window.__stellarWorld?.telemetry;
+    const t = (window.__stellarWorld ?? window.__stellarMoon)?.telemetry;
     return t ? { phase: t.phase, outsideC: Math.round(t.outsideC), view: t.view } : null;
   });
   say(`${site}: entry phase ${phase1.phase}/${phase1.orbital}; final ${JSON.stringify(tel)}`);
