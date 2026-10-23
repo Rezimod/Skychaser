@@ -9,6 +9,8 @@ import { WORLDS, type WorldId } from '@/lib/solar-system/world-profiles';
 import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
 import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
+import { prepareEarthCity } from '@/lib/solar-system/world-earth';
+import { currentQuality } from '@/game/quality';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
 import { GemHud, type GemHudHandle } from './GemHud';
@@ -196,9 +198,13 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     if (!isEarth || earthData) return;
     const abort = new AbortController();
     setEarthError(false);
-    loadTbilisi(abort.signal).then(setEarthData, (e: unknown) => {
-      if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
-    });
+    // The city's heavy preparation runs in slices while the descent plays, so the build that
+    // follows only makes meshes and the landing never holds the thread for seconds.
+    loadTbilisi(abort.signal)
+      .then((data) => prepareEarthCity(data, { lite: currentQuality().lite, signal: abort.signal }).then((prepared) => ({ ...data, prepared })))
+      .then(setEarthData, (e: unknown) => {
+        if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
+      });
     return () => abort.abort();
   }, [isEarth, earthData, earthTry]);
   // A failed download must not leave the game waiting on a build that will

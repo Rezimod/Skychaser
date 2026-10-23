@@ -13,10 +13,10 @@ import type { PointOfInterest } from '@/lib/solar-system/moon-base';
 import type { Interactable } from '@/lib/solar-system/moon-interactions';
 import type { DescentStart } from '@/lib/solar-system/moon-lander';
 import { DEFAULT_OBSERVER } from '@/lib/observer-location';
-import { centroid, insideRing, type EarthData } from '@/lib/solar-system/world-earth-data';
+import { centroid, insideRing, makeHeightAt, type EarthData, type PreparedEarth } from '@/lib/solar-system/world-earth-data';
 import { makeEarthTerrain, type EarthTerrain } from '@/lib/solar-system/world-earth-terrain';
 import { makeEarthSky, type EarthSky } from '@/lib/solar-system/world-earth-sky';
-import { makeCity } from '@/lib/solar-system/world-earth-city';
+import { makeCity, prepareCity } from '@/lib/solar-system/world-earth-city';
 import { makeStreets } from '@/lib/solar-system/world-earth-streets';
 import { makeLandmarks } from '@/lib/solar-system/world-earth-landmarks';
 import { makeCableCar } from '@/lib/solar-system/world-earth-cablecar';
@@ -86,13 +86,8 @@ export interface EarthWorld {
   dispose: () => void;
 }
 
-export function makeEarthWorld(renderer: THREE.WebGLRenderer, data: EarthData, lite: boolean, now = new Date()): EarthWorld {
-  const group = new THREE.Group();
-  group.name = 'earth';
-  const sky = makeEarthSky(renderer, lite, now);
-  const terrain = makeEarthTerrain(data.grids, now, lite);
-  const heightAt = terrain.heightAt;
-  const streets = makeStreets(data, heightAt, lite);
+/** The footprints the city is built from, and where the old town is. */
+function cityInputs(data: EarthData): { buildings: EarthData['buildings']; oldTown: [number, number] } {
   const L = data.manifest.landmarks;
   const bridgeCentre = L.bridgeOfPeace.deck ? centroid(L.bridgeOfPeace.deck) : [-200, 60] as [number, number];
   // OSM maps the Bridge of Peace's roof as a raised building part; the landmark builds the real thing.
@@ -106,7 +101,29 @@ export function makeEarthWorld(renderer: THREE.WebGLRenderer, data: EarthData, l
     }
     return deck.some(([x, z]) => x > x0 - 5 && x < x1 + 5 && z > z0 - 5 && z < z1 + 5);
   });
-  const city = makeCity(data.buildings.filter((b) => !overBridge(b)), heightAt, lite, [bridgeCentre[0], bridgeCentre[1] + 300]);
+  return { buildings: data.buildings.filter((b) => !overBridge(b)), oldTown: [bridgeCentre[0], bridgeCentre[1] + 300] };
+}
+
+/** The city's heavy, data-only work (triangulated roofs, every cell's coarse and far level, the walk
+ *  hash), done in slices of a few milliseconds while the scene waits for the data, so landing does
+ *  not hold the thread for seconds. makeEarthWorld picks it up from `data.prepared`. */
+export async function prepareEarthCity(data: EarthData, opts: { lite: boolean; signal?: AbortSignal }): Promise<PreparedEarth> {
+  const { buildings, oldTown } = cityInputs(data);
+  // The same ground the terrain builds (makeEarthTerrain samples the grids with makeHeightAt).
+  const city = await prepareCity(buildings, makeHeightAt(data.grids), opts.lite, oldTown, [0, 0], { signal: opts.signal, sliceMs: 8 });
+  return { city };
+}
+
+export function makeEarthWorld(renderer: THREE.WebGLRenderer, data: EarthData, lite: boolean, now = new Date()): EarthWorld {
+  const group = new THREE.Group();
+  group.name = 'earth';
+  const sky = makeEarthSky(renderer, lite, now);
+  const terrain = makeEarthTerrain(data.grids, now, lite);
+  const heightAt = terrain.heightAt;
+  const streets = makeStreets(data, heightAt, lite);
+  const L = data.manifest.landmarks;
+  const { buildings, oldTown } = cityInputs(data);
+  const city = makeCity(buildings, heightAt, lite, oldTown, [0, 0], data.prepared?.city);
   const landmarks = makeLandmarks(data, heightAt, lite);
   const cable = L.cableCar.line ? makeCableCar(L.cableCar.line, heightAt, lite) : null;
   group.add(terrain.group, streets.group, city.group, landmarks.group);

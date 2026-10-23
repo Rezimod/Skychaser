@@ -6,6 +6,8 @@
 //
 // Coordinates are the bake's local tangent plane at the pad: x east, z south.
 
+import type { PreparedCity } from '@/lib/solar-system/world-earth-city';
+
 export const TBILISI_BASE = '/explore/tbilisi';
 
 export const COVER = { ground: 0, grass: 1, forest: 2, water: 3, scrub: 4, building: 5, road: 6, plaza: 7, farmland: 8 } as const;
@@ -78,7 +80,11 @@ export interface EarthData {
   water: Water[];
   trees: Tree[];
   lamps: Pt[];
+  /** The city made ready ahead (world-earth's prepareEarthCity); without it makeEarthWorld does the work itself. */
+  prepared?: PreparedEarth;
 }
+
+export interface PreparedEarth { city: PreparedCity }
 
 export function parseTerrain(buf: ArrayBuffer): HeightGrid[] {
   const dv = new DataView(buf);

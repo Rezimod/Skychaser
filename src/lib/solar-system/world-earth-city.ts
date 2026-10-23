@@ -97,18 +97,32 @@ class Batch {
     this.pos.push(x, y, z); this.nrm.push(nx, ny, nz); this.col.push(c.r, c.g, c.b); this.fac.push(u, v); this.sty.push(style, seed);
     return this.pos.length / 3 - 1;
   }
-  geometry(): THREE.BufferGeometry | null {
+  arrays(): BatchArrays | null {
     if (!this.idx.length) return null;
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nrm, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
-    g.setAttribute('aFacade', new THREE.Float32BufferAttribute(this.fac, 2));
-    g.setAttribute('aStyle', new THREE.Float32BufferAttribute(this.sty, 2));
-    g.setIndex(this.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(this.idx, 1) : new THREE.Uint16BufferAttribute(this.idx, 1));
-    g.computeBoundingSphere();
-    return g;
+    return {
+      pos: new Float32Array(this.pos), nrm: new Float32Array(this.nrm), col: new Float32Array(this.col),
+      fac: new Float32Array(this.fac), sty: new Float32Array(this.sty),
+      idx: this.pos.length / 3 > 65535 ? new Uint32Array(this.idx) : new Uint16Array(this.idx),
+    };
   }
+}
+
+/** One cell's level of detail as plain typed arrays: made off the frame, turned into a geometry in an instant. */
+export interface BatchArrays {
+  pos: Float32Array; nrm: Float32Array; col: Float32Array; fac: Float32Array; sty: Float32Array;
+  idx: Uint16Array | Uint32Array;
+}
+
+function geometryOf(a: BatchArrays): THREE.BufferGeometry {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(a.pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(a.nrm, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(a.col, 3));
+  g.setAttribute('aFacade', new THREE.BufferAttribute(a.fac, 2));
+  g.setAttribute('aStyle', new THREE.BufferAttribute(a.sty, 2));
+  g.setIndex(new THREE.BufferAttribute(a.idx, 1));
+  g.computeBoundingSphere();
+  return g;
 }
 
 function facadeMaterial(): { material: THREE.MeshStandardMaterial; night: { value: number } } {
@@ -180,24 +194,129 @@ function facadeMaterial(): { material: THREE.MeshStandardMaterial; night: { valu
   return { material, night };
 }
 
-export function makeCity(
-  buildings: Building[],
-  heightAt: (x: number, z: number) => number,
-  lite: boolean,
-  oldTownCentre: Pt,
-  /** Where the crew starts (the pad): the cells nearest it are built in full here, under the loading screen. */
-  start: Pt = [0, 0],
-): CityHandle {
-  const group = new THREE.Group();
-  group.name = 'earth-city';
-  const { material, night } = facadeMaterial();
-  const geometries = new Set<THREE.BufferGeometry>();
+/** A footprint made ready for building: its rings, the ground under it, its colours. */
+interface Rec { b: Building; outer: Pt[]; holes: Pt[][]; base: number; top: number; area: number; c: Pt; seed: number; style: number; wall: THREE.Color; roof: THREE.Color }
 
-  interface Prepared { b: Building; outer: Pt[]; holes: Pt[][]; base: number; top: number; area: number; c: Pt; seed: number; style: number; wall: THREE.Color; roof: THREE.Color }
-  const prepared: Prepared[] = [];
-  buildings.forEach((b, k) => {
+const tmp = new THREE.Color();
+const addWalls = (batch: Batch, p: Rec, ring: Pt[], inner: boolean) => {
+  const ccw = ringArea(ring) > 0;
+  let u = 0;
+  const bottom = p.base - 1.2;
+  for (let k = 0; k < ring.length; k++) {
+    const [ax, az] = ring[k]; const [bx, bz] = ring[(k + 1) % ring.length];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.05) continue;
+    // Outward normal: for a counter-clockwise ring in x-z (z south) it is on the right.
+    let nx = (bz - az) / len; let nz = -(bx - ax) / len;
+    if (ccw === inner) { nx = -nx; nz = -nz; }
+    const shade = tmp.copy(p.wall).multiplyScalar(0.94 + hash1(k + p.seed * 1e5) * 0.1);
+    const v0 = p.base - bottom;
+    const a0 = batch.vert(ax, bottom, az, nx, 0, nz, shade, u, -v0, p.style, p.seed);
+    const b0 = batch.vert(bx, bottom, bz, nx, 0, nz, shade, u + len, -v0, p.style, p.seed);
+    const a1 = batch.vert(ax, p.top, az, nx, 0, nz, shade, u, p.top - p.base, p.style, p.seed);
+    const b1 = batch.vert(bx, p.top, bz, nx, 0, nz, shade, u + len, p.top - p.base, p.style, p.seed);
+    // (b0 − a0) × (a1 − a0) points along (−dz, dx): wind so the face looks along the normal.
+    if (-nx * (bz - az) + nz * (bx - ax) > 0) batch.idx.push(a0, b0, a1, b0, b1, a1);
+    else batch.idx.push(a0, a1, b0, b0, a1, b1);
+    u += len;
+  }
+};
+const addFlatRoof = (batch: Batch, p: Rec, outer: Pt[], holes: Pt[][]) => {
+  const contour = outer.map(([x, z]) => new THREE.Vector2(x, z));
+  const hv = holes.map((h) => h.map(([x, z]) => new THREE.Vector2(x, z)));
+  let tris: number[][];
+  try { tris = THREE.ShapeUtils.triangulateShape(contour, hv); } catch { return; }
+  const all = [...outer, ...holes.flat()];
+  const start = batch.pos.length / 3;
+  for (const [x, z] of all) batch.vert(x, p.top, z, 0, 1, 0, p.roof, 0, -1, 0, p.seed);
+  for (const [a, b, c] of tris) {
+    // Wind upward.
+    const [ax, az] = all[a]; const [bx, bz] = all[b]; const [cx, cz] = all[c];
+    if ((bx - ax) * (cz - az) - (bz - az) * (cx - ax) < 0) batch.idx.push(start + a, start + b, start + c);
+    else batch.idx.push(start + a, start + c, start + b);
+  }
+};
+/** A flat roof's parapet: a band stood a little proud of the wall, a shade darker. */
+const addCornice = (batch: Batch, p: Rec, ring: Pt[]) => {
+  const ccw = ringArea(ring) > 0;
+  const band = tmp.copy(p.wall).multiplyScalar(0.78);
+  for (let k = 0; k < ring.length; k++) {
+    const [ax, az] = ring[k]; const [bx, bz] = ring[(k + 1) % ring.length];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len < 0.5) continue;
+    let nx = (bz - az) / len; let nz = -(bx - ax) / len;
+    if (!ccw) { nx = -nx; nz = -nz; }
+    const o = 0.22; const y0 = p.top - 0.55; const y1 = p.top + 0.6;
+    const a0 = batch.vert(ax + nx * o, y0, az + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
+    const b0 = batch.vert(bx + nx * o, y0, bz + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
+    const a1 = batch.vert(ax + nx * o, y1, az + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
+    const b1 = batch.vert(bx + nx * o, y1, bz + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
+    if (-nx * (bz - az) + nz * (bx - ax) > 0) batch.idx.push(a0, b0, a1, b0, b1, a1);
+    else batch.idx.push(a0, a1, b0, b0, a1, b1);
+  }
+};
+/** A hip: a ridge along the long axis, every eave corner to its nearer ridge end. Convex, few-sided footprints only. */
+const addHipRoof = (batch: Batch, p: Rec, outer: Pt[]) => {
+  let lx = 1; let lz = 0; let best = 0;
+  for (let k = 0; k < outer.length; k++) {
+    const [ax, az] = outer[k]; const [bx, bz] = outer[(k + 1) % outer.length];
+    const len = Math.hypot(bx - ax, bz - az);
+    if (len > best) { best = len; lx = (bx - ax) / len; lz = (bz - az) / len; }
+  }
+  let minU = Infinity; let maxU = -Infinity; let minV = Infinity; let maxV = -Infinity;
+  for (const [x, z] of outer) {
+    const u = (x - p.c[0]) * lx + (z - p.c[1]) * lz; const v = -(x - p.c[0]) * lz + (z - p.c[1]) * lx;
+    minU = Math.min(minU, u); maxU = Math.max(maxU, u); minV = Math.min(minV, v); maxV = Math.max(maxV, v);
+  }
+  const halfW = (maxV - minV) / 2; const midV = (maxV + minV) / 2;
+  const rise = Math.min(4.5, Math.max(1.2, halfW * 0.55));
+  const pyramid = p.b.roof === ROOF.pyramidal || maxU - minU < halfW * 2.2;
+  const r0 = pyramid ? (minU + maxU) / 2 : minU + halfW; const r1 = pyramid ? r0 : maxU - halfW;
+  const ridge = (u: number): Pt => [p.c[0] + lx * u - lz * midV, p.c[1] + lz * u + lx * midV];
+  const R0 = ridge(r0); const R1 = ridge(r1);
+  const y = p.top + rise;
+  const up = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number) => {
+    const ux = bx - ax; const uy = by - ay; const uz = bz - az; const vx = cx - ax; const vy = cy - ay; const vz = cz - az;
+    let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
+    if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    const l = Math.hypot(nx, ny, nz) || 1;
+    const s = tmp.copy(p.roof).multiplyScalar(0.8 + 0.25 * Math.max(0, ny / l));
+    const ia = batch.vert(ax, ay, az, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
+    const ib = batch.vert(bx, by, bz, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
+    const ic = batch.vert(cx, cy, cz, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
+    batch.idx.push(ia, ib, ic, ia, ic, ib);
+  };
+  for (let k = 0; k < outer.length; k++) {
+    const [ax, az] = outer[k]; const [bx, bz] = outer[(k + 1) % outer.length];
+    const ua = (ax - p.c[0]) * lx + (az - p.c[1]) * lz; const ub = (bx - p.c[0]) * lx + (bz - p.c[1]) * lz;
+    const RA = Math.abs(ua - r0) < Math.abs(ua - r1) ? R0 : R1;
+    const RB = Math.abs(ub - r0) < Math.abs(ub - r1) ? R0 : R1;
+    up(ax, p.top, az, bx, p.top, bz, RB[0], y, RB[1]);
+    if (RA !== RB) up(ax, p.top, az, RB[0], y, RB[1], RA[0], y, RA[1]);
+  }
+};
+
+const convex = (pts: Pt[]) => {
+  let sign = 0;
+  for (let k = 0; k < pts.length; k++) {
+    const [ax, az] = pts[k]; const [bx, bz] = pts[(k + 1) % pts.length]; const [cx, cz] = pts[(k + 2) % pts.length];
+    const cr = (bx - ax) * (cz - bz) - (bz - az) * (cx - bx);
+    if (Math.abs(cr) < 1e-3) continue;
+    if (sign === 0) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) return false;
+  }
+  return true;
+};
+
+/** Work cut into steps: each `yield` is a point where the caller may hand the frame back. */
+type Steps<T> = Generator<void, T, void>;
+
+function* recordsOf(buildings: Building[], heightAt: (x: number, z: number) => number, oldTownCentre: Pt): Steps<Rec[]> {
+  const out: Rec[] = [];
+  for (let k = 0; k < buildings.length; k++) {
+    if ((k & 127) === 127) yield;
+    const b = buildings[k];
     const outer = b.rings.find((r) => !r.inner)?.pts;
-    if (!outer || outer.length < 3) return;
+    if (!outer || outer.length < 3) continue;
     const holes = b.rings.filter((r) => r.inner).map((r) => r.pts);
     const area = Math.abs(ringArea(outer));
     const c = centroid(outer);
@@ -213,177 +332,84 @@ export function makeCity(
     const roof = fromRgb565(b.roofColour) ?? (pitched ? ROOF_PITCH[Math.floor(seed * 53) % ROOF_PITCH.length] : ROOF_FLAT[Math.floor(seed * 41) % ROOF_FLAT.length]);
     // Heights are from the ground at the building's foot; on a slope that is the low side.
     const top = base + Math.max(2.6, b.height);
-    prepared.push({ b, outer, holes, base: base + b.minHeight, top, area, c, seed, style, wall, roof });
-  });
-
-  const tmp = new THREE.Color();
-  const addWalls = (batch: Batch, p: Prepared, ring: Pt[], inner: boolean) => {
-    const ccw = ringArea(ring) > 0;
-    let u = 0;
-    const bottom = p.base - 1.2;
-    for (let k = 0; k < ring.length; k++) {
-      const [ax, az] = ring[k]; const [bx, bz] = ring[(k + 1) % ring.length];
-      const len = Math.hypot(bx - ax, bz - az);
-      if (len < 0.05) continue;
-      // Outward normal: for a counter-clockwise ring in x-z (z south) it is on the right.
-      let nx = (bz - az) / len; let nz = -(bx - ax) / len;
-      if (ccw === inner) { nx = -nx; nz = -nz; }
-      const shade = tmp.copy(p.wall).multiplyScalar(0.94 + hash1(k + p.seed * 1e5) * 0.1);
-      const v0 = p.base - bottom;
-      const a0 = batch.vert(ax, bottom, az, nx, 0, nz, shade, u, -v0, p.style, p.seed);
-      const b0 = batch.vert(bx, bottom, bz, nx, 0, nz, shade, u + len, -v0, p.style, p.seed);
-      const a1 = batch.vert(ax, p.top, az, nx, 0, nz, shade, u, p.top - p.base, p.style, p.seed);
-      const b1 = batch.vert(bx, p.top, bz, nx, 0, nz, shade, u + len, p.top - p.base, p.style, p.seed);
-      // (b0 − a0) × (a1 − a0) points along (−dz, dx): wind so the face looks along the normal.
-      if (-nx * (bz - az) + nz * (bx - ax) > 0) batch.idx.push(a0, b0, a1, b0, b1, a1);
-      else batch.idx.push(a0, a1, b0, b0, a1, b1);
-      u += len;
-    }
-  };
-  const addFlatRoof = (batch: Batch, p: Prepared, outer: Pt[], holes: Pt[][]) => {
-    const contour = outer.map(([x, z]) => new THREE.Vector2(x, z));
-    const hv = holes.map((h) => h.map(([x, z]) => new THREE.Vector2(x, z)));
-    let tris: number[][];
-    try { tris = THREE.ShapeUtils.triangulateShape(contour, hv); } catch { return; }
-    const all = [...outer, ...holes.flat()];
-    const start = batch.pos.length / 3;
-    for (const [x, z] of all) batch.vert(x, p.top, z, 0, 1, 0, p.roof, 0, -1, 0, p.seed);
-    for (const [a, b, c] of tris) {
-      // Wind upward.
-      const [ax, az] = all[a]; const [bx, bz] = all[b]; const [cx, cz] = all[c];
-      if ((bx - ax) * (cz - az) - (bz - az) * (cx - ax) < 0) batch.idx.push(start + a, start + b, start + c);
-      else batch.idx.push(start + a, start + c, start + b);
-    }
-  };
-  /** A flat roof's parapet: a band stood a little proud of the wall, a shade darker. */
-  const addCornice = (batch: Batch, p: Prepared, ring: Pt[]) => {
-    const ccw = ringArea(ring) > 0;
-    const band = tmp.copy(p.wall).multiplyScalar(0.78);
-    for (let k = 0; k < ring.length; k++) {
-      const [ax, az] = ring[k]; const [bx, bz] = ring[(k + 1) % ring.length];
-      const len = Math.hypot(bx - ax, bz - az);
-      if (len < 0.5) continue;
-      let nx = (bz - az) / len; let nz = -(bx - ax) / len;
-      if (!ccw) { nx = -nx; nz = -nz; }
-      const o = 0.22; const y0 = p.top - 0.55; const y1 = p.top + 0.6;
-      const a0 = batch.vert(ax + nx * o, y0, az + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
-      const b0 = batch.vert(bx + nx * o, y0, bz + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
-      const a1 = batch.vert(ax + nx * o, y1, az + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
-      const b1 = batch.vert(bx + nx * o, y1, bz + nz * o, nx, 0, nz, band, 0, -1, 0, p.seed);
-      if (-nx * (bz - az) + nz * (bx - ax) > 0) batch.idx.push(a0, b0, a1, b0, b1, a1);
-      else batch.idx.push(a0, a1, b0, b0, a1, b1);
-    }
-  };
-  /** A hip: a ridge along the long axis, every eave corner to its nearer ridge end. Convex, few-sided footprints only. */
-  const addHipRoof = (batch: Batch, p: Prepared, outer: Pt[]) => {
-    let lx = 1; let lz = 0; let best = 0;
-    for (let k = 0; k < outer.length; k++) {
-      const [ax, az] = outer[k]; const [bx, bz] = outer[(k + 1) % outer.length];
-      const len = Math.hypot(bx - ax, bz - az);
-      if (len > best) { best = len; lx = (bx - ax) / len; lz = (bz - az) / len; }
-    }
-    let minU = Infinity; let maxU = -Infinity; let minV = Infinity; let maxV = -Infinity;
-    for (const [x, z] of outer) {
-      const u = (x - p.c[0]) * lx + (z - p.c[1]) * lz; const v = -(x - p.c[0]) * lz + (z - p.c[1]) * lx;
-      minU = Math.min(minU, u); maxU = Math.max(maxU, u); minV = Math.min(minV, v); maxV = Math.max(maxV, v);
-    }
-    const halfW = (maxV - minV) / 2; const midV = (maxV + minV) / 2;
-    const rise = Math.min(4.5, Math.max(1.2, halfW * 0.55));
-    const pyramid = p.b.roof === ROOF.pyramidal || maxU - minU < halfW * 2.2;
-    const r0 = pyramid ? (minU + maxU) / 2 : minU + halfW; const r1 = pyramid ? r0 : maxU - halfW;
-    const ridge = (u: number): Pt => [p.c[0] + lx * u - lz * midV, p.c[1] + lz * u + lx * midV];
-    const R0 = ridge(r0); const R1 = ridge(r1);
-    const y = p.top + rise;
-    const up = (ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number) => {
-      const ux = bx - ax; const uy = by - ay; const uz = bz - az; const vx = cx - ax; const vy = cy - ay; const vz = cz - az;
-      let nx = uy * vz - uz * vy; let ny = uz * vx - ux * vz; let nz = ux * vy - uy * vx;
-      if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
-      const l = Math.hypot(nx, ny, nz) || 1;
-      const s = tmp.copy(p.roof).multiplyScalar(0.8 + 0.25 * Math.max(0, ny / l));
-      const ia = batch.vert(ax, ay, az, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
-      const ib = batch.vert(bx, by, bz, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
-      const ic = batch.vert(cx, cy, cz, nx / l, ny / l, nz / l, s, 0, -1, 0, p.seed);
-      batch.idx.push(ia, ib, ic, ia, ic, ib);
-    };
-    for (let k = 0; k < outer.length; k++) {
-      const [ax, az] = outer[k]; const [bx, bz] = outer[(k + 1) % outer.length];
-      const ua = (ax - p.c[0]) * lx + (az - p.c[1]) * lz; const ub = (bx - p.c[0]) * lx + (bz - p.c[1]) * lz;
-      const RA = Math.abs(ua - r0) < Math.abs(ua - r1) ? R0 : R1;
-      const RB = Math.abs(ub - r0) < Math.abs(ub - r1) ? R0 : R1;
-      up(ax, p.top, az, bx, p.top, bz, RB[0], y, RB[1]);
-      if (RA !== RB) up(ax, p.top, az, RB[0], y, RB[1], RA[0], y, RA[1]);
-    }
-  };
-
-  const convex = (pts: Pt[]) => {
-    let sign = 0;
-    for (let k = 0; k < pts.length; k++) {
-      const [ax, az] = pts[k]; const [bx, bz] = pts[(k + 1) % pts.length]; const [cx, cz] = pts[(k + 2) % pts.length];
-      const cr = (bx - ax) * (cz - bz) - (bz - az) * (cx - bx);
-      if (Math.abs(cr) < 1e-3) continue;
-      if (sign === 0) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) return false;
-    }
-    return true;
-  };
-
-  // ── Cells. ──
-  type Detail = 'full' | 'coarse' | 'far';
-  const cells = new Map<string, { near: Prepared[]; mesh: THREE.Mesh; full: THREE.BufferGeometry | null; coarse: THREE.BufferGeometry | null; far: THREE.BufferGeometry | null; cx: number; cz: number; showing: Detail }>();
-  const buckets = new Map<string, Prepared[]>();
-  for (const p of prepared) {
-    const key = `${Math.floor(p.c[0] / CELL)},${Math.floor(p.c[1] / CELL)}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key)!.push(p);
+    out.push({ b, outer, holes, base: base + b.minHeight, top, area, c, seed, style, wall, roof });
   }
-  const build = (list: Prepared[], coarse: boolean, far = false) => {
-    const batch = new Batch();
-    for (const p of list) {
-      if (coarse && p.area < (far ? 320 : 90)) continue;
-      const outer = coarse ? simplify(p.outer, far ? 5 : 2.5) : p.outer;
-      addWalls(batch, p, outer, false);
-      if (!coarse) for (const h of p.holes) addWalls(batch, p, h, true);
-      const pitched = p.b.roof === ROOF.gabled || p.b.roof === ROOF.hipped || p.b.roof === ROOF.pyramidal;
-      if (!coarse && pitched && outer.length <= 8 && !p.holes.length && convex(outer) && p.area < 900) addHipRoof(batch, p, outer);
-      else {
-        addFlatRoof(batch, p, outer, coarse ? [] : p.holes);
-        // Parapets are a third of a full cell's walls: phones go without.
-        if (!coarse && !lite && p.top - p.base > 5) addCornice(batch, p, outer);
-      }
-    }
-    const g = batch.geometry();
-    if (g) geometries.add(g);
-    return g;
-  };
-  for (const [key, list] of buckets) {
-    const [ci, cj] = key.split(',').map(Number);
-    const coarse = build(list, true);
-    if (!coarse) continue;
-    const mesh = new THREE.Mesh(coarse, material);
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    mesh.name = 'city-cell';
-    group.add(mesh);
-    cells.set(key, { near: list, mesh, full: null, coarse, far: build(list, true, true), cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL, showing: 'coarse' });
-  }
-  type Cell = typeof cells extends Map<string, infer C> ? C : never;
-  const show = (c: Cell, want: Detail) => {
-    const g = want === 'full' ? c.full : want === 'coarse' ? c.coarse : c.far;
-    c.mesh.visible = !!g;
-    c.showing = want;
-    if (g) c.mesh.geometry = g;
-  };
-  // The one or two cells round the pad in full now; the rest one per tick as the crew comes near.
-  {
-    const byStart = [...cells.values()]
-      .map((c) => ({ c, d: Math.hypot(start[0] - c.cx, start[1] - c.cz) }))
-      .filter(({ d }) => d < NEAR + CELL * 0.7)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 2);
-    for (const { c } of byStart) c.full = build(c.near, false);
-  }
+  return out;
+}
 
-  // ── Walls for walking into: segments hashed on a grid. ──
-  interface Seg { ax: number; az: number; bx: number; bz: number; rooftop: boolean; /** Last camera query that took it: a Set-free "seen". */ stamp: number }
+/** One cell at one level of detail. Full has the holes, hips and parapets; coarse drops the small
+ *  footprints and simplifies the rest; far keeps only the big ones. */
+function* buildSteps(list: Rec[], coarse: boolean, far: boolean, lite: boolean): Steps<BatchArrays | null> {
+  const batch = new Batch();
+  let n = 0;
+  for (const p of list) {
+    if (coarse && p.area < (far ? 320 : 90)) continue;
+    if ((++n & 15) === 0) yield;
+    const outer = coarse ? simplify(p.outer, far ? 5 : 2.5) : p.outer;
+    addWalls(batch, p, outer, false);
+    if (!coarse) for (const h of p.holes) addWalls(batch, p, h, true);
+    const pitched = p.b.roof === ROOF.gabled || p.b.roof === ROOF.hipped || p.b.roof === ROOF.pyramidal;
+    if (!coarse && pitched && outer.length <= 8 && !p.holes.length && convex(outer) && p.area < 900) addHipRoof(batch, p, outer);
+    else {
+      addFlatRoof(batch, p, outer, coarse ? [] : p.holes);
+      // Parapets are a third of a full cell's walls: phones go without.
+      if (!coarse && !lite && p.top - p.base > 5) addCornice(batch, p, outer);
+    }
+  }
+  return batch.arrays();
+}
+
+function runSync<T>(steps: Steps<T>): T {
+  for (;;) {
+    const r = steps.next();
+    if (r.done) return r.value;
+  }
+}
+
+/** Back to the event loop for a moment: input, the frame, the network get their turn. */
+function yieldToLoop(): Promise<void> {
+  const s = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  if (typeof s?.yield === 'function') return s.yield();
+  if (typeof MessageChannel !== 'undefined') {
+    return new Promise((resolve) => {
+      const ch = new MessageChannel();
+      ch.port1.onmessage = () => { ch.port1.close(); resolve(); };
+      ch.port2.postMessage(null);
+    });
+  }
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+const abortError = () => (typeof DOMException !== 'undefined' ? new DOMException('Aborted', 'AbortError') : Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+
+export interface ChunkOptions {
+  signal?: AbortSignal;
+  /** The longest the work holds the thread before yielding, ms. */
+  sliceMs?: number;
+  /** Told the length of each slice, for measuring. */
+  onSlice?: (ms: number) => void;
+}
+
+/** Run steps a slice at a time, yielding to the event loop between slices. */
+export async function runChunked<T>(steps: Steps<T>, { signal, sliceMs = 10, onSlice }: ChunkOptions = {}): Promise<T> {
+  if (signal?.aborted) throw abortError();
+  let t0 = performance.now();
+  for (;;) {
+    const r = steps.next();
+    if (r.done) { onSlice?.(performance.now() - t0); return r.value; }
+    const dt = performance.now() - t0;
+    if (dt < sliceMs) continue;
+    onSlice?.(dt);
+    await yieldToLoop();
+    if (signal?.aborted) throw abortError();
+    t0 = performance.now();
+  }
+}
+
+interface Seg { ax: number; az: number; bx: number; bz: number; rooftop: boolean; /** Last camera query that took it: a Set-free "seen". */ stamp: number }
+
+/** The walls near the pad as segments on a 24 m grid, the footprints on a 60 m one. */
+function* walkHashSteps(records: Rec[]): Steps<{ segs: Map<number, Seg[]>; footprints: Map<number, Rec[]> }> {
   const segs = new Map<number, Seg[]>();
   const addSeg = (ax: number, az: number, bx: number, bz: number, rooftop: boolean) => {
     const s: Seg = { ax, az, bx, bz, rooftop, stamp: 0 };
@@ -396,9 +422,11 @@ export function makeCity(
       list.push(s);
     }
   };
-  const footprints = new Map<number, Prepared[]>();
-  for (const p of prepared) {
+  const footprints = new Map<number, Rec[]>();
+  let n = 0;
+  for (const p of records) {
     if (Math.hypot(p.c[0], p.c[1]) > 2300) continue;
+    if ((++n & 255) === 0) yield;
     for (const ring of [p.outer, ...p.holes]) for (let k = 0; k < ring.length; k++) {
       const [ax, az] = ring[k]; const [bx, bz] = ring[(k + 1) % ring.length];
       addSeg(ax, az, bx, bz, p.b.rooftop);
@@ -408,6 +436,123 @@ export function makeCity(
     if (!list) { list = []; footprints.set(key, list); }
     list.push(p);
   }
+  return { segs, footprints };
+}
+
+/** The city's heavy, data-only part — footprints, triangulated roofs, the coarse and far levels of
+ *  every cell and the full one round the pad — as plain arrays. makeCity turns it into meshes. */
+export interface PreparedCity {
+  /** The buildings it was made from, to check it is handed the same. */
+  count: number;
+  lite: boolean;
+  start: Pt;
+  records: Rec[];
+  cells: { key: string; list: Rec[]; coarse: BatchArrays; far: BatchArrays | null; full: BatchArrays | null }[];
+  segs: Map<number, Seg[]>;
+  footprints: Map<number, Rec[]>;
+  /** The camera queries' "seen" mark, shared by every city made from this so it only ever goes up. */
+  stamp: { n: number };
+}
+
+function* prepareSteps(buildings: Building[], heightAt: (x: number, z: number) => number, lite: boolean, oldTownCentre: Pt, start: Pt): Steps<PreparedCity> {
+  const records = yield* recordsOf(buildings, heightAt, oldTownCentre);
+  const buckets = new Map<string, Rec[]>();
+  for (const p of records) {
+    const key = `${Math.floor(p.c[0] / CELL)},${Math.floor(p.c[1] / CELL)}`;
+    let list = buckets.get(key);
+    if (!list) { list = []; buckets.set(key, list); }
+    list.push(p);
+  }
+  const cells: PreparedCity['cells'] = [];
+  for (const [key, list] of buckets) {
+    const coarse = yield* buildSteps(list, true, false, lite);
+    if (!coarse) continue;
+    const far = yield* buildSteps(list, true, true, lite);
+    cells.push({ key, list, coarse, far, full: null });
+  }
+  // The one or two cells round the pad in full; the rest one per tick as the crew comes near.
+  const byStart = cells
+    .map((c) => {
+      const [ci, cj] = c.key.split(',').map(Number);
+      return { c, d: Math.hypot(start[0] - (ci + 0.5) * CELL, start[1] - (cj + 0.5) * CELL) };
+    })
+    .filter(({ d }) => d < NEAR + CELL * 0.7)
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 2);
+  for (const { c } of byStart) c.full = yield* buildSteps(c.list, false, false, lite);
+  const { segs, footprints } = yield* walkHashSteps(records);
+  return { count: buildings.length, lite, start, records, cells, segs, footprints, stamp: { n: 0 } };
+}
+
+/** The same preparation makeCity does on its own, cut into slices so the thread is never held long. */
+export function prepareCity(
+  buildings: Building[], heightAt: (x: number, z: number) => number, lite: boolean, oldTownCentre: Pt, start: Pt = [0, 0], opts: ChunkOptions = {},
+): Promise<PreparedCity> {
+  return runChunked(prepareSteps(buildings, heightAt, lite, oldTownCentre, start), opts);
+}
+
+export function makeCity(
+  buildings: Building[],
+  heightAt: (x: number, z: number) => number,
+  lite: boolean,
+  oldTownCentre: Pt,
+  /** Where the crew starts (the pad): the cells nearest it are built in full here, under the loading screen. */
+  start: Pt = [0, 0],
+  /** From prepareCity, done ahead in slices; without it the work is done here. */
+  ready?: PreparedCity,
+): CityHandle {
+  const group = new THREE.Group();
+  group.name = 'earth-city';
+  const { material, night } = facadeMaterial();
+  const geometries = new Set<THREE.BufferGeometry>();
+
+  const pre = ready && ready.count === buildings.length ? ready : runSync(prepareSteps(buildings, heightAt, lite, oldTownCentre, start));
+  const prepared = pre.records;
+  type Prepared = Rec;
+  // The pad's full cells are reused when they were made for the same pad and quality.
+  const fullReady = pre.lite === lite && pre.start[0] === start[0] && pre.start[1] === start[1];
+
+  // ── Cells. ──
+  type Detail = 'full' | 'coarse' | 'far';
+  const cells = new Map<string, { near: Prepared[]; mesh: THREE.Mesh; full: THREE.BufferGeometry | null; coarse: THREE.BufferGeometry | null; far: THREE.BufferGeometry | null; cx: number; cz: number; showing: Detail }>();
+  const keep = (a: BatchArrays | null) => {
+    if (!a) return null;
+    const g = geometryOf(a);
+    geometries.add(g);
+    return g;
+  };
+  const build = (list: Prepared[], coarse: boolean, far = false) => keep(runSync(buildSteps(list, coarse, far, lite)));
+  for (const pc of pre.cells) {
+    const [ci, cj] = pc.key.split(',').map(Number);
+    const coarse = keep(pc.coarse);
+    const mesh = new THREE.Mesh(coarse!, material);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.name = 'city-cell';
+    group.add(mesh);
+    cells.set(pc.key, { near: pc.list, mesh, full: null, coarse, far: keep(pc.far), cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL, showing: 'coarse' });
+  }
+  type Cell = typeof cells extends Map<string, infer C> ? C : never;
+  const show = (c: Cell, want: Detail) => {
+    const g = want === 'full' ? c.full : want === 'coarse' ? c.coarse : c.far;
+    c.mesh.visible = !!g;
+    c.showing = want;
+    if (g) c.mesh.geometry = g;
+  };
+  // The one or two cells round the pad in full now; the rest one per tick as the crew comes near.
+  if (fullReady) {
+    for (const pc of pre.cells) if (pc.full) cells.get(pc.key)!.full = keep(pc.full);
+  } else {
+    const byStart = [...cells.values()]
+      .map((c) => ({ c, d: Math.hypot(start[0] - c.cx, start[1] - c.cz) }))
+      .filter(({ d }) => d < NEAR + CELL * 0.7)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+    for (const { c } of byStart) c.full = build(c.near, false);
+  }
+
+  // ── Walls for walking into: segments hashed on a grid (prepared with the rest). ──
+  const { segs, footprints, stamp } = pre;
   const nearFootprints = (x: number, z: number, out: Prepared[]) => {
     out.length = 0;
     const i = Math.floor(x / 60); const j = Math.floor(z / 60);
@@ -445,7 +590,6 @@ export function makeCity(
   const camPool: { x: number; z: number; r: number }[] = [];
   const camOut: { x: number; z: number; r: number }[] = [];
   let camCell = NaN;
-  let camStamp = 0;
   return {
     group,
     rooftop,
@@ -491,7 +635,8 @@ export function makeCity(
       // The walls round a cell do not move: the circles are rebuilt only when the query crosses into another one.
       if (cell === camCell) return camOut;
       camCell = cell;
-      camStamp += 1;
+      stamp.n += 1;
+      const camStamp = stamp.n;
       let n = 0;
       for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
         const list = segs.get(cellKey(i + di, j + dj));
