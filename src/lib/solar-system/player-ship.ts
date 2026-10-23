@@ -226,6 +226,8 @@ const JUMP_CHARGE = 2.4;
 const JUMP_TRAVEL = 4.6;
 /** Altitude (in radii) below which a body mass-locks the hyperdrive. */
 const MASS_LOCK_RADII = 3;
+/** How fast the approach takes the way off a ship closing on a world, per second. */
+const APPROACH_EASE = 2.2;
 const JUMP_FLOW = 40 * U;
 const RESPAWN_DELAY = 3.6;
 const DISCOVERY_HOLD = 6;
@@ -1100,6 +1102,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let pilot: Pilot = 'ship';
   let view: ViewMode = 'chase';
   let mode: SpeedMode = 'cruise';
+  /** The ship's speed after last frame's approach ceiling (Infinity when none applied). */
+  let approachLast = Infinity;
   let assist = true;
   let commsLine = -1;
   let commsT = 0;
@@ -2079,19 +2083,22 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         let max = boost ? eff.boost : eff.max;
         if (isDrive(mode) && pilot === 'ship') max = Math.max(regimes.cruise.max, max * wellK);
         speed = vel.length();
-        // The approach eases the ship down to its pace over a second or so
-        // rather than snapping it there.
+        // The approach eases the ship down to its pace rather than snapping
+        // it there: the ceiling falls from the speed the ship had by a fixed
+        // rate each second, so no throttle (and no well) can push through it,
+        // and it settles on the approach's own pace.
         tel.approachSlow = false;
         if (approachCap < max && !arrival && !autodock) {
-          max = approachCap;
-          if (speed > max) {
-            tel.approachSlow = true;
-            const k = Math.max(max / speed, Math.exp(-dt * 2.2));
-            vel.multiplyScalar(k);
-            speed *= k;
+          const ceiling = Math.max(approachCap, Math.min(approachLast, max) * Math.exp(-dt * APPROACH_EASE));
+          max = Math.min(max, ceiling);
+          tel.approachSlow = speed > approachCap * 1.05;
+          if (speed > ceiling) {
+            vel.multiplyScalar(ceiling / speed);
+            speed = ceiling;
           }
-        }
-        if (speed > max && !arrival && !tel.approachSlow) {
+          approachLast = speed;
+        } else approachLast = Infinity;
+        if (speed > max && !arrival) {
           vel.multiplyScalar(max / speed);
           speed = max;
         }

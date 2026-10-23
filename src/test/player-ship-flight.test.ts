@@ -1,4 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { approachSpeedCap } from '@/lib/solar-system/flight-approach';
 import * as THREE from 'three';
 import {
   createFlightSession,
@@ -280,6 +281,27 @@ describe('gravity and solid bodies', () => {
     seconds(3);
     expect(session.telemetry.assist).toBe(true);
     expect(session.telemetry.speed).toBeLessThan(0.2);
+  });
+
+  it('slows by itself closing on a world to land on, whatever the throttle', () => {
+    // Three radii out in the fast drive, nose on Earth, throttle held: the
+    // approach must take the way off, not let the drive fling the ship in.
+    const earth = world.bodies[1];
+    ship.group.position.set(1, 0, EARTH_R * 4);
+    ship.group.lookAt(earth.position);
+    session.input.modeRequest = 'fast';
+    session.input.thrust = 1;
+    let closeSpeed = Infinity;
+    for (let i = 0; i < 4000; i++) {
+      step(1);
+      expect(session.telemetry.crashed).toBe(false);
+      const alt = ship.group.position.distanceTo(earth.position) / EARTH_R - 1;
+      if (alt < 0.15) { closeSpeed = session.telemetry.speed * FLIGHT_UNIT; break; }
+    }
+    // By the top of the air it is down near the approach's own pace.
+    // (The telemetry reads in flight units; the cap is in world radii a second.)
+    expect(closeSpeed).toBeLessThan(approachSpeedCap(0.15) * EARTH_R * 1.5);
+    expect(session.telemetry.approachSlow || closeSpeed <= approachSpeedCap(0.15) * EARTH_R * 1.05).toBe(true);
   });
 
   it('crashes on contact, holds the wreck, then respawns at home', () => {
