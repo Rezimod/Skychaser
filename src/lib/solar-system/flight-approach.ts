@@ -222,3 +222,18 @@ export function approachPose(elapsed: number, startRadii: number, airless: boole
   }
   return { phase: 'done', legT: 1, t: 1, radii: height(drop), swing, pitch, done: true };
 }
+
+/** A world the ship can land on: it has an entry in the air table. */
+export function isLandable(id: string): boolean {
+  return id in SITE_ATMOSPHERE;
+}
+
+/** Closing on a world you can land on, the ship slows by itself: the most it
+ *  may fly, in the world's own radii per second, at this height (radii).
+ *  Far out it is more than any drive's ceiling near a world, so nothing
+ *  changes; it falls with the height, so the last of the approach — the
+ *  world filling the screen, the dive into its air — is a steady glide, at
+ *  about a fiftieth of a radius a second by the top of the air. */
+export function approachSpeedCap(altRadii: number): number {
+  return Math.max(0.02, 0.1 * Math.max(0, altRadii));
+}

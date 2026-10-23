@@ -180,6 +180,8 @@ function regolithCanvases(size: number): HTMLCanvasElement[] {
   }
   mc.putImageData(mi, 0, 0); nc.putImageData(ni, 0, 0); rc.putImageData(ri, 0, 0);
   const out = [map, nrm, rgh];
+  // Only the latest size is kept; a live scene's textures hold their own reference to the canvases.
+  canvasCache.clear();
   canvasCache.set(size, out);
   return out;
 }

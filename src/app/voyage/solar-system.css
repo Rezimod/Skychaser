@@ -2639,14 +2639,37 @@
 }
 .moon-surface:not([data-phase='surface']) .earth-hud__credits,
 .moon-surface[data-immersive='true'] .earth-hud__credits { display: none; }
-.earth-hud__retry {
+/* A phone has no room between the stick and the keys for a column of
+   credits (it came out a word wide over the middle of the view): a small
+   line under the place name instead. */
+@media (max-width: 700px) {
+  .earth-hud__credits {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    width: auto;
+    top: calc(max(12px, env(safe-area-inset-top)) + 92px);
+    bottom: auto;
+    font-size: 9px;
+    line-height: 1.3;
+    text-align: left;
+    opacity: 0.5;
+  }
+}
+/* The way out when a surface cannot be built (no data, no GPU): over the loader. */
+.earth-hud__recover {
   position: absolute;
   left: 50%;
   bottom: calc(max(14px, env(safe-area-inset-bottom)) + 48px);
   transform: translateX(-50%);
   z-index: 30;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
   pointer-events: auto;
 }
+.earth-hud__retry { pointer-events: auto; }
 
 /* The rooftop telescope's eyepiece: the field stop, and the numbers beside it. */
 .earth-eyepiece {
@@ -2885,3 +2908,40 @@
 /* The open menu lies over the dock: the keys' placement transform makes the
    top keys their own stacking context, so the menu's own z-index stays inside it. */
 .flight-hud__top-keys:has(.flight-hud__menu) { z-index: 8; }
+
+/* The landing computer and the way back to base: one key each, only when
+   they mean something (descending and not yet handed over; out of sight of
+   the ship). */
+.moon-hud__basekey {
+  position: absolute;
+  z-index: 26;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 194, 102, 0.75);
+  background: rgba(10, 14, 26, 0.72);
+  color: var(--hud-warm, #ffc266);
+  font: 600 12px/1 var(--font-mono, ui-monospace), monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  pointer-events: auto;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.moon-hud__basekey:active { transform: scale(0.97); }
+.moon-hud__autoland {
+  left: 50%;
+  transform: translateX(-50%);
+  top: calc(max(12px, env(safe-area-inset-top)) + 150px);
+}
+.moon-hud__autoland:active { transform: translateX(-50%) scale(0.97); }
+.moon-surface[data-phase='descent'][data-autoland='false'] .moon-hud__autoland { display: inline-flex; }
+.moon-hud__gobase {
+  right: max(16px, env(safe-area-inset-right));
+  top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+}
+.moon-surface[data-phase='surface'][data-far='true'] .moon-hud__gobase { display: inline-flex; }
+.moon-surface[data-immersive='true'] .moon-hud__basekey { display: none !important; }

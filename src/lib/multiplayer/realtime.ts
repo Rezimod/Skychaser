@@ -34,6 +34,13 @@ export interface RealtimeClient {
 }
 
 const HEARTBEAT_MS = 25_000;
+/** No frame at all (not even a heartbeat reply) for this long: the socket is dead. */
+const STALE_MS = HEARTBEAT_MS * 2;
+/** A join the server never answers counts as failed after this long. */
+const JOIN_TIMEOUT_MS = 10_000;
+const REJOIN_BASE_MS = 1000;
+const REJOIN_MAX_MS = 30_000;
+const RECONNECT_MAX_MS = 15_000;
 
 export function realtimeConfig(): { url: string; key: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -49,6 +56,8 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
   let retry = 0;
   let heartbeat = 0;
   let reconnectTimer = 0;
+  /** When the current socket last heard anything from the server (Date.now: it keeps counting while a phone sleeps). */
+  let lastFrameAt = 0;
   const channels = new Map<string, ChannelState>();
 
   interface ChannelState {
@@ -61,14 +70,26 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
     broadcast: Map<string, ((p: Json) => void)[]>;
     presenceCbs: ((s: PresenceState) => void)[];
     statusCbs: ((s: 'joining' | 'joined' | 'error') => void)[];
+    /** The one pending rejoin, if any; failed joins in a row, for the backoff. */
+    rejoinTimer: number;
+    rejoinAttempts: number;
+    joinTimer: number;
   }
 
   const nextRef = () => String(++ref);
   const push = (f: Frame) => {
     if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(f));
   };
+  const clearTimers = (c: ChannelState) => {
+    window.clearTimeout(c.rejoinTimer);
+    window.clearTimeout(c.joinTimer);
+    c.rejoinTimer = 0;
+    c.joinTimer = 0;
+  };
+  const live = (c: ChannelState) => !closed && channels.get(c.topic) === c;
 
   const join = (c: ChannelState) => {
+    clearTimers(c);
     c.joinRef = nextRef();
     c.joined = false;
     c.statusCbs.forEach((cb) => cb('joining'));
@@ -79,6 +100,29 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
         access_token: key,
       },
     });
+    const joinRef = c.joinRef;
+    c.joinTimer = window.setTimeout(() => {
+      c.joinTimer = 0;
+      if (live(c) && !c.joined && c.joinRef === joinRef) failJoin(c);
+    }, JOIN_TIMEOUT_MS);
+  };
+  /** One rejoin per channel at a time, backing off while the server keeps refusing it. */
+  const scheduleRejoin = (c: ChannelState) => {
+    if (!live(c) || c.rejoinTimer) return;
+    const base = Math.min(REJOIN_MAX_MS, REJOIN_BASE_MS * 2 ** c.rejoinAttempts);
+    c.rejoinAttempts += 1;
+    c.rejoinTimer = window.setTimeout(() => {
+      c.rejoinTimer = 0;
+      // A socket that is down rejoins every channel when it opens again.
+      if (live(c) && ws?.readyState === WebSocket.OPEN) join(c);
+    }, base * (0.75 + Math.random() * 0.5));
+  };
+  const failJoin = (c: ChannelState) => {
+    window.clearTimeout(c.joinTimer);
+    c.joinTimer = 0;
+    c.joined = false;
+    c.statusCbs.forEach((cb) => cb('error'));
+    scheduleRejoin(c);
   };
   const sendTrack = (c: ChannelState) => {
     if (!c.joined || !c.meta) return;
@@ -104,11 +148,22 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
   const onFrame = (f: Frame) => {
     const c = channels.get(f.topic);
     if (!c) return;
+    // A frame from an earlier join of this topic (a leave's close, an old error) is not about this one.
+    const current = !f.join_ref || f.join_ref === c.joinRef;
     if (f.event === 'phx_reply' && f.ref === c.joinRef) {
+      if (c.joined) return;
       const ok = (f.payload as { status?: string }).status === 'ok';
-      c.joined = ok;
-      c.statusCbs.forEach((cb) => cb(ok ? 'joined' : 'error'));
-      if (ok) sendTrack(c);
+      if (!ok) {
+        failJoin(c);
+        return;
+      }
+      clearTimers(c);
+      c.rejoinAttempts = 0;
+      c.joined = true;
+      c.statusCbs.forEach((cb) => cb('joined'));
+      sendTrack(c);
+    } else if (!current) {
+      return;
     } else if (f.event === 'broadcast') {
       const p = f.payload as { event?: string; payload?: Json };
       if (p.event && p.payload) c.broadcast.get(p.event)?.forEach((cb) => cb(p.payload!));
@@ -119,52 +174,90 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
       const d = f.payload as { joins?: Json; leaves?: Json };
       applyPresence(c, d.joins ?? {}, d.leaves ?? {});
     } else if (f.event === 'phx_error' || f.event === 'phx_close') {
-      c.joined = false;
-      c.statusCbs.forEach((cb) => cb('error'));
-      if (!closed) window.setTimeout(() => channels.has(c.topic) && join(c), 2000);
+      if (!c.joinRef) return;
+      failJoin(c);
     }
   };
 
-  const open = () => {
+  /** This socket is done (closed, or found dead): forget it and dial again. */
+  const lost = (sock: WebSocket, now = false) => {
+    if (ws !== sock) return;
+    window.clearInterval(heartbeat);
+    heartbeat = 0;
+    ws = null;
+    sock.onopen = null;
+    sock.onmessage = null;
+    sock.onclose = null;
+    sock.onerror = null;
+    try { sock.close(); } catch { /* already closing */ }
+    channels.forEach((c) => {
+      clearTimers(c);
+      c.joined = false;
+      c.presence = {};
+      c.statusCbs.forEach((cb) => cb('joining'));
+    });
     if (closed) return;
+    window.clearTimeout(reconnectTimer);
+    const delay = now ? 0 : Math.min(RECONNECT_MAX_MS, 500 * 2 ** retry++);
+    reconnectTimer = window.setTimeout(open, delay);
+  };
+  const isStale = () => !!ws && ws.readyState === WebSocket.OPEN && Date.now() - lastFrameAt > STALE_MS;
+
+  const open = () => {
+    reconnectTimer = 0;
+    if (closed || ws) return;
     let sock: WebSocket;
     try {
       sock = new WebSocket(endpoint);
     } catch {
-      reconnectTimer = window.setTimeout(open, Math.min(15_000, 500 * 2 ** retry++));
+      reconnectTimer = window.setTimeout(open, Math.min(RECONNECT_MAX_MS, 500 * 2 ** retry++));
       return;
     }
     ws = sock;
+    lastFrameAt = Date.now();
     sock.onopen = () => {
+      if (ws !== sock) return;
       retry = 0;
+      lastFrameAt = Date.now();
       channels.forEach(join);
-      heartbeat = window.setInterval(() => push({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() }), HEARTBEAT_MS);
+      window.clearInterval(heartbeat);
+      heartbeat = window.setInterval(() => {
+        if (ws !== sock) return;
+        // Half-open sockets (a phone that slept, a network that changed) never close by themselves.
+        if (isStale()) { lost(sock, true); return; }
+        push({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: nextRef() });
+      }, HEARTBEAT_MS);
     };
     sock.onmessage = (e) => {
+      if (ws !== sock) return;
+      lastFrameAt = Date.now();
       try { onFrame(JSON.parse(String(e.data)) as Frame); } catch { /* not a frame */ }
     };
-    sock.onclose = () => {
-      window.clearInterval(heartbeat);
-      if (ws !== sock) return;
-      ws = null;
-      channels.forEach((c) => {
-        c.joined = false;
-        c.presence = {};
-        c.statusCbs.forEach((cb) => cb('joining'));
-      });
-      if (closed) return;
-      const delay = Math.min(15_000, 500 * 2 ** retry++);
-      reconnectTimer = window.setTimeout(open, delay);
-    };
+    sock.onclose = () => lost(sock);
   };
+
+  // Back on screen: a socket that went quiet while the page was hidden is
+  // replaced now, and a reconnect that was backing off goes at once.
+  const onVisible = () => {
+    if (closed || typeof document === 'undefined' || document.visibilityState !== 'visible') return;
+    if (ws && isStale()) lost(ws, true);
+    else if (!ws && reconnectTimer) {
+      window.clearTimeout(reconnectTimer);
+      retry = 0;
+      open();
+    }
+  };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
   open();
 
   return {
     channel(name, presenceKey) {
       const topic = `realtime:${name}`;
+      const prev = channels.get(topic);
+      if (prev) clearTimers(prev);
       const c: ChannelState = {
         topic, presenceKey, joinRef: '', joined: false, meta: null, presence: {},
-        broadcast: new Map(), presenceCbs: [], statusCbs: [],
+        broadcast: new Map(), presenceCbs: [], statusCbs: [], rejoinTimer: 0, rejoinAttempts: 0, joinTimer: 0,
       };
       channels.set(topic, c);
       if (ws?.readyState === WebSocket.OPEN) join(c);
@@ -177,19 +270,33 @@ export function connectRealtime(url: string, key: string): RealtimeClient {
         onPresence(cb) { c.presenceCbs.push(cb); },
         onStatus(cb) { c.statusCbs.push(cb); },
         leave() {
-          push({ topic, event: 'phx_leave', ref: nextRef(), join_ref: c.joinRef, payload: {} });
+          clearTimers(c);
+          if (channels.get(topic) !== c) return;
+          if (c.joinRef) push({ topic, event: 'phx_leave', ref: nextRef(), join_ref: c.joinRef, payload: {} });
           channels.delete(topic);
+          c.joined = false;
         },
       };
     },
     close() {
+      if (closed) return;
       closed = true;
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
       window.clearTimeout(reconnectTimer);
       window.clearInterval(heartbeat);
-      channels.forEach((c) => push({ topic: c.topic, event: 'phx_leave', ref: nextRef(), join_ref: c.joinRef, payload: {} }));
+      channels.forEach((c) => {
+        clearTimers(c);
+        push({ topic: c.topic, event: 'phx_leave', ref: nextRef(), join_ref: c.joinRef, payload: {} });
+      });
       channels.clear();
-      ws?.close();
+      const sock = ws;
       ws = null;
+      if (sock) {
+        sock.onopen = null;
+        sock.onmessage = null;
+        sock.onclose = null;
+        try { sock.close(); } catch { /* already closing */ }
+      }
     },
   };
 }

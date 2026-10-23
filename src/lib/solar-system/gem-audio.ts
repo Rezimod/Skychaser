@@ -5,6 +5,7 @@
 // the game's master level and silent when sound is off.
 
 import { onSoundChange, soundLevel } from '@/lib/solar-system/sound-prefs';
+import { closeAudio, holdAudio } from '@/lib/solar-system/audio-lifecycle';
 import { GEM_INFO, type GemKind } from '@/lib/solar-system/gem-layout';
 
 const GAIN = 0.16;
@@ -17,8 +18,11 @@ export interface GemChime {
 export function makeGemChime(): GemChime {
   let ctx: AudioContext | null = null;
   let master: GainNode | null = null;
+  // Suspended, not just silent, while the page is hidden or the game paused.
+  const hold = holdAudio(() => ctx);
   const unsub = onSoundChange((_on, level) => {
     if (ctx && master) master.gain.setTargetAtTime(level * GAIN, ctx.currentTime, 0.05);
+    hold.apply();
   });
   const ensure = (): AudioContext | null => {
     try {
@@ -30,7 +34,7 @@ export function makeGemChime(): GemChime {
         master.gain.value = soundLevel() * GAIN;
         master.connect(ctx.destination);
       }
-      if (ctx.state === 'suspended') void ctx.resume();
+      hold.apply();
       return ctx;
     } catch { return null; }
   };
@@ -63,7 +67,8 @@ export function makeGemChime(): GemChime {
     },
     dispose() {
       unsub();
-      try { void ctx?.close(); } catch { /* already gone */ }
+      hold.dispose();
+      closeAudio(ctx);
       ctx = null; master = null;
     },
   };

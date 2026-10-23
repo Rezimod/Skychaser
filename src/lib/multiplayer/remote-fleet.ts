@@ -17,7 +17,16 @@ interface Craft {
   labelAt: number;
 }
 
-function disposeParts(parts: ShipParts) {
+/**
+ * A remote ship or suit, gone. A model hull is handed back to the model cache
+ * first: `release` takes the loaded model's meshes out of the group (their
+ * geometry and textures are the cache's, shared with every other ship of
+ * that kind, the player's own among them) and stops a model still loading
+ * from being fitted to this dead ship. What is left in the group is this
+ * ship's own: code-built meshes and the materials it lists as owned.
+ */
+export function disposeParts(parts: ShipParts) {
+  parts.release?.();
   const geoms = new Set<THREE.BufferGeometry>();
   const mats = new Set<THREE.Material>(parts.owned);
   parts.group.traverse((o) => {

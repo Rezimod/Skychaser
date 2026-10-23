@@ -32,7 +32,7 @@ interface PlayerShipProps {
   session: FlightSession;
   onActiveChange: (active: boolean) => void;
   /** The ship is low over a world with a surface to fly down to, and the pilot asked to go down. */
-  onLand: (site: LandingSite) => void;
+  onLand: (site: LandingSite) => boolean;
   /** A world the ship is diving at: the surface can start building behind the
    *  flight, unseen (null: the ship has pulled away again). */
   onStandby?: (site: LandingSite | null) => void;
@@ -356,11 +356,12 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
   /** Into the air of a world: no autopilot, no key. The surface's files
    *  start down, the deck lets go of the ship, and the game hands over to
    *  the surface, which picks the flight up at the top of its entry. */
-  const enterAir = (site: LandingSite) => {
+  const enterAir = (site: LandingSite): boolean => {
+    if (!onLandRef.current(site)) return false;
     prefetchModels(assetsFor(site, session.shipKind));
     standbyRef.current = null;
     holdDeck();
-    onLandRef.current(site);
+    return true;
   };
   /** Down, or skipped: the deck hands the crew over to the surface. */
   const arrived = () => {
@@ -569,13 +570,10 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
           standbyRef.current = site;
           onStandbyRef.current?.(site);
         }
-        if (entryKm > 0 && tel.nearAltKm < entryKm && diving) {
-          enterAir(site);
-          return;
-        }
+        if (entryKm > 0 && tel.nearAltKm < entryKm && diving && enterAir(site)) return;
       }
       // Pulled away again: whatever was being built for it can go.
-      if (standbyRef.current && (!site || site !== standbyRef.current || tel.nearAltKm > entryKm * 6)) {
+      if (standbyRef.current && (!site || site !== standbyRef.current || tel.nearAltKm > entryKm * 12)) {
         standbyRef.current = null;
         onStandbyRef.current?.(null);
       }
@@ -583,12 +581,13 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
       if (landKey) {
         landKey.hidden = !site || !flyable;
         landKey.dataset.ready = String(ready);
-        const label = `${tel.nearId}:${ready}`;
+        const label = `${tel.nearId}:${ready}:${tel.approachSlow}`;
         if (!landKey.hidden) landSiteRef.current = tel.nearId as LandingSite;
         if (!landKey.hidden && landLabelRef.current !== label && site) {
           landLabelRef.current = label;
           text(landTextRef.current, t(`landOn.${tel.nearId}`));
-          text(landStateRef.current, t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive'));
+          // While the approach is easing the ship down, the card says so.
+          text(landStateRef.current, tel.approachSlow ? t('landSlowing') : t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive'));
         }
         // How far down to the top of the entry, on a log scale: full at it.
         if (!landKey.hidden && entryKm > 0) {
@@ -812,6 +811,8 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
     onPointerCancel: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
+    // A capture the browser takes back without an up or a cancel must not leave the pad dead.
+    onLostPointerCapture: (e: React.PointerEvent<HTMLDivElement>) => { if (lookRef.current?.id === e.pointerId) lookRef.current = null; },
   };
   /** A quick target: a named world goes straight on the nav, a kind walks it. */
   const pick = (r: RailKey) => {

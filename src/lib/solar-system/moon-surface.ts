@@ -62,6 +62,7 @@ import { attachOrbitView, patchTiers } from '@/lib/solar-system/surface-orbit';
 import { makeGems } from '@/lib/solar-system/world-gems';
 import { makeGemChime } from '@/lib/solar-system/gem-audio';
 import { GEM_INFO, type GemKind } from '@/lib/solar-system/gem-layout';
+import { QA_HOOKS } from '@/game/qa';
 
 /** Three ways to watch the crew, three to ride the rover. */
 export type SurfaceView = 'chase' | 'helmet' | 'wide' | 'rover' | 'cockpit' | 'mast';
@@ -101,6 +102,10 @@ export interface SurfaceInput {
   headlamp: boolean;
   /** Held: the descent engine, 0…1, while there is still a vehicle to fly. */
   throttle: number;
+  /** Edge-triggered: the landing computer takes the descent down onto the pad. Consumed. */
+  autoland?: boolean;
+  /** Edge-triggered: back to the base (the ship on its pad) from wherever the crew are. Consumed. */
+  goBase?: boolean;
   /** Edge-triggered: the gear to put the rover in, by its place in `telemetry.gears`. Consumed. */
   gearRequest: number | null;
 }
@@ -213,6 +218,10 @@ export interface SurfaceTelemetry {
   gemPoints: number;
   gemLast: GemKind | '';
   gemPicks: number;
+  /** The landing computer is flying the descent down to the pad. */
+  autoland: boolean;
+  /** Metres from the crew to where they stepped off the ship, on the surface. */
+  baseDistance: number;
   backrooms: UndergroundTelemetry;
 }
 
@@ -581,7 +590,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     mission: mission.telemetry, missions: moonMissions.missions.telemetry, props: moonMissions.props.telemetry,
     jobs: jobs.telemetry, prompt: interactions.prompt, achievements: sink.list(),
     airlock: { near: false, state: 'closed', cycle: 0 }, readout: '', readoutHold: 0, inside: '',
-    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0,
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0,
     backrooms: {
       phase: '', black: 0, crack: false, helmet: true, gravity: MOON_G, prompt: { active: false, label: '', kind: 'tap', progress: -1 },
       radio: '', radioHold: 0, readout: '', glitch: 0, guiding: false, seconds: 0, escaped: saved.escaped, bestSeconds: saved.bestSeconds,
@@ -1053,6 +1062,9 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       // quarter, so it looms, and it sways with the engine. ──
       const lt = lander.telemetry;
       if (!lt.landed) {
+        // Handed to the computer: it flies over the pad and sets down at the base.
+        if (input.autoland || input.interact) { lt.assist = true; input.autoland = false; input.interact = false; }
+        telemetry.autoland = lt.assist;
         landerIn.throttle = input.throttle; landerIn.moveX = input.moveX; landerIn.moveY = input.moveY;
         lander.update(dt, landerIn, terrain.heightAt);
         if (lt.landed) {
@@ -1128,6 +1140,33 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       const press = input.interact && !building;
       input.interact = false;
       if (building) input.gearRequest = null;
+      telemetry.autoland = false;
+      {
+        const lt = lander.telemetry;
+        // A position gone to NaN never recovers: back to the ship.
+        if (!Number.isFinite(cosmonaut.position.x + cosmonaut.position.y + cosmonaut.position.z)) {
+          console.error('[surface] crew position lost; back to the ship');
+          cosmonaut.position.set(lt.egressX, terrain.heightAt(lt.egressX, lt.egressZ), lt.egressZ);
+          cosmonaut.velocity.set(0, 0, 0);
+          cosmonaut.settle();
+          cam.snap();
+        }
+        telemetry.baseDistance = Math.hypot(cosmonaut.position.x - lt.egressX, cosmonaut.position.z - lt.egressZ);
+        // Back to the base from anywhere on foot (not from the rover's seat).
+        if (input.goBase) {
+          input.goBase = false;
+          if (!driving() && !tracking() && !base.inside) {
+            cosmonaut.position.set(lt.egressX, terrain.heightAt(lt.egressX, lt.egressZ), lt.egressZ);
+            cosmonaut.velocity.set(0, 0, 0);
+            cosmonaut.yaw = Math.PI;
+            cosmonaut.settle();
+            cam.yaw = 0;
+            cam.snap();
+            telemetry.baseDistance = 0;
+            audio.bleep();
+          }
+        }
+      }
       jumpPress.see(input.jump);
       if (input.viewToggle) {
         input.viewToggle = false;
@@ -1511,6 +1550,6 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     },
   };
   if (opts.startOnSurface) handle.skipDescent();
-  if (process.env.NODE_ENV !== 'production') window.__stellarMoon = handle;
+  if (QA_HOOKS) window.__stellarMoon = handle;
   return handle;
 }

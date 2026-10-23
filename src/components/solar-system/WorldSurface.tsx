@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronsDown, ChevronsUp, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
+import { Camera, ChevronsDown, ChevronsUp, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, RotateCcw, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { makeWorldSurface, type WorldSurfaceHandle } from '@/lib/solar-system/world-surface';
 import type { ShipKind } from '@/lib/solar-system/ship-mesh';
@@ -9,6 +9,8 @@ import { WORLDS, type WorldId } from '@/lib/solar-system/world-profiles';
 import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
 import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
+import { prepareEarthCity } from '@/lib/solar-system/world-earth';
+import { currentQuality } from '@/game/quality';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
 import { GemHud, type GemHudHandle } from './GemHud';
@@ -22,6 +24,7 @@ import { useLoadingTips } from './useLoadingTips';
 import { useSoundPref } from './useSoundPref';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
 import { game } from '@/game/state';
+import { noteContextLoss, rebuildWhenVisible } from '@/game/gpu-recovery';
 import { hasObjectives } from '@/game/mode';
 import { story, storyLine } from '@/game/story';
 
@@ -51,6 +54,8 @@ const TOUCH_TIPS = ['t5', 't6'] as const;
 const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const fmtRange = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`);
 const PPD = 3.1;
+/** The back-to-base key shows once the crew are this far from the ship, m. */
+const BASE_KEY_M = 40;
 const TURNS = 3;
 
 export function WorldSurface({ world, onReturn, room, paused, standby, startAt, onProgress, onPauseRequest, shipKind }: WorldSurfaceProps) {
@@ -83,6 +88,8 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
   const breathable = !!WORLDS[world].breathable;
   const [earthData, setEarthData] = useState<EarthData | null>(null);
   const [earthError, setEarthError] = useState(false);
+  /** Bumped by the retry key: Tbilisi's data is fetched again. */
+  const [earthTry, setEarthTry] = useState(0);
   const [eyepiece, setEyepiece] = useState<{ target: SkyTarget; date: Date } | null>(null);
   const mountRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -191,35 +198,62 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     if (!isEarth || earthData) return;
     const abort = new AbortController();
     setEarthError(false);
-    loadTbilisi(abort.signal).then(setEarthData, (e: unknown) => {
-      if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
-    });
+    // The city's heavy preparation runs in slices while the descent plays, so the build that
+    // follows only makes meshes and the landing never holds the thread for seconds.
+    loadTbilisi(abort.signal)
+      .then((data) => prepareEarthCity(data, { lite: currentQuality().lite, signal: abort.signal }).then((prepared) => ({ ...data, prepared })))
+      .then(setEarthData, (e: unknown) => {
+        if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
+      });
     return () => abort.abort();
-  }, [isEarth, earthData]);
+  }, [isEarth, earthData, earthTry]);
+  // A failed download must not leave the game waiting on a build that will
+  // never start: the game moves on to the (hidden until now) surface, which
+  // shows the error with a retry and the way back to orbit.
+  useEffect(() => {
+    if (earthError) onProgressRef.current?.('ready');
+  }, [earthError]);
 
   useEffect(() => {
     const mount = mountRef.current;
     const root = rootRef.current;
     if (!mount || !root) return;
     if (isEarth && !earthData) return;
-    let rebuildTimer = 0;
+    let cancelRebuild: (() => void) | null = null;
     const tt = (key: string, values?: Record<string, string | number>) => tRef.current(key, values);
     const ttw = (key: string, values?: Record<string, string | number>) => twRef.current(key, values);
     onProgressRef.current?.('build');
-    const handle = makeWorldSurface(mount, world, {
+    let handle: WorldSurfaceHandle;
+    try {
+      handle = makeWorldSurface(mount, world, {
       room,
       earth: earthData ?? undefined,
       shipKind: shipKindRef.current,
       startOnSurface: resumeRef.current,
       onContextLost: () => {
         setGpuLost(true);
-        rebuildTimer = window.setTimeout(() => {
+        cancelRebuild?.();
+        cancelRebuild = rebuildWhenVisible(() => {
           resumeRef.current = true;
           setGpuLost(false);
           setGlGeneration((g) => g + 1);
-        }, 1200);
+        }, noteContextLoss());
       },
     });
+    } catch (e) {
+      // No context to be had (the browser is out of them, or the GPU is
+      // still coming back): the loader says so, the way back to orbit is
+      // offered, and the build is tried again in a moment.
+      console.error(e);
+      setGpuLost(true);
+      onProgressRef.current?.('ready');
+      const cancel = rebuildWhenVisible(() => {
+          resumeRef.current = true;
+          setGpuLost(false);
+          setGlGeneration((g) => g + 1);
+      }, noteContextLoss());
+      return cancel;
+    }
     handleRef.current = handle;
     beginEntry();
     onProgressRef.current?.('compile');
@@ -254,6 +288,10 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
       root.dataset.view = tel.view;
+      // The landing computer's key while it can still be handed the ship,
+      // and the way back to base once the crew are out of sight of it.
+      root.dataset.autoland = String(tel.autoland);
+      root.dataset.far = String(tel.baseDistance > BASE_KEY_M);
       // In flight the jump key is the way down (suit-jet.css swaps its face).
       root.dataset.jetFlying = String(tel.flying);
 
@@ -471,7 +509,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     raf = requestAnimationFrame(paint);
     return () => {
       cancelAnimationFrame(raf);
-      window.clearTimeout(rebuildTimer);
+      cancelRebuild?.();
       controls.detach();
       controlsRef.current = null;
       handle.dispose();
@@ -572,14 +610,29 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
       <div ref={mountRef} className="moon-surface__canvas" />
       {(gpuLost || earthError || !onProgress) && <CosmicLoader className={gpuLost || earthError ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent" body={world}
         label={gpuLost ? tl('gpu') : earthError ? tw('loadError') : tw('loading')} detail={gpuLost || earthError ? undefined : tw('loadingDetail')} tips={tips} />}
-      {earthError && (
-        <button type="button" className="moon-hud__key earth-hud__retry" onClick={onReturn}>
-          <Rocket size={18} aria-hidden /><span>{t('returnOrbit')}</span>
-        </button>
+      {(earthError || gpuLost) && (
+        <div className="earth-hud__recover">
+          {earthError && (
+            <button type="button" className="moon-hud__key earth-hud__retry" onClick={() => setEarthTry((n) => n + 1)}>
+              <RotateCcw size={18} aria-hidden /><span>{t('retry')}</span>
+            </button>
+          )}
+          <button type="button" className="moon-hud__key earth-hud__retry" onClick={onReturn}>
+            <Rocket size={18} aria-hidden /><span>{t('returnOrbit')}</span>
+          </button>
+        </div>
       )}
       <div className="moon-hud">
         <div className="moon-hud__visor" aria-hidden />
 
+        <button type="button" className="moon-hud__basekey moon-hud__autoland" data-action="autoland"
+          onClick={() => { const h = handleRef.current; if (h) h.input.autoland = true; }}>
+          <ChevronsDown size={16} aria-hidden /><span>{t('landAtBase')}</span>
+        </button>
+        <button type="button" className="moon-hud__basekey moon-hud__gobase" data-action="go-base"
+          onClick={() => { const h = handleRef.current; if (h) h.input.goBase = true; }}>
+          <Rocket size={16} aria-hidden /><span>{t('goBase')}</span>
+        </button>
         <div className="moon-hud__landing">
           {/* From orbit: the air at the edges of the glass, the world's
               name over the orbit, and the flight's own numbers. */}
