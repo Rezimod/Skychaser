@@ -33,6 +33,26 @@ body[data-solar-immersive] .sd-backdrop { display: none; }
 }
 .game-shell .font-display { font-family: var(--font-display); }
 .game-shell__loader { z-index: 180; }
+/* A load that has sat too long: the way out, over the loader (and over a
+   handover's veil, which sits inside the world). */
+.game-shell__rescue {
+  position: absolute;
+  z-index: 200;
+  left: 50%;
+  bottom: max(28px, calc(env(safe-area-inset-bottom) + 20px));
+  transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px));
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(6, 10, 22, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e8ecf6;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+.game-shell__rescue p { margin: 0 0 10px; font-size: 14px; }
+.game-shell__rescue-keys { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.game-shell__rescue-keys .game-menu__item { flex: 1 1 140px; justify-content: center; }
 .game-shell__loader.is-done {
   opacity: 0;
   visibility: hidden;

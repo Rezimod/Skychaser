@@ -10,7 +10,8 @@ import * as THREE from 'three';
 import { makeMoonPost, type MoonPostHandle } from '@/lib/solar-system/moon-post';
 import { makeMoonPerf, probeCalls, type MoonPerf } from '@/lib/solar-system/moon-perf';
 import { makeLightPool, type LightPool } from '@/lib/solar-system/moon-lights';
-import { compileFor, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
+import { compileFor, releaseCompilePolls, settleWithin, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
+import { makeLoopGuard } from '@/game/gpu-recovery';
 import { projectSunDirection, type SunScreen } from '@/lib/solar-system/post-flare';
 import { getSettings } from '@/game/settings';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
@@ -193,12 +194,20 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   };
   const onContextLost = (e: Event) => {
     e.preventDefault();
+    if (contextLost) return;
     contextLost = true;
+    // Pending compiles would poll the dead context for ever, holding the
+    // whole scene; this lets them settle and it be freed.
+    releaseCompilePolls(renderer);
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     opts.onContextLost?.();
   };
   renderer.domElement.addEventListener('webglcontextlost', onContextLost);
+  // A frame that throws is skipped, not fatal; one that throws every frame
+  // is a scene that cannot recover, and is rebuilt like a lost context.
+  let rendered = false;
+  const guard = makeLoopGuard('surface', () => { if (!disposed) opts.onContextLost?.(); });
   const loop = () => {
     raf = 0;
     if (!docVisible || paused || !frameFn) return;
@@ -207,11 +216,31 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     const dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     perf.begin(now);
-    frameFn(dt);
+    rendered = false;
+    try {
+      frameFn(dt);
+      guard.ok();
+    } catch (e) {
+      guard.fail(e);
+      // Keep the timing pairs matched for the quality governor.
+      if (!rendered) perf.end();
+    }
   };
+  // One resize per frame at most, and none that changes nothing: each one
+  // re-allocates the post chain's targets.
+  let resizeRaf = 0;
+  let sizedW = 0;
+  let sizedH = 0;
   const onResize = () => {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => { resizeRaf = 0; applySize(); });
+  };
+  const applySize = () => {
     const w = mount.clientWidth; const h = mount.clientHeight;
     if (!w || !h) return;
+    const capNow = ratioFor(profile);
+    if (w === sizedW && h === sizedH && Math.abs(capNow - maxRatio) <= 0.01) return;
+    sizedW = w; sizedH = h;
     // A bigger window is more pixels: the budget may want a different ratio.
     const cap = ratioFor(profile);
     if (Math.abs(cap - maxRatio) > 0.01) {
@@ -225,6 +254,8 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     post.setSize(w, h);
   };
   window.addEventListener('resize', onResize);
+  const sizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+  sizeObserver?.observe(mount);
   document.addEventListener('visibilitychange', onVis);
 
   let compiling: Promise<unknown> = Promise.resolve();
@@ -270,17 +301,21 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
           onReady();
           resume();
         };
-        return compileFor(renderer, post.drawTarget(), () => Promise.all([
+        // Bounded: a compile that never settles (a lost context, a driver
+        // that never reports) must not keep the loading screen up for good.
+        return settleWithin(compileFor(renderer, post.drawTarget(), () => Promise.all([
           renderer.compileAsync(scene, camera),
           ...extras.map((e) => renderer.compileAsync(e.scene, e.camera)),
-        ])).then(begin, begin);
+        ])), 30000).then(begin);
       };
-      compiling = after ? after.then(compile, compile) : compile() ?? Promise.resolve();
+      // Nor may what the build waits on (the crew's model, say) hold it.
+      compiling = after ? settleWithin(after, 30000).then(compile) : compile() ?? Promise.resolve();
     },
     render(dt) {
       perf.mark();
       feedSun();
       post.render(dt);
+      rendered = true;
       perf.end();
     },
     setPaused(on) {
@@ -297,6 +332,8 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
       perf.dispose();
       unsubQuality();
       window.removeEventListener('resize', onResize);
+      sizeObserver?.disconnect();
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
       document.removeEventListener('visibilitychange', onVis);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
@@ -320,7 +357,14 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         // warns that the extension is gone if asked.
         if (!renderer.getContext().isContextLost()) renderer.forceContextLoss();
       };
-      compiling.then(finish, finish);
+      // A lost context has nothing left to compile: free it now. Otherwise
+      // wait for the compile, but not for ever.
+      if (contextLost || renderer.getContext().isContextLost()) {
+        releaseCompilePolls(renderer);
+        finish();
+      } else {
+        void settleWithin(compiling, 6000).then(() => { releaseCompilePolls(renderer); finish(); });
+      }
     },
   };
   return host;

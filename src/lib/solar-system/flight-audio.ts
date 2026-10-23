@@ -7,6 +7,7 @@
 // silent if the browser refuses or the pilot turned the sound off.
 
 import { onSoundChange, soundLevel } from '@/lib/solar-system/sound-prefs';
+import { closeAudio, holdAudio, quiet } from '@/lib/solar-system/audio-lifecycle';
 
 export interface FlightAudio {
   /** The flight begins: a slow organ swell out of nothing. */
@@ -61,8 +62,11 @@ export function makeFlightAudio(): FlightAudio {
   let lastHit = -1;
   let paused = false;
   let disposed = false;
+  // Suspended while the page is hidden, the shell holds the mix, or the deck is paused.
+  const hold = holdAudio(() => ctx, () => paused);
   const unsubscribe = onSoundChange((_on, level) => {
     if (master && ctx) master.gain.setTargetAtTime(level * MASTER_GAIN, ctx.currentTime, 0.05);
+    hold.apply();
   });
 
   const ready = (): AudioContext => {
@@ -72,7 +76,7 @@ export function makeFlightAudio(): FlightAudio {
       master.gain.value = soundLevel() * MASTER_GAIN;
       master.connect(ctx.destination);
     }
-    if (ctx.state === 'suspended' && !paused) void ctx.resume();
+    hold.apply();
     if (!noise) {
       noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const d = noise.getChannelData(0);
@@ -100,10 +104,10 @@ export function makeFlightAudio(): FlightAudio {
     g.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
     g.gain.exponentialRampToValueAtTime(0.0005, t0 + dur);
     osc.connect(g).connect(master);
-    osc.onended = () => {
+    osc.onended = () => quiet(() => {
       osc.disconnect();
       g.disconnect();
-    };
+    });
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
   };
@@ -120,11 +124,11 @@ export function makeFlightAudio(): FlightAudio {
     g.gain.setValueAtTime(gain, t0);
     g.gain.exponentialRampToValueAtTime(0.0005, t0 + dur);
     src.connect(flt).connect(g).connect(master);
-    src.onended = () => {
+    src.onended = () => quiet(() => {
       src.disconnect();
       flt.disconnect();
       g.disconnect();
-    };
+    });
     src.start(t0);
     src.stop(t0 + dur + 0.02);
   };
@@ -159,11 +163,11 @@ export function makeFlightAudio(): FlightAudio {
         voices.push(o);
       }
     }
-    voices[0].onended = () => {
+    voices[0].onended = () => quiet(() => {
       for (const o of voices) o.disconnect();
       env.disconnect();
       lp.disconnect();
-    };
+    });
   };
   const bell = (c: AudioContext, f: number, gain: number, dur: number, at: number) => {
     if (!master) return;
@@ -184,10 +188,10 @@ export function makeFlightAudio(): FlightAudio {
       o.stop(t0 + dur + 0.02);
       return o;
     });
-    voices[0].onended = () => {
+    voices[0].onended = () => quiet(() => {
       for (const o of voices) o.disconnect();
       g.disconnect();
-    };
+    });
   };
 
   return {
@@ -245,12 +249,16 @@ export function makeFlightAudio(): FlightAudio {
           return o;
         });
         chargeVoice = {
+          // Called from the render loop, perhaps after the voices ran out
+          // on their own: older WebKit throws on a second stop().
           stop() {
-            const now = c.currentTime;
-            gain.gain.cancelScheduledValues(now);
-            gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
-            for (const o of oscs) o.stop(now + 0.16);
+            quiet(() => {
+              const now = c.currentTime;
+              gain.gain.cancelScheduledValues(now);
+              gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now);
+              gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+            });
+            for (const o of oscs) quiet(() => o.stop(c.currentTime + 0.16));
           },
         };
       });
@@ -357,7 +365,7 @@ export function makeFlightAudio(): FlightAudio {
         if (next < 0.01) {
           const r = roar;
           roar = null;
-          window.setTimeout(() => { try { r.src.stop(); r.rumble.stop(); r.gain.disconnect(); } catch { /* already gone */ } }, 900);
+          window.setTimeout(() => { quiet(() => r.src.stop()); quiet(() => r.rumble.stop()); quiet(() => r.gain.disconnect()); }, 900);
         }
       });
     },
@@ -379,7 +387,7 @@ export function makeFlightAudio(): FlightAudio {
         g.gain.setValueAtTime(1.2, t0);
         g.gain.exponentialRampToValueAtTime(0.0005, t0 + 0.6);
         src.connect(flt).connect(g).connect(master);
-        src.onended = () => { src.disconnect(); flt.disconnect(); g.disconnect(); };
+        src.onended = () => quiet(() => { src.disconnect(); flt.disconnect(); g.disconnect(); });
         src.start(t0);
         src.stop(t0 + 0.62);
       });
@@ -387,22 +395,17 @@ export function makeFlightAudio(): FlightAudio {
     setPaused(next) {
       if (paused === next) return;
       paused = next;
-      if (!ctx) return;
-      try {
-        if (next) void ctx.suspend();
-        else void ctx.resume();
-      } catch {
-        // Nothing to hold.
-      }
+      hold.apply();
     },
     dispose() {
       disposed = true;
       unsubscribe();
+      hold.dispose();
       chargeVoice?.stop();
       chargeVoice = null;
       droneGain = null;
       droneK = 0;
-      void ctx?.close();
+      closeAudio(ctx);
       ctx = null;
       master = null;
       noise = null;

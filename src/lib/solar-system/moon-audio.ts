@@ -13,6 +13,7 @@
 // the crew is inside. The radio is the exception: it is carried on a wire.
 
 import { onSoundChange, soundLevel } from '@/lib/solar-system/sound-prefs';
+import { closeAudio, holdAudio } from '@/lib/solar-system/audio-lifecycle';
 
 const MASTER_GAIN = 0.22;
 
@@ -60,8 +61,11 @@ export function makeSuitAudio(open = false): SuitAudio {
   let drillOsc: OscillatorNode | null = null;
   let drillGain: GainNode | null = null;
   let jetLit = false;
+  // Suspended, not just silent, while the page is hidden or the game paused.
+  const hold = holdAudio(() => ctx);
   const unsubscribe = onSoundChange((_on, level) => {
     if (master && ctx) master.gain.setTargetAtTime(level * MASTER_GAIN, ctx.currentTime, 0.05);
+    hold.apply();
   });
 
   const start = () => {
@@ -91,7 +95,7 @@ export function makeSuitAudio(open = false): SuitAudio {
         fan.connect(fanLp); fanLp.connect(fanGain); fanGain.connect(master);
         fan.start();
       }
-      if (ctx.state === 'suspended') void ctx.resume();
+      hold.apply();
     } catch {
       // No audio — the suit is silent.
     }
@@ -408,7 +412,8 @@ export function makeSuitAudio(open = false): SuitAudio {
     dispose() {
       unsubscribe();
       beds.clear();
-      if (ctx) void ctx.close();
+      hold.dispose();
+      closeAudio(ctx);
       ctx = null;
     },
   };
