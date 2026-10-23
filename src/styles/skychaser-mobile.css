@@ -38,7 +38,7 @@
   /* The bottom bar. */
   .sd-tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
-    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
     height: var(--sd-tabs-h); padding-bottom: env(safe-area-inset-bottom, 0px);
     background: var(--sd-bar-bg, rgba(13, 13, 13, 0.97)); border-top: 1px solid var(--sd-rule);
   }

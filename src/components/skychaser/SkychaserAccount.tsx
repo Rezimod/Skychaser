@@ -229,6 +229,9 @@ export default function SkychaserAccount() {
           <Link role="menuitem" href="/vote" onClick={() => setMenuOpen(false)}>
             This week’s vote <span aria-hidden="true">→</span>
           </Link>
+          <Link role="menuitem" href="/invite" onClick={() => setMenuOpen(false)}>
+            Your invitation <span aria-hidden="true">→</span>
+          </Link>
           <button role="menuitem" type="button" onClick={signOut}>
             Log out <span aria-hidden="true">⎋</span>
           </button>

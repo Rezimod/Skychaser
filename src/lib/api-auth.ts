@@ -66,3 +66,17 @@ export async function assertOwnsWallet(
   const linked = await getSessionWalletAddresses(privyId);
   return linked.includes(walletAddress);
 }
+
+// The email Privy holds for a session: the email it signed in with, or the
+// Google account's. Null when there is none, or when Privy cannot be read.
+export async function getSessionEmail(privyId: string): Promise<string | null> {
+  try {
+    const user = await getPrivy().getUserById(privyId);
+    const accounts = (user.linkedAccounts ?? []) as Array<{ type: string; address?: string; email?: string }>;
+    const email = accounts.find((a) => a.type === 'email')?.address ?? accounts.find((a) => a.type === 'google_oauth')?.email ?? null;
+    return typeof email === 'string' && email.includes('@') ? email.trim().toLowerCase() : null;
+  } catch (err) {
+    console.error('[privy] cannot read email:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}

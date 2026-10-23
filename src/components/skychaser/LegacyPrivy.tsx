@@ -9,6 +9,7 @@ import { LegacyState } from './SkychaserAuth';
 export default function LegacyPrivy({ children }: { children: ReactNode }) {
   const privy = usePrivy();
   const { wallets } = useWallets();
-  const state = useMemo(() => ({ privy, wallets }), [privy, wallets]);
+  // A legacy page mounts no funding plugin: the pay panel offers the address alone there.
+  const state = useMemo(() => ({ privy, wallets, fundWallet: null }), [privy, wallets]);
   return <LegacyState.Provider value={state}>{children}</LegacyState.Provider>;
 }

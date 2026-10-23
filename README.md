@@ -17,13 +17,16 @@ Live: [skychaser.io](https://skychaser.io) · Solana devnet · built by [Astroma
 | `/card/[designation]` | one card: object, rarity, edition sizes, what it unlocks |
 | `/capsules`, `/capsule/[id]`, `/capsules/log` | buy, open, and audit capsules (provable fairness) |
 | `/collection` | a holder's cards and the account |
+| `/edition/[designation]/[n]` | one holder's one card: its number, holder, capsule and photograph — the page a reveal shares |
 | `/tonight` | tonight's target and the holders' vote |
 | `/node` | Live Telescope V1 — commissioning |
 | `/voyage` | fly the solar system and land on its worlds |
-| `/invite` | the closed beta's gate |
+| `/invite` | the closed beta's gate, and a holder's invitation link with what it brought |
 
 APIs live under `/api/skychaser/*`; the nightly loop is `/api/cron/skychaser-night`
-and `/api/skychaser/capsules/release` (see `vercel.json`). Every other `/api/*`
+and `/api/skychaser/capsules/release` (see `vercel.json`). The loop that brings
+the next holder — the first card on sign-in, the edition page, invitations and
+their rewards, email to holders — is `docs/skychaser/GROWTH-PLAN.md`. Every other `/api/*`
 and `/m/*` path is proxied to the legacy app, because minted metadata and old
 links point at this domain.
 

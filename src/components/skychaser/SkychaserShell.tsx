@@ -6,6 +6,7 @@ import SkychaserTabBar from './SkychaserTabBar';
 import SkychaserAccountGate from './SkychaserAccountGate';
 import SkychaserAuth from './SkychaserAuth';
 import SkychaserLiving from './SkychaserLiving';
+import SkychaserHello from './SkychaserHello';
 
 const PARTNERS = [
   { src: '/brand-partners/astroman.png', alt: 'Astroman', width: 640, height: 169 },
@@ -33,6 +34,7 @@ const EXPLORE = [
   { href: '/node', label: 'Observatory' },
   { href: '/vote', label: 'Vote' },
   { href: '/voyage', label: 'Voyage' },
+  { href: '/invite', label: 'Invite' },
 ];
 
 const LEGAL = [
@@ -71,6 +73,7 @@ export default function SkychaserShell({
         <div className="skychaser">
           <div className="sd-backdrop" aria-hidden="true" />
           {children}
+          <SkychaserHello />
         </div>
       </SkychaserAuth>
     );
@@ -92,6 +95,7 @@ export default function SkychaserShell({
 
         {title && <h1 className="sr-only">{title}</h1>}
         <div className="sd-page">{children}</div>
+        <SkychaserHello />
 
         <footer className="sd-foot">
           <div className="sd-container">

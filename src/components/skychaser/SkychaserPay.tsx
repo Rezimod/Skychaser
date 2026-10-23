@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSkychaserSession, type SolanaWallets } from './SkychaserAuth';
+import { useSkychaserSession, type FundWallet, type SolanaWallets } from './SkychaserAuth';
 import { usePrivySafe } from './usePrivySafe';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import bs58 from 'bs58';
@@ -295,7 +295,17 @@ export default function SkychaserPay({
           )}
         </div>
       )}
-      {shortOf && wallet && <FundHint address={wallet.address} need={shortOf} />}
+      {shortOf && wallet && (
+        <FundHint
+          address={wallet.address}
+          need={shortOf}
+          fund={session?.fundWallet ?? null}
+          onFunded={() => {
+            setShortOf(null);
+            setNote('When the SOL arrives, press Pay again. It can take a few minutes.');
+          }}
+        />
+      )}
       {(note || sent) && (
         <p className="sd-pay__note" role="status">
           {note}{' '}
@@ -395,9 +405,10 @@ function WalletIcon({ wallet }: { wallet: SolanaWallets[number] }) {
   );
 }
 
-/** Where to send SOL when the wallet holds too little: its address, copyable, on any cluster. */
-function FundHint({ address, need }: { address: string; need: string }) {
+/** The wallet is short: Privy's funding flow where the dashboard allows it, and the address to send to either way. */
+function FundHint({ address, need, fund, onFunded }: { address: string; need: string; fund: FundWallet | null; onFunded: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [opening, setOpening] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(address);
@@ -406,10 +417,27 @@ function FundHint({ address, need }: { address: string; need: string }) {
       setCopied(false);
     }
   };
+  const open = async () => {
+    if (!fund) return;
+    setOpening(true);
+    try {
+      await fund({ address, amountSol: Number(need) });
+      onFunded();
+    } catch {
+      /* closed, or funding is not enabled for this app */
+    } finally {
+      setOpening(false);
+    }
+  };
   return (
     <div className="sd-pay__fund">
+      {fund && (
+        <button type="button" className={`sd-btn sd-btn--block${opening ? ' is-loading' : ''}`} onClick={open} disabled={opening}>
+          {opening ? 'Opening' : `Add ${need} SOL with a card`}
+        </button>
+      )}
       <p className="sd-data">
-        Send at least {need} SOL to this wallet from an exchange or another wallet, then press Pay again — or connect a wallet that holds SOL above:
+        {fund ? 'Or send' : 'Send'} at least {need} SOL to this wallet from an exchange or another wallet, then press Pay again — or connect a wallet that holds SOL above:
       </p>
       <p className="sd-data">
         <code>{address}</code>{' '}
