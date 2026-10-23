@@ -14,6 +14,8 @@ import '../styles/skychaser-booking.css';
 import '../styles/skychaser-mobile.css';
 import { AnalyticsBoot } from '@/components/providers/AnalyticsBoot';
 import JsonLd from '@/components/shared/JsonLd';
+import SkychaserAuth from '@/components/skychaser/SkychaserAuth';
+import SkychaserNavProgress from '@/components/skychaser/SkychaserNavProgress';
 
 // Skychaser's faces: Orbitron for the wordmark and display, Geist for
 // text, JetBrains Mono for figures, Anton for every title and the card
@@ -62,8 +64,8 @@ export const metadata: Metadata = {
 
 /**
  * The root every page shares, kept to what a Skychaser page needs: fonts, the
- * Skychaser stylesheet, analytics. Wallets and sign-in load on demand
- * (SkychaserAuth); the legacy Skychaser providers and chrome live in app/(skychaser).
+ * Skychaser stylesheet, analytics, and sign-in, mounted here so it outlives a page change. Wallets
+ * and sign-in load on demand (SkychaserAuth); the legacy Skychaser providers and chrome live in app/(skychaser).
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -75,7 +77,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AnalyticsBoot />
-        {children}
+        <SkychaserNavProgress />
+        <SkychaserAuth>{children}</SkychaserAuth>
       </body>
     </html>
   );

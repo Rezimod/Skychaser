@@ -28,6 +28,9 @@ export const useSkychaserSession = () => useContext(AuthContext);
 /** Inside a legacy Skychaser page, Privy is already mounted by its layout: LegacyPrivy hands its state in. */
 export const LegacyState = createContext<PrivyState | null>(null);
 
+/** True under the root layout's SkychaserAuth: a page's own SkychaserAuth then adds nothing, so sign-in outlives a page change. */
+const Mounted = createContext(false);
+
 function hadSession() {
   try {
     return Boolean(localStorage.getItem('privy:refresh_token') ?? localStorage.getItem('privy:token'));
@@ -47,7 +50,9 @@ function hadSession() {
  */
 export default function SkychaserAuth({ children }: { children: ReactNode }) {
   const legacy = useContext(LegacyState);
+  const mounted = useContext(Mounted);
   if (legacy) return <LegacyAuth state={legacy}>{children}</LegacyAuth>;
+  if (mounted) return children;
   return <LazyAuth>{children}</LazyAuth>;
 }
 
@@ -80,9 +85,11 @@ function LazyAuth({ children }: { children: ReactNode }) {
   // The same element every render, so Privy's subtree only renders when Privy itself changes.
   const privy = useMemo(() => (Shell ? <Shell onState={setState} /> : null), [Shell]);
   return (
-    <AuthContext.Provider value={value}>
-      {children}
-      {privy}
-    </AuthContext.Provider>
+    <Mounted.Provider value>
+      <AuthContext.Provider value={value}>
+        {children}
+        {privy}
+      </AuthContext.Provider>
+    </Mounted.Provider>
   );
 }
