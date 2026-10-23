@@ -306,7 +306,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         return settleWithin(compileFor(renderer, post.drawTarget(), () => Promise.all([
           renderer.compileAsync(scene, camera),
           ...extras.map((e) => renderer.compileAsync(e.scene, e.camera)),
-        ])), 15000).then(begin);
+        ])), 30000).then(begin);
       };
       // Nor may what the build waits on (the crew's model, say) hold it.
       compiling = after ? settleWithin(after, 30000).then(compile) : compile() ?? Promise.resolve();

@@ -325,7 +325,7 @@ export function SolarSystemCanvas({
     };
     const compileScene = () => {
       compiling += 1;
-      return settleWithin(compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera)), 8000).finally(() => {
+      return settleWithin(compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera)), 25000).finally(() => {
         compiling -= 1;
         if (compiling === 0) for (const m of retired.splice(0)) disposeMat(m);
       });
