@@ -630,7 +630,10 @@ export function makeEarthExtras(earthRadius: number, lite: boolean): EarthExtras
   cloudMesh.userData.isClouds = true;
 
   let realCloudsTex: THREE.Texture | null = null;
+  // Set on dispose: a map that arrives after the scene went is freed, not attached to a dead material.
+  let disposed = false;
   new THREE.TextureLoader().load('/solar-system/planets/earth-clouds.jpg', (tex) => {
+    if (disposed) { tex.dispose(); return; }
     tex.colorSpace = SRGB;
     tex.wrapS = THREE.RepeatWrapping;
     realCloudsTex = tex;
@@ -695,6 +698,7 @@ export function makeEarthExtras(earthRadius: number, lite: boolean): EarthExtras
   });
   let realMoonTex: THREE.Texture | null = null;
   new THREE.TextureLoader().load('/solar-system/planets/moon.jpg', (tex) => {
+    if (disposed) { tex.dispose(); return; }
     tex.colorSpace = SRGB;
     realMoonTex = tex;
     moonMat.map = tex;
@@ -748,6 +752,7 @@ export function makeEarthExtras(earthRadius: number, lite: boolean): EarthExtras
       }
     },
     dispose() {
+      disposed = true;
       cloudGeom.dispose();
       cloudMat.dispose();
       cloudsTex.dispose();

@@ -79,11 +79,27 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/* Only a whole, plain, same-origin answer goes in the cache: a partial (206)
+ * or opaque response cannot be served back as the file, and a full or failed
+ * cache must never break the answer the page is waiting for. */
+const cacheable = (res) => !!res && res.ok && res.status === 200 && res.type !== 'opaque' && res.type !== 'opaqueredirect';
+const putSafe = (cache, key, res) => {
+  if (!cacheable(res)) return Promise.resolve();
+  try {
+    return cache.put(key, res.clone()).catch(() => undefined);
+  } catch (e) {
+    return Promise.resolve();
+  }
+};
+
+/* How long an app launch waits for the network before it opens the cached copy, ms. */
+const DOCUMENT_NETWORK_TIMEOUT_MS = 4000;
+
 /* A hashed file: this build's cache, then the one before (a tab still on it), then the network. */
 const hashedFirst = (event) => caches.open(CACHE).then((cache) => cache.match(event.request, { ignoreSearch: true })
   .then((hit) => hit || caches.match(event.request, { ignoreSearch: true }))
   .then((hit) => hit || fetch(event.request).then((res) => {
-    if (res.ok) cache.put(event.request, res.clone());
+    putSafe(cache, event.request, res);
     return res;
   })));
 
@@ -94,22 +110,51 @@ const assetFirst = (event) => caches.open(CACHE).then((cache) => {
   const cached = () => cache.match(event.request, { ignoreSearch: true });
   if (stale(event.clientId)) return fetch(event.request).catch(() => cached().then((hit) => hit || Response.error()));
   return cached().then((hit) => hit || fetch(event.request).then((res) => {
-    if (res.ok) cache.put(event.request, res.clone());
+    putSafe(cache, event.request, res);
     return res;
   }));
 });
 
 /* An app document: the network when it is there (and the copy is refreshed),
- * the last copy when it is not; the game page is the last resort for both. */
-const documentNetworkFirst = (event, key) =>
-  caches.open(CACHE).then((cache) => fetch(event.request).then((res) => {
-    if (res.ok && res.type === 'basic' && !res.redirected) cache.put(key, res.clone());
-    return res;
-  }).catch(() => cache.match(key)
-    .then((hit) => hit || caches.match(key))
-    .then((hit) => hit || cache.match(GAME_PAGE))
-    .then((hit) => hit || caches.match(GAME_PAGE))
-    .then((hit) => hit || Response.error())));
+ * the last copy when it is not; the game page is the last resort for both.
+ * A weak network does not hold the launch: past a few seconds the cached copy
+ * opens, and the network's answer, when it comes, still refreshes the cache. */
+const documentNetworkFirst = (event, key) => {
+  // Kept alive past an early answer from the cache, so the refresh still lands.
+  let settle = () => undefined;
+  const refreshed = new Promise((r) => { settle = r; });
+  try { event.waitUntil(refreshed); } catch (e) { settle(); }
+  return caches.open(CACHE).then((cache) => {
+    const fromCache = () => cache.match(key)
+      .then((hit) => hit || caches.match(key))
+      .then((hit) => hit || cache.match(GAME_PAGE))
+      .then((hit) => hit || caches.match(GAME_PAGE))
+      .catch(() => undefined);
+    const network = fetch(event.request).then((res) => {
+      if (res.type === 'basic' && !res.redirected) putSafe(cache, key, res).then(settle, settle);
+      else settle();
+      return res;
+    }, (err) => {
+      settle();
+      throw err;
+    });
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (res) => { if (!done) { done = true; resolve(res); } };
+      const timer = setTimeout(() => {
+        // Slow: the cached copy if there is one, else keep waiting for the network.
+        fromCache().then((hit) => { if (hit) finish(hit); });
+      }, DOCUMENT_NETWORK_TIMEOUT_MS);
+      network.then((res) => { clearTimeout(timer); finish(res); }, () => {
+        clearTimeout(timer);
+        fromCache().then((hit) => finish(hit || Response.error()));
+      });
+    });
+  }).catch(() => {
+    settle();
+    return Response.error();
+  });
+};
 
 /* Which cached document a navigation is: the game, the platform page, or neither. */
 const documentKey = (url) => {
@@ -132,7 +177,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname === MANIFEST) {
     // The manifest: fresh when online (installs pick up changes), cached when not.
     event.respondWith(caches.open(CACHE).then((cache) => fetch(req).then((res) => {
-      if (res.ok) cache.put(MANIFEST, res.clone());
+      putSafe(cache, MANIFEST, res);
       return res;
     }).catch(() => cache.match(MANIFEST).then((hit) => hit || caches.match(MANIFEST)).then((hit) => hit || Response.error()))));
     return;
@@ -184,13 +229,25 @@ self.addEventListener('notificationclick', (event) => {
   const url = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const client of list) {
-        if ('focus' in client) {
-          client.navigate(url).catch(() => {});
-          return client.focus();
-        }
+      // A window already at that page is focused. No other window is ever
+      // navigated: the first one may be the game mid-flight.
+      let target;
+      try {
+        target = new URL(url, self.location.origin);
+      } catch (e) {
+        target = new URL('/', self.location.origin);
       }
-      return self.clients.openWindow(url);
-    }),
+      const same = (client) => {
+        try {
+          const at = new URL(client.url);
+          return at.origin === target.origin && at.pathname === target.pathname && at.search === target.search;
+        } catch (e) {
+          return false;
+        }
+      };
+      const open = list.find((client) => same(client) && 'focus' in client);
+      if (open) return open.focus();
+      return self.clients.openWindow ? self.clients.openWindow(target.href) : undefined;
+    }).catch(() => undefined),
   );
 });

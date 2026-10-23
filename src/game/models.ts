@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
+import { currentQuality } from './quality';
 
 export interface ModelHandle {
   /** The shared scene; clone it before changing transforms or materials. */
@@ -29,8 +30,57 @@ function getLoader(): GLTFLoader {
   return loader;
 }
 
+// ── Phone variants ──
+// A phone's tab is killed long before a desktop notices the memory: the
+// Moon's full set decodes to ~190 MB of textures. Every file below has a
+// copy under /explore/models/lite/ with the same nodes, meshes and
+// materials and smaller textures (2048² → 1024² for the habitat and the
+// cosmonaut, 1024² → 512² for the vehicles and the crate), about 47 MB for
+// the same set. Callers keep naming the full file; `modelUrl` swaps it.
+
+const MODEL_DIR = '/explore/models/';
+const LITE_DIR = '/explore/models/lite/';
+/** The files that have a lite copy on disk (keep in step with public/explore/models/lite/). */
+export const LITE_MODELS = new Set([
+  'base-kit.glb', 'cosmonaut.glb', 'crate.glb', 'lander.glb', 'rover.glb',
+  'ship-cruiser.glb', 'ship-fighter.glb', 'ship-stellar.glb',
+]);
+
+/** The lite/full choice, fixed while any model is held: a quality change in
+ *  between a prefetch and the scene's own acquire must not load both copies.
+ *  It is made afresh once nothing is held (the next surface). */
+let liteChoice: boolean | null = null;
+
+function wantLite(): boolean {
+  if (liteChoice !== null) return liteChoice;
+  let lite = false;
+  try {
+    lite = currentQuality().lite
+      || (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches);
+  } catch { lite = false; }
+  liteChoice = lite;
+  return lite;
+}
+
+/** The file to fetch for `url`: its lite copy on a phone or the `performance` preset, else itself. */
+export function modelUrl(url: string): string {
+  if (!url.startsWith(MODEL_DIR) || url.startsWith(LITE_DIR)) return url;
+  const name = url.slice(MODEL_DIR.length);
+  return LITE_MODELS.has(name) && wantLite() ? LITE_DIR + name : url;
+}
+
+/** Tests only: forget the lite/full choice. */
+export function resetModelVariant() {
+  liteChoice = null;
+}
+
+/** A request that has not finished by now fails: the scene shows its error instead of loading forever. */
+export const MODEL_TIMEOUT_MS = 30_000;
+
 function disposeTree(root: THREE.Object3D) {
   const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
   root.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -38,9 +88,37 @@ function disposeTree(root: THREE.Object3D) {
     for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) materials.add(m);
   });
   for (const m of materials) {
-    for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) (v as THREE.Texture).dispose();
+    for (const v of Object.values(m)) if ((v as THREE.Texture)?.isTexture) textures.add(v as THREE.Texture);
     m.dispose();
   }
+  for (const t of textures) {
+    t.dispose();
+    // glTF images arrive as ImageBitmaps, which browsers do not reliably collect: close them.
+    const img = t.image as unknown;
+    if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close();
+  }
+}
+
+/** loadAsync with a deadline. A model that turns up after the deadline is disposed, not kept. */
+function loadWithTimeout(url: string, keepNodes: boolean): Promise<THREE.Group> {
+  return new Promise<THREE.Group>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      settled = true;
+      reject(new Error(`${url}: model load timed out after ${MODEL_TIMEOUT_MS / 1000} s`));
+    }, MODEL_TIMEOUT_MS);
+    getLoader().loadAsync(url).then((g) => {
+      if (settled) { disposeTree(g.scene); return; }
+      settled = true;
+      clearTimeout(timer);
+      resolve(keepNodes ? g.scene : flatten(g.scene));
+    }, (err: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
 }
 
 /** Quantised files carry their scale on the nodes; bake every node's
@@ -69,11 +147,13 @@ function flatten(scene: THREE.Group): THREE.Group {
 /** Load (or share) a model. Every `acquire` must be matched by one `release`.
  *  `keepNodes` leaves the node tree as exported: skinned meshes, and named
  *  empties a caller reads positions from, need it. */
-export function acquireModel(url: string, keepNodes = false): Promise<ModelHandle> {
+export function acquireModel(path: string, keepNodes = false): Promise<ModelHandle> {
+  // Keyed by the file actually fetched, so the prefetch and the scene share one copy.
+  const url = modelUrl(path);
   const key = keepNodes ? `${url}#nodes` : url;
   let entry = cache.get(key);
   if (!entry) {
-    entry = { users: 0, promise: getLoader().loadAsync(url).then((g) => (keepNodes ? g.scene : flatten(g.scene))) };
+    entry = { users: 0, promise: loadWithTimeout(url, keepNodes) };
     cache.set(key, entry);
   }
   const e = entry;
@@ -85,6 +165,7 @@ export function acquireModel(url: string, keepNodes = false): Promise<ModelHandl
     e.users -= 1;
     if (e.users > 0) return;
     cache.delete(key);
+    if (cache.size === 0) liteChoice = null;
     e.promise.then(disposeTree, () => undefined);
   };
   return e.promise.then((scene) => ({ scene, release }), (err: unknown) => { release(); throw err; });

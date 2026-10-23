@@ -1,11 +1,11 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { SolarSystemCanvas, type EpochRef } from '@/components/solar-system/SolarSystemCanvas';
-import { PlayerShip, type LandingSite } from '@/components/solar-system/PlayerShip';
+import { SolarSystemCanvas as SolarSystemCanvasRaw, type EpochRef } from '@/components/solar-system/SolarSystemCanvas';
+import { PlayerShip as PlayerShipRaw, type LandingSite } from '@/components/solar-system/PlayerShip';
 import { createFlightSession, type FlightSession } from '@/lib/solar-system/player-ship';
 import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
@@ -16,14 +16,20 @@ import type { GameMode } from '@/game/mode';
 import { StoryHud } from './StoryHud';
 import { settle } from '@/game/settle';
 import { useExploreRewards } from './useExploreRewards';
+import { retryImport } from '@/game/retry-import';
 
 /** The surfaces are chunks of their own: the orbit never parses them. They
  *  are fetched once the orbit is up (see the prefetch below), well before
  *  an arrival asks one to build. */
-const loadMoon = () => import('@/components/solar-system/MoonSurface');
-const loadWorlds = () => import('@/components/solar-system/WorldSurface');
-const MoonSurface = dynamic(() => loadMoon().then((m) => m.MoonSurface), { ssr: false });
-const WorldSurface = dynamic(() => loadWorlds().then((m) => m.WorldSurface), { ssr: false });
+const loadMoon = () => retryImport(() => import('@/components/solar-system/MoonSurface'));
+const loadWorlds = () => retryImport(() => import('@/components/solar-system/WorldSurface'));
+// Memoised: the shell re-renders the world for things that are not the
+// world's (a roster change in the room, the account, the title's clock), and
+// each of these is a whole scene's HUD. With stable props they sit it out.
+const MoonSurface = memo(dynamic(() => loadMoon().then((m) => m.MoonSurface), { ssr: false }));
+const WorldSurface = memo(dynamic(() => loadWorlds().then((m) => m.WorldSurface), { ssr: false }));
+const SolarSystemCanvas = memo(SolarSystemCanvasRaw);
+const PlayerShip = memo(PlayerShipRaw);
 
 /** The climb back to orbit stays up at least this long, and until the deck has flown a few frames. */
 const ORBIT_MIN_MS = 500;
@@ -139,15 +145,17 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   // Without the overlap the flight is never up under a surface.
   const flightUp = landed === null || (!!overlap.current && !flightGone);
   // The veil is opaque: the scene being left can go, and the game travels.
+  // A game still loading cannot travel yet: this runs again when it can.
   useEffect(() => {
     if (!veil || veil.lifting) return;
     if (game.get().scene === veil.to) return;
+    if (state !== 'playing' && state !== 'paused') return;
     const id = window.setTimeout(() => {
       if (veil.kind === 'ascent') setLeaving(null);
       game.travel(veil.to, { seamless: true });
     }, VEIL_IN_MS);
     return () => window.clearTimeout(id);
-  }, [veil]);
+  }, [veil, state]);
   // The next scene has drawn: the veil lifts off it, then goes.
   useEffect(() => {
     if (!veil || veil.lifting || scene !== veil.to || state === 'loading') return;
@@ -162,7 +170,10 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   // The orbit canvas is torn down while a surface has the screen (its
   // context, maps and galaxy layers would sit under the Moon's renderer) and
   // rebuilt on the way back, so the loader waits for its first frame again.
-  useEffect(() => { if (landed !== null) setOrbitReady(false); }, [landed]);
+  // Readiness goes with the canvas itself: one that stays mounted through a
+  // quick return (the desktop cross-fade) has already reported, and must
+  // not be waited on again.
+  useEffect(() => { if (!flightUp) setOrbitReady(false); }, [flightUp]);
   // Orbit: the canvas builds on mount and reports its first frame; the
   // screen then waits for the deck to have flown a little, or to be idle.
   useEffect(() => {
@@ -196,21 +207,29 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     return () => cancelAnimationFrame(raf);
   }, [playing, speedIdx, flightActive, landed, paused, epoch]);
   const returnToOrbit = useCallback(() => {
-    if (!overlap.current) { setVeil({ kind: 'ascent', to: 'orbit', lifting: false }); return; }
-    setLeaving(game.get().scene === 'orbit' ? null : (game.get().scene as LandingSite));
+    const g = game.get();
+    if (g.scene === 'orbit') return;
+    // A surface that never finished loading has nothing to climb out of:
+    // back to a fresh orbit.
+    if (g.state === 'loading') { game.rescue(); return; }
+    if (!overlap.current) { setVeil((v) => v ?? { kind: 'ascent', to: 'orbit', lifting: false }); return; }
+    setLeaving(g.scene as LandingSite);
     game.travel('orbit', { seamless: true });
   }, []);
   /** Into a world's air: straight down from the flight, no key and no loading screen. */
-  const enterWorld = useCallback((site: LandingSite) => {
+  /** False when the game cannot go down now (still loading, paused): the
+   *  deck keeps the ship and tries again on its next frame. */
+  const enterWorld = useCallback((site: LandingSite): boolean => {
+    if (game.get().state !== 'playing' || game.get().scene !== 'orbit') return false;
     setLandscape(false);
     setEntryInto(site);
     if (overlap.current) {
       setStandby(site);
-      game.travel(site, { seamless: true });
-      return;
+      return game.travel(site, { seamless: true });
     }
     setStandby(null);
     setVeil({ kind: 'entry', to: site, lifting: false });
+    return true;
   }, []);
   const onStandbyChange = useCallback((site: LandingSite | null) => setStandby(overlap.current ? site : null), []);
   // The climb out of a surface ends in the ship, over the world just left.
@@ -221,6 +240,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     wasLanded.current = landed;
   }, [landed]);
   const onReturned = useCallback(() => setReturnedFrom(null), []);
+  const onActiveChange = useCallback((on: boolean) => { setFlightActive(on); if (!on) setStandby(null); }, []);
   const showChrome = !flightActive && landed === null;
 
   return (
@@ -238,7 +258,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
           {flightUp && <SolarSystemCanvas epoch={epoch} scaleMode="orrery" includePluto selectedId={selectedId} focusBodyId={selectedId}
             onSelect={setSelectedId} onZoomToSun={zoomToSun} zoomTo={zoomTo} onZoomToConsumed={consumeZoom} flight={session}
             room={room} onReady={onSceneReady} paused={paused} />}
-          <PlayerShip session={session} autoLaunch onActiveChange={(on) => { setFlightActive(on); if (!on) setStandby(null); }} onStandby={onStandbyChange}
+          <PlayerShip session={session} autoLaunch onActiveChange={onActiveChange} onStandby={onStandbyChange}
             onLand={enterWorld} landed={landed !== null} returnedFrom={returnedFrom} onReturned={onReturned}
             landscape={landscape} onLandscape={setLandscape} shellPaused={paused} onPauseRequest={game.pause} />
         </>}

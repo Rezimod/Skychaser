@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGameAccount } from '@/game/account';
 import { connectRealtime, realtimeConfig, type Channel, type PresenceState, type RealtimeClient } from '@/lib/multiplayer/realtime';
 import { makeRoomCode, normalizeRoomCode, pushSample, readPose, type RoomLink, type Scene } from '@/lib/multiplayer/room-link';
@@ -44,6 +44,29 @@ function firstMetas(state: PresenceState) {
   return Object.entries(state).flatMap(([key, metas]) => (metas[0] ? [{ key, meta: metas[0] }] : []));
 }
 
+/** The open rooms a lobby's presence advertises, biggest first. */
+export function roomsFromLobby(state: PresenceState): OpenRoom[] {
+  const byCode = new Map<string, { host: string; at: number; count: number }>();
+  for (const { meta } of firstMetas(state)) {
+    const c = normalizeRoomCode(str(meta.room));
+    if (!c) continue;
+    const at = num(meta.joinedAt);
+    const r = byCode.get(c);
+    if (!r) byCode.set(c, { host: str(meta.name), at, count: 1 });
+    else {
+      r.count += 1;
+      if (at < r.at) { r.at = at; r.host = str(meta.name); }
+    }
+  }
+  return [...byCode].map(([c, r]) => ({ code: c, host: r.host, count: r.count })).sort((a, b) => b.count - a.count).slice(0, 20);
+}
+
+/** A state setter that keeps the old value (and skips the render) when the new one reads the same. */
+function setIfChanged<T>(set: (fn: (prev: T) => T) => void, next: T) {
+  const json = JSON.stringify(next);
+  set((prev) => (JSON.stringify(prev) === json ? prev : next));
+}
+
 export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: number; watchLobby: boolean; onEpoch: (ms: number) => void }) {
   const { authenticated, ready } = useGameAccount();
   const config = realtimeConfig();
@@ -58,6 +81,10 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
   const optsRef = useRef(opts);
   optsRef.current = opts;
   const metaRef = useRef<RoomMeta | null>(null);
+  /** What this explorer advertises in the lobby while in a room (re-sent if the lobby channel is made again). */
+  const advertRef = useRef<{ room: string; name: string; joinedAt: number } | null>(null);
+  /** The lobby's last presence, kept while nobody is looking at the list. */
+  const lobbyStateRef = useRef<PresenceState | null>(null);
 
   const wantSocket = !!config && authenticated && (code !== null || opts.watchLobby);
   useEffect(() => {
@@ -73,7 +100,11 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
   }, [wantSocket, config?.url, config?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The lobby lists the rooms that are open: every member advertises its
-  // room code there, and the list is those codes counted.
+  // room code there, and the list is those codes counted. The channel is
+  // joined while in a room too (that is how the room is advertised, and
+  // presence cannot be tracked without joining), but the list only turns
+  // into state while the lobby is on screen: a change in some other room
+  // must not re-render a game in progress.
   const inLobby = wantSocket;
   useEffect(() => {
     const client = clientRef.current;
@@ -81,25 +112,21 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
     const lobby = client.channel('explore-lobby', link.self.id);
     lobbyRef.current = lobby;
     lobby.onPresence((state) => {
-      const byCode = new Map<string, { host: string; at: number; count: number }>();
-      for (const { meta } of firstMetas(state)) {
-        const c = normalizeRoomCode(str(meta.room));
-        if (!c) continue;
-        const at = num(meta.joinedAt);
-        const r = byCode.get(c);
-        if (!r) byCode.set(c, { host: str(meta.name), at, count: 1 });
-        else {
-          r.count += 1;
-          if (at < r.at) { r.at = at; r.host = str(meta.name); }
-        }
-      }
-      setRooms([...byCode].map(([c, r]) => ({ code: c, host: r.host, count: r.count })).sort((a, b) => b.count - a.count).slice(0, 20));
+      lobbyStateRef.current = state;
+      if (optsRef.current.watchLobby) setIfChanged(setRooms, roomsFromLobby(state));
     });
+    if (advertRef.current) lobby.track({ ...advertRef.current });
     return () => {
       lobby.leave();
       lobbyRef.current = null;
+      lobbyStateRef.current = null;
     };
   }, [inLobby, link]);
+  // The list opened again: from what the lobby last said, not from a fresh diff.
+  useEffect(() => {
+    const state = lobbyStateRef.current;
+    if (opts.watchLobby && state) setIfChanged(setRooms, roomsFromLobby(state));
+  }, [opts.watchLobby]);
 
   useEffect(() => {
     const client = clientRef.current;
@@ -139,7 +166,7 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
         const p = link.peers.get(m.id);
         if (p) p.name = m.name;
       }
-      setRoster(members.map(({ epoch: _epoch, ...m }) => m));
+      setIfChanged(setRoster, members.map(({ epoch: _epoch, ...m }) => m));
     });
     room.onBroadcast('pose', (payload) => {
       const msg = readPose(payload);
@@ -151,7 +178,8 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
       }
       pushSample(peer, msg, performance.now());
     });
-    lobbyRef.current?.track({ room: code, name: meta.name, joinedAt });
+    advertRef.current = { room: code, name: meta.name, joinedAt };
+    lobbyRef.current?.track({ ...advertRef.current });
 
     let lastSent = 0;
     let lastJson = '';
@@ -178,6 +206,7 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
       window.clearInterval(timer);
       room.leave();
       roomRef.current = null;
+      advertRef.current = null;
       lobbyRef.current?.track({ room: '', name: meta.name, joinedAt: 0 });
       link.peers.clear();
       link.code = null;
@@ -192,7 +221,8 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
     if (!meta || !code || meta.name === opts.name) return;
     meta.name = opts.name;
     roomRef.current?.track({ ...meta });
-    lobbyRef.current?.track({ room: code, name: meta.name, joinedAt: meta.joinedAt });
+    advertRef.current = { room: code, name: meta.name, joinedAt: meta.joinedAt };
+    lobbyRef.current?.track({ ...advertRef.current });
   }, [opts.name, code]);
 
   // The room goes in the address bar, so the page can be shared as the invite.
@@ -210,6 +240,7 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
     return !!c;
   }, []);
   const leave = useCallback(() => setCode(null), []);
+  const clearError = useCallback(() => setError(null), []);
 
   let status: RoomStatus;
   if (!config) status = 'unconfigured';
@@ -217,5 +248,9 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
   else if (!code) status = 'idle';
   else status = joined ? 'joined' : 'connecting';
 
-  return { status, code, roster, rooms, error, create, join, leave, clearError: () => setError(null) };
+  // One object while nothing in it changed: it is handed down to the game's panels.
+  return useMemo(
+    () => ({ status, code, roster, rooms, error, create, join, leave, clearError }),
+    [status, code, roster, rooms, error, create, join, leave, clearError],
+  );
 }

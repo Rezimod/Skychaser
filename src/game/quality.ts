@@ -105,7 +105,10 @@ const FLAGSHIP_MOBILE_GPU = /apple gpu|adreno[^\d]*(6[4-9]\d|[78]\d\d)|mali-g(7[
  *  is never detected: a strong GPU starts on `high`, and the desktop player
  *  who wants the 4K shadow map and the 8 samples names it in Settings. */
 export function detectQuality(s: DeviceSignals): QualityLevel {
-  if (s.touch && FLAGSHIP_MOBILE_GPU.test(s.gpu) && s.cores >= 6 && (s.memoryGB === 0 || s.memoryGB >= 6)) return 'balanced';
+  // Only a phone that says it has room: deviceMemory reports 0.25–8 in
+  // powers of two, and Safari reports nothing at all, and an iPhone tab is
+  // killed (the game "restarts") at well under what a desktop tab may use.
+  if (s.touch && FLAGSHIP_MOBILE_GPU.test(s.gpu) && s.cores >= 6 && s.memoryGB >= 8) return 'balanced';
   if (s.touch || s.width <= 768 || s.cores <= 2 || (s.memoryGB > 0 && s.memoryGB <= 2)) return 'performance';
   if (WEAK_GPU.test(s.gpu)) return 'performance';
   if (STRONG_GPU.test(s.gpu) && s.cores >= 6) return 'high';

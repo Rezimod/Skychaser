@@ -1,10 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { GameAccountContext, type GameAccount } from '@/game/account';
 import type { PrivySnapshot } from './StellarPrivyBridge';
 
 type Bridge = ComponentType<{ onState: (s: PrivySnapshot) => void; wantsLogin: boolean; onLoginOpened: () => void }>;
+
+/** The bridge, if it throws, takes only itself down: the game goes on, signed out. */
+class BridgeBoundary extends Component<{ children: ReactNode; onError: () => void }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    if (process.env.NODE_ENV !== 'test') console.warn('account bridge', error);
+    this.props.onError();
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 /** Privy's own keys for a session on this device: someone who signed in
  *  before gets Privy loaded as the game settles, everyone else only when
@@ -29,9 +47,32 @@ export function StellarAccount({ children }: { children: ReactNode }) {
   /** A session is waiting to be restored: signed-out is not yet known. */
   const [restoring, setRestoring] = useState(false);
 
+  const loading = useRef(false);
   const enable = useCallback((login: boolean) => {
     if (login) setWantsLogin(true);
-    void import('./StellarPrivyBridge').then((m) => setBridge(() => m.default));
+    if (loading.current) return;
+    loading.current = true;
+    // One retry for a chunk that did not come down; after that the player is
+    // a guest (signed out, the game playable), and Sign in tries again.
+    const load = () => import('./StellarPrivyBridge');
+    load().catch(() => new Promise<Awaited<ReturnType<typeof load>>>((resolve, reject) => {
+      window.setTimeout(() => { load().then(resolve, reject); }, 1500);
+    })).then((m) => {
+      setBridge(() => m.default);
+    }, (err: unknown) => {
+      if (process.env.NODE_ENV !== 'test') console.warn('account bridge did not load', err);
+      setRestoring(false);
+      setWantsLogin(false);
+    }).finally(() => {
+      loading.current = false;
+    });
+  }, []);
+  /** The bridge crashed: drop it and whatever it last said, and carry on signed out. */
+  const bridgeFailed = useCallback(() => {
+    setBridge(null);
+    setSnap(null);
+    setRestoring(false);
+    setWantsLogin(false);
   }, []);
   useEffect(() => {
     if (!hadSession()) return;
@@ -54,7 +95,11 @@ export function StellarAccount({ children }: { children: ReactNode }) {
     return { available: true, ...snap, login };
   }, [snap, restoring, enable]);
   // The same element every render, so Privy's subtree only renders when its own state changes.
-  const bridge = useMemo(() => (Bridge ? <Bridge onState={setSnap} wantsLogin={wantsLogin} onLoginOpened={loginOpened} /> : null), [Bridge, wantsLogin, loginOpened]);
+  const bridge = useMemo(() => (Bridge ? (
+    <BridgeBoundary onError={bridgeFailed}>
+      <Bridge onState={setSnap} wantsLogin={wantsLogin} onLoginOpened={loginOpened} />
+    </BridgeBoundary>
+  ) : null), [Bridge, wantsLogin, loginOpened, bridgeFailed]);
   return (
     <GameAccountContext.Provider value={value}>
       {children}

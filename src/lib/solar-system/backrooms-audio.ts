@@ -7,6 +7,7 @@
 // silences all of it.
 
 import { onSoundChange, soundLevel } from '@/lib/solar-system/sound-prefs';
+import { closeAudio, holdAudio } from '@/lib/solar-system/audio-lifecycle';
 
 const MASTER_GAIN = 0.2;
 
@@ -32,8 +33,11 @@ export function makeBackroomsAudio(): BackroomsAudio {
   let noise: AudioBuffer | null = null;
   let breathT = 0;
   let rate = 0.25;
+  // Suspended, not just silent, while the page is hidden or the game paused.
+  const hold = holdAudio(() => ctx);
   const unsubscribe = onSoundChange((_on, level) => {
     if (master && ctx) master.gain.setTargetAtTime(level * MASTER_GAIN, ctx.currentTime, 0.05);
+    hold.apply();
   });
 
   const start = () => {
@@ -86,7 +90,7 @@ export function makeBackroomsAudio(): BackroomsAudio {
         breath.connect(bp); bp.connect(breathGain); breathGain.connect(master);
         breath.start();
       }
-      if (ctx.state === 'suspended') void ctx.resume();
+      hold.apply();
     } catch {
       ctx = null;
     }
@@ -181,7 +185,8 @@ export function makeBackroomsAudio(): BackroomsAudio {
     },
     dispose() {
       unsubscribe();
-      if (ctx) void ctx.close();
+      hold.dispose();
+      closeAudio(ctx);
       ctx = null;
     },
   };

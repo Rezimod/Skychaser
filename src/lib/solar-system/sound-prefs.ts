@@ -75,6 +75,11 @@ export function setSoundPaused(on: boolean) {
   notify();
 }
 
+/** Whether the game shell is holding every mix for a pause. */
+export function soundPaused(): boolean {
+  return paused;
+}
+
 export function onSoundChange(listener: (on: boolean, level: number) => void): () => void {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
@@ -90,7 +95,7 @@ export function warmAudioService() {
   if (audioWarmed || typeof AudioContext === 'undefined') return;
   audioWarmed = true;
   try {
-    void new AudioContext().close();
+    new AudioContext().close().catch(() => {});
   } catch {
     // No audio device: every mix is silent anyway.
   }
