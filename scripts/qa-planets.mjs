@@ -1,15 +1,17 @@
 // Planet landings QA: from the ship in space down to each world's surface,
 // checking that no loading screen comes up on the way.
 //
-//   node scripts/qa-planets.mjs [--url http://localhost:3000] [--out dir] [--only mercury,venus] [--gl swiftshader|default]
+//   node scripts/qa-planets.mjs [--url http://localhost:3000] [--out dir] [--only mercury,venus] [--gl swiftshader|default] [--phone]
 //
-// For each world: fly from orbit view, park the ship under its landing
-// ceiling, press L, and watch the arrival hand over to the surface scene.
-// Every 200 ms it records whether a loading screen is visible; any is a
-// failure. Then it jumps through the descent with the surface's development
-// hooks (top of the entry, the powered descent, the touchdown) and takes a
+// For each world: fly from orbit view, put the ship a little above the
+// world's air, nose down, and hold the throttle: no key, the dive itself
+// hands over to the surface, which begins at the top of its entry. Every
+// 200 ms it records whether a loading screen is visible (any is a failure),
+// whether the veil is up (a phone, where the flight goes before the surface
+// is built), and whether the page reloaded. Then it jumps through the rest
+// of the descent with the surface's development hooks and takes a
 // screenshot at each, and one of the crew outside at the base.
-import { chromium } from 'playwright';
+import { chromium, devices } from 'playwright';
 import { mkdirSync } from 'node:fs';
 
 const arg = (name, d) => {
@@ -18,8 +20,9 @@ const arg = (name, d) => {
 };
 const BASE = arg('url', 'http://localhost:3000');
 const OUT = `${arg('out', './qa-planets')}/`;
-const ONLY = (arg('only', '') || 'mercury,venus,jupiter,saturn,uranus,neptune').split(',').filter(Boolean);
+const ONLY = (arg('only', '') || 'earth,mars,moon,mercury,venus,jupiter,saturn,uranus,neptune').split(',').filter(Boolean);
 const GL = arg('gl', 'swiftshader');
+const PHONE = process.argv.includes('--phone');
 const GL_ARGS = {
   swiftshader: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   default: [],
@@ -53,6 +56,10 @@ const loaderUp = (page) => page.evaluate(() => [...document.querySelectorAll('.c
 async function land(page, site) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  // A tab the browser killed for its memory comes back as a fresh load.
+  let loads = 0;
+  let reloads = 0;
+  page.on('load', () => { loads++; if (loads > 1) reloads++; });
   await page.goto(`${BASE}/play?orbit`, { waitUntil: 'domcontentloaded' });
   if (!(await waitFor(page, () => window.__stellarGame?.get().state === 'playing', `[${site}] orbit to play`, 300))) return;
   // The modes start in the ship by themselves; an older build needs the Explore key.
@@ -64,40 +71,59 @@ async function land(page, site) {
     const f = window.__stellarFlight;
     const b = f.world.bodies.find((x) => x.id === id);
     if (!b) return false;
-    const out = b.radius * 1.6;
-    f.ship.spawn({ position: { x: b.position.x + out, y: b.position.y + out * 0.2, z: b.position.z }, lookAt: b.position, yaw: 0 });
+    // Above the air (the entry is under 0.08 radius everywhere), nose at the centre.
+    const out = b.radius * 1.12 / Math.SQRT2;
+    f.ship.spawn({ position: { x: b.position.x + out, y: b.position.y + out * 0.05, z: b.position.z + out }, lookAt: b.position, yaw: 0 });
     return true;
   }, site);
   if (!placed) { fail(`[${site}] no such body in the flight world`); return; }
   if (!(await waitFor(page, (s) => {
     const k = document.querySelector('.flight-hud__land');
-    return window.__stellarFlight.session.telemetry.nearId === s && k && !k.hidden && k.dataset.ready === 'true';
-  }, `[${site}] the land key`, 120, site))) return;
-  await shot(page, `${site}-1-land-key`);
-  await page.keyboard.press('KeyL');
+    return window.__stellarFlight.session.telemetry.nearId === s && k && !k.hidden;
+  }, `[${site}] the landing card`, 120, site))) return;
+  await shot(page, `${site}-1-landing-card`);
+  const card = await page.evaluate(() => document.querySelector('.flight-hud__land')?.textContent ?? '');
+  // The throttle: the keyboard on a desktop, the stick's value on a phone.
+  if (PHONE) await page.evaluate(() => { window.__stellarFlight.session.input.thrust = 1; });
+  else await page.keyboard.down('KeyW');
   const t0 = Date.now();
   let sawLoader = 0;
+  let sawVeil = 0;
   let handedOver = 0;
   let shotHandover = false;
+  let shotVeil = false;
   while (Date.now() - t0 < 300_000) {
     if (await loaderUp(page)) sawLoader++;
+    if (await page.evaluate(() => !!document.querySelector('.game-world__veil'))) {
+      sawVeil++;
+      if (!shotVeil) { shotVeil = true; await shot(page, `${site}-2a-veil`); }
+    }
     const g = await page.evaluate(() => window.__stellarGame.get());
-    if (g.scene === site && !handedOver) handedOver = Date.now();
+    if (g.scene === site && !handedOver) {
+      handedOver = Date.now();
+      if (!PHONE) await page.keyboard.up('KeyW');
+    }
     if (handedOver && !shotHandover) { shotHandover = true; await shot(page, `${site}-2-handover`); }
     if (g.scene === site && g.state === 'playing') break;
+    if (PHONE && !handedOver) await page.evaluate(() => { const f = window.__stellarFlight; if (f) f.session.input.thrust = 1; });
     await page.waitForTimeout(200);
   }
+  if (!PHONE) await page.keyboard.up('KeyW');
+  if (reloads) fail(`[${site}] the page reloaded ${reloads} time(s)`);
   const playing = await page.evaluate((s) => { const g = window.__stellarGame.get(); return g.scene === s && g.state === 'playing'; }, site);
   if (!playing) { fail(`[${site}] never reached the surface scene`); return; }
-  if (sawLoader) fail(`[${site}] a loading screen was visible on ${sawLoader} samples between L and the surface`);
+  if (sawLoader) fail(`[${site}] a loading screen was visible on ${sawLoader} samples between the dive and the surface`);
+  if (PHONE && !sawVeil) fail(`[${site}] a phone should go in under the veil`);
+  if (!PHONE && sawVeil) say(`[${site}] note: the veil came up on a desktop (no overlap at this quality)`);
   await page.waitForTimeout(1600);
   await shot(page, `${site}-3-orbit`);
-  say(`${site}: L → surface playing in ${((Date.now() - t0) / 1000).toFixed(1)} s (handover at ${((handedOver - t0) / 1000).toFixed(1)} s), loader samples ${sawLoader}`);
-  // The way down, through the development hooks.
-  await page.evaluate(() => window.__stellarWorld?.skipToEntry());
+  // The surface took the flight up at the top of the entry, not in orbit.
+  const phase1 = await page.evaluate(() => ({ phase: window.__stellarWorld?.telemetry.phase, orbital: window.__stellarWorld?.telemetry.orbital?.phase ?? '' }));
+  const heap = await page.evaluate(() => Math.round((performance.memory?.usedJSHeapSize ?? 0) / 1048576));
+  say(`${site}: card "${card}"; dive → surface playing in ${((Date.now() - t0) / 1000).toFixed(1)} s (handover at ${((handedOver - t0) / 1000).toFixed(1)} s), loader samples ${sawLoader}, veil samples ${sawVeil}, heap ${heap} MB, phase ${phase1.phase}/${phase1.orbital}`);
+  if (phase1.orbital === 'orbit' || phase1.orbital === 'deorbit') fail(`[${site}] the surface started in orbit, not at the entry (${phase1.orbital})`);
   await page.waitForTimeout(6000);
   await shot(page, `${site}-4-entry`);
-  const phase1 = await page.evaluate(() => ({ phase: window.__stellarWorld?.telemetry.phase, orbital: window.__stellarWorld?.telemetry.orbital?.phase ?? '' }));
   await page.waitForTimeout(8000);
   await shot(page, `${site}-5-entry-later`);
   await page.evaluate(() => window.__stellarWorld?.skipOrbit());
@@ -122,7 +148,7 @@ async function land(page, site) {
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium', args: GL_ARGS[GL] ?? [] });
 for (const site of ONLY) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext(PHONE ? { ...devices['Pixel 7'], deviceScaleFactor: 1 } : { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   try { await land(page, site); } catch (e) { fail(`[${site}] ${e.message}`); }
   await ctx.close();
