@@ -4,6 +4,7 @@
 // Synthesised in Web Audio, nothing sampled; started on the first gesture.
 
 import { onSoundChange, soundLevel } from '@/lib/solar-system/sound-prefs';
+import { closeAudio, holdAudio } from '@/lib/solar-system/audio-lifecycle';
 
 const MASTER_GAIN = 0.16;
 
@@ -32,8 +33,11 @@ export function makeCityAmbience(): CityAmbience {
   let motor: { osc: OscillatorNode; sub: OscillatorNode; filter: BiquadFilterNode; gain: GainNode } | null = null;
   let clapK = 0;
   let clapT = 0;
+  // Suspended, not just silent, while the page is hidden or the game paused.
+  const hold = holdAudio(() => ctx);
   const unsubscribe = onSoundChange((_on, level) => {
     if (master && ctx) master.gain.setTargetAtTime(level * MASTER_GAIN, ctx.currentTime, 0.05);
+    hold.apply();
   });
   const loop = (c: AudioContext, type: BiquadFilterType, f: number, q: number, level: number, out: AudioNode) => {
     const src = c.createBufferSource();
@@ -65,7 +69,7 @@ export function makeCityAmbience(): CityAmbience {
           const w = loop(ctx, 'bandpass', 420, 1.2, 0, master);
           wind = w.g; windFilter = w.flt;
         }
-        if (ctx.state === 'suspended') void ctx.resume();
+        hold.apply();
       } catch { /* no audio */ }
     },
     update(dt, night, river, height) {
@@ -172,7 +176,8 @@ export function makeCityAmbience(): CityAmbience {
     },
     dispose() {
       unsubscribe();
-      if (ctx) void ctx.close();
+      hold.dispose();
+      closeAudio(ctx);
       ctx = null;
     },
   };

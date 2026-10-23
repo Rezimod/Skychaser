@@ -185,11 +185,13 @@ export function makeCity(
   heightAt: (x: number, z: number) => number,
   lite: boolean,
   oldTownCentre: Pt,
+  /** Where the crew starts (the pad): the cells nearest it are built in full here, under the loading screen. */
+  start: Pt = [0, 0],
 ): CityHandle {
   const group = new THREE.Group();
   group.name = 'earth-city';
   const { material, night } = facadeMaterial();
-  const geometries: THREE.BufferGeometry[] = [];
+  const geometries = new Set<THREE.BufferGeometry>();
 
   interface Prepared { b: Building; outer: Pt[]; holes: Pt[][]; base: number; top: number; area: number; c: Pt; seed: number; style: number; wall: THREE.Color; roof: THREE.Color }
   const prepared: Prepared[] = [];
@@ -344,11 +346,12 @@ export function makeCity(
       if (!coarse && pitched && outer.length <= 8 && !p.holes.length && convex(outer) && p.area < 900) addHipRoof(batch, p, outer);
       else {
         addFlatRoof(batch, p, outer, coarse ? [] : p.holes);
-        if (!coarse && p.top - p.base > 5) addCornice(batch, p, outer);
+        // Parapets are a third of a full cell's walls: phones go without.
+        if (!coarse && !lite && p.top - p.base > 5) addCornice(batch, p, outer);
       }
     }
     const g = batch.geometry();
-    if (g) geometries.push(g);
+    if (g) geometries.add(g);
     return g;
   };
   for (const [key, list] of buckets) {
@@ -361,6 +364,22 @@ export function makeCity(
     mesh.name = 'city-cell';
     group.add(mesh);
     cells.set(key, { near: list, mesh, full: null, coarse, far: build(list, true, true), cx: (ci + 0.5) * CELL, cz: (cj + 0.5) * CELL, showing: 'coarse' });
+  }
+  type Cell = typeof cells extends Map<string, infer C> ? C : never;
+  const show = (c: Cell, want: Detail) => {
+    const g = want === 'full' ? c.full : want === 'coarse' ? c.coarse : c.far;
+    c.mesh.visible = !!g;
+    c.showing = want;
+    if (g) c.mesh.geometry = g;
+  };
+  // The one or two cells round the pad in full now; the rest one per tick as the crew comes near.
+  {
+    const byStart = [...cells.values()]
+      .map((c) => ({ c, d: Math.hypot(start[0] - c.cx, start[1] - c.cz) }))
+      .filter(({ d }) => d < NEAR + CELL * 0.7)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+    for (const { c } of byStart) c.full = build(c.near, false);
   }
 
   // ── Walls for walking into: segments hashed on a grid. ──
@@ -501,22 +520,34 @@ export function makeCity(
     update(cameraPos, n) {
       night.value = n;
       if ((t++ & 15) !== 0) return;
+      // A full cell is thousands of buildings: build at most one per tick, the nearest first,
+      // the others stay coarse until their turn.
+      let next: Cell | null = null; let nextD = Infinity;
       for (const c of cells.values()) {
         const d = Math.hypot(cameraPos.x - c.cx, cameraPos.z - c.cz);
-        const want: Detail = d < NEAR + CELL * 0.7 ? 'full' : d < FAR ? 'coarse' : 'far';
+        let want: Detail = d < NEAR + CELL * 0.7 ? 'full' : d < FAR ? 'coarse' : 'far';
+        if (want === 'full' && !c.full) {
+          if (d < nextD) { next = c; nextD = d; }
+          want = 'coarse';
+        }
         // Shadows reach sixty metres round the crew: only the cells that hold them cast.
         c.mesh.castShadow = want === 'full' && d < CELL && !lite;
-        if (want === c.showing) continue;
-        if (want === 'full' && !c.full) c.full = build(c.near, false);
-        const g = want === 'full' ? c.full : want === 'coarse' ? c.coarse : c.far;
-        c.mesh.visible = !!g;
-        c.showing = want;
-        if (!g) continue;
-        c.mesh.geometry = g;
+        if (want !== c.showing) show(c, want);
+        if (want === 'far' && c.full) {
+          // Gone out of reach: free the full detail, it is rebuilt if the crew comes back.
+          const g = c.full; c.full = null;
+          geometries.delete(g); g.dispose();
+        }
+      }
+      if (next) {
+        next.full = build(next.near, false);
+        show(next, 'full');
+        next.mesh.castShadow = nextD < CELL && !lite;
       }
     },
     dispose() {
       for (const g of geometries) g.dispose();
+      geometries.clear();
       material.dispose();
     },
   };

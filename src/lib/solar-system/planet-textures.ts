@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { cachedTexture } from '@/lib/solar-system/texture-cache';
+import { disposePlanetTexture } from '@/lib/solar-system/texture-load';
 import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
 import { bodyColor, worldRadiusForBody } from '@/lib/solar-system/ephemeris';
 import { AXIAL_TILT_DEG } from '@/lib/solar-system/planet-spin';
@@ -627,9 +628,10 @@ export function disposePlanetMaterial(mat: THREE.Material) {
   if (mat.bumpMap && mat.bumpMap === mat.map) {
     mat.bumpMap = null;
   }
-  mat.map?.dispose();
-  mat.emissiveMap?.dispose();
-  mat.normalMap?.dispose();
-  mat.roughnessMap?.dispose();
+  // A loaded map may hold an ImageBitmap, which is closed with it rather than left for the collector.
+  disposePlanetTexture(mat.map);
+  disposePlanetTexture(mat.emissiveMap);
+  disposePlanetTexture(mat.normalMap);
+  disposePlanetTexture(mat.roughnessMap);
   mat.dispose();
 }

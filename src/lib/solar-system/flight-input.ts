@@ -119,13 +119,21 @@ export function attachDesktopControls(
   };
   // 1 / 2 / 3 pick the regime outright; H is the jump, on its own key.
   const modeFor: Record<string, SpeedMode> = { Digit1: 'cruise', Digit2: 'fast', Digit3: 'ultra', KeyH: 'jump' };
+  // macOS swallows the keyup of every key pressed while Cmd is down, so a W
+  // held across Cmd+Tab would thrust for ever. Any Cmd chord lets go of all.
+  const metaChord = (e: KeyboardEvent) => e.metaKey || e.code === 'MetaLeft' || e.code === 'MetaRight';
   const onKeyDown = (e: KeyboardEvent) => {
+    if (metaChord(e)) { releaseKeys(); return; }
     if (e.code === 'Escape' || e.code === 'KeyX') {
       onExit();
       return;
     }
     if (session.paused || !HANDLED_KEYS.has(e.code)) return;
     e.preventDefault();
+    // Held first, repeat or not: controls re-attached after a pause start
+    // with nothing pressed, and a key still down only sends repeats.
+    if (!pressed.has(e.code)) { pressed.add(e.code); sync(); }
+    // Only the one-shot presses wait for a fresh stroke.
     if (e.repeat) return;
     const mode = modeFor[e.code];
     if (mode) input.modeRequest = mode;
@@ -142,13 +150,17 @@ export function attachDesktopControls(
     else if (e.code === 'KeyM') setSoundOn(!soundOn());
     else if (e.code === 'Minus' || e.code === 'BracketLeft') zoomFlightCamera(input, 1);
     else if (e.code === 'Equal' || e.code === 'BracketRight') zoomFlightCamera(input, -1);
-    pressed.add(e.code);
-    sync();
   };
   const onKeyUp = (e: KeyboardEvent) => {
+    if (metaChord(e)) { releaseKeys(); return; }
     if (!pressed.delete(e.code)) return;
     sync();
   };
+  function releaseKeys() {
+    if (pressed.size === 0) return;
+    pressed.clear();
+    sync();
+  }
   const onMouseMove = (e: MouseEvent) => {
     if (!session.active || session.paused) return;
     if (!document.pointerLockElement && e.target instanceof Element && e.target.closest('button')) return;
@@ -184,10 +196,14 @@ export function attachDesktopControls(
   };
   const onBlur = () => {
     pressed.clear();
+    // The pad's share too: it is read afresh on the next poll if still held.
+    Object.assign(pad, { thrust: 0, yaw: 0, lookYaw: 0, pitch: 0, roll: 0, boost: false, fire: false, align: false });
+    padLive = false;
     sync();
     input.mouseDX = input.mouseDY = 0;
     endOrbit();
   };
+  const onHidden = () => { if (document.hidden) onBlur(); };
   let lockHeld = false;
   const onLockChange = () => {
     if (document.pointerLockElement === lockTarget) {
@@ -207,6 +223,7 @@ export function attachDesktopControls(
   window.addEventListener('contextmenu', onContextMenu);
   window.addEventListener('wheel', onWheel, { passive: false });
   window.addEventListener('blur', onBlur);
+  document.addEventListener('visibilitychange', onHidden);
   document.addEventListener('pointerlockchange', onLockChange);
   try {
     const req = lockTarget.requestPointerLock() as unknown;
@@ -224,6 +241,7 @@ export function attachDesktopControls(
     window.removeEventListener('contextmenu', onContextMenu);
     window.removeEventListener('wheel', onWheel);
     window.removeEventListener('blur', onBlur);
+    document.removeEventListener('visibilitychange', onHidden);
     document.removeEventListener('pointerlockchange', onLockChange);
     lockHeld = false;
     if (document.pointerLockElement === lockTarget) document.exitPointerLock();

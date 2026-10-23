@@ -199,6 +199,9 @@ function groundCanvases(key: string, size: number, seed: number, warm: number): 
   }
   mc.putImageData(mi, 0, 0); nc.putImageData(ni, 0, 0); rc.putImageData(ri, 0, 0);
   const out = [map, nrm, rgh];
+  // Only the latest world's set is kept: each is three 1024² canvases (~12 MB). Canvases
+  // hold no GPU memory, and a live scene's textures keep their own reference, so dropping is enough.
+  canvasCache.clear();
   canvasCache.set(key, out);
   return out;
 }

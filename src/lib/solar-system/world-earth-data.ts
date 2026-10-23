@@ -155,16 +155,52 @@ export function parseCity(buf: ArrayBuffer): Pick<EarthData, 'buildings' | 'road
   return { buildings, roads, water, trees, lamps };
 }
 
+/** One request's budget, body included: a stalled download fails instead of loading forever. */
+const FETCH_TIMEOUT_MS = 25_000;
+const RETRY_DELAY_MS = 1_200;
+
+const abortError = (signal?: AbortSignal): unknown =>
+  signal?.reason ?? new DOMException('The operation was aborted.', 'AbortError');
+
+/** Fetch and read a body under the caller's signal and a timeout of its own. */
+async function fetchWithTimeout<T>(url: string, read: (r: Response) => Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (signal?.aborted) throw abortError(signal);
+  // Combined by hand: AbortSignal.any / AbortSignal.timeout are missing on older mobile browsers.
+  const ctl = new AbortController();
+  const onAbort = () => ctl.abort(abortError(signal));
+  signal?.addEventListener('abort', onAbort, { once: true });
+  const timer = setTimeout(() => ctl.abort(new DOMException(`${url}: timed out`, 'TimeoutError')), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok) throw new Error(`${url}: ${res.status}`);
+    return await read(res);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onAbort);
+  }
+}
+
+/** One retry after a short pause on a failed or timed-out request; never after the caller aborted. */
+async function fetchRetry<T>(url: string, read: (r: Response) => Promise<T>, signal?: AbortSignal): Promise<T> {
+  try {
+    return await fetchWithTimeout(url, read, signal);
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve(); }, RETRY_DELAY_MS);
+      const onAbort = () => { clearTimeout(timer); reject(abortError(signal)); };
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
+    return fetchWithTimeout(url, read, signal);
+  }
+}
+
 export async function loadTbilisi(signal?: AbortSignal): Promise<EarthData> {
-  const get = async (name: string) => {
-    const res = await fetch(`${TBILISI_BASE}/${name}`, { signal });
-    if (!res.ok) throw new Error(`${name}: ${res.status}`);
-    return res;
-  };
+  const get = <T>(name: string, read: (r: Response) => Promise<T>) => fetchRetry(`${TBILISI_BASE}/${name}`, read, signal);
   const [manifest, terrain, city] = await Promise.all([
-    get('manifest.json').then((r) => r.json() as Promise<Manifest>),
-    get('terrain.bin').then((r) => r.arrayBuffer()),
-    get('city.bin').then((r) => r.arrayBuffer()),
+    get('manifest.json', (r) => r.json() as Promise<Manifest>),
+    get('terrain.bin', (r) => r.arrayBuffer()),
+    get('city.bin', (r) => r.arrayBuffer()),
   ]);
   return { manifest, grids: parseTerrain(terrain), ...parseCity(city) };
 }

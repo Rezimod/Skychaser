@@ -57,3 +57,22 @@ export function uploadSceneTextures(renderer: THREE.WebGLRenderer, scene: THREE.
     renderer.initTexture(t);
   }
 }
+
+/** A compile (or any wait) that cannot hold the game up for good: it settles
+ *  when the promise does, or after `ms`, whichever comes first, and never
+ *  rejects. three's `compileAsync` polls each program until it is ready, and
+ *  on a lost context, or with a material freed under it, that never happens. */
+export function settleWithin<T>(p: PromiseLike<T>, ms: number): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    const id = setTimeout(() => resolve(undefined), ms);
+    p.then((v) => { clearTimeout(id); resolve(v); }, () => { clearTimeout(id); resolve(undefined); });
+  });
+}
+
+/** The context is gone: tell every pending compile poll that its program is
+ *  done, so the promises settle and what they hold can be freed. */
+export function releaseCompilePolls(renderer: THREE.WebGLRenderer) {
+  const programs = (renderer.info as unknown as { programs?: Array<{ isReady?: () => boolean }> | null }).programs;
+  if (!programs) return;
+  for (const p of programs) p.isReady = () => true;
+}

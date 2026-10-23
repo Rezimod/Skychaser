@@ -28,10 +28,13 @@ import { PauseMenu } from './PauseMenu';
 import { SettingsPanel } from './SettingsPanel';
 import { ControlsPanel } from './ControlsPanel';
 import { MissionsPanel } from './MissionsPanel';
+import { QA_HOOKS } from '@/game/qa';
+import { GameBoundary } from './GameBoundary';
+import { retryImport } from '@/game/retry-import';
 
 /** The world (the orrery, the ship, the surfaces) is its own chunk: the
  *  title paints without it, and it is fetched while the title is up. */
-const loadWorld = () => import('./GameWorld');
+const loadWorld = () => retryImport(() => import('./GameWorld'));
 const GameWorld = dynamic(() => loadWorld().then((m) => m.GameWorld), { ssr: false });
 
 /** How long the loading screen takes to fade off the scene; the CSS transition matches. */
@@ -65,6 +68,11 @@ declare global {
     };
   }
 }
+
+/** A seamless handover that has not drawn by now shows its loading screen. */
+const UNSEAM_AFTER_MS = 12_000;
+/** A load on the same stage this long offers the way out. */
+const STUCK_AFTER_MS = 25_000;
 
 export default function GameShell() {
   const snap = useSyncExternalStore(game.subscribe, game.get, game.get);
@@ -108,7 +116,7 @@ export default function GameShell() {
     else window.setTimeout(() => { void loadWorld(); }, 600);
   }, []);
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return;
+    if (!QA_HOOKS) return;
     // Development only: the capture harness puts pretend explorers into the room.
     window.__stellarRoom = roomLinkRef.current!;
     return () => { delete window.__stellarRoom; };
@@ -125,6 +133,18 @@ export default function GameShell() {
   useEffect(() => { if (!multiPlaying) setRoomPanel(false); }, [multiPlaying]);
   /** The loader fades off the first frames rather than vanishing from over them. */
   const [loaderFading, setLoaderFading] = useState(false);
+  // ── The loading watchdog. A handover that has not drawn in a while shows
+  // its loading screen after all, and a load that has sat on one stage too
+  // long offers the way out, so a load can never be a screen that cannot be
+  // left. Esc during a load asks for the way out at once. ──
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    setStuck(false);
+    if (state !== 'loading') return;
+    const unseam = window.setTimeout(() => game.unseam(), UNSEAM_AFTER_MS);
+    const offer = window.setTimeout(() => { game.unseam(); setStuck(true); }, STUCK_AFTER_MS);
+    return () => { window.clearTimeout(unseam); window.clearTimeout(offer); };
+  }, [state, stage, scene, snap.generation]);
   const wasLoading = useRef(false);
   // The scene last played, so the wait between two reads as the way between
   // them: orbit to a surface is the entry, a surface back to orbit the climb.
@@ -143,9 +163,19 @@ export default function GameShell() {
     document.body.setAttribute('data-solar-immersive', '1');
     const deep = sceneFromQuery();
     game.boot(deep.scene, deep.mode);
+    // The deep link has been read: off the address, so a reload (or a tab
+    // the browser restores after it was killed) starts at the title rather
+    // than straight back into whatever scene the link named.
+    if (deep.scene) {
+      try {
+        const url = new URL(window.location.href);
+        for (const k of ['moon', 'orbit', 'land']) url.searchParams.delete(k);
+        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+      } catch { /* the address stays as it was */ }
+    }
     // An invite lands in Multiplayer: the title, with its lobby open.
     if (!deep.scene && invite && online) game.openOverlay('lobby');
-    if (process.env.NODE_ENV !== 'production') {
+    if (QA_HOOKS) {
       window.__stellarGame = game;
       window.__stellarQuality = {
         level: () => currentQuality().level,
@@ -163,6 +193,7 @@ export default function GameShell() {
       if (e.code !== 'Escape') return;
       const s = game.get();
       if (s.overlay !== 'none') game.closeOverlay();
+      else if (s.state === 'loading') { game.unseam(); setStuck(true); }
       else if (s.state === 'playing' && takeEscape()) { /* build mode closed instead */ }
       else if (s.state === 'playing') game.pause();
       else if (s.state === 'paused') game.resume();
@@ -234,11 +265,27 @@ export default function GameShell() {
 
   return (
     <div ref={rootRef} className="game-shell" data-state={state}>
-      {inWorld && <GameWorld key={snap.generation} scene={scene} state={state} mode={mode} room={roomLinkRef.current} epoch={epochRef.current} />}
+      {inWorld && (
+        <GameBoundary key={snap.generation} onRetry={() => game.recover()} onTitle={toTitle}
+          labels={{ title: t('failed.title'), body: t('failed.body'), retry: t('failed.retry'), toTitle: t('loading.toTitle') }}>
+          <GameWorld scene={scene} state={state} mode={mode} room={roomLinkRef.current} epoch={epochRef.current} />
+        </GameBoundary>
+      )}
       {/* A handover in flight has no loading screen: the scene being left stays up until the next has drawn. */}
       {(state === 'loading' || loaderFading) && !seamless && (
         <CosmicLoader className={state === 'loading' ? 'game-shell__loader' : 'game-shell__loader is-done'} variant={loaderVariant} body={loaderBody}
           label={loaderVariant === 'ascent' ? tl('ascent') : insertion ? t(`loading.insertion.${scene}`) : t(`loading.scene.${scene}`)} detail={t(scene === 'orbit' && stage === 'build' ? 'loading.buildOrbit' : `loading.${stage}`)} progress={STAGE_PROGRESS[stage]} tips={tips} />
+      )}
+      {state === 'loading' && stuck && (
+        <div className="game-shell__rescue" role="alert">
+          <p>{t('loading.stuck')}</p>
+          <div className="game-shell__rescue-keys">
+            <button type="button" className="game-menu__item" onClick={() => game.rescue()}>
+              {t(scene === 'orbit' ? 'loading.toTitle' : 'loading.toOrbit')}
+            </button>
+            <button type="button" className="game-menu__item" onClick={() => setStuck(false)}>{t('loading.keepWaiting')}</button>
+          </div>
+        </div>
       )}
       {dropped && state === 'playing' && <p className="game-shell__notice" role="status">{t('qualityDrop')}</p>}
       {/* In a room: the roster badge over the scene, and the panel it opens. */}

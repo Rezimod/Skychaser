@@ -24,6 +24,7 @@ import type { RewardSink } from '@/lib/solar-system/achievements';
 import { MissionPanel } from './MissionPanel';
 import { GemHud, type GemHudHandle } from './GemHud';
 import { game } from '@/game/state';
+import { noteContextLoss, rebuildWhenVisible } from '@/game/gpu-recovery';
 import { hasObjectives } from '@/game/mode';
 import { story } from '@/game/story';
 
@@ -212,23 +213,40 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
     const mount = mountRef.current;
     const root = rootRef.current;
     if (!mount || !root) return;
-    let rebuildTimer = 0;
+    let cancelRebuild: (() => void) | null = null;
     const tt = (key: string, values?: Record<string, string | number>) => tRef.current(key, values);
     onProgressRef.current?.('build');
-    const handle = makeMoonSurface(mount, {
+    let handle: MoonSurfaceHandle;
+    try {
+      handle = makeMoonSurface(mount, {
       room,
       sink: sinkRef.current,
       shipKind: shipKindRef.current,
       startOnSurface: resumeRef.current,
       onContextLost: () => {
         setGpuLost(true);
-        rebuildTimer = window.setTimeout(() => {
+        cancelRebuild?.();
+        cancelRebuild = rebuildWhenVisible(() => {
           resumeRef.current = true;
           setGpuLost(false);
           setGlGeneration((g) => g + 1);
-        }, 1200);
+        }, noteContextLoss());
       },
     });
+    } catch (e) {
+      // No context to be had (the browser is out of them, or the GPU is
+      // still coming back): the loader says so, the way back to orbit is
+      // offered, and the build is tried again in a moment.
+      console.error(e);
+      setGpuLost(true);
+      onProgressRef.current?.('ready');
+      const cancel = rebuildWhenVisible(() => {
+          resumeRef.current = true;
+          setGpuLost(false);
+          setGlGeneration((g) => g + 1);
+      }, noteContextLoss());
+      return cancel;
+    }
     handleRef.current = handle;
     beginEntry();
     onProgressRef.current?.('compile');
@@ -289,6 +307,8 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
       root.dataset.ready = String(tel.ready);
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
+      root.dataset.autoland = String(tel.autoland);
+      root.dataset.far = String(tel.baseDistance > 40 && !tel.backrooms);
       root.dataset.view = tel.view;
       // In flight the jump key is the way down (suit-jet.css swaps its face).
       root.dataset.jetFlying = String(tel.flying);
@@ -559,7 +579,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
     return () => {
       cancelAnimationFrame(raf);
       compassSize.disconnect();
-      window.clearTimeout(rebuildTimer);
+      cancelRebuild?.();
       controls.detach();
       controlsRef.current = null;
       handle.dispose();
@@ -676,6 +696,13 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
       <div ref={mountRef} className="moon-surface__canvas" />
       {(gpuLost || !onProgress) && <CosmicLoader className={gpuLost ? 'moon-surface__loader is-forced' : 'moon-surface__loader'} variant="descent"
         label={gpuLost ? tl('gpu') : tl('moon')} detail={gpuLost ? undefined : tl('moonDetail')} tips={tips} />}
+      {gpuLost && (
+        <div className="earth-hud__recover">
+          <button type="button" className="moon-hud__key earth-hud__retry" onClick={onReturn}>
+            <Rocket size={18} aria-hidden /><span>{t('returnOrbit')}</span>
+          </button>
+        </div>
+      )}
       <div className="moon-hud">
         <div className="moon-hud__visor" aria-hidden />
         <div ref={blackRef} className="moon-hud__black" aria-hidden />
@@ -692,6 +719,14 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
         </div>
 
         {/* ── The way down. ── */}
+        <button type="button" className="moon-hud__basekey moon-hud__autoland" data-action="autoland"
+          onClick={() => { const h = handleRef.current; if (h) h.input.autoland = true; }}>
+          <ChevronsDown size={16} aria-hidden /><span>{t('landAtBase')}</span>
+        </button>
+        <button type="button" className="moon-hud__basekey moon-hud__gobase" data-action="go-base"
+          onClick={() => { const h = handleRef.current; if (h) h.input.goBase = true; }}>
+          <Rocket size={16} aria-hidden /><span>{t('goBase')}</span>
+        </button>
         <div className="moon-hud__landing">
           {/* From orbit: the air at the edges of the glass, the world's
               name over the orbit, and the flight's own numbers. */}

@@ -59,6 +59,7 @@ import { makeBuildMode, type BuildHandle } from '@/lib/solar-system/build-mode';
 import { isGlobeWorld } from '@/lib/solar-system/planet-frame';
 import { attachOrbitView, earthTiers, patchTiers } from '@/lib/solar-system/surface-orbit';
 import { BUILD_SITES } from '@/lib/solar-system/build-rules';
+import { QA_HOOKS } from '@/game/qa';
 
 export type WorldView = 'chase' | 'helmet' | 'wide';
 const VIEWS: WorldView[] = ['chase', 'helmet', 'wide'];
@@ -88,6 +89,10 @@ export interface WorldInput {
   /** Edge-triggered: the headlamp on or off. Consumed. */
   headlamp: boolean;
   throttle: number;
+  /** Edge-triggered: the descent's landing computer takes the ship down onto the base's pad. Consumed. */
+  autoland?: boolean;
+  /** Edge-triggered: back to the base (the ship on its pad), from wherever the crew have gone. Consumed. */
+  goBase?: boolean;
 }
 
 export interface WorldOptions {
@@ -157,6 +162,10 @@ export interface WorldTelemetry {
   /** The last gem picked up, and a count of pickups this visit so the glass can tell a new one. */
   gemLast: GemKind | '';
   gemPicks: number;
+  /** The landing computer is flying the descent down to the pad. */
+  autoland: boolean;
+  /** Metres from the crew to the base's pad (where the ship stands), on the surface. */
+  baseDistance: number;
 }
 
 export interface WorldSurfaceHandle {
@@ -441,7 +450,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     aliens: aliens ? aliens.telemetry : null,
     earth: earth ? earth.state : null,
     entry: false,
-    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0,
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0,
   };
   function banner(key: string) { telemetry.banner = key; telemetry.bannerHold = 5; }
 
@@ -630,6 +639,10 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       if (!lt.landed) {
         // Over a giant the deck is the only floor: low down, the computer keeps the ship over it.
         if (deck) holdOverDeck(lt, lander.position.x, lander.position.y, lander.position.z, { x: padX, z: padZ }, deck);
+        // The pilot hands the descent to the computer: it flies over the
+        // pad and sets the ship down on it, at the base.
+        if (input.autoland || input.interact) { lt.assist = true; input.autoland = false; input.interact = false; }
+        telemetry.autoland = lt.assist;
         lander.update(dt, { throttle: input.throttle, moveX: input.moveX, moveY: input.moveY }, heightAt);
         if (lt.landed) {
           telemetry.phase = 'touchdown';
@@ -700,6 +713,36 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       if (building && input.interact) build?.place();
       const press = input.interact && !building;
       input.interact = false;
+      telemetry.autoland = false;
+      {
+        const home = egressPoint(lander.telemetry);
+        // A position that has gone to NaN never comes back (every height
+        // lookup and collision answers NaN too): the view would freeze on
+        // the last good frame. Put the crew back at the ship.
+        if (!Number.isFinite(cosmonaut.position.x + cosmonaut.position.y + cosmonaut.position.z)) {
+          console.error('[surface] crew position lost; back to the ship');
+          cosmonaut.position.set(home.x, floorAt(home.x, home.z), home.z);
+          cosmonaut.velocity.set(0, 0, 0);
+          cosmonaut.settle();
+          cam.snap();
+        }
+        telemetry.baseDistance = Math.hypot(cosmonaut.position.x - home.x, cosmonaut.position.z - home.z);
+        // Back to the base from anywhere the crew have walked or flown.
+        if (input.goBase) {
+          input.goBase = false;
+          if (!earth?.driving()) {
+            cosmonaut.position.set(home.x, floorAt(home.x, home.z), home.z);
+            cosmonaut.velocity.set(0, 0, 0);
+            cosmonaut.settle();
+            cam.yaw = yawForHeading(profile.view ?? 0);
+            cosmonaut.yaw = cam.yaw + Math.PI;
+            cam.snap();
+            telemetry.baseDistance = 0;
+            banner('backAtBase');
+            audio.bleep();
+          }
+        }
+      }
       jumpPress.see(input.jump);
       if (input.viewToggle) {
         input.viewToggle = false;
@@ -938,6 +981,6 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     },
   };
   if (opts.startOnSurface) handle.skipDescent();
-  if (process.env.NODE_ENV !== 'production') window.__stellarWorld = handle;
+  if (QA_HOOKS) window.__stellarWorld = handle;
   return handle;
 }

@@ -97,9 +97,14 @@ export function makeEarthWorld(renderer: THREE.WebGLRenderer, data: EarthData, l
   const bridgeCentre = L.bridgeOfPeace.deck ? centroid(L.bridgeOfPeace.deck) : [-200, 60] as [number, number];
   // OSM maps the Bridge of Peace's roof as a raised building part; the landmark builds the real thing.
   const deck = L.bridgeOfPeace.deck ?? [];
+  // Bounds by loop, not by spreading a ring into Math.min (34k buildings).
   const overBridge = (b: EarthData['buildings'][number]) => b.minHeight > 0 && b.rings.some((r) => {
-    const xs = r.pts.map((q) => q[0]); const zs = r.pts.map((q) => q[1]);
-    return deck.some(([x, z]) => x > Math.min(...xs) - 5 && x < Math.max(...xs) + 5 && z > Math.min(...zs) - 5 && z < Math.max(...zs) + 5);
+    let x0 = Infinity; let x1 = -Infinity; let z0 = Infinity; let z1 = -Infinity;
+    for (const q of r.pts) {
+      if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0];
+      if (q[1] < z0) z0 = q[1]; if (q[1] > z1) z1 = q[1];
+    }
+    return deck.some(([x, z]) => x > x0 - 5 && x < x1 + 5 && z > z0 - 5 && z < z1 + 5);
   });
   const city = makeCity(data.buildings.filter((b) => !overBridge(b)), heightAt, lite, [bridgeCentre[0], bridgeCentre[1] + 300]);
   const landmarks = makeLandmarks(data, heightAt, lite);

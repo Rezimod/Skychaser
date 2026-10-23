@@ -171,18 +171,26 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     }
   };
 
+  // macOS swallows the keyup of every key pressed while Cmd is down, so a W
+  // held across Cmd+Tab would walk for ever. Any Cmd chord lets go of all.
+  const metaChord = (e: KeyboardEvent) => e.metaKey || e.code === 'MetaLeft' || e.code === 'MetaRight';
+  const releaseKeys = () => { if (pressed.size) { pressed.clear(); sync(); } };
   const onKeyDown = (e: KeyboardEvent) => {
+    if (metaChord(e)) { releaseKeys(); return; }
     const a = footActionOf(e.code);
     if (!a || o.paused()) return;
     if ((a === 'map' && !o.onMap) || (a === 'gears' && input.gearRequest === undefined)) return;
     e.preventDefault();
     o.wake();
+    // Held first, repeat or not: controls re-attached after a pause start
+    // with nothing pressed, and a key still down only sends repeats.
+    if (!pressed.has(e.code)) { pressed.add(e.code); sync(); }
+    // Only the presses (toggles, one-shots) wait for a fresh stroke.
     if (e.repeat) return;
-    pressed.add(e.code);
     act(a, e.code);
-    sync();
   };
   const onKeyUp = (e: KeyboardEvent) => {
+    if (metaChord(e)) { releaseKeys(); return; }
     if (!pressed.delete(e.code)) return;
     sync();
   };
@@ -244,7 +252,8 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     if (document.pointerLockElement === mount) { lockHeld = true; return; }
     if (!lockHeld) return;
     lockHeld = false;
-    input.orbitDX = input.orbitDY = 0;
+    // Nothing held survives the lock: Esc may have eaten a keyup.
+    onBlur();
     if (!o.paused()) o.onPauseRequest();
   };
 

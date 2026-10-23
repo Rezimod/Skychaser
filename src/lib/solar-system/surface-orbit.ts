@@ -26,6 +26,7 @@ import { makePlanetGlobe, type PlanetGlobe } from '@/lib/solar-system/planet-glo
 import { PLANET_BODIES, altitudeOf, type GlobeWorld } from '@/lib/solar-system/planet-frame';
 import { haze } from '@/lib/solar-system/world-earth-haze';
 import type { EarthWorld } from '@/lib/solar-system/world-earth';
+import { QA_HOOKS } from '@/game/qa';
 
 /** The layer every sky object is on. The main camera does not see it; the sky camera sees nothing else. */
 export const SKY_LAYER = 5;
@@ -391,7 +392,7 @@ export function attachOrbitView(host: SurfaceHost, world: GlobeWorld, parts: Orb
       if (window.__stellarGlobe?.globe === globe) delete window.__stellarGlobe;
     },
   };
-  if (process.env.NODE_ENV !== 'production') {
+  if (QA_HOOKS) {
     window.__stellarGlobe = {
       globe, surface: scene,
       altitude: () => altitude,

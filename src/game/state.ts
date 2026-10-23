@@ -35,6 +35,10 @@ export const STAGE_PROGRESS: Record<LoadStage, number> = { module: 0.1, build: 0
 const listeners = new Set<() => void>();
 const initial = (): GameSnapshot => ({ state: 'boot', scene: 'moon', mode: DEFAULT_MODE, stage: 'module', overlay: 'none', generation: 0, seamless: false });
 let snap: GameSnapshot = initial();
+/** A pause asked for while a scene was loading (a tab switch, a lost
+ *  pointer lock): the game comes up paused, with its menu, rather than
+ *  playing with the controls let go. */
+let pendingPause = false;
 
 function set(patch: Partial<GameSnapshot>) {
   snap = { ...snap, ...patch };
@@ -61,7 +65,8 @@ export const game = {
   /** From the pause menu back to the title, to pick another mode. The world
    *  is let go (the shell unmounts it); the checkpoint stays where it was. */
   toTitle() {
-    if (snap.state !== 'paused' && snap.state !== 'playing') return;
+    if (snap.state !== 'paused' && snap.state !== 'playing' && snap.state !== 'loading') return;
+    pendingPause = false;
     setSoundPaused(false);
     set({ state: 'title', overlay: 'none', seamless: false, generation: snap.generation + 1 });
   },
@@ -72,7 +77,10 @@ export const game = {
       // The scene has its models now; the arrival's hold on them can go.
       dropPrefetch();
       writeCheckpoint(snap.scene, snap.mode);
-      set({ state: 'playing', stage });
+      const paused = pendingPause;
+      pendingPause = false;
+      if (paused) setSoundPaused(true);
+      set({ state: paused ? 'paused' : 'playing', stage });
       return;
     }
     set({ stage });
@@ -80,17 +88,44 @@ export const game = {
   /** Leaving one surface for another (or for orbit) while playing. With
    *  `seamless`, the scene being left keeps the screen until the next one
    *  has drawn: no loading screen. */
-  travel(scene: GameScene, opts: { seamless?: boolean } = {}) {
-    if (snap.state !== 'playing' && snap.state !== 'paused') return;
+  travel(scene: GameScene, opts: { seamless?: boolean } = {}): boolean {
+    if (snap.state !== 'playing' && snap.state !== 'paused') return false;
+    pendingPause = false;
     setSoundPaused(false);
     set({ state: 'loading', scene, stage: 'module', overlay: 'none', seamless: !!opts.seamless });
+    return true;
+  },
+  /** A handover that is taking too long shows its loading screen after all,
+   *  so the player can see the game is working and has a way out. */
+  unseam() {
+    if (snap.state === 'loading' && snap.seamless) set({ seamless: false });
+  },
+  /** Out of a load that is stuck: a surface load goes back to orbit, built
+   *  fresh; a stuck orbit goes to the title. Never leaves the player with a
+   *  screen that cannot be left. */
+  rescue() {
+    if (snap.state !== 'loading') return;
+    pendingPause = false;
+    setSoundPaused(false);
+    if (snap.scene !== 'orbit') set({ state: 'loading', scene: 'orbit', stage: 'module', overlay: 'none', seamless: false, generation: snap.generation + 1 });
+    else set({ state: 'title', overlay: 'none', seamless: false, generation: snap.generation + 1 });
+  },
+  /** After the world itself failed (an error the shell caught): a fresh
+   *  orbit, whatever the game was doing. */
+  recover() {
+    if (snap.state !== 'loading' && snap.state !== 'playing' && snap.state !== 'paused') return;
+    pendingPause = false;
+    setSoundPaused(false);
+    set({ state: 'loading', scene: 'orbit', stage: 'module', overlay: 'none', seamless: false, generation: snap.generation + 1 });
   },
   pause() {
+    if (snap.state === 'loading') { pendingPause = true; return; }
     if (snap.state !== 'playing') return;
     setSoundPaused(true);
     set({ state: 'paused', overlay: 'none' });
   },
   resume() {
+    pendingPause = false;
     if (snap.state !== 'paused') return;
     setSoundPaused(false);
     set({ state: 'playing', overlay: 'none' });
@@ -98,6 +133,7 @@ export const game = {
   /** Reload the current scene from its last checkpoint. */
   restart() {
     if (snap.state !== 'paused') return;
+    pendingPause = false;
     setSoundPaused(false);
     set({ state: 'loading', stage: 'module', overlay: 'none', generation: snap.generation + 1, seamless: false });
   },
@@ -118,6 +154,7 @@ export const game = {
   /** Tests only: back to the start. */
   reset() {
     setSoundPaused(false);
+    pendingPause = false;
     snap = initial();
     for (const fn of listeners) fn();
   },

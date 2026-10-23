@@ -23,7 +23,7 @@ import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil,
 import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
-import { approachPose, approachProfileFor, APPROACH_SECONDS, descentBurn, entryHeat, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
+import { approachPose, approachProfileFor, approachSpeedCap, APPROACH_SECONDS, descentBurn, entryHeat, isLandable, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
 export { zoomFlightCamera, clearFlightInput } from '@/lib/solar-system/flight-input';
@@ -340,6 +340,8 @@ export interface FlightTelemetry {
   /** Nearest body ('' when nothing within reach) and altitude above its surface. */
   nearId: string;
   nearAltKm: number;
+  /** The approach to a world you can land on is slowing the ship. */
+  approachSlow: boolean;
   /** A body has just come within sensor reach: named once, then cleared. */
   region: string;
   jumpPhase: JumpPhase;
@@ -508,6 +510,7 @@ export function createFlightSession(opts: { combat?: boolean } = {}): FlightSess
       alert: '',
       nearId: '',
       nearAltKm: 0,
+      approachSlow: false,
       region: '',
       jumpPhase: 'none',
       jumpT: 0,
@@ -1877,6 +1880,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       let rcsRoll = 0;
       let rcsBrake = 0;
       let wellK = 1;
+      let approachCap = Infinity;
       if (jumpPhase !== 'none') tel.boost = false;
       if (jumpPhase === 'charge') {
         jumpT += dt;
@@ -2045,6 +2049,12 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           // and up is for the space between worlds, not around one.
           const wk = THREE.MathUtils.clamp((d / b.radius - 1) / WELL_RADII, 0.1, 1);
           if (wk < wellK) wellK = wk;
+          // A world to land on, and the ship closing on it: the approach
+          // slows it, so the dive into the air is flown, not overshot.
+          if (pilot === 'ship' && (b.kind === 'planet' || b.kind === 'moon') && isLandable(b.id) && vel.dot(tmp) > 0.3 * vel.length() * d) {
+            const cap = approachSpeedCap(d / b.radius - 1) * b.radius;
+            if (cap < approachCap) approachCap = cap;
+          }
           const reach = b.radius * GRAVITY_REACH;
           if (d >= reach) continue;
           const g = (Math.min(MAX_SURFACE_G, b.surfaceG) / 9.81) * ONE_G;
@@ -2069,7 +2079,19 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         let max = boost ? eff.boost : eff.max;
         if (isDrive(mode) && pilot === 'ship') max = Math.max(regimes.cruise.max, max * wellK);
         speed = vel.length();
-        if (speed > max && !arrival) {
+        // The approach eases the ship down to its pace over a second or so
+        // rather than snapping it there.
+        tel.approachSlow = false;
+        if (approachCap < max && !arrival && !autodock) {
+          max = approachCap;
+          if (speed > max) {
+            tel.approachSlow = true;
+            const k = Math.max(max / speed, Math.exp(-dt * 2.2));
+            vel.multiplyScalar(k);
+            speed *= k;
+          }
+        }
+        if (speed > max && !arrival && !tel.approachSlow) {
           vel.multiplyScalar(max / speed);
           speed = max;
         }
