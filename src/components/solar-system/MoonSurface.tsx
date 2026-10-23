@@ -37,6 +37,9 @@ interface MoonSurfaceProps {
   /** Built behind the arrival (or being left for orbit) and not on screen:
    *  it draws, but takes no keys, pointer or touch. */
   standby?: boolean;
+  /** Arriving straight from the flight deck's dive: begin at the top of the
+   *  atmosphere (or the braking burn on an airless world), not in orbit. */
+  startAt?: 'entry';
   /** Where the build is; the shell's loading screen follows it and this one stays hidden. */
   onProgress?: (stage: 'build' | 'compile' | 'ready') => void;
   /** The mouse was let go of (Esc under pointer lock): the shell should pause. */
@@ -56,7 +59,7 @@ const fmtApprox = (m: number) => `~${fmtRange(Math.round(m / 10) * 10)}`;
 const PPD = 3.1;
 const TURNS = 3;
 
-export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress, onPauseRequest, shipKind }: MoonSurfaceProps) {
+export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, onProgress, onPauseRequest, shipKind }: MoonSurfaceProps) {
   const t = useTranslations('solarSystem.moon');
   /** The world's own card over the orbit, as the flight deck words it. */
   const tworld = useTranslations('solarSystem.flight.worlds.moon');
@@ -227,6 +230,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       },
     });
     handleRef.current = handle;
+    beginEntry();
     onProgressRef.current?.('compile');
     let readyReported = false;
     const controls = attachSurfaceControls({
@@ -562,6 +566,21 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, onProgress,
       handleRef.current = null;
     };
   }, [glGeneration, room]);
+  // Begin at the entry once the surface is on screen (it may have been built
+  // hidden first); only once, so a GPU rebuild resumes where it was.
+  const enteredRef = useRef(false);
+  const startAtRef = useRef(startAt);
+  startAtRef.current = startAt;
+  const standbyRef = useRef(standby);
+  standbyRef.current = standby;
+  const beginEntry = () => {
+    if (enteredRef.current || startAtRef.current !== 'entry' || standbyRef.current) return;
+    const h = handleRef.current;
+    if (!h) return;
+    enteredRef.current = true;
+    h.skipToEntry();
+  };
+  useEffect(beginEntry, [startAt, standby, glGeneration]);
   useEffect(() => {
     handleRef.current?.setPaused(!!paused);
     if (paused) unlockPointer();

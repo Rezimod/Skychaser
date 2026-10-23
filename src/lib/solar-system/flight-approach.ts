@@ -23,7 +23,7 @@
 // low orbit (`orbit`) — calm, with nothing on the hull. Proxima b keeps the
 // whole run here.
 
-import { isGlobeWorld } from '@/lib/solar-system/planet-frame';
+import { isGlobeWorld, PLANET_BODIES } from '@/lib/solar-system/planet-frame';
 
 export type ApproachPhase = 'transit' | 'approach' | 'entry' | 'burn' | 'glide' | 'orbit' | 'done';
 /** Which run: the entry through air, the burn over vacuum, or — for the
@@ -78,6 +78,20 @@ export const SITE_ATMOSPHERE: Record<string, number> = {
   moon: 1, mars: 1.15, proximaB: 1.12, earth: 1.1,
   mercury: 1, venus: 1.06, jupiter: 1.03, saturn: 1.04, uranus: 1.05, neptune: 1.05,
 };
+/** Radii of the landing sites that are not flown down from orbit in their own scene, km. */
+const SITE_RADIUS_KM: Record<string, number> = { proximaB: 7160 };
+
+/** How low the ship must be over `site` before the way down begins by
+ *  itself, km: well inside the drawn air, where the heat on the hull has
+ *  started, so diving at a world is all it takes. A world with no air
+ *  starts its braking burn a little above the ground instead. */
+export function entryAltitudeKm(site: string): number {
+  const r = isGlobeWorld(site) ? PLANET_BODIES[site].radiusKm : SITE_RADIUS_KM[site] ?? 0;
+  if (!r) return 0;
+  const air = SITE_ATMOSPHERE[site] ?? 1;
+  return air <= 1.0001 ? r * 0.06 : r * (air - 1) * 0.7;
+}
+
 /** Whether the way down to `site` has air to burn in. The site's own table
  *  wins over the body the flight world found, so the Moon is airless even
  *  where a body of that id says otherwise. */

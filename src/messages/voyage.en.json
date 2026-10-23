@@ -375,12 +375,12 @@
         "t12": "Menu, top right — targets, the cockpit view, landscape, sound and help",
         "r12": "K — docking computer: bring the ship in to a station nearby",
         "t13": "Dock key — near a station it appears; tap and the computer brings you in. Push forward to leave.",
-        "r13": "L — down to the surface. The landing card comes up over every planet, the Moon and Proxima b, and lights when you are low enough.",
+        "r13": "Landing — fly down at any planet, the Moon or Proxima b. Dive into the atmosphere and the ship enters and lands by itself.",
         "r14": "M — sound on and off",
         "t14": "Sound — on and off in the menu",
         "r15": "Z — flight assist · V — step out in the suit, and back aboard · R — clear the target",
         "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
-        "t15": "Fly low over any planet or moon you can land on — the amber key by the stick takes you down"
+        "t15": "Fly down at any planet or moon — dive into its atmosphere and the ship lands by itself"
       },
       "dockedAt": "Docked at {body} — push forward to leave",
       "supplying": "Taking on fuel and stores",
@@ -432,6 +432,8 @@
       "soundOn": "Sound on",
       "soundOff": "Sound off",
       "landReady": "Ready to land",
+      "landDive": "Dive into the atmosphere to land",
+      "landDiveAirless": "Fly down toward the surface to land",
       "landDescend": "Descend below {n} km",
       "arrival": {
         "transit": "Transit",
