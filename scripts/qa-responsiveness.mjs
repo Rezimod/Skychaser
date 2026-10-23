@@ -53,7 +53,7 @@ function monitor() {
     t0: performance.now(),
     beats: 0, maxGap: 0, gaps250: 0, gaps1000: 0, lastBeat: performance.now(),
     longTasks: [], loafs: [], errors: [], contextsMade: 0, contextsLost: 0,
-    clears: new Map(), canvasIds: new WeakMap(), nextCanvas: 1, labels: new Map(),
+    clears: new Map(), canvasIds: new WeakMap(), nextCanvas: 1, labels: new Map(), contexts: [],
   };
   window.__qaMon = m;
   const beat = (now) => {
@@ -112,13 +112,21 @@ function monitor() {
   HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
     const had = this.__qaHadContext;
     const ctx = getContext.call(this, type, ...rest);
-    if (ctx && !had && /webgl/.test(String(type))) { this.__qaHadContext = true; m.contextsMade++; }
+    if (ctx && !had && /webgl/.test(String(type))) {
+      this.__qaHadContext = true;
+      m.contextsMade++;
+      m.contexts.push(typeof WeakRef === 'function' ? new WeakRef(ctx) : { deref: () => ctx });
+    }
     return ctx;
   };
   window.__qaSnap = () => ({
     beats: m.beats, maxGap: Math.round(m.maxGap), gaps250: m.gaps250, gaps1000: m.gaps1000,
     longTasks: m.longTasks.length, longMs: m.longTasks.reduce((a, e) => a + e.ms, 0), worstLong: m.longTasks.reduce((a, e) => Math.max(a, e.ms), 0),
     errors: m.errors.slice(), contextsMade: m.contextsMade, contextsLost: m.contextsLost,
+    // Asked of each context itself: a lost one (given back, or taken by the
+    // GPU) is not counted, wherever its canvas is; a live one is, even off
+    // the page, because it still holds its memory.
+    contextsAlive: m.contexts.reduce((n, r) => { const c = r.deref(); return n + (c && !c.isContextLost() ? 1 : 0); }, 0),
     clears: [...m.clears.entries()].map(([id, n]) => ({ id, n, label: m.labels.get(id) || '?' })),
     loafs: m.loafs.length,
   });
@@ -232,7 +240,7 @@ async function play(browser, profile) {
         longTasks: longs.length, longTaskMs: longs.reduce((a, e) => a + e.ms, 0), worstLongMs: longs.reduce((a, e) => Math.max(a, e.ms), 0),
       } : null,
       worstFrames: loafs.sort((a, b) => b.ms - a.ms).slice(0, 5),
-      contexts: after ? { made: after.contextsMade, lost: after.contextsLost, alive: after.contextsMade - after.contextsLost } : null,
+      contexts: after ? { made: after.contextsMade, lost: after.contextsLost, alive: after.contextsAlive } : null,
       memory: m0 && m1 ? { heapMB: [m0.heapMB, m1.heapMB], nodes: [m0.nodes, m1.nodes], listeners: [m0.listeners, m1.listeners] } : null,
       // The sign-in service is not configured in a local build (production has its key).
       errors: pageErrors.slice(errorsBefore).concat((after?.errors ?? []).slice(before?.errors.length ?? 0)).filter((e) => !/PRIVY|privy|walletconnect/.test(e)),
@@ -354,7 +362,10 @@ async function play(browser, profile) {
       await phase(`descent ${tag}`, async () => {
         await wait(p, 12000);
         await p.evaluate(() => window.__qaSurface()?.skipOrbit());
-        await wait(p, 4000);
+        // The powered descent: the flight from orbit hands over to the lander.
+        if (!(await until(p, () => window.__qaSurface()?.telemetry.phase === 'descent', 90))) note(`descent ${tag}: still not in the powered descent 90 s after the skip`);
+        await wait(p, 1500);
+        await p.screenshot({ path: `${OUT}${profile}-${tag}-powered.png` }).catch(() => {});
         // The landing computer: the deck's key takes the ship down onto the pad.
         let autoland = null;
         const key = await p.$('[data-action="autoland"]');
