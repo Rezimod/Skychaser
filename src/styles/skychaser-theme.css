@@ -1013,3 +1013,54 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 
 /* Where to send SOL when the wallet is short: the address wraps on a phone. */
 .sd-pay__fund code { word-break: break-all; font-size: 0.85em; }
+
+/* ── The welcome: the first card, shown once after sign-in ────── */
+.sd-welcome { --tier: var(--sd-rarity-common); width: min(680px, 100%); grid-template-columns: 250px minmax(0, 1fr); }
+.sd-welcome .sd-sheet__art { min-height: 300px; padding: 26px; }
+.sd-welcome .sd-sheet__art .sd-cardplate { width: 190px; }
+.sd-welcome .sd-sheet__body { padding: 26px 26px 22px; gap: 12px; }
+.sd-welcome .sd-eyebrow { margin-bottom: 2px; }
+.sd-welcome .sd-note { margin-top: 2px; }
+.sd-welcome .sd-pay__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.sd-welcome .sn-share { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 719px) {
+  /* The sheet's phone rules are one class deep; these are two, so each one the sheet sets is set again here.
+     The card stands in flow above the name, not beside it: nothing can run under it. */
+  .sd-welcome { width: 100%; grid-template-columns: minmax(0, 1fr); }
+  .sd-welcome .sd-sheet__art { position: static; width: 100%; height: auto; min-height: 0; padding: 22px 0 0; display: grid; place-items: center; border: 0; background: none; }
+  .sd-welcome .sd-sheet__art .sd-cardplate { width: 132px; }
+  .sd-welcome .sd-sheet__body { padding-top: 14px; }
+  .sd-welcome .sd-eyebrow, .sd-welcome .sd-sheet__name, .sd-welcome .sd-sheet__line { margin-left: 0; }
+  .sd-welcome .sd-sheet__name { padding-right: 0; }
+  .sd-welcome .sd-sheet__line { min-height: 0; }
+  .sd-welcome .sd-note { margin-top: 10px; }
+  .sd-welcome .sd-pay__actions > *, .sd-welcome .sn-share > * { flex: 1 1 100%; }
+}
+
+/* Several editions of one card: each number is its own page. */
+.sd-coll__nums { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 6px 0 0; font-size: 12px; }
+.sd-coll__nums a { color: var(--sd-ink-3); }
+.sd-coll__nums a:hover { color: var(--sd-ink); }
+
+/* ── Invitations: a holder's link, and what it brought ─────────── */
+.sd-invite { display: grid; gap: 28px; max-width: 640px; }
+.sd-invite__url {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; margin: 0;
+  padding: 14px 16px; border: 1px solid var(--sd-rule-strong); border-radius: var(--sd-radius); background: rgba(255, 255, 255, 0.03);
+  color: var(--sd-ink); font-family: var(--sd-mono); font-size: 15px; letter-spacing: 0.02em; text-align: left; cursor: pointer;
+  transition: border-color var(--sd-dur-fast) var(--sd-ease), background var(--sd-dur-fast) var(--sd-ease);
+}
+.sd-invite__url:hover, .sd-invite__url:focus-visible { border-color: var(--sd-ink-3); background: rgba(255, 255, 255, 0.05); }
+.sd-invite__url span { min-width: 0; overflow-wrap: anywhere; }
+.sd-invite__url svg { flex-shrink: 0; color: var(--sd-ink-3); }
+.sd-invite__link .sn-share { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.sd-invite__figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.sd-invite__figures > div { padding: 14px 16px; border: 1px solid var(--sd-rule); border-radius: var(--sd-radius); }
+.sd-invite__figures dt { font-family: var(--sd-mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sd-ink-3); }
+.sd-invite__figures dd { margin: 6px 0 0; font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sd-invite__figures dd small { font-size: 14px; color: var(--sd-ink-3); font-weight: 500; }
+.sd-invite__cards { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+@media (max-width: 520px) { .sd-invite__figures { grid-template-columns: 1fr; } }
+
+/* The wallet is short: the funding button sits above the address. */
+.sd-pay__fund > .sd-btn { margin-bottom: 12px; }

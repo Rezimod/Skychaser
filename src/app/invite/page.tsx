@@ -1,20 +1,24 @@
 import type { Metadata } from 'next';
+import InviteClient from '@/components/skychaser/InviteClient';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
+import SkychaserView from '@/components/skychaser/SkychaserView';
+import { inviteCodes } from '@/lib/invite';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Skychaser — closed beta',
-  description: 'Skychaser is in a closed beta. Entry is by invitation.',
+  title: 'Invitations — Skychaser',
+  description: 'Every holder has an invitation link. Skychaser is in a closed beta; entry is by invitation.',
   robots: { index: false },
 };
 
+/** The door, and for a holder, their invitations. */
 export default function InvitePage() {
   return (
-    <SkychaserShell title="Closed beta">
+    <SkychaserShell title="Invitations">
+      <SkychaserView step="invite" />
       <section className="sd-container sd-top">
-        <div className="sd-gate">
-          <p className="sd-eyebrow">Closed beta</p>
-          <p className="sd-lede">Skychaser opens through an invitation link. If you hold one, open it on this device.</p>
-        </div>
+        <InviteClient gated={inviteCodes().length > 0} />
       </section>
     </SkychaserShell>
   );

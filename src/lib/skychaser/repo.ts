@@ -167,3 +167,72 @@ export async function holderView(db: Db, wallet: string): Promise<HolderEdition[
     }
   })
 }
+
+export type EditionView = {
+  editionId: string
+  designation: string
+  name: string
+  rarity: string
+  observationStatus: string
+  editionNumber: number
+  editionSize: number
+  ownerWallet: string
+  acquiredAt: string
+  /** How it came to its holder: a capsule (with its public sequence), bought outright, or the first card given on sign-in. */
+  provenance: { kind: 'capsule'; capsuleId: string; sequence: number | null } | { kind: 'outright' } | { kind: 'welcome' } | { kind: 'given' }
+  latest: CaptureSummary | null
+}
+
+/**
+ * One edition, by its card and number, as its own page shows it. Null when
+ * the card has no such edition yet. A card that does not exist reads the same
+ * way: the page decides what to say.
+ */
+export async function readEdition(db: Db, designation: string, editionNumber: number): Promise<EditionView | null> {
+  const { rows } = (await db.execute(sql`
+    SELECT e.id, e.edition_number, e.owner_wallet, e.acquired_at, e.capsule_id, e.order_id,
+      c.id AS card_id, c.designation, c.name, c.rarity, c.edition_size, c.observation_status,
+      (SELECT cp.sequence FROM capsule cp WHERE cp.id = e.capsule_id) AS sequence,
+      EXISTS (SELECT 1 FROM holder_contact h WHERE h.welcome_edition_id = e.id) AS welcome
+    FROM edition e JOIN card c ON c.id = e.card_id
+    WHERE c.designation = ${designation} AND e.edition_number = ${editionNumber}
+  `)) as {
+    rows: Array<{
+      id: string; edition_number: number | string; owner_wallet: string; acquired_at: string | Date; capsule_id: string | null; order_id: string | null
+      card_id: string; designation: string; name: string; rarity: string; edition_size: number | string; observation_status: string
+      sequence: number | string | null; welcome: boolean
+    }>
+  }
+  const r = rows[0]
+  if (!r) return null
+
+  const [night] = await db
+    .select({ cardId: nightlyTarget.cardId, ...captureColumns })
+    .from(nightlyTarget)
+    .innerJoin(observatoryCapture, eq(observatoryCapture.id, nightlyTarget.captureId))
+    .where(eq(nightlyTarget.cardId, r.card_id))
+    .orderBy(desc(nightlyTarget.nightDate))
+    .limit(1)
+
+  const provenance: EditionView['provenance'] = r.capsule_id
+    ? { kind: 'capsule', capsuleId: r.capsule_id, sequence: r.sequence === null ? null : Number(r.sequence) }
+    : r.order_id
+      ? { kind: 'outright' }
+      : r.welcome
+        ? { kind: 'welcome' }
+        : { kind: 'given' }
+
+  return {
+    editionId: r.id,
+    designation: r.designation,
+    name: r.name,
+    rarity: r.rarity,
+    observationStatus: r.observation_status,
+    editionNumber: Number(r.edition_number),
+    editionSize: Number(r.edition_size),
+    ownerWallet: r.owner_wallet,
+    acquiredAt: new Date(r.acquired_at).toISOString(),
+    provenance,
+    latest: night ? summary(night) : null,
+  }
+}

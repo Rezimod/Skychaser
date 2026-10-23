@@ -283,3 +283,57 @@ most reversible option; each needs a yes/no from Rezi.
     rehearsal builds marked paid — 16 opened capsules, 5 still sealed, 1
     card, all on the owner's two accounts, nothing paid — should be cleared
     with the go-live reset or kept as the owner's own cards.
+
+## Growth (2026-10-22)
+
+31. **The welcome card is First Light.** Every account that signs in receives
+    one edition of `FIRST-LIGHT` (then `BIG-DIPPER`, `ORION`, `SUMMER-TRIANGLE`
+    once each is gone), numbered like any other and counted against supply
+    (`src/lib/skychaser/welcome.ts`). First Light is a former headliner and
+    votes ×3, so 300 welcomes add up to 900 votes a week. If that is too much
+    weight to give away, move a plain-vote common to the front of the list; the
+    order is one constant. `SKYCHASER_WELCOME=off` stops it entirely.
+
+32. **One welcome per account and per wallet is the only sybil guard.** An
+    email sign-in is cheap, so a determined person could collect First Light
+    editions under many addresses, one an hour per IP. The cost of that is 300
+    commons at most; the funnel (`welcome_granted` events) will show it if it
+    happens. A stronger guard (a phone, a paid capsule first) was not added
+    because it would remove the point of the first card.
+
+33. **One common for each invited account's first capsule, up to ten.** The
+    inviter's card is drawn at random among the commons with editions left,
+    never a welcome card, never a sealed or limited one
+    (`src/lib/skychaser/referral.ts`). It is a gift, not a sale, so the draw is
+    not committed to in the public log. Ten is a guess at where generosity
+    turns into farming; the constant is `REFERRAL_REWARD_CAP`.
+
+34. **A holder's link opens the closed beta.** While `STELLAR_INVITE_CODES`
+    is set, a holder's code admits whoever opens it, exactly as an owner's
+    code does: the cookie carries a signature made with `INVITE_SIGNING_KEY`
+    (or the capsule seal key). The door stays closed to an account that only
+    signed in at it: no first card and no link of its own until an invitation
+    has let it in (`admitted` in `src/lib/invite.ts`). If the beta is meant
+    to grow only by the owner's hand, the one line in `admitted` that accepts
+    the signature comes out, and holders' links still record who brought whom.
+
+35. **Email goes out from the nightly cron, a day behind the night.** The
+    cron at 13:00 UTC closes last night and only then tells the holders their
+    card was photographed; a capture attached at 02:00 is announced at 17:00
+    Tbilisi. `scripts/skychaser-lifecycle.ts` is where the capture attaches,
+    and it could call `notifyPhotographed` itself the moment it does. Left for
+    the cron so one path sends and `holder_notice` keeps it to once.
+
+36. **Every signed-in account takes email until it opts out.** `holder_contact.notify`
+    starts true; each notice carries a signed unsubscribe link. There is no
+    opt-in step and no preference page. If the law of a target market wants
+    consent first, the welcome panel is where to ask.
+
+37. **Funding goes through Privy's own flow, which the dashboard must allow.**
+    The pay panel's "Add SOL with a card" button calls `useFundWallet` from
+    Privy's Solana module; with no funding method enabled for the app (MoonPay,
+    Coinbase Onramp) the flow opens and closes with nothing, and the address
+    below it is still the way. Privy marks the hook deprecated in favour of
+    `useAddFunds`, which adds Stripe; the Solana-typed hook was chosen because
+    its chain and asset are explicit. Enable a provider before launch and buy
+    one $5 capsule through it.

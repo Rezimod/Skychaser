@@ -1,10 +1,12 @@
 'use client';
 
 import { usePrivy } from '@privy-io/react-auth';
-import { useWallets } from '@privy-io/react-auth/solana';
-import { useEffect } from 'react';
+import { useFundWallet, useSolanaFundingPlugin, useWallets } from '@privy-io/react-auth/solana';
+import { useEffect, useMemo } from 'react';
 import { SolanaWalletProvider } from '@/components/providers/PrivyProvider';
-import { useSkychaserSession, type PrivyState } from './SkychaserAuth';
+import { useSkychaserSession, type FundWallet, type PrivyState } from './SkychaserAuth';
+
+const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
 
 /** Opens Privy's sign-in window if Log in is what loaded it. */
 function LoginOnArrival() {
@@ -22,7 +24,23 @@ function LoginOnArrival() {
 function Report({ onState }: { onState: (s: PrivyState) => void }) {
   const privy = usePrivy();
   const { wallets } = useWallets();
-  useEffect(() => onState({ privy, wallets }), [privy, wallets, onState]);
+  // Privy's funding flow for Solana: a card or an exchange, into the holder's own wallet, when the dashboard allows it.
+  useSolanaFundingPlugin();
+  const { fundWallet } = useFundWallet();
+  const fund = useMemo<FundWallet>(
+    () =>
+      ({ address, amountSol }) =>
+        fundWallet({
+          address,
+          options: {
+            chain: DEVNET ? 'solana:devnet' : 'solana:mainnet',
+            asset: 'native-currency',
+            ...(amountSol ? { amount: amountSol.toFixed(4) } : {}),
+          },
+        }),
+    [fundWallet],
+  );
+  useEffect(() => onState({ privy, wallets, fundWallet: fund }), [privy, wallets, fund, onState]);
   return null;
 }
 

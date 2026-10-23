@@ -266,7 +266,7 @@ export default function SkychaserReveal({
       <ShareCard
         title={`${flown.name} — Skychaser`}
         text={`I detonated a star and pulled ${flown.name} — No. ${pad(flown.editionNumber)} of ${flown.editionSize}.`}
-        url={`https://skychaser.io/card/${flown.designation}`}
+        url={`https://skychaser.io/edition/${flown.designation}/${flown.editionNumber}`}
       />
     </div>
   );

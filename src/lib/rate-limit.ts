@@ -62,6 +62,11 @@ export const skychaserLogRateLimit = { limit: (id: string) => makeLimit('60 s', 
 export const skychaserVoteRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:vote').limit(id) };
 // A booking is one statement; ten a minute lets a holder change their mind, not paper the board.
 export const skychaserBookRateLimit = { limit: (id: string) => makeLimit('60 s', 10, 'rl:stellar:book').limit(id) };
+// Saying hello on sign-in writes one row and may allocate the welcome edition; a session says it a few times a day.
+export const skychaserHelloRateLimit = { limit: (id: string) => makeLimit('3600 s', 12, 'rl:stellar:hello').limit(id) };
+export const skychaserHelloIpRateLimit = { limit: (id: string) => makeLimit('3600 s', 40, 'rl:stellar:hello:ip').limit(id) };
+// A holder's invitation link is read often and made once.
+export const skychaserInviteRateLimit = { limit: (id: string) => makeLimit('60 s', 20, 'rl:stellar:invite').limit(id) };
 
 // Daily ceilings (24h sliding) — bound the worst-case AI cost / token
 // issuance per user even if the per-minute / per-hour limits are saturated.
