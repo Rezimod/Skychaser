@@ -113,7 +113,7 @@ export function buildRaider(s: number, tex: THREE.Texture): THREE.Group {
     body.push(blade);
     body.push(new THREE.CylinderGeometry(s * 0.05, s * 0.06, s * 0.26, 6).rotateX(Math.PI / 2).translate(side * s * 0.1, 0, -s * 0.24));
   }
-  g.add(new THREE.Mesh(merge(body), new THREE.MeshStandardMaterial({ color: 0x24202a, roughness: 0.45, metalness: 0.8 })));
+  g.add(new THREE.Mesh(merge(body), new THREE.MeshStandardMaterial({ color: 0x2c2630, roughness: 0.45, metalness: 0.8, emissive: 0x2a1014, emissiveIntensity: 0.6 })));
   const trim: THREE.BufferGeometry[] = [];
   for (const side of [-1, 1]) {
     const slash = new THREE.BoxGeometry(s * 0.3, s * 0.024, s * 0.03);
@@ -162,7 +162,7 @@ export function buildGunship(s: number, tex: THREE.Texture): THREE.Group {
   for (let i = 0; i < 3; i++) {
     hull.push(new THREE.CylinderGeometry(s * 0.08, s * 0.1, s * 0.22, 8).rotateX(Math.PI / 2).translate((i - 1) * s * 0.18, 0, -s * 0.86));
   }
-  g.add(new THREE.Mesh(merge(hull), new THREE.MeshStandardMaterial({ color: 0x3b3d46, roughness: 0.55, metalness: 0.8 })));
+  g.add(new THREE.Mesh(merge(hull), new THREE.MeshStandardMaterial({ color: 0x4a4c56, roughness: 0.55, metalness: 0.8, emissive: 0x1c1e2a, emissiveIntensity: 0.7 })));
   const turrets: THREE.BufferGeometry[] = [];
   for (let i = 0; i < 4; i++) {
     const x = (i - 1.5) * s * 0.36;
