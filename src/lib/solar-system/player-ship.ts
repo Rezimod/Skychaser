@@ -845,6 +845,8 @@ export interface PlayerShipHandle {
   parts: ShipParts;
   spawn: (anchor: FlightAnchor) => void;
   takeDamage: (amount: number) => void;
+  /** Told of each bolt as it leaves (where from, its velocity): a room sends it on. */
+  onFire?: (from: THREE.Vector3, velocity: THREE.Vector3) => void;
   update: (
     dtSec: number,
     timeSec: number,
@@ -1256,6 +1258,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     b.velocity.copy(b.dir).multiplyScalar(BOLT_SPEED).add(vel);
     b.life = 0;
     b.mesh.visible = true;
+    handle.onFire?.(b.mesh.position, b.velocity);
     audio.laser();
     rig.kick(0.05);
   };
@@ -1717,7 +1720,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     for (const j of shipParts.rcs) j.mat.opacity = 0;
   };
 
-  return {
+  const handle: PlayerShipHandle = {
     group,
     fillAnchor,
     fillDistance: 80 * H,
@@ -2826,4 +2829,5 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       for (const m of mats) m.dispose();
     },
   };
+  return handle;
 }

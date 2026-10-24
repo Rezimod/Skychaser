@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 import {
-  bracket, CODE_LENGTH, lerpAngle, makeRoomCode, normalizeRoomCode, pushSample, readPose, seedFromCode, type Peer, type PoseMsg,
+  bracket, CODE_LENGTH, createRoomLink, FADE_MS, lerpAngle, makeRoomCode, normalizeRoomCode, peerAlpha, pushSample, pushShot, readPose, readShot,
+  RENDER_DELAY_MS, seedFromCode, STALE_MS, type Peer, type PoseMsg,
 } from '@/lib/multiplayer/room-link';
+import { makeRemoteFleet, queueShot } from '@/lib/multiplayer/remote-fleet';
+import type { FlightBody } from '@/lib/solar-system/player-ship';
 import { connectRealtime, type PresenceState } from '@/lib/multiplayer/realtime';
 
 const pose = (n: number, x = n): PoseMsg => ({ id: 'a', n, s: 'surface', w: 'moon', p: [x, 0, 0], y: 0, v: 1 });
@@ -124,5 +128,113 @@ describe('realtime client', () => {
     sock.receive({ topic: join.topic, event: 'presence_diff', ref: null, payload: { joins: {}, leaves: { you: { metas: [{ phx_ref: 'r2' }] } } } });
     expect(Object.keys(seen.at(-1)!)).toEqual(['me']);
     client.close();
+  });
+});
+
+describe('timing, fading and shots', () => {
+  it('spaces packets as they were sent, not as they arrived', () => {
+    const peer: Peer = { id: 'a', name: '', samples: [], lastSeq: -1 };
+    // Sent every 200 ms; arrived 40, 190, 45 and 60 ms late.
+    const late = [40, 190, 45, 60];
+    late.forEach((d, i) => pushSample(peer, { ...pose(i + 1), t: 5000 + i * 200 }, 1000 + i * 200 + d));
+    const gaps = peer.samples.slice(1).map((s, i) => s.at - peer.samples[i].at);
+    // (The offset may creep a hair later per packet: a route that got slower.)
+    for (const g of gaps) expect(Math.abs(g - 200)).toBeLessThan(5);
+    // Never placed later than it arrived.
+    peer.samples.forEach((s, i) => expect(s.at).toBeLessThanOrEqual(1000 + i * 200 + late[i]));
+  });
+
+  it('carries a moving ship on briefly past its last packet, but not across a keepalive gap', () => {
+    const fly = (n: number, x: number): PoseMsg => ({ id: 'a', n, s: 'flight', b: 'earth', p: [x, 0, 0] });
+    const moving = [{ at: 0, msg: fly(1, 0) }, { at: 200, msg: fly(2, 10) }];
+    const ahead = bracket(moving, 300, 250)!;
+    expect(ahead.alpha).toBeCloseTo(1.5);
+    expect(bracket(moving, 5000, 250)!.alpha).toBeCloseTo(1 + 250 / 200);
+    const resting = [{ at: 0, msg: fly(1, 0) }, { at: 2000, msg: fly(2, 0) }];
+    expect(bracket(resting, 2100, 250)!.alpha).toBe(0);
+  });
+
+  it('fades a pilot who has gone quiet', () => {
+    const peer: Peer = { id: 'a', name: '', samples: [], lastSeq: -1, heardAt: 1000 };
+    expect(peerAlpha(peer, 1000 + STALE_MS)).toBe(1);
+    expect(peerAlpha(peer, 1000 + STALE_MS + FADE_MS / 2)).toBeCloseTo(0.5);
+    expect(peerAlpha(peer, 1000 + STALE_MS + FADE_MS * 2)).toBe(0);
+  });
+
+  it('reads shots strictly', () => {
+    expect(readShot({ id: 'a', b: 'earth', p: [1, 2, 3], v: [0, 0, 1], t: 5, extra: 1 })).toEqual({ id: 'a', b: 'earth', p: [1, 2, 3], v: [0, 0, 1], t: 5 });
+    expect(readShot({ id: 'a', b: 'earth', p: [1, 2], v: [0, 0, 1] })).toBeNull();
+    expect(readShot({ id: 'a', b: 'earth', p: [1, 2, Infinity], v: [0, 0, 1] })).toBeNull();
+    expect(readShot({ id: 'a', b: 'earth', p: [1, 2, 3], v: [0, 0, 1e9] })).toBeNull();
+    expect(readShot({ id: 7, b: 'earth', p: [1, 2, 3], v: [0, 0, 1] })).toBeNull();
+    expect(readShot('boom')).toBeNull();
+  });
+
+  it('keeps the cruiser and the send time on a pose', () => {
+    expect(readPose({ id: 'x', n: 1, s: 'flight', k: 'cruiser', t: 123 })).toMatchObject({ k: 'cruiser', t: 123 });
+  });
+
+  it('bounds the bolts waiting to be drawn', () => {
+    const link = createRoomLink('me');
+    for (let i = 0; i < 200; i++) pushShot(link, undefined, { id: 'a', b: 'earth', p: [0, 0, 0], v: [0, 0, 1] }, i);
+    expect(link.shotsIn.length).toBeLessThanOrEqual(48);
+  });
+});
+
+describe('remote fleet in flight', () => {
+  const earth = { id: 'earth', position: new THREE.Vector3(10, 0, 0), radius: 1 } as unknown as FlightBody;
+  const camera = () => {
+    const c = new THREE.PerspectiveCamera(60, 1.5, 0.0001, 1000);
+    c.position.set(10, 0, 5);
+    c.lookAt(10, 0, 0);
+    return c;
+  };
+
+  it('draws another ship\'s bolt at its body when its delay is up, then retires it', () => {
+    const fleet = makeRemoteFleet();
+    const link = createRoomLink('me');
+    link.code = 'K7M2Q';
+    pushShot(link, undefined, { id: 'a', b: 'earth', p: [1, 2, 3], v: [0, 0, 10] }, 1000);
+    const lit = () => fleet.group.children.filter((o) => o instanceof THREE.Mesh && o.visible);
+    fleet.update(link, [earth], camera(), 1100);
+    expect(lit()).toHaveLength(0); // not yet: drawn with the ship's delay
+    fleet.update(link, [earth], camera(), 1000 + RENDER_DELAY_MS + 1);
+    expect(lit()).toHaveLength(1);
+    expect(lit()[0].position.x).toBeCloseTo(11);
+    expect(lit()[0].position.z).toBeCloseTo(3.01);
+    fleet.update(link, [earth], camera(), 1000 + RENDER_DELAY_MS + 51);
+    expect(lit()[0].position.z).toBeCloseTo(3.51);
+    for (let t = 1400; t < 2400; t += 90) fleet.update(link, [earth], camera(), t);
+    expect(lit()).toHaveLength(0);
+    expect(link.shotsIn).toHaveLength(0);
+    fleet.dispose();
+  });
+
+  it('queues this ship\'s bolts body-relative, only while in a room', () => {
+    const link = createRoomLink('me');
+    queueShot(link, new THREE.Vector3(12, 0, 0), new THREE.Vector3(0, 1, 0), [earth]);
+    expect(link.shotsOut).toHaveLength(0);
+    link.code = 'K7M2Q';
+    for (let i = 0; i < 9; i++) queueShot(link, new THREE.Vector3(12, 0, 0), new THREE.Vector3(0, 1, 0), [earth]);
+    expect(link.shotsOut.length).toBeLessThanOrEqual(4);
+    expect(link.shotsOut[0]).toMatchObject({ b: 'earth', p: [2, 0, 0], v: [0, 1, 0] });
+  });
+
+  it('puts a pilot behind the camera at the screen\'s edge, and fades one gone quiet', () => {
+    const fleet = makeRemoteFleet();
+    const link = createRoomLink('me');
+    link.code = 'K7M2Q';
+    const peer: Peer = { id: 'p', name: 'Nino', samples: [], lastSeq: -1 };
+    link.peers.set('p', peer);
+    // Behind the camera (it looks down -z from z=5; the ship is at z=8).
+    pushSample(peer, { id: 'p', n: 1, s: 'flight', b: 'earth', p: [0.5, 0, 8], q: [0, 0, 0, 1], t: 0 }, 0);
+    fleet.update(link, [earth], camera(), 1000);
+    const blip = link.view.pilots[0];
+    expect(blip).toMatchObject({ id: 'p', name: 'Nino', onScreen: false, alpha: 1 });
+    expect(Math.max(Math.abs(blip.x), Math.abs(blip.y))).toBeCloseTo(1);
+    expect(blip.x).toBeGreaterThan(0); // behind and to the right: the arrow is on the right
+    fleet.update(link, [earth], camera(), STALE_MS + FADE_MS + 10);
+    expect(link.view.pilots).toHaveLength(0);
+    fleet.dispose();
   });
 });

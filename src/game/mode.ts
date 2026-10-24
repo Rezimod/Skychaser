@@ -36,9 +36,9 @@ export function hasObjectives(mode: GameMode): boolean {
   return mode === 'story';
 }
 
-/** The modes the title offers. Multiplayer needs the host's accounts (a room
- *  needs a signed-in explorer) and a realtime service to meet in; without
- *  either it is not offered at all rather than offered and refused. */
-export function titleModes(opts: { accounts: boolean; online?: boolean }): GameMode[] {
-  return opts.accounts && opts.online !== false ? ['free', 'story', 'multi'] : ['free', 'story'];
+/** The modes the title offers. Multiplayer needs a realtime service to meet
+ *  in, and nothing else: guests fly in rooms too. Without the service it is
+ *  not offered at all rather than offered and refused. */
+export function titleModes(opts: { online: boolean }): GameMode[] {
+  return opts.online ? ['free', 'story', 'multi'] : ['free', 'story'];
 }
