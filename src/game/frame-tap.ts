@@ -13,7 +13,7 @@ interface Request { resolve: (c: HTMLCanvasElement | null) => void; scale: numbe
 let request: Request | null = null;
 
 /** The next drawn frame, at `scale` of the canvas's pixels; null if nothing draws within `timeoutMs`. */
-export function requestStill(scale = 0.5, timeoutMs = 400): Promise<HTMLCanvasElement | null> {
+export function requestStill(scale = 0.5, timeoutMs = 1500): Promise<HTMLCanvasElement | null> {
   if (request) { window.clearTimeout(request.timer); request.resolve(null); }
   return new Promise((resolve) => {
     const mine: Request = {

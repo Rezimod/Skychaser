@@ -413,7 +413,7 @@ async function play(browser, profile) {
         // The way back to the base: the deck's key, if this build has it.
         // Far from the ship (as after a long walk or a flight), the key comes up.
         await p.evaluate((st) => { const w = window.__qaSurface(); if (w && st) w.teleport(st.x + 90, st.z + 20); }, start);
-        await wait(p, 2500);
+        await until(p, () => { const k = document.querySelector('[data-action="go-base"]'); return !!k && getComputedStyle(k).display !== 'none'; }, 15);
         const baseKey = await p.$('[data-action="go-base"]');
         let baseS = null;
         if (baseKey && await baseKey.isVisible().catch(() => false)) {
