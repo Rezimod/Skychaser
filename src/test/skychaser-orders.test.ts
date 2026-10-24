@@ -57,8 +57,13 @@ describe('finding a payment', () => {
     expect(await findPayment(order(), NO_SHARED)).toEqual({ paid: true, signature: 'sig', paidAt: new Date('2026-09-20T12:10:00Z'), late: false });
   });
 
-  it('is late when the block time is after the window, or unknown', async () => {
-    pay.signatures.mockResolvedValue([sig('sig', '2026-09-20T12:16:00Z')]);
+  it('still pays when the wallet signed in the minute after the quote lapsed', async () => {
+    pay.signatures.mockResolvedValue([sig('sig', '2026-09-20T12:15:50Z')]);
+    expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: true, late: false });
+  });
+
+  it('is late when the block time is after the window and its signing grace, or unknown', async () => {
+    pay.signatures.mockResolvedValue([sig('sig', '2026-09-20T12:16:01Z')]);
     expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: true, late: true });
     pay.signatures.mockResolvedValue([sig('sig', null)]);
     expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: true, late: true });
@@ -141,6 +146,19 @@ describe('the payment network', () => {
     expect(paymentNetworkProblem()).toMatch(/mainnet/);
     expect(await findPayment(order(), NO_SHARED)).toMatchObject({ paid: false, status: 503 });
     expect(pay.signatures).not.toHaveBeenCalled();
+  });
+
+  it('checks payments on the live database only from the production deployment', () => {
+    const before = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = 'postgresql://u:p@ep-soft-thunder-an8yi31a-pooler.example.tech/db';
+    expect(paymentNetworkProblem()).toMatch(/live database/);
+    process.env.VERCEL_ENV = 'preview';
+    expect(paymentNetworkProblem()).toMatch(/live database/);
+    process.env.VERCEL_ENV = 'production';
+    process.env.SOLANA_RPC_URL = 'https://mainnet.helius-rpc.com/?api-key=x';
+    expect(paymentNetworkProblem()).toBeNull();
+    process.env.DATABASE_URL = before;
+    if (before === undefined) delete process.env.DATABASE_URL;
   });
 
   it('reads an empty RPC variable as unset, and production must name an RPC of its own', () => {

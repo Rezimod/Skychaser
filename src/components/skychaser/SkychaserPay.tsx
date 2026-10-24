@@ -24,9 +24,14 @@ export type Confirmation = {
   error?: string;
 };
 
+/** Pay is offered until a minute before the quote lapses, so the wallet has time to sign inside it. */
+const PAY_CUTOFF_MS = 60_000;
+const payUntil = (expiresAt: string | null) => (expiresAt ? new Date(expiresAt).getTime() - PAY_CUTOFF_MS : null);
+
 function minutesLeft(expiresAt: string | null): number | null {
-  if (!expiresAt) return null;
-  return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 60_000));
+  const until = payUntil(expiresAt);
+  if (until === null) return null;
+  return Math.max(0, Math.ceil((until - Date.now()) / 60_000));
 }
 
 const DEVNET = process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet';
@@ -78,10 +83,12 @@ export default function SkychaserPay({
   const [unsure, setUnsure] = useState(false);
   const [shortOf, setShortOf] = useState<string | null>(null);
   const [left, setLeft] = useState<number | null>(minutesLeft(order.expiresAt));
+  /** The unsure send's blockhash: until the chain is past it, that transfer can still land. */
+  const unsureUntil = useRef<{ connection: Connection; lastValidBlockHeight: number } | null>(null);
 
   useEffect(() => {
     setLeft(minutesLeft(order.expiresAt));
-    const t = setInterval(() => setLeft(minutesLeft(order.expiresAt)), 30_000);
+    const t = setInterval(() => setLeft(minutesLeft(order.expiresAt)), 5_000);
     return () => clearInterval(t);
   }, [order.expiresAt]);
 
@@ -157,12 +164,19 @@ export default function SkychaserPay({
     try {
       const sender = new PublicKey(wallet.address);
       const connection = new Connection(RPC, 'confirmed');
-      const [{ blockhash }, balance] = await Promise.all([connection.getLatestBlockhash('confirmed'), connection.getBalance(sender, 'confirmed')]);
+      const [{ blockhash, lastValidBlockHeight }, balance] = await Promise.all([connection.getLatestBlockhash('confirmed'), connection.getBalance(sender, 'confirmed')]);
+      unsureUntil.current = { connection, lastValidBlockHeight };
       const { tx, lamports } = buildTransfer(order.url, sender, blockhash);
       const need = lamports + BigInt(FEE_LAMPORTS + KEEP_LAMPORTS);
       if (BigInt(balance) < need) {
         setShortOf(sol(need));
         setNote(`This wallet holds ${sol(balance)} SOL. The purchase, its fee and the wallet's reserve need ${sol(need)} SOL.`);
+        return;
+      }
+      const until = payUntil(order.expiresAt);
+      if (until !== null && Date.now() >= until) {
+        setLeft(0);
+        setNote('This price has run out. Get a new one to pay.');
         return;
       }
       signing = true;
@@ -179,11 +193,7 @@ export default function SkychaserPay({
         // The wallet may have broadcast before it failed: never offer a second payment until the chain says.
         setUnsure(true);
         setNote('The wallet did not say whether the transfer went out. Checking before you try again.');
-        await wait(POLL_EVERY_MS);
-        const r = await check(true);
-        if (r === 'pending' || r === 'failed' || r === 'limited') {
-          setNote('Not seen on the network yet. If your wallet shows the transfer, press “Check payment” in a minute; otherwise try again.');
-        }
+        await settleUnsure();
         return;
       }
       setNote(/insufficient|balance/i.test(msg) ? 'This wallet has too little SOL for the transfer and its fee.' : msg || 'The transfer was not sent.');
@@ -201,10 +211,42 @@ export default function SkychaserPay({
     // payFromWallet reads the current wallet; it runs once, when the wallet first appears.
   }, [autoPay, wallet, left]);
 
-  /** Lets a payment be tried again once a check has found nothing. */
+  /** True once the unsure send's blockhash has expired: it can no longer land. */
+  const unsureSendDead = async () => {
+    const u = unsureUntil.current;
+    if (!u) return true;
+    const height = await u.connection.getBlockHeight('confirmed').catch(() => 0);
+    return height > u.lastValidBlockHeight;
+  };
+
+  /**
+   * After a send that may have gone out: keep asking until it is paid, the
+   * order closes, or its blockhash has expired and a last check (after the
+   * finality the server waits for) still finds nothing. Only then may Pay be pressed again.
+   */
+  const settleUnsure = async () => {
+    for (let i = 0; i < POLL_TIMES; i++) {
+      await wait(POLL_EVERY_MS);
+      const r = await check(true);
+      if (r === 'confirmed' || r === 'closed') return;
+      if (r === 'limited') await wait(60_000);
+      if (await unsureSendDead()) {
+        await wait(15_000);
+        const last = await check(true);
+        if (last === 'confirmed' || last === 'closed') return;
+        if (last !== 'pending') break;
+        setUnsure(false);
+        setNote('No transfer went out. You can pay again.');
+        return;
+      }
+    }
+    setNote('Not seen on the network yet. If your wallet shows the transfer, press “Check payment” in a minute.');
+  };
+
+  /** A check pressed by hand; Pay comes back only once the unsure send can no longer land. */
   const retryAfterUnsure = async () => {
     const r = await check();
-    if (r !== 'confirmed' && r !== 'closed') setUnsure(false);
+    if (r !== 'confirmed' && r !== 'closed' && (await unsureSendDead())) setUnsure(false);
   };
 
   /** Devnet only: 1 test SOL from the network's faucet, which has no value. */
@@ -248,7 +290,7 @@ export default function SkychaserPay({
             onConnect={connect}
             disabled={paying || unsure || !!sent}
           />
-          {left === 0 && !sent && !unsure && onExpired ? (
+          {left === 0 && !sent && !unsure && !paying && onExpired ? (
             <button type="button" className="sd-btn sd-btn--primary sd-btn--block" onClick={onExpired}>
               Get a new price
             </button>

@@ -68,7 +68,20 @@ export function paymentNetworkProblem(): string | null {
   const rpc = networkOf(PAYMENT_RPC());
   if (process.env.VERCEL_ENV === 'production' && (cluster !== 'mainnet-beta' || rpc !== 'mainnet-beta')) return 'production must take payments on mainnet';
   if (rpc !== 'unknown' && rpc !== cluster) return `SOLANA_RPC_URL is ${rpc} but the wallets pay on ${cluster}`;
+  // A local or preview build reads its own env file: with an old merchant wallet it would
+  // find no payment and close paid orders on the live database.
+  if (process.env.VERCEL_ENV !== 'production' && onLiveDatabase()) return 'only the production deployment checks payments on the live database';
   return null;
+}
+
+const LIVE_DATABASE_ENDPOINT = 'ep-soft-thunder-an8yi31a';
+
+function onLiveDatabase(): boolean {
+  try {
+    return new URL(process.env.DATABASE_URL ?? '').hostname.startsWith(LIVE_DATABASE_ENDPOINT);
+  } catch {
+    return false;
+  }
 }
 
 /** Route guard for every route that quotes or checks a payment. */
@@ -337,7 +350,7 @@ export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promi
   // A transfer with no block time cannot be shown to be inside the window; it
   // is treated as late, which refunds it rather than keeps it.
   const paidAt = done.blockTime ? new Date(done.blockTime * 1000) : new Date();
-  const late = !done.blockTime || !order.expiresAt || paidAt.getTime() > order.expiresAt.getTime();
+  const late = !done.blockTime || !order.expiresAt || paidAt.getTime() > order.expiresAt.getTime() + SIGNING_GRACE_MS;
   return { paid: true, signature: done.signature, paidAt, late, ...(extra.length ? { extra } : {}), ...also };
 }
 
@@ -603,6 +616,13 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
  * made in time into a refund.
  */
 export const FINALITY_GRACE_MS = 2 * 60_000;
+
+/**
+ * A transfer that lands this long after the quote lapsed still pays: the page
+ * stops offering Pay a minute before the end, so this only covers a wallet
+ * that took its time to sign. It must stay well inside FINALITY_GRACE_MS.
+ */
+export const SIGNING_GRACE_MS = 60_000;
 
 /** How far back the daily re-check looks for a payment that reached an order after it closed. */
 export const RECHECK_CLOSED_DAYS = 3;

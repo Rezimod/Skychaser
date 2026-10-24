@@ -22,17 +22,8 @@ const nextConfig: NextConfig = {
     '/opengraph-image': ['./src/app/_og/**'],
     '/card/[designation]/opengraph-image': ['./src/app/_og/geist-600.ttf', './public/cards/plate/*/card.webp'],
   },
-  images: {
-    formats: ['image/avif', 'image/webp'],
-    remotePatterns: [
-      { protocol: 'https', hostname: 'www.celestron.com' },
-      { protocol: 'https', hostname: 'www.bresser.com' },
-      { protocol: 'https', hostname: 'images.bresser.de' },
-      { protocol: 'https', hostname: 'astroman.ge' },
-      { protocol: 'https', hostname: 'levenhuk.com' },
-      { protocol: 'https', hostname: 'www.levenhuk.com' },
-    ],
-  },
+  // next/image is not used; the optimizer stays off so it cannot be reached at all.
+  images: { unoptimized: true },
   turbopack: {
     root: __dirname,
     resolveAlias: {
