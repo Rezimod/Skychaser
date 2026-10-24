@@ -22,6 +22,7 @@ const EVENT: Record<LogRow['event'], string> = {
   released: 'Released',
   refund_due: 'Refund due',
   card_sold: 'Card sold',
+  card_granted: 'Card given',
 };
 
 /** Each flag the audit can raise, in words. */
@@ -41,6 +42,7 @@ const FLAG: Record<AuditFlag['kind'], string> = {
   edition_duplicate: 'One edition issued twice',
   verification_failed: 'Draw does not recompute',
   beacon_missing: 'Opened without the paying block',
+  beacon_reused: 'One payment drew two capsules',
   awaiting_payment: 'Awaiting payment',
   simulated_payment: 'Rehearsal sale',
   released_unpaid: 'Released unpaid',
@@ -48,6 +50,7 @@ const FLAG: Record<AuditFlag['kind'], string> = {
   withdrawn_unsold: 'Withdrawn unsold',
   refund_due: 'Refund due',
   edition_check_skipped: 'Edition check skipped',
+  beacon_unbound: 'Payment reference not logged',
   editions_outside_log: 'Editions issued outside the log',
 };
 
@@ -59,6 +62,7 @@ function detail(row: LogRow): string {
       .join(', ');
   }
   if (row.event === 'card_sold' && o) return `${o.designation} ${String(o.editionNumber).padStart(3, '0')}`;
+  if (row.event === 'card_granted' && o) return `${o.designation} ${String(o.editionNumber).padStart(3, '0')} · ${o.kind === 'referral' ? 'invitation' : 'welcome'}`;
   if (o && typeof o.reason === 'string') return o.reason;
   if (row.event === 'listed' && row.commitment) return `${row.commitment.slice(0, 16)}…`;
   if (row.event === 'purchased' && row.buyerNonce) return `nonce ${row.buyerNonce.slice(0, 16)}…`;

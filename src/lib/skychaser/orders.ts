@@ -38,7 +38,7 @@ export const CREDITS_PRODUCT_PREFIX = 'skychaser-credits:';
  * goes. No build writes it any more; the orders that carry it are still in the
  * database, and nothing was paid for them.
  */
-const REHEARSAL_PREFIX = 'simulated-no-payment:';
+export const REHEARSAL_PREFIX = 'simulated-no-payment:';
 
 /** Whether a recorded signature is a rehearsal's stand-in rather than a transaction. */
 export function isRehearsalSignature(signature: string | null | undefined): boolean {
@@ -269,8 +269,12 @@ async function signaturesFor(connection: Connection, reference: PublicKey) {
   return all.reverse();
 }
 
-/** The paying transfer's block: what a capsule's draws are mixed with. */
-export type Beacon = { signature: string; slot: number; blockhash: string };
+/**
+ * The paying transfer's block: what a capsule's draws are mixed with. An
+ * opening adds the order's payment reference, which the transfer names, so
+ * the log ties the beacon to this order and no other.
+ */
+export type Beacon = { signature: string; slot: number; blockhash: string; reference?: string };
 
 /**
  * The hash of the block a finalized transaction landed in. Nobody knows it
@@ -506,32 +510,51 @@ export async function cardAvailability(db: Db, designation: string) {
   };
 }
 
+/** What `grantHash` in a 'card_granted' log entry is: one per welcomed or inviting account, never the account itself. */
+export function grantHash(kind: GrantKind, key: string): string {
+  return createHash('sha256').update(`${kind}:${key}`, 'utf8').digest('hex');
+}
+
+export type GrantKind = 'welcome' | 'referral';
+
+type Allocation = { cardId: string; setId: string; wallet: string; directOnly?: boolean } & (
+  | { orderId: string }
+  | { grant: GrantKind; grantKey: string }
+);
+
 /**
- * The next edition of a card, for a paid direct sale, and its public log
- * entry — one statement, so neither exists without the other. Refused (null)
- * when the card is sold out or the set's remaining editions are owed to
- * capsules. The entry names the card, the edition and SHA-256 of the order id;
- * not the wallet. Runs as one neon-http batch, a single transaction, behind a
- * lock on the set.
+ * The next edition of a card, for a paid direct sale or a free grant (the
+ * welcome card, an invitation's card), and its public log entry — one
+ * statement, so neither exists without the other. Refused (null) when the
+ * card is sold out or the set's remaining editions are owed to capsules. A
+ * sale's entry ('card_sold') names the card, the edition and SHA-256 of the
+ * order id; a grant's ('card_granted') the card, the edition, the kind and a
+ * hash of the account it is for. Neither names the wallet. Runs as one
+ * neon-http batch, a single transaction, behind a lock on the set.
  */
-async function allocateCardSale(
-  db: Db,
-  input: { cardId: string; setId: string; wallet: string; orderId: string; directOnly?: boolean },
-): Promise<{ editionNumber: number } | null> {
+async function allocateLogged(db: Db, input: Allocation): Promise<{ id: string; editionNumber: number } | null> {
   // Retired editions can never be drawn, so they cannot stand in for one owed to a capsule.
   const retired = await retiredEditions(db, input.setId);
   // A limited card is never drawn: selling one takes nothing a capsule is owed.
   const directOnly = input.directOnly ?? false;
+  const orderId = 'orderId' in input ? input.orderId : null;
+  const log = 'orderId' in input
+    ? sql`SELECT 'card_sold', jsonb_build_object(
+            'designation', k.designation, 'editionNumber', e.edition_number, 'editionSize', k.edition_size,
+            'orderHash', ${orderHash(input.orderId)}::text)`
+    : sql`SELECT 'card_granted', jsonb_build_object(
+            'designation', k.designation, 'editionNumber', e.edition_number, 'editionSize', k.edition_size,
+            'kind', ${input.grant}::text, 'grantHash', ${grantHash(input.grant, input.grantKey)}::text)`;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      // One sale per set at a time: two sales of different cards would each see
+      // One allocation per set at a time: two of different cards would each see
       // the same spare edition, and between them dig into what capsules are owed.
       const [, { rows }] = (await db.batch([
         db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('card-set:' || (SELECT set_id::text FROM card WHERE id = ${input.cardId}::uuid)))`),
         db.execute(sql`
         WITH e AS (
           INSERT INTO edition (card_id, edition_number, owner_wallet, order_id, observation_capture_id)
-          SELECT ${input.cardId}::uuid, COALESCE(MAX(x.edition_number), 0) + 1, ${input.wallet}, ${input.orderId}::uuid,
+          SELECT ${input.cardId}::uuid, COALESCE(MAX(x.edition_number), 0) + 1, ${input.wallet}, ${orderId}::uuid,
             (SELECT nt.capture_id FROM nightly_target nt
              WHERE nt.card_id = ${input.cardId}::uuid AND nt.capture_id IS NOT NULL
              ORDER BY nt.night_date DESC LIMIT 1)
@@ -549,22 +572,35 @@ async function allocateCardSale(
         ),
         logged AS (
           INSERT INTO capsule_log (event, outcome)
-          SELECT 'card_sold', jsonb_build_object(
-            'designation', k.designation, 'editionNumber', e.edition_number, 'editionSize', k.edition_size,
-            'orderHash', ${orderHash(input.orderId)}::text)
+          ${log}
           FROM e JOIN card k ON k.id = e.card_id
           RETURNING seq
         )
-        SELECT e.edition_number FROM e
+        SELECT e.id, e.edition_number FROM e
       `),
-      ])) as unknown as [unknown, Rows<{ edition_number: number }>];
-      return rows[0] ? { editionNumber: Number(rows[0].edition_number) } : null;
+      ])) as unknown as [unknown, Rows<{ id: string; edition_number: number }>];
+      return rows[0] ? { id: rows[0].id, editionNumber: Number(rows[0].edition_number) } : null;
     } catch (err) {
       const { code, cause } = err as { code?: string; cause?: { code?: string } };
       if ((code ?? cause?.code) !== '23505') throw err;
     }
   }
   throw new Error('edition allocation kept colliding');
+}
+
+/**
+ * A free edition — the welcome card, an invitation's card — under the same
+ * rules as a sale: the set's lock, the editions owed to capsules left alone,
+ * and a public 'card_granted' entry. Null when the card cannot spare one; the
+ * caller tries another card or gives none. `key` is the account the grant is
+ * for (the welcomed account, the invited one); the log carries only its hash,
+ * and a unique index on it refuses a second grant of that kind for that key.
+ */
+export async function allocateGrant(
+  db: Db,
+  input: { cardId: string; setId: string; wallet: string; kind: GrantKind; key: string },
+): Promise<{ id: string; editionNumber: number } | null> {
+  return allocateLogged(db, { cardId: input.cardId, setId: input.setId, wallet: input.wallet, grant: input.kind, grantKey: input.key });
 }
 
 export type CardFulfilment =
@@ -595,7 +631,7 @@ export async function fulfilCardOrder(db: Db, order: OrderRow): Promise<CardFulf
   if (existing) return { ok: true, editionNumber: existing.editionNumber, editionSize: c.editionSize, designation };
 
   try {
-    const allocated = await allocateCardSale(db, { cardId: c.id, setId: c.setId, wallet: order.walletAddress, orderId: order.id, directOnly: isDirectOnly(designation) });
+    const allocated = await allocateLogged(db, { cardId: c.id, setId: c.setId, wallet: order.walletAddress, orderId: order.id, directOnly: isDirectOnly(designation) });
     if (!allocated) {
       const changed = await db
         .update(orders)

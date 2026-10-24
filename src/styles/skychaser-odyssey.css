@@ -258,6 +258,23 @@ body .skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { backg
 .skychaser .sd-coll__empty img { flex: none; width: 150px; height: auto; filter: drop-shadow(0 20px 40px rgba(227, 72, 44, 0.25)); }
 .skychaser .sd-coll__empty p { max-width: 46ch; margin: 12px 0 20px; color: var(--sd-ink-2); font: 400 15px/1.55 var(--sd-sans); }
 
+/* Bought and not opened: one row per capsule, with the way to open it. */
+.skychaser .sd-coll__sealed { margin-top: 44px; }
+.skychaser .sd-coll__sealed .sd-coll__bar { margin-bottom: 10px; }
+.skychaser .sd-coll__sealed-note { max-width: 60ch; margin: 0 0 18px; color: var(--sd-ink-2); font: 400 15px/1.55 var(--sd-sans); }
+.skychaser .sd-coll__sealed-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.skychaser .sd-coll__sealed-list li {
+  display: flex; align-items: center; gap: 18px; padding: 12px 16px 12px 12px;
+  border: 1px solid var(--sd-line); border-radius: 14px; background: var(--sd-glass);
+}
+.skychaser .sd-coll__sealed-list img { flex: none; width: 52px; height: auto; filter: drop-shadow(0 10px 18px rgba(227, 72, 44, 0.25)); }
+.skychaser .sd-coll__sealed-what { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.skychaser .sd-coll__sealed-what strong { font: 400 20px/1 var(--sd-display); text-transform: uppercase; color: var(--sd-ink); }
+.skychaser .sd-coll__sealed-what span { font: 500 11px/1.3 var(--sd-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--sd-ink-small); }
+.skychaser .sd-coll__sealed-state { flex: none; font: 600 10.5px/1 var(--sd-spaced); letter-spacing: 0.18em; text-transform: uppercase; color: var(--sd-ink-3); }
+.skychaser .sd-coll__sealed-state[data-paid] { color: #7cffb2; }
+.skychaser .sd-coll__sealed-list .sd-btn { flex: none; min-height: 40px; padding: 9px 20px; }
+
 /* Not signed in: what the Collection is, the way in, and three cards fanned beside it. */
 .skychaser .sd-coll__gate { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 24px; min-height: 480px; padding: 48px 56px; }
 .skychaser .sd-coll__lede { max-width: 44ch; margin: 18px 0 28px; color: var(--sd-ink-2); font: 400 16px/1.6 var(--sd-sans); }
@@ -300,6 +317,11 @@ body .skychaser .sd-filter__chip[data-rarity='all'][aria-pressed='true'] { backg
   .skychaser .sd-coll__bar .sd-filter__chips::-webkit-scrollbar { display: none; }
   .skychaser .sd-coll__cap { gap: 6px; font: 500 11px/1.35 var(--sd-sans); letter-spacing: 0; text-transform: none; }
   .skychaser .sd-coll__empty { flex-direction: column; text-align: center; padding: 28px 20px; }
+  .skychaser .sd-coll__sealed { margin-top: 32px; }
+  .skychaser .sd-coll__sealed-list li { flex-wrap: wrap; gap: 10px 14px; }
+  .skychaser .sd-coll__sealed-what { flex-basis: calc(100% - 66px); }
+  .skychaser .sd-coll__sealed-state { margin-left: 66px; }
+  .skychaser .sd-coll__sealed-list .sd-btn { margin-left: auto; }
   .skychaser .sd-coll__empty img { width: 120px; }
   .skychaser .sd-coll__empty .sd-coll__h { justify-content: center; }
   .skychaser .sd-coll__gate { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 8px; padding: 12px 20px 28px; border-radius: 14px; }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
+import CollectionCapsules from '@/components/skychaser/CollectionCapsules'
 import CollectionWallet from '@/components/skychaser/CollectionWallet'
 import CollectionHead from '@/components/skychaser/CollectionHead'
 import HolderCollection from '@/components/skychaser/HolderCollection'
@@ -40,6 +41,7 @@ export default async function CollectionPage({
     body = editions ? (
       <>
         <CollectionHead wallet={wallet} editions={editions} />
+        <CollectionCapsules wallet={wallet} />
         <HolderCollection editions={editions} />
       </>
     ) : (

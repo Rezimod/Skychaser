@@ -1,11 +1,13 @@
 import { sql } from 'drizzle-orm'
 import type { Db } from './attach'
-import { allocateEdition } from './repo'
+import { allocateGrant } from './orders'
 
 /**
  * The first card. An account that signs in receives one edition of the first
- * card below that still has editions, numbered like any other and counted
- * against the card's supply. First Light is the set's own name; when its 300
+ * card below that can spare one, numbered like any other and counted
+ * against the card's supply. It is allocated as a sale is (orders.ts): behind
+ * the set's lock, never from editions owed to capsules listed or bought, and
+ * logged publicly as 'card_granted'. First Light is the set's own name; when its 300
  * are gone the welcome moves down the list. One per account and one per
  * wallet. PROVISIONAL: the owner may prefer a card with a plain vote
  * (open question, Growth 1).
@@ -80,13 +82,13 @@ export async function grantWelcome(db: Db, input: { privyId: string; wallet: str
   try {
     for (const designation of WELCOME_CARDS) {
       const { rows } = (await db.execute(sql`
-        SELECT c.id, c.name, c.rarity, c.edition_size
+        SELECT c.id, c.set_id, c.name, c.rarity, c.edition_size
         FROM card c JOIN card_set s ON s.id = c.set_id
         WHERE c.designation = ${designation} AND s.status = 'released'
-      `)) as Rows<{ id: string; name: string; rarity: string; edition_size: number | string }>
+      `)) as Rows<{ id: string; set_id: string; name: string; rarity: string; edition_size: number | string }>
       const card = rows[0]
       if (!card) continue
-      const allocated = await allocateEdition(db, card.id, input.wallet)
+      const allocated = await allocateGrant(db, { cardId: card.id, setId: card.set_id, wallet: input.wallet, kind: 'welcome', key: input.privyId })
       if (!allocated) continue
       given = true
       await db.execute(sql`UPDATE holder_contact SET welcome_edition_id = ${allocated.id}::uuid WHERE privy_id = ${input.privyId}`)

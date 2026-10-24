@@ -241,11 +241,17 @@ function fakePostgres(state: State) {
   };
 
   // Orders are read with drizzle's builder; each scenario here has one order.
-  // Scenarios without one read a paid order whose transfer is 'paid-sig'.
+  // Scenarios without one read a paid order of their own each time: transfer
+  // 'paid-sig-<n>', reference 'paid-ref-<n>'.
+  let paidOrders = 0;
   const select = () => {
     const chain: Record<string, unknown> = {};
     for (const m of ['from', 'where']) chain[m] = () => chain;
-    chain.limit = async () => structuredClone(state.orders ?? [{ status: 'paid', signature: 'paid-sig' }]);
+    chain.limit = async () => {
+      if (state.orders) return structuredClone(state.orders);
+      const n = ++paidOrders;
+      return [{ status: 'paid', signature: `paid-sig-${n}`, paymentReference: `paid-ref-${n}` }];
+    };
     return chain;
   };
 
@@ -515,11 +521,20 @@ describe('the paying block', () => {
     expect(a.pulls).not.toEqual(b.pulls);
     const opened = a.state.log.filter((r) => r.event === 'opened');
     expect(opened.every((r) => (r.outcome as { beacon?: unknown }).beacon !== undefined)).toBe(true);
-    expect((opened[0].outcome as { beacon: unknown }).beacon).toEqual({ signature: 'paid-sig', slot: 7, blockhash: BEACON });
+    // The beacon names the paying transfer and, now the order is paid, its payment reference.
+    expect((opened[0].outcome as { beacon: unknown }).beacon).toEqual({ signature: 'paid-sig-1', slot: 7, blockhash: BEACON, reference: 'paid-ref-1' });
     // Each opening still verifies from the log alone, beacon included.
     const report = auditLog([...earlierEntries(a.state.capsules), ...a.state.log]);
     expect(report.flags).toEqual([]);
+    expect(report.notes.map((n) => n.kind)).not.toContain('beacon_unbound');
     expect(report.verified).toBe(8);
+
+    // One payment behind two capsules' draws is flagged, by signature and by reference.
+    const [first, second] = opened;
+    const reused = [...earlierEntries(a.state.capsules), ...a.state.log].map((r) => r === second
+      ? { ...r, outcome: { ...(r.outcome as object), beacon: (first.outcome as { beacon: unknown }).beacon } }
+      : r);
+    expect(auditLog(reused).flags.filter((f) => f.kind === 'beacon_reused')).toHaveLength(2);
   });
 
   it('is not asked for a capsule paid in a rehearsal, which moved no money', async () => {

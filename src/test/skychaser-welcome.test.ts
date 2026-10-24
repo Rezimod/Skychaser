@@ -10,14 +10,22 @@ type Card = { id: string; designation: string; name: string; rarity: string; edi
 type Contact = { privy_id: string; wallet: string; welcome_edition_id: string | null; welcome_claimed_at: string | null };
 type Edition = { id: string; card_id: string; edition_number: number; owner_wallet: string };
 
-const state: { cards: Card[]; contacts: Contact[]; editions: Edition[]; allocations: number } = { cards: [], contacts: [], editions: [], allocations: 0 };
+const state: { cards: Card[]; contacts: Contact[]; editions: Edition[]; allocations: number; owed: number; grants: Array<{ setId: string; kind: string; key: string }> } = {
+  cards: [], contacts: [], editions: [], allocations: 0, owed: 0, grants: [],
+};
 
-vi.mock('@/lib/skychaser/repo', () => ({
-  allocateEdition: async (_db: unknown, cardId: string, wallet: string) => {
+// allocateGrant as orders.ts runs it in one statement: the card's supply, and
+// the set's unallocated editions less the draws owed to capsules (`owed`) must leave one.
+vi.mock('@/lib/skychaser/orders', () => ({
+  allocateGrant: async (_db: unknown, input: { cardId: string; setId: string; wallet: string; kind: string; key: string }) => {
+    const { cardId, wallet } = input;
     state.allocations++;
+    state.grants.push({ setId: input.setId, kind: input.kind, key: input.key });
     const card = state.cards.find((c) => c.id === cardId)!;
     const taken = state.editions.filter((e) => e.card_id === cardId).length;
     if (taken >= card.edition_size) return null;
+    const spare = state.cards.reduce((n, c) => n + c.edition_size, 0) - state.editions.length - state.owed;
+    if (spare < 1) return null;
     const row = { id: `e-${cardId}-${taken + 1}`, card_id: cardId, edition_number: taken + 1, owner_wallet: wallet };
     state.editions.push(row);
     return { id: row.id, editionNumber: row.edition_number };
@@ -44,7 +52,7 @@ function run(sql: string, params: unknown[]): { rows: unknown[] } {
   }
   if (/FROM card c JOIN card_set s/.test(sql)) {
     const c = state.cards.find((x) => x.designation === params[0] && x.status === 'released');
-    return { rows: c ? [{ id: c.id, name: c.name, rarity: c.rarity, edition_size: c.edition_size }] : [] };
+    return { rows: c ? [{ id: c.id, set_id: 'set-1', name: c.name, rarity: c.rarity, edition_size: c.edition_size }] : [] };
   }
   if (/UPDATE holder_contact SET welcome_edition_id/.test(sql)) {
     const h = state.contacts.find((c) => c.privy_id === params[1])!;
@@ -73,6 +81,8 @@ beforeEach(() => {
   state.contacts = [{ privy_id: 'p1', wallet: 'w1', welcome_edition_id: null, welcome_claimed_at: null }];
   state.editions = [];
   state.allocations = 0;
+  state.owed = 0;
+  state.grants = [];
 });
 
 describe('the first card', () => {
@@ -118,6 +128,24 @@ describe('the first card', () => {
     const loser = a.fresh ? b : a;
     // The loser reads what the winner gave, or nothing yet if it looked before the pointer was written.
     if (loser.edition) expect(loser.edition.editionId).toBe(winner.edition!.editionId);
+  });
+
+  it('is allocated as a grant for this account, under the set’s capsule reserve', async () => {
+    await grantWelcome(db, { privyId: 'p1', wallet: 'w1' });
+    expect(state.grants).toEqual([{ setId: 'set-1', kind: 'welcome', key: 'p1' }]);
+  });
+
+  it('never takes an edition owed to a capsule: it is skipped, and the next sign-in tries again', async () => {
+    // Every unallocated edition of the set is owed to capsules listed or bought.
+    state.owed = state.cards.reduce((n, c) => n + c.edition_size, 0);
+    expect(await grantWelcome(db, { privyId: 'p1', wallet: 'w1' })).toEqual({ edition: null, fresh: false });
+    expect(state.editions).toEqual([]);
+    // Every card on the list was tried, and none gave.
+    expect(state.allocations).toBe(WELCOME_CARDS.length);
+    expect(state.contacts[0]).toMatchObject({ welcome_claimed_at: null, welcome_edition_id: null });
+
+    state.owed = 0;
+    expect((await grantWelcome(db, { privyId: 'p1', wallet: 'w1' })).fresh).toBe(true);
   });
 
   it('is nobody when the account has no row yet', async () => {

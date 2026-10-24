@@ -337,3 +337,12 @@ most reversible option; each needs a yes/no from Rezi.
     `useAddFunds`, which adds Stripe; the Solana-typed hook was chosen because
     its chain and asset are explicit. Enable a provider before launch and buy
     one $5 capsule through it.
+
+38. **Free cards now need the capsule log widened (2026-10-24).** Welcome and
+    invitation cards are allocated as sales are and logged as `'card_granted'`.
+    The `capsule_log_capsule_fields` check only allowed `'card_sold'` rows
+    without a capsule, so `scripts/skychaser-growth.sql` now also widens it and
+    adds a unique index on the grant hash. Until that file is applied as a whole
+    no welcome or invitation card is given (the tables are missing anyway); if
+    its first part was ever applied alone, a grant fails on the check and gives
+    nothing, never an oversold edition. Apply the whole file, with approval.

@@ -41,16 +41,20 @@ how many editions exist, and the draws owed to unopened capsules).
    nonce: <nonce>
    ```
 
-   and logs `purchase_hash = SHA-256(message)` with the nonce, the wallet,
-   the moment the payment window closes (`event = 'purchased'`,
-   `outcome.expiresAt`, `ORDER_WINDOW_MINUTES` after purchase) and the
-   order's Solana Pay reference (`outcome.reference`), in the same
-   transaction as the capsule changing hands and the order being created. The
+   and logs `purchase_hash = SHA-256(message)` with the nonce, the wallet
+   and the moment the payment window closes (`event = 'purchased'`,
+   `outcome.expiresAt`, `ORDER_WINDOW_MINUTES` after purchase;
+   `outcome.onChain: true`), in the same transaction as the capsule changing
+   hands and the order being created. The order's Solana Pay reference is
+   **not** logged here: while the order is unpaid, anyone holding it could
+   send dust naming it and bury the payment among cheap transactions. It is
+   logged at opening (step 5). Purchases logged before 2026-10-21 carry it as
+   `outcome.reference`. The
    buyer's response carries the message and hash. If the buyer sends a base58
    ed25519 signature of the message by the wallet, it is verified and stored;
    a bad one is refused. No quote is given without a live SOL price.
 3. **Payment, and the beacon.** The order is paid by a Solana transfer that
-   names the logged reference. Its signature is the earliest finalized
+   names the order's reference. Its signature is the earliest finalized
    transfer naming the reference that brings what it paid up to the quote.
    That transfer lands in a block whose hash nobody — buyer, operator, or
    anyone holding `CAPSULE_SEAL_KEY` — can know before the block exists: the
@@ -78,7 +82,14 @@ how many editions exist, and the draws owed to unopened capsules).
    if the chain cannot say, the capsule is not opened until it can. The secret
    is revealed; the log gets `event = 'opened'` with
    `outcome = {secret, draws, oddsBps, supply, pulls, beacon}`, where
-   `beacon = {signature, slot, blockhash}`. `supply` is every card
+   `beacon = {signature, slot, blockhash, reference}` and `reference` is the
+   order's payment reference, published now that the order is paid (its
+   transfers are read oldest first, so dust sent from here on lands after
+   the payment). Openings logged between 2026-10-21 and 2026-10-24 have no
+   `reference` in either entry; their beacon cannot be tied to the order from
+   the log alone, and the audit notes them (`beacon_unbound`). A paid capsule
+   voided because the set sold out logs the same `beacon` in
+   `outcome.soldOut`. `supply` is every card
    of the set with its edition size and remaining editions at the moment the
    draws were made. Each draw takes exactly edition number
    `editionSize − remaining + 1`, plus one for every earlier draw of the same
@@ -92,10 +103,15 @@ how many editions exist, and the draws owed to unopened capsules).
    Entries logged before supply carried edition sizes are verified without
    the edition check, and the audit notes them. The beacon can be checked
    against the chain by anyone: the logged signature must be a finalized
-   transaction in the logged slot that names the purchase's logged reference
-   and pays the merchant, and the slot's block hash must be the logged one.
-   The audit flags a capsule whose purchase logged a reference (paid on chain)
-   but whose opening has no beacon (`beacon_missing`).
+   transaction in the logged slot that names the logged reference
+   (`beacon.reference`, or the purchase's `outcome.reference` for purchases
+   before 2026-10-21) and pays the merchant, and the slot's block hash must
+   be the logged one. The verify endpoint returns these as `beacon`. The
+   audit flags a capsule paid on chain but opened without a beacon
+   (`beacon_missing`), a beacon whose reference differs from the one its
+   purchase logged (`verification_failed`), and one payment — the same
+   signature or the same reference — behind two capsules' draws
+   (`beacon_reused`).
 
 ## Closing a capsule without opening it
 
@@ -145,16 +161,23 @@ What makes the logged supply checkable:
   buyer holds the id; the wallet is not logged). The entry is written by the
   same statement that allocates the edition, so neither exists without the
   other.
+- **Free cards are logged.** The welcome card and an invitation's card are
+  allocated by the same statement as a sale, behind the same lock and the
+  same capsule reservation, and logged as `'card_granted'` with the card, the
+  edition number, the edition size, the kind (`welcome`, `referral`) and
+  `grantHash` = SHA-256 of `<kind>:<account id>` — one per account, never the
+  wallet. A card that cannot spare an edition is skipped for the next one on
+  the list, or none is given.
 - **The audit keeps an edition ledger.** Every edition the log hands out, by
-  capsule pull or by sale, is collected per card. The same edition twice is
+  capsule pull, sale or grant, is collected per card. The same edition twice is
   flagged (`edition_duplicate`). A number below a card's highest logged one
   that no entry took is noted as `editions_outside_log` — an edition allocated
   by some other path, which in production should not exist.
 - **Edition counts are public.** `/api/skychaser/cards/supply` gives each card's
   current edition count; any `remaining` a capsule logged must be at least the
   number still unallocated now.
-- **Direct sales cannot take editions owed to capsules.** A card is sold on
-  its own only if the set's unallocated editions, less every draw owed to
+- **Direct sales and free cards cannot take editions owed to capsules.** A
+  card is sold or given on its own only if the set's unallocated editions, less every draw owed to
   capsules listed or bought and not yet opened, leave at least one — the same
   reservation listing uses. A capsule's draws can land on any card of the set,
   so the reservation is the set's, not a card's.
@@ -201,6 +224,6 @@ their holders are not Solana addresses, which every real purchase requires.
 | Server withholds an unwanted outcome after purchase | **Detectable.** A purchased capsule never opened after its window (`purchased_not_opened`), voided (`voided_after_purchase`), or released while paid or early (`released_while_paid`, `released_early`) stays visible, with the secret revealed where it was closed. These are evidence to examine, not proof. |
 | Server keeps a payment for a capsule it closed | **Recorded.** Voids and releases ask the chain first; a payment racing the close, or arriving after it or after the window, becomes `refund_due` in the same transaction and is logged. |
 | Server refuses a purchase request after seeing its nonce | **Not detectable from the log.** Nothing is logged for a refused request. A refusal is only legitimate if the capsule was already taken, which the log shows; a buyer refused on a capsule the log still shows as listed holds evidence (their request) of a selective refusal. |
-| Server influences which cards are sold out when an opening draws | **Partly.** Supply matters only once cards sell out. Every allocation the server makes through a sale or an opening is logged and matched against the logged supply; direct sales cannot take editions owed to capsules. The order in which concurrent openings and sales commit is still the server's. |
+| Server influences which cards are sold out when an opening draws | **Partly.** Supply matters only once cards sell out. Every allocation the server makes through a sale, a grant or an opening is logged and matched against the logged supply; direct sales and free cards cannot take editions owed to capsules. The order in which concurrent openings and sales commit is still the server's. |
 | Log rewritten in place | **Refused by the database** (trigger on UPDATE, DELETE, TRUNCATE; unique `(capsule_id, event)` and listing number), and no code path issues such a statement (test). The operator could drop the trigger: the log is tamper-evident only to someone who kept an earlier copy. Anchoring log hashes somewhere public is not built. |
 | Sealed secrets read from a database dump | **Prevented without the key.** Losing `CAPSULE_SEAL_KEY` strands every unopened capsule: a bought one can then be neither opened nor released. |

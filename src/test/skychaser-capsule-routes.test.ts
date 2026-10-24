@@ -272,6 +272,27 @@ describe('verifying a capsule', () => {
     expect((await lying.json()).verification.ok).toBe(false);
   });
 
+  it('says which transfer to look up on chain, with the payment reference it must name', async () => {
+    const BLOCK = '11111111111111111111111111111111';
+    const withBeacon = (beacon: Record<string, unknown>) =>
+      entry('opened', { outcome: { ...(opened.outcome as unknown as object), beacon: { signature: 'pay-sig', slot: 9, blockhash: BLOCK, ...beacon } } });
+    mocks.readFullLog.mockResolvedValue([entry('listed'), entry('purchased', { outcome: { onChain: true } }), withBeacon({ reference: 'pay-ref' })]);
+    const res = await (await verify(new NextRequest(`http://localhost/api/skychaser/capsules/verify?capsuleId=${CAPSULE}`))).json();
+    expect(res.beacon).toEqual({ signature: 'pay-sig', slot: 9, blockhash: BLOCK, reference: 'pay-ref' });
+    expect(res.verification).toEqual({ ok: true, problems: [] });
+
+    // An opening logged before the reference was: still verifies, and says it cannot name the reference.
+    mocks.readFullLog.mockResolvedValue([entry('listed'), entry('purchased', { outcome: { onChain: true } }), withBeacon({})]);
+    const old = await (await verify(new NextRequest(`http://localhost/api/skychaser/capsules/verify?capsuleId=${CAPSULE}`))).json();
+    expect(old.beacon.reference).toBeNull();
+    expect(old.verification.ok).toBe(true);
+
+    // A beacon naming another reference than the purchase logged fails.
+    mocks.readFullLog.mockResolvedValue([entry('listed'), entry('purchased', { outcome: { reference: 'its-ref' } }), withBeacon({ reference: 'other-ref' })]);
+    const swapped = await (await verify(new NextRequest(`http://localhost/api/skychaser/capsules/verify?capsuleId=${CAPSULE}`))).json();
+    expect(swapped.verification.ok).toBe(false);
+  });
+
   it('refuses anything but a strict UUID', async () => {
     const res = await verify(new NextRequest(`http://localhost/api/skychaser/capsules/verify?capsuleId=${'-'.repeat(36)}`));
     expect(res.status).toBe(400);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { skychaserLogRateLimit } from '@/lib/rate-limit';
-import type { ListedOutcome, OpenedOutcome } from '@/lib/skychaser/audit';
+import { beaconReference, type ListedOutcome, type OpenedOutcome, type PurchasedOutcome } from '@/lib/skychaser/audit';
 import { RARITIES } from '@/lib/rarity';
 import { readFullLog } from '@/lib/skychaser/capsule';
 import { verifyCapsule } from '@/lib/skychaser/randomness';
@@ -14,8 +14,13 @@ export const runtime = 'nodejs';
  * returns every input so the same check can be run anywhere else. The secret
  * is checked against the commitment published at listing — not the one the
  * 'opened' entry repeats — and the nonce against the one logged at purchase.
- * The beacon is the block hash the 'opened' entry logs with its slot and
- * signature; anyone can look that block up on chain.
+ * The beacon is the block hash the 'opened' entry logs with its slot,
+ * signature and the order's payment reference. `beacon` in the response says
+ * what to look up on chain: the signature must be a finalized transaction in
+ * that slot, naming that reference and paying the merchant, in a block with
+ * that hash. Openings logged before 2026-10-24 carry no reference (unless
+ * their purchase logged one); for those the transfer cannot be tied to the
+ * order from the log alone, and `beacon.reference` is null.
  */
 export async function GET(req: NextRequest) {
   const l = await limited(skychaserLogRateLimit, clientIp(req));
@@ -51,11 +56,19 @@ export async function GET(req: NextRequest) {
     beacon: o.beacon?.blockhash,
   };
   const verification = verifyCapsule(inputs);
+  const bound = beaconReference(purchased.outcome as PurchasedOutcome, o.beacon);
+  const beacon = o.beacon
+    ? { signature: o.beacon.signature, slot: o.beacon.slot, blockhash: o.beacon.blockhash, reference: bound.reference }
+    : null;
+  if (bound.problem) {
+    verification.ok = false;
+    verification.problems.push(bound.problem);
+  }
   // The odds that count are the ones published when the capsule was listed, not the ones the opening repeats.
   const promised = (listed.outcome as ListedOutcome | null)?.oddsBps;
   if (promised && RARITIES.some((r) => promised[r] !== o.oddsBps?.[r])) {
     verification.ok = false;
     verification.problems.push('opened under odds other than those logged when it was listed');
   }
-  return NextResponse.json({ capsuleId, entries, inputs, verification });
+  return NextResponse.json({ capsuleId, entries, inputs, beacon, verification });
 }

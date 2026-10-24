@@ -27,6 +27,7 @@ import {
   CAPSULE_PRODUCT_ID,
   FINALITY_GRACE_MS,
   RECHECK_LIMIT,
+  REHEARSAL_PREFIX,
   alertRefundDue,
   findPayment,
   isRehearsalSignature,
@@ -361,6 +362,44 @@ export async function unpaidCapsules(db: Db, privyId: string): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
+export type HeldCapsule = {
+  capsuleId: string;
+  sequence: number;
+  tier: string | null;
+  purchasedAt: string;
+  /** 'paid': ready to open. 'pending': its payment window is still open, and a payment sent may not be seen yet. */
+  payment: 'paid' | 'pending';
+  expiresAt: string | null;
+};
+
+/**
+ * The capsules this account bought and has not opened: paid, or still inside
+ * their payment window. A buyer whose tab closed after paying finds them on
+ * the Collection rather than only by the capsule's link. A rehearsal order,
+ * which moved no money, is never opened and is left out.
+ */
+export async function heldCapsules(db: Db, privyId: string): Promise<HeldCapsule[]> {
+  const { rows } = (await db.execute(sql`
+    SELECT c.id, c.sequence, c.tier, c.purchased_at, o.status, o.expires_at
+    FROM capsule c JOIN orders o ON o.id = c.order_id
+    WHERE o.privy_id = ${privyId} AND o.product_id = ${CAPSULE_PRODUCT_ID} AND c.state = 'purchased' AND NOT c.demo
+      AND (
+        (o.status = 'paid' AND (o.signature IS NULL OR o.signature NOT LIKE ${REHEARSAL_PREFIX + '%'}))
+        OR (o.status = 'pending' AND o.expires_at > now())
+      )
+    ORDER BY c.purchased_at DESC
+    LIMIT 50
+  `)) as Rows<{ id: string; sequence: number | string; tier: string | null; purchased_at: string | Date; status: 'paid' | 'pending'; expires_at: string | Date | null }>;
+  return rows.map((r) => ({
+    capsuleId: r.id,
+    sequence: Number(r.sequence),
+    tier: r.tier,
+    purchasedAt: new Date(r.purchased_at).toISOString(),
+    payment: r.status,
+    expiresAt: r.expires_at ? new Date(r.expires_at).toISOString() : null,
+  }));
+}
+
 async function readOrder(db: Db, orderId: string): Promise<OrderRow | null> {
   const [row] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   return row ?? null;
@@ -591,7 +630,10 @@ export type OpenResult =
  * are logged, and SoldOutError is thrown.
  *
  * A capsule paid on chain draws with the beacon — the hash of the block its
- * paying transfer landed in — read once, before the first attempt. One a
+ * paying transfer landed in — read once, before the first attempt. The
+ * opening (or the sold-out void) logs it with the transfer's signature and
+ * the order's payment reference, so anyone can check the transfer is this
+ * capsule's own payment. One a
  * rehearsal build marked paid, or a demo capsule, moved no money and has none.
  */
 export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult> {
@@ -607,7 +649,8 @@ export async function openCapsule(db: Db, capsuleId: string): Promise<OpenResult
     if (beacon === undefined) {
       const order = c.order_id ? await readOrder(db, c.order_id) : null;
       if (c.demo || isRehearsalSignature(order?.signature)) beacon = null;
-      else if (order?.signature) beacon = await paymentBeacon(order.signature);
+      // The reference is published only now, with the beacon: the order is paid, and its transfers are read oldest first, so dust sent to the reference from here on lands after the payment it would otherwise bury.
+      else if (order?.signature) beacon = { ...(await paymentBeacon(order.signature)), reference: order.paymentReference };
       else throw new Error(`capsule ${c.id} has no paying transfer on record to draw with`);
     }
     const secret = unsealSecret(c.server_secret_sealed, c.id);

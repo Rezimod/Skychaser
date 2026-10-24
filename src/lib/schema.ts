@@ -1010,10 +1010,10 @@ export const capsulePull = pgTable('capsule_pull', {
 export const capsuleLog = pgTable('capsule_log', {
   /** Orders the log. May skip a number after a rolled-back write; the listing sequence may not. */
   seq: bigserial('seq', { mode: 'number' }).primaryKey(),
-  /** Null only for 'card_sold' (a check constraint holds it). */
+  /** Null only for 'card_sold' and 'card_granted' (a check constraint holds it). */
   capsuleId: uuid('capsule_id'),
   capsuleSequence: bigint('capsule_sequence', { mode: 'number' }),
-  /** 'listed' | 'purchased' | 'opened' | 'voided' | 'released' | 'refund_due' | 'card_sold' */
+  /** 'listed' | 'purchased' | 'opened' | 'voided' | 'released' | 'refund_due' | 'card_sold' | 'card_granted' */
   event: text('event').notNull(),
   commitment: text('commitment'),
   buyerWallet: text('buyer_wallet'),
@@ -1024,6 +1024,8 @@ export const capsuleLog = pgTable('capsule_log', {
    * Opened: the secret, odds, supply and pulls. Voided and released: the
    * secret and the reason. Refund due: why, and when the payment landed.
    * Card sold: the card, the edition and SHA-256 of the order id.
+   * Card granted: the card, the edition, the kind (welcome, referral) and a
+   * hash of the account it was for.
    */
   outcome: jsonb('outcome'),
   at: timestamp('at', { withTimezone: true }).defaultNow().notNull(),
@@ -1031,6 +1033,7 @@ export const capsuleLog = pgTable('capsule_log', {
   uniqueIndex('capsule_log_event_unique').on(t.capsuleId, t.event),
   uniqueIndex('capsule_log_listed_sequence_unique').on(t.capsuleSequence).where(sql`event = 'listed'`),
   uniqueIndex('capsule_log_card_sold_unique').on(sql`(outcome->>'orderHash')`).where(sql`event = 'card_sold'`),
+  uniqueIndex('capsule_log_card_granted_unique').on(sql`(outcome->>'grantHash')`).where(sql`event = 'card_granted'`),
   index('capsule_log_capsule_idx').on(t.capsuleId, t.seq),
 ])
 
