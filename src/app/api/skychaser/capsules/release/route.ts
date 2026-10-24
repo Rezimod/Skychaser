@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { paused } from '@/lib/kill-switch';
 import { recheckClosedCapsuleOrders, releaseCapsule, releaseLapsed } from '@/lib/skychaser/capsule';
-import { fulfilPaidCardOrders, grantPaidCredits, recheckClosedCardOrders, refundsOwed, settleCardOrders } from '@/lib/skychaser/orders';
+import { fulfilPaidCardOrders, grantPaidCredits, recheckClosedCardOrders, recheckPaidOrders, refundsOwed, settleCardOrders } from '@/lib/skychaser/orders';
 import { sendTelegram } from '@/lib/telegram';
 import { isSkychaserAdmin, isUuid } from '@/lib/skychaser/route-guards';
 
@@ -40,13 +40,14 @@ export async function GET(req: NextRequest) {
   const credits = await step('grant paid credits', () => grantPaidCredits(db));
   const recheckedCapsules = await step('re-check closed capsule orders', () => recheckClosedCapsuleOrders(db));
   const recheckedCards = await step('re-check closed card orders', () => recheckClosedCardOrders(db));
+  const recheckedPaid = await step('re-check paid orders', () => recheckPaidOrders(db));
   const owed = await step('count refunds owed', () => refundsOwed(db));
   if (typeof owed === 'number' && owed > 0) {
     await sendTelegram(`Skychaser: ${owed} order(s) are owed a refund. List them with scripts/skychaser-refunds.ts.`).catch((err) =>
       console.error('[skychaser/cron] refund summary not sent', err),
     );
   }
-  return NextResponse.json({ released, cards, fulfilled, credits, recheckedCapsules, recheckedCards, refundsOwed: owed });
+  return NextResponse.json({ released, cards, fulfilled, credits, recheckedCapsules, recheckedCards, recheckedPaid, refundsOwed: owed });
 }
 
 export async function POST(req: NextRequest) {

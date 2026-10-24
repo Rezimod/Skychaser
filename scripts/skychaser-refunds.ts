@@ -6,9 +6,10 @@
  *
  * The list shows each refund_due order with what it was for, the quote, the
  * account's wallet and the transfer on record — and, read from the chain, the
- * wallet that actually paid and what the merchant received. Refund to that
- * payer, not to the account's wallet: an order can be paid from Phantom or
- * any other wallet. Transfers only named in a Telegram alert are not here. --refunded moves one order refund_due → refunded
+ * wallets that actually paid and everything the merchant received under the
+ * order's reference, per payer. Refund to those payers, not to the account's
+ * wallet: an order can be paid from Phantom or any other wallet. Extra
+ * transfers on orders that stay paid are only named in Telegram alerts. --refunded moves one order refund_due → refunded
  * and keeps the refund's own signature (needs the refund_signature column
  * from scripts/skychaser-constraints.sql).
  */
@@ -38,7 +39,7 @@ async function main() {
   }
 
   const rows = await q`
-    SELECT id, product_name, wallet_address, amount_sol, amount_fiat, signature, paid_at, expires_at, created_at
+    SELECT id, product_name, wallet_address, amount_sol, amount_fiat, signature, payment_reference, paid_at, expires_at, created_at
     FROM orders
     WHERE status = 'refund_due'
       AND (product_id = 'stellar-capsule' OR product_id LIKE 'stellar-card:%' OR product_id LIKE 'skychaser-credits:%')
@@ -57,22 +58,47 @@ async function main() {
     console.log(`buyer    ${r.wallet_address}`)
     console.log(`transfer ${r.signature ?? 'none on record — see the Telegram alert for the signatures'}`)
     console.log(`paid     ${r.paid_at ?? '?'}  window closed ${r.expires_at ?? '?'}`)
-    if (r.signature && BASE58_SIG.test(r.signature)) {
-      const onChain = await paidBy(connection, r.signature, merchant).catch(() => null)
-      console.log(onChain ? `refund   ${onChain.sol} SOL to ${onChain.payer}` : 'refund   could not read the transfer from the chain: check it on an explorer')
+    const owed = merchant && r.payment_reference ? await allTransfers(connection, new PublicKey(r.payment_reference), merchant).catch(() => null) : null
+    if (!owed) {
+      console.log('refund   could not read the transfers from the chain: check the reference on an explorer')
+    } else if (!owed.length) {
+      console.log('refund   no transfer to the merchant carries this order\'s reference')
+    } else {
+      // Everything the order's reference brought in is owed back, to whoever sent it.
+      for (const t of owed) console.log(`refund   ${(t.lamports / LAMPORTS_PER_SOL).toFixed(9)} SOL to ${t.payer}  (${t.signatures.join(', ')})`)
     }
     console.log('')
   }
 }
 
-/** Who signed and paid the fee for the transfer, and what the merchant received in it. */
-async function paidBy(connection: Connection, signature: string, merchant: PublicKey | null) {
-  const tx = await connection.getTransaction(signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 })
-  if (!tx?.meta) return null
-  const keys = tx.transaction.message.getAccountKeys({ accountKeysFromLookups: tx.meta.loadedAddresses }).keySegments().flat()
-  const i = merchant ? keys.findIndex((k) => k.equals(merchant)) : -1
-  const lamports = i < 0 ? null : tx.meta.postBalances[i] - tx.meta.preBalances[i]
-  return { payer: keys[0].toBase58(), sol: lamports === null ? '? (merchant not in transfer)' : (lamports / LAMPORTS_PER_SOL).toFixed(9) }
+/**
+ * Every successful finalized transfer that carried the reference and paid the
+ * merchant, added up per payer (the fee payer, who signed it). A short payment
+ * and its top-up, or a second payment, are all owed back, not only the last.
+ */
+async function allTransfers(connection: Connection, reference: PublicKey, merchant: PublicKey) {
+  const byPayer = new Map<string, { payer: string; lamports: number; signatures: string[] }>()
+  let before: string | undefined
+  for (let page = 0; page < 10; page++) {
+    const sigs = await connection.getSignaturesForAddress(reference, { limit: 1000, ...(before ? { before } : {}) }, 'finalized')
+    for (const s of sigs) {
+      if (s.err) continue
+      const tx = await connection.getTransaction(s.signature, { commitment: 'finalized', maxSupportedTransactionVersion: 0 })
+      if (!tx?.meta || tx.meta.err) continue
+      const keys = tx.transaction.message.getAccountKeys({ accountKeysFromLookups: tx.meta.loadedAddresses }).keySegments().flat()
+      const i = keys.findIndex((k) => k.equals(merchant))
+      const lamports = i < 0 ? 0 : tx.meta.postBalances[i] - tx.meta.preBalances[i]
+      if (lamports <= 0) continue
+      const payer = keys[0].toBase58()
+      const row = byPayer.get(payer) ?? { payer, lamports: 0, signatures: [] }
+      row.lamports += lamports
+      row.signatures.push(s.signature)
+      byPayer.set(payer, row)
+    }
+    if (sigs.length < 1000) break
+    before = sigs[sigs.length - 1].signature
+  }
+  return [...byPayer.values()]
 }
 
 main().catch((err) => {

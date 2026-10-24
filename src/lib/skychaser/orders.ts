@@ -17,7 +17,7 @@ import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { encodeURL } from '@solana/pay';
 import { sendTelegram } from '@/lib/telegram';
 import BigNumber from 'bignumber.js';
-import { and, desc, eq, gt, inArray, like, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, like, lt, or, sql } from 'drizzle-orm';
 import { card, edition, orders } from '@/lib/schema';
 import { priceToSol } from '@/lib/dealers';
 import { fetchSolPriceRates } from '@/lib/sol-price';
@@ -53,6 +53,9 @@ export function unpaidRehearsal(order: { signature: string | null }): boolean {
 // An empty variable counts as unset: Vercel keeps a cleared value as "".
 const CONFIGURED_RPC = () => process.env.SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || '';
 const PAYMENT_RPC = () => CONFIGURED_RPC() || 'https://api.mainnet-beta.solana.com';
+/** Each RPC call gives up after 10 s, so one slow node cannot run a sweep past its time limit. */
+const paymentConnection = () =>
+  new Connection(PAYMENT_RPC(), { commitment: 'finalized', fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(10_000) }) });
 const networkOf = (s: string) => (/devnet/i.test(s) ? 'devnet' : /testnet/i.test(s) ? 'testnet' : /mainnet/i.test(s) ? 'mainnet-beta' : 'unknown');
 
 /**
@@ -196,7 +199,7 @@ export type Transfer = { signature: string; paidAt: Date };
  * one that completed the order, owed back too.
  */
 export type PaymentCheck =
-  | { paid: true; signature: string; paidAt: Date; late: boolean; extra?: string[]; shared?: string[] }
+  | { paid: true; signature: string; paidAt: Date; late: boolean; extra?: string[]; shared?: string[]; surplusLamports?: string }
   | { paid: false; error?: string; status?: number; partial?: Transfer; shared?: string[] };
 
 /**
@@ -308,7 +311,7 @@ export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promi
   }
 
   if (paymentNetworkProblem()) return { paid: false, error: 'Payments are not available right now', status: 503 };
-  const connection = new Connection(PAYMENT_RPC(), 'finalized');
+  const connection = paymentConnection();
   const due = lamportsOf(order.amountSol);
 
   // Every final transaction that carried the key, oldest first. A failed one
@@ -351,7 +354,8 @@ export async function findPayment(order: OrderRow, ledger: PaymentLedger): Promi
   // is treated as late, which refunds it rather than keeps it.
   const paidAt = done.blockTime ? new Date(done.blockTime * 1000) : new Date();
   const late = !done.blockTime || !order.expiresAt || paidAt.getTime() > order.expiresAt.getTime() + SIGNING_GRACE_MS;
-  return { paid: true, signature: done.signature, paidAt, late, ...(extra.length ? { extra } : {}), ...also };
+  const surplus = total - due;
+  return { paid: true, signature: done.signature, paidAt, late, ...(extra.length ? { extra } : {}), ...(surplus > BigInt(0) ? { surplusLamports: surplus.toString() } : {}), ...also };
 }
 
 /**
@@ -628,6 +632,22 @@ export const SIGNING_GRACE_MS = 60_000;
 export const RECHECK_CLOSED_DAYS = 3;
 
 /**
+ * The closed orders a daily re-check asks about: those that closed since the
+ * last run, and those that closed two to three days ago. Each order is asked
+ * twice, whatever the number of abandoned Buys, instead of only the newest few.
+ */
+export function recheckWindows(now = Date.now()): Array<{ from: Date; to: Date }> {
+  const DAY = 86_400_000;
+  return [
+    { from: new Date(now - DAY - 60 * 60_000), to: new Date(now - FINALITY_GRACE_MS) },
+    { from: new Date(now - RECHECK_CLOSED_DAYS * DAY), to: new Date(now - 2 * DAY) },
+  ];
+}
+
+/** How many closed orders one daily re-check asks about at most; more is said in Telegram. */
+export const RECHECK_LIMIT = 60;
+
+/**
  * Single-card and credits orders whose window (and the finality grace after it) has
  * closed while still pending — the buyer paid and left, or never paid. Each is
  * settled from the chain as the confirm route would: paid inside the window,
@@ -774,18 +794,18 @@ export async function grantPaidCredits(db: Db, limit = 25): Promise<Array<{ orde
  * after the sweep, would otherwise have paid with nothing on record. Anything
  * found now is owed back. Run by the daily cron.
  */
-export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+export async function recheckClosedCardOrders(db: Db, limit = RECHECK_LIMIT): Promise<Array<{ orderId: string; status: string }>> {
   const closed = await db
     .select()
     .from(orders)
     .where(and(
       eq(orders.status, 'cancelled'),
       or(like(orders.productId, `${CARD_PRODUCT_PREFIX}%`), like(orders.productId, `${CREDITS_PRODUCT_PREFIX}%`)),
-      gt(orders.expiresAt, new Date(Date.now() - RECHECK_CLOSED_DAYS * 86_400_000)),
+      or(...recheckWindows().map((w) => and(gt(orders.expiresAt, w.from), lt(orders.expiresAt, w.to)))),
     ))
-    // Newest first: orders found unpaid stay cancelled, so oldest first would ask about the same ones every day.
-    .orderBy(desc(orders.createdAt))
+    .orderBy(asc(orders.expiresAt))
     .limit(limit);
+  if (closed.length >= limit) await sendTelegram(`Skychaser: ${limit}+ closed card orders to re-check today; the rest were not asked about.`).catch(() => undefined);
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {
     try {
@@ -796,6 +816,43 @@ export async function recheckClosedCardOrders(db: Db, limit = 50): Promise<Array
       out.push({ orderId: order.id, status: row.status });
     } catch (err) {
       console.error('[skychaser/payments] closed order re-check', order.id, err instanceof Error ? err.message : err);
+    }
+  }
+  return out;
+}
+
+/**
+ * Orders paid one to two days ago, asked once more: a second transfer that
+ * landed after the order was marked paid, or a payment above the quote, is
+ * otherwise kept with no trace. Anything found is said in Telegram, owed back.
+ * Run by the daily cron, so each paid order is asked exactly once.
+ */
+export async function recheckPaidOrders(db: Db, limit = RECHECK_LIMIT): Promise<Array<{ orderId: string; extra: number; surplusLamports: string | null }>> {
+  const now = Date.now();
+  const paid = await db
+    .select()
+    .from(orders)
+    .where(and(
+      eq(orders.status, 'paid'),
+      or(eq(orders.productId, CAPSULE_PRODUCT_ID), like(orders.productId, `${CARD_PRODUCT_PREFIX}%`), like(orders.productId, `${CREDITS_PRODUCT_PREFIX}%`)),
+      gt(orders.paidAt, new Date(now - 2 * 86_400_000)),
+      lt(orders.paidAt, new Date(now - 86_400_000)),
+    ))
+    .orderBy(asc(orders.paidAt))
+    .limit(limit);
+  const out: Array<{ orderId: string; extra: number; surplusLamports: string | null }> = [];
+  for (const order of paid) {
+    if (unpaidRehearsal(order)) continue;
+    try {
+      const payment = await findPayment(order, paymentLedger(db));
+      if (!payment.paid) continue;
+      const extra = [...(payment.extra ?? []), ...(payment.shared ?? [])];
+      if (!extra.length && !payment.surplusLamports) continue;
+      const surplus = payment.surplusLamports ? ` and ${Number(payment.surplusLamports) / 1e9} SOL above the quote` : '';
+      await alertRefundDue(order.id, `paid order re-checked: ${extra.length} extra transfer(s)${surplus}`, [payment.signature, ...extra]);
+      out.push({ orderId: order.id, extra: extra.length, surplusLamports: payment.surplusLamports ?? null });
+    } catch (err) {
+      console.error('[skychaser/payments] paid order re-check', order.id, err instanceof Error ? err.message : err);
     }
   }
   return out;

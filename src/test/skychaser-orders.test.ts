@@ -15,7 +15,7 @@ vi.mock('@solana/web3.js', async (actual) => {
 vi.mock('@/lib/telegram', () => ({ sendTelegram: pay.telegram }));
 import type { Db } from '@/lib/skychaser/attach';
 import { PublicKey } from '@solana/web3.js';
-import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, grantPaidCredits, markPaid, paymentNetworkProblem, recheckClosedCardOrders, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
+import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, grantPaidCredits, markPaid, paymentNetworkProblem, recheckClosedCardOrders, recheckPaidOrders, recheckWindows, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
@@ -456,5 +456,35 @@ describe('the sweeps', () => {
     expect(await recheckClosedCardOrders(db)).toEqual([{ orderId: 'closed', status: 'refund_due' }]);
     expect(written[0]).toMatchObject({ status: 'refund_due', signature: 'after' });
     expect(pay.telegram).toHaveBeenCalledWith(expect.stringContaining('paid after the order was closed'));
+  });
+  it('tell of a second transfer, or a payment above the quote, on an order already paid', async () => {
+    const paidOrder = order({ id: 'paid', productId: 'stellar-card:TYCHO', status: 'paid', signature: 'first' });
+    const chain: Record<string, unknown> = {};
+    for (const m of ['from', 'where', 'orderBy']) chain[m] = () => chain;
+    chain.limit = async (n: number) => (n === 1 ? [] : [paidOrder]);
+    const db = { select: () => chain } as unknown as Db;
+    pay.signatures.mockResolvedValue([sig('second', '2026-09-20T12:30:00Z'), sig('first', '2026-09-20T12:10:00Z')]);
+    pay.transaction.mockImplementation(async (s: string) => tx(s === 'first' ? 120_000_000 : 100_000_000));
+    expect(await recheckPaidOrders(db)).toEqual([{ orderId: 'paid', extra: 1, surplusLamports: '20000000' }]);
+    expect(pay.telegram).toHaveBeenCalledWith(expect.stringContaining('1 extra transfer(s) and 0.02 SOL above the quote'));
+  });
+
+  it('say nothing about a paid order that received exactly its quote', async () => {
+    const paidOrder = order({ id: 'paid', productId: 'stellar-card:TYCHO', status: 'paid', signature: 'first' });
+    const chain: Record<string, unknown> = {};
+    for (const m of ['from', 'where', 'orderBy']) chain[m] = () => chain;
+    chain.limit = async (n: number) => (n === 1 ? [] : [paidOrder]);
+    const db = { select: () => chain } as unknown as Db;
+    pay.signatures.mockResolvedValue([sig('first', '2026-09-20T12:10:00Z')]);
+    expect(await recheckPaidOrders(db)).toEqual([]);
+    expect(pay.telegram).not.toHaveBeenCalled();
+  });
+
+  it('ask about each closed order twice: closed since the last run, and two to three days ago', () => {
+    const now = Date.parse('2026-10-24T12:00:00Z');
+    const [recent, older] = recheckWindows(now);
+    expect(recent.to.getTime()).toBe(now - 2 * 60_000);
+    expect(now - recent.from.getTime()).toBeGreaterThan(86_400_000);
+    expect(older).toEqual({ from: new Date(now - 3 * 86_400_000), to: new Date(now - 2 * 86_400_000) });
   });
 });

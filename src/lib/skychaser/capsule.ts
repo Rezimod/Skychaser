@@ -13,7 +13,8 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from 'node:crypto';
-import { eq, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, lt, or, sql, type SQL } from 'drizzle-orm';
+import { sendTelegram } from '@/lib/telegram';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { orders } from '@/lib/schema';
 import { RARITIES, isRarity, type Rarity } from '@/lib/rarity';
@@ -25,7 +26,7 @@ import { tierByKey, type Tier } from './tiers';
 import {
   CAPSULE_PRODUCT_ID,
   FINALITY_GRACE_MS,
-  RECHECK_CLOSED_DAYS,
+  RECHECK_LIMIT,
   alertRefundDue,
   findPayment,
   isRehearsalSignature,
@@ -35,6 +36,7 @@ import {
   reportExtraTransfers,
   reportSharedTransfers,
   paymentLedger,
+  recheckWindows,
   retiredEditions,
   type Beacon,
   type OrderRow,
@@ -899,15 +901,18 @@ export async function releaseLapsed(db: Db, limit = 25): Promise<Array<{ capsule
  * transfer final only after the release, or sent after it, is owed back and
  * logged against its capsule. Run by the daily cron.
  */
-export async function recheckClosedCapsuleOrders(db: Db, limit = 50): Promise<Array<{ orderId: string; status: string }>> {
+export async function recheckClosedCapsuleOrders(db: Db, limit = RECHECK_LIMIT): Promise<Array<{ orderId: string; status: string }>> {
   const closed = await db
     .select()
     .from(orders)
-    .where(sql`${orders.status} = 'cancelled' AND ${orders.productId} = ${CAPSULE_PRODUCT_ID}
-      AND ${orders.expiresAt} > now() - make_interval(days => ${RECHECK_CLOSED_DAYS})`)
-    // Newest first: orders found unpaid stay cancelled, so oldest first would ask about the same ones every day.
-    .orderBy(sql`${orders.createdAt} DESC`)
+    .where(and(
+      eq(orders.status, 'cancelled'),
+      eq(orders.productId, CAPSULE_PRODUCT_ID),
+      or(...recheckWindows().map((w) => and(gt(orders.expiresAt, w.from), lt(orders.expiresAt, w.to)))),
+    ))
+    .orderBy(asc(orders.expiresAt))
     .limit(limit);
+  if (closed.length >= limit) await sendTelegram(`Skychaser: ${limit}+ closed capsule orders to re-check today; the rest were not asked about.`).catch(() => undefined);
   const out: Array<{ orderId: string; status: string }> = [];
   for (const order of closed) {
     try {
