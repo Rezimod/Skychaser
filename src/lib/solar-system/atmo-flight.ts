@@ -79,6 +79,8 @@ const HOVER_RATE = 14; // m/s up/down on the stick at a hover
 const SETTLE_RATE = 2.2; // m/s down while settling
 const SETTLE_AGL = 7;
 const SETTLE_SPEED = 14;
+/** How much faster than a pilot the computer may fly on its way to the pad. */
+const AUTO_PACE = 1.7;
 
 export function makeFreeFlight(
   world: GlobeWorld,
@@ -91,7 +93,7 @@ export function makeFreeFlight(
   const R = body.radiusKm * 1000;
   const air = hasAir(world);
   const floor = opts.floor ?? 40;
-  const flyRadius = opts.flyRadius ?? 14_000;
+  const flyRadius = opts.flyRadius ?? 80_000;
   const exitAltitude = opts.exitAltitude ?? Math.max(30_000, body.atmosphereKm * 1000 * 0.9);
 
   const position = from.position.clone();
@@ -193,9 +195,10 @@ export function makeFreeFlight(
         // ── The computer: over to the pad at a height that falls with the
         // range, slowing as it closes; the lander's guidance takes it down. ──
         turnIn = steerToward(padDx, padDz, dt);
-        const wantAgl = THREE.MathUtils.clamp(padDist * 0.12, 120, 1500);
-        pitchWant = THREE.MathUtils.clamp((wantAgl - agl) / 400, -0.5, 0.5);
-        const wantSpeed = THREE.MathUtils.clamp(padDist * 0.22, 25, topSpeed(agl));
+        // Far out it flies high, where it may go fast; it comes down as it closes.
+        const wantAgl = THREE.MathUtils.clamp(padDist * 0.3, 120, 10_000);
+        pitchWant = THREE.MathUtils.clamp((wantAgl - agl) / 400, -0.6, 0.6);
+        const wantSpeed = THREE.MathUtils.clamp(25 + padDist * 0.1, 25, topSpeed(agl) * AUTO_PACE);
         push = speed < wantSpeed ? 1 : 0;
         brake = speed > wantSpeed * 1.15 ? 1 : 0;
         hoverIn = 0;
@@ -221,7 +224,8 @@ export function makeFreeFlight(
       bank += (-turnIn * 0.55 - bank) * (1 - Math.exp(-dt * 3));
 
       // ── Speed: forward on the stick pushes, back brakes, and it holds its pace between. ──
-      const top = topSpeed(agl);
+      // The computer may run harder than a pilot's stick: it knows the way in.
+      const top = topSpeed(agl) * (auto ? AUTO_PACE : 1);
       const work = Math.max(push, climb, sink * 0.5);
       burn += (work - burn) * (1 - Math.exp(-dt * 6));
       if (push > 0.05) speed += Math.max(28, speed * 0.55) * push * dt;

@@ -109,3 +109,15 @@ describe('free flight inside the air', () => {
     expect(m.telemetry.heat).toBe(0);
   });
 });
+
+describe('the computer, from where free flight begins', () => {
+  it('brings the ship from sixty kilometres out to the pad in about a minute and a half', () => {
+    const f = makeFreeFlight('earth', { position: new THREE.Vector3(-40_000, 22_000, -45_000), velocity: new THREE.Vector3(500, -60, 600) },
+      { ground: () => 0, landRadius: 150, pad: { x: 0, z: 26 }, floor: 90 });
+    f.landAtBase(true);
+    let t = 0; let step = 'flying';
+    while (t < 200 && step === 'flying') { step = f.step(1 / 30, { moveX: 0, moveY: 0, throttle: 0 }); t += 1 / 30; }
+    expect(step).toBe('handover');
+    expect(t).toBeLessThan(120);
+  });
+});
