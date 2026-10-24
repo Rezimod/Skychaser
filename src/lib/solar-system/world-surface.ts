@@ -469,6 +469,9 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   let outside: WorldView = 'chase';
 
   /** The lander is down: somewhere to walk round, and the way home. */
+  /** Came in by a dive from the flight deck: the computer lands the ship unless the pilot takes over. */
+  let dived = false;
+  let handTaken = false;
   let landerSettled = false;
   function settleLander() {
     if (landerSettled) return;
@@ -603,6 +606,9 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       telemetry.orbital = flight.telemetry;
       telemetry.entry = flight.telemetry.phase === 'entry';
       if (step === 'handover') {
+        // After a dive the computer flies the last of it down onto the base's
+        // pad; the stick (or the engine key) takes it back.
+        if (dived) lander.telemetry.assist = true;
         telemetry.phase = 'descent';
         telemetry.orbital = null;
         telemetry.entry = false;
@@ -642,6 +648,11 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
         // The pilot hands the descent to the computer: it flies over the
         // pad and sets the ship down on it, at the base.
         if (input.autoland || input.interact) { lt.assist = true; input.autoland = false; input.interact = false; }
+        else if (dived && !handTaken && lt.assist && (Math.abs(input.moveX) > 0.3 || Math.abs(input.moveY) > 0.3 || input.throttle > 0.3)) {
+          // The pilot takes the con from the computer; the land-at-base key hands it back.
+          lt.assist = false;
+          handTaken = true;
+        }
         telemetry.autoland = lt.assist;
         lander.update(dt, { throttle: input.throttle, moveX: input.moveX, moveY: input.moveY }, heightAt);
         if (lt.landed) {
@@ -938,7 +949,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       egressHold = 0.2;
     },
     skipOrbit() { if (telemetry.phase === 'orbit') flight?.skip(); },
-    skipToEntry() { if (telemetry.phase === 'orbit') flight?.skipToEntry(); },
+    skipToEntry() { if (telemetry.phase === 'orbit' && flight) { flight.skipToEntry(); dived = true; } },
     perf: perf.sample,
     probe: host.probe,
     setPaused: host.setPaused,

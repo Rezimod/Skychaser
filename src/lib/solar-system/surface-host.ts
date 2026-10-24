@@ -12,6 +12,7 @@ import { makeMoonPerf, probeCalls, type MoonPerf } from '@/lib/solar-system/moon
 import { makeLightPool, type LightPool } from '@/lib/solar-system/moon-lights';
 import { compileFor, releaseCompilePolls, settleWithin, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
 import { makeLoopGuard } from '@/game/gpu-recovery';
+import { serviceStill } from '@/game/frame-tap';
 import { projectSunDirection, type SunScreen } from '@/lib/solar-system/post-flare';
 import { getSettings } from '@/game/settings';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
@@ -316,6 +317,8 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
       feedSun();
       post.render(dt);
       rendered = true;
+      // A handover asked for this frame as a picture (game/frame-tap).
+      serviceStill(renderer.domElement);
       perf.end();
     },
     setPaused(on) {

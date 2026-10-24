@@ -325,6 +325,8 @@ async function play(browser, profile) {
         const speeds = [];
         let loader = 0;
         let veil = 0;
+        let still = 0;
+        let plain = 0;
         const t = Date.now();
         while (Date.now() - t < 300_000) {
           const s = await p.evaluate((sel) => {
@@ -337,12 +339,14 @@ async function play(browser, profile) {
               const wrap = el.closest('.game-world__surface');
               return !wrap || wrap.dataset.shown === 'true';
             });
-            return { scene: g.scene, state: g.state, loaderUp, veil: !!document.querySelector('.game-world__veil'),
+            return { scene: g.scene, state: g.state, loaderUp, veil: !!document.querySelector('.game-world__veil'), still: !!document.querySelector('.game-world__veil[data-still="true"] canvas'), plainVeil: !!document.querySelector('.game-world__veil[data-still="false"][data-waiting="false"]'),
               alt: f?.session.telemetry.nearAltKm ?? null, near: f?.session.telemetry.nearId ?? '', kms: f?.session.telemetry.speedKmS ?? null, mode: f?.session.telemetry.mode ?? '',
               phase: window.__qaSurface()?.telemetry.phase ?? null };
           }, surfaceHook);
           if (s.loaderUp) loader++;
           if (s.veil) veil++;
+          if (s.still) still++;
+          if (s.plainVeil) plain++;
           if (s.near === site && s.alt !== null && s.scene === 'orbit') speeds.push({ alt: Math.round(s.alt), kms: +(+s.kms).toFixed(2), mode: s.mode });
           if (s.scene === site && s.state === 'playing') { reached = true; break; }
           if (phone) await fly(1);
@@ -355,7 +359,9 @@ async function play(browser, profile) {
         const far = speeds.filter((x) => x.alt > 0).slice(0, 3);
         const close = speeds.slice(-3);
         const startPhase = await p.evaluate((sel) => ({ p: window.__qaSurface()?.telemetry.phase, o: window.__qaSurface()?.telemetry.orbital?.phase ?? '' }), surfaceHook);
-        return { loaderSamples: loader, veilSamples: veil, speedFar: far, speedClose: close, surfaceStartsAt: `${startPhase.p}/${startPhase.o}`, diveS: +((Date.now() - t) / 1000).toFixed(1) };
+        // The handover carries the last real frame, not a screen of its own.
+        if (veil && !still) fail(`approach ${tag}: the handover showed a plain veil, not the last frame`);
+        return { loaderSamples: loader, veilSamples: veil, stillSamples: still, plainVeilSamples: plain, speedFar: far, speedClose: close, surfaceStartsAt: `${startPhase.p}/${startPhase.o}`, diveS: +((Date.now() - t) / 1000).toFixed(1) };
       });
       if (!reached) continue;
 
@@ -368,10 +374,12 @@ async function play(browser, profile) {
         await p.screenshot({ path: `${OUT}${profile}-${tag}-powered.png` }).catch(() => {});
         // The landing computer: the deck's key takes the ship down onto the pad.
         let autoland = null;
+        // After a dive the computer already has the descent; otherwise the key hands it over.
+        const already = await p.evaluate(() => window.__qaSurface()?.telemetry.autoland === true);
         const key = await p.$('[data-action="autoland"]');
-        if (key && await key.isVisible().catch(() => false)) {
+        if (already || (key && await key.isVisible().catch(() => false))) {
           const t = Date.now();
-          await key.click().catch(() => {});
+          if (!already) await key.click().catch(() => {});
           const flying = await until(p, () => window.__qaSurface()?.telemetry.autoland === true, 20);
           if (!flying) fail(`descent ${tag}: the land-at-base key did not hand the descent to the computer`);
           if (await until(p, () => { const w = window.__qaSurface(); return w?.telemetry.phase === 'touchdown' || w?.telemetry.phase === 'surface'; }, 240)) autoland = (Date.now() - t) / 1000;
@@ -405,7 +413,7 @@ async function play(browser, profile) {
         // The way back to the base: the deck's key, if this build has it.
         // Far from the ship (as after a long walk or a flight), the key comes up.
         await p.evaluate((st) => { const w = window.__qaSurface(); if (w && st) w.teleport(st.x + 90, st.z + 20); }, start);
-        await wait(p, 2500);
+        await until(p, () => { const k = document.querySelector('[data-action="go-base"]'); return !!k && getComputedStyle(k).display !== 'none'; }, 15);
         const baseKey = await p.$('[data-action="go-base"]');
         let baseS = null;
         if (baseKey && await baseKey.isVisible().catch(() => false)) {

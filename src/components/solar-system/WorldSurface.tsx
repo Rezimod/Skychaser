@@ -10,6 +10,7 @@ import { motionShown, suitLevel, suitShown } from '@/lib/solar-system/moon-hud';
 import { formatAltitude, formatRange, formatSpeed, formatVertical, orbitTitle } from '@/lib/solar-system/orbital-descent';
 import { loadTbilisi, type EarthData } from '@/lib/solar-system/world-earth-data';
 import { prepareEarthCity } from '@/lib/solar-system/world-earth';
+import { takeEarthPreload } from '@/lib/solar-system/earth-preload';
 import { currentQuality } from '@/game/quality';
 import type { SkyTarget } from '@/lib/solar-system/world-earth-tonight';
 import { TelescopeEyepiece } from './TelescopeEyepiece';
@@ -200,12 +201,16 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     setEarthError(false);
     // The city's heavy preparation runs in slices while the descent plays, so the build that
     // follows only makes meshes and the landing never holds the thread for seconds.
-    loadTbilisi(abort.signal)
-      .then((data) => prepareEarthCity(data, { lite: currentQuality().lite, signal: abort.signal }).then((prepared) => ({ ...data, prepared })))
-      .then(setEarthData, (e: unknown) => {
-        if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
-      });
-    return () => abort.abort();
+    // Fetched and prepared on the way in (earth-preload) if the approach
+    // gave it time; otherwise from here.
+    const lite = currentQuality().lite;
+    const early = earthTry === 0 ? takeEarthPreload(lite) : null;
+    const work = early?.promise ?? loadTbilisi(abort.signal)
+      .then((data) => prepareEarthCity(data, { lite, signal: abort.signal }).then((prepared) => ({ ...data, prepared })));
+    work.then(setEarthData, (e: unknown) => {
+      if ((e as { name?: string })?.name !== 'AbortError') setEarthError(true);
+    });
+    return () => { abort.abort(); early?.abort.abort(); };
   }, [isEarth, earthData, earthTry]);
   // A failed download must not leave the game waiting on a build that will
   // never start: the game moves on to the (hidden until now) surface, which

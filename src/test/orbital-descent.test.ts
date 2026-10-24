@@ -409,6 +409,25 @@ describe('the skips and the clock', () => {
     expect(d.telemetry.done).toBe(true);
   });
 
+  it.each(WORLDS)('%s: a dive from the flight deck flies the way down in well under a minute, still through the plasma, to the same handover', (world) => {
+    const { d, lander } = descentFor(world);
+    d.skipToEntry();
+    let hot = 0; let lastWarp = 0;
+    const t = flyOut(d, undefined, () => { if (d.telemetry.heat > 0.3) hot += DT; lastWarp = d.telemetry.timeWarp; });
+    expect(t).toBeLessThan(45);
+    expect(t).toBeGreaterThan(15);
+    // The entry still burns long enough to be seen where there is air to burn in.
+    if (hasAir(world)) expect(hot).toBeGreaterThan(3);
+    // The last of it is still at real time, and it ends where the lander takes over.
+    expect(lastWarp).toBeLessThan(1.1);
+    expect(d.position.distanceTo(lander.start.position)).toBeLessThan(0.5);
+  });
+
+  it('a descent from orbit keeps its own clock (the dive pace is the dive\'s alone)', () => {
+    const { d } = descentFor('mars');
+    expect(flyOut(d)).toBeGreaterThan(65);
+  });
+
   it('the development skip lands at the top of the entry, or of the braking burn', () => {
     const earth = descentFor('earth').d;
     earth.skipToEntry();

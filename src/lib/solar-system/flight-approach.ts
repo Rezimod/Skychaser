@@ -85,6 +85,16 @@ const SITE_RADIUS_KM: Record<string, number> = { proximaB: 7160 };
  *  itself, km: well inside the drawn air, where the heat on the hull has
  *  started, so diving at a world is all it takes. A world with no air
  *  starts its braking burn a little above the ground instead. */
+/** The world's radius, km (0 for a site the flight deck cannot land on). */
+export function siteRadiusKm(site: string): number {
+  return isGlobeWorld(site) ? PLANET_BODIES[site].radiusKm : SITE_RADIUS_KM[site] ?? 0;
+}
+
+/** Inside this many radii of a world, the game starts getting it ready (files, models, data). */
+export const WARM_RADII = 1.2;
+/** … and lets that go again once the ship is this far out. */
+export const COOL_RADII = 2.6;
+
 export function entryAltitudeKm(site: string): number {
   const r = isGlobeWorld(site) ? PLANET_BODIES[site].radiusKm : SITE_RADIUS_KM[site] ?? 0;
   if (!r) return 0;

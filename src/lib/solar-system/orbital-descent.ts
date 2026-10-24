@@ -40,6 +40,12 @@ import {
 /** The legs of the way down. `entry` and `glide` are the air worlds';
  *  `braking` and `approach` the airless ones' (the Moon, Mercury); `done`
  *  is the handover. */
+/** How much faster the high, fast part of the way down runs after a dive
+ *  from the flight deck (the last of it, at real time, is unchanged): from
+ *  the top of the air to the handover in about half a minute, not a minute
+ *  and more. */
+export const DIVE_PACE = 4;
+
 export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'done';
 /** The legs of the way back up. */
 export type AscentPhase = 'climb' | 'ascent' | 'orbit' | 'done';
@@ -633,7 +639,7 @@ function frameAt(world: GlobeWorld, x: number, z: number, axisHint: THREE.Vector
 function makeFlight(
   world: GlobeWorld, frame: Frame, corridor: Corridor, finalYaw: number, opts: OrbitalOptions,
   cfg: { heatScale: number; heatRef: number; qRef: number; levelFrom: number; ascent: boolean },
-): OrbitalFlight & { goTo: (s: number) => void } {
+): OrbitalFlight & { goTo: (s: number) => void; setPace: (p: number) => void } {
   const f = FLIGHTS[world];
   const endH = corridor.h[corridor.h.length - 1];
   const position = new THREE.Vector3();
@@ -642,6 +648,11 @@ function makeFlight(
   const track = new THREE.Vector3();
   const attitude = new THREE.Quaternion();
   const level = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), finalYaw);
+  // How much faster than the corridor's own clock the fast parts run: 1 for
+  // the whole flight down from orbit, more for the dive (see DIVE_PACE). The
+  // real-time end of the corridor (warp 1) stays real time either way.
+  let pace = 1;
+  const warpAt = (at: number) => { const w = corridor.read(corridor.warp, at); return w <= 1 ? w : 1 + (w - 1) * pace; };
   const telemetry: OrbitalTelemetry = {
     phase: corridor.phases[0], phaseT: 0, progress: 0, wallSeconds: 0, simSeconds: 0,
     altitude: 0, speed: 0, vertical: 0, downrangeKm: 0, heat: 0, turbulence: 0, mach: 0,
@@ -702,7 +713,7 @@ function makeFlight(
     telemetry.speed = v;
     telemetry.vertical = velocity.dot(rad);
     telemetry.downrangeKm = Math.hypot(g, cr) / 1000;
-    telemetry.timeWarp = corridor.read(corridor.warp, s);
+    telemetry.timeWarp = warpAt(s);
     telemetry.heat = cfg.heatRef > 0 ? THREE.MathUtils.clamp((f.heatGain ?? 1.12) * Math.pow((rho * v * v * v) / cfg.heatRef, 0.7), 0, 1) * cfg.heatScale : 0;
     const mach = f.sound > 0 && rho > 0 ? v / f.sound : 0;
     const transonic = Math.exp(-(((mach - 1) / 0.2) ** 2)) * Math.min(1, rho / 0.05);
@@ -763,7 +774,7 @@ function makeFlight(
       const dhWas = dh; const crWas = cr;
       // The engines against the flight give up to a quarter of the speed.
       brake += (throttle * 0.25 - brake) * (1 - Math.exp(-dt * 1.4));
-      const dtSim = dt * corridor.read(corridor.warp, s);
+      const dtSim = dt * warpAt(s);
       const steps = Math.max(1, Math.ceil(dtSim / MAX_SIM_STEP));
       const h = dtSim / steps;
       for (let i = 0; i < steps && s < corridor.length; i++) {
@@ -801,6 +812,7 @@ function makeFlight(
       telemetry.done = true;
       telemetry.phase = 'done';
     },
+    setPace(p: number) { pace = Math.max(1, p); },
     goTo(to: number) {
       s = THREE.MathUtils.clamp(to, 0, corridor.length);
       dh = dhRate = cr = crRate = brake = bank = pitchTrim = 0;
@@ -910,6 +922,9 @@ export function makeOrbitalDescent(world: GlobeWorld, handover: Handover, opts: 
     skipToEntry() {
       const span = corridor.spans.get(entryPhase);
       if (span) flight.goTo(span[0]);
+      // The dive: in straight from the flight deck, the way down is flown
+      // faster than a descent from orbit, so it is a dive, not a wait.
+      flight.setPace(DIVE_PACE);
     },
   });
 }
