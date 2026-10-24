@@ -16,13 +16,19 @@ const state = {
   codes: [] as Array<{ code: string; privy_id: string; wallet: string }>,
   rewards: [] as Reward[],
   events: [] as string[],
+  /** Draws owed to capsules listed or bought: the set must leave one edition beyond them. */
+  owed: 0,
+  grants: [] as Array<{ setId: string; kind: string; key: string }>,
 };
 
-vi.mock('@/lib/skychaser/repo', () => ({
-  allocateEdition: async (_db: unknown, cardId: string, wallet: string) => {
+vi.mock('@/lib/skychaser/orders', () => ({
+  allocateGrant: async (_db: unknown, input: { cardId: string; setId: string; wallet: string; kind: string; key: string }) => {
+    const { cardId, wallet } = input;
+    state.grants.push({ setId: input.setId, kind: input.kind, key: input.key });
     const card = state.cards.find((c) => c.id === cardId)!;
     const taken = state.editions.filter((e) => e.card_id === cardId).length;
     if (taken >= card.edition_size) return null;
+    if (state.cards.reduce((n, c) => n + c.edition_size, 0) - state.editions.length - state.owed < 1) return null;
     const row = { id: `e-${cardId}-${taken + 1}`, card_id: cardId, edition_number: taken + 1, owner_wallet: wallet };
     state.editions.push(row);
     return { id: row.id, editionNumber: row.edition_number };
@@ -56,7 +62,9 @@ function run(sql: string, params: unknown[]): { rows: unknown[] } {
   if (/SELECT count\(\*\)::int AS n FROM holder_contact WHERE invited_by/.test(sql)) return { rows: [{ n: state.contacts.filter((c) => c.invited_by === params[0]).length }] };
   if (/FROM card c JOIN card_set s/.test(sql)) {
     return {
-      rows: state.cards.filter((c) => c.rarity === 'common' && c.status === 'released' && state.editions.filter((e) => e.card_id === c.id).length < c.edition_size),
+      rows: state.cards
+        .filter((c) => c.rarity === 'common' && c.status === 'released' && state.editions.filter((e) => e.card_id === c.id).length < c.edition_size)
+        .map((c) => ({ ...c, set_id: 'set-1' })),
     };
   }
   if (/UPDATE referral_reward SET edition_id/.test(sql)) {
@@ -97,6 +105,8 @@ beforeEach(() => {
   state.codes = [{ code: 'ABCDEFGH', privy_id: 'host', wallet: 'host-wallet' }];
   state.rewards = [];
   state.events = [];
+  state.owed = 0;
+  state.grants = [];
 });
 
 describe('an invitation code', () => {
@@ -120,6 +130,20 @@ describe("the inviter's card", () => {
     const stats = await inviteStats(db, { privyId: 'host', wallet: 'host-wallet' });
     expect(stats).toMatchObject({ code: 'ABCDEFGH', arrived: 1, converted: 1, cap: REFERRAL_REWARD_CAP });
     expect(stats.cards).toEqual([{ designation: 'SUN', name: 'The Sun', rarity: 'common', editionNumber: 1, editionSize: 300 }]);
+  });
+
+  it('is allocated as a grant for the guest, under the set’s capsule reserve', async () => {
+    await rewardReferrer(db, { inviteePrivyId: 'guest', inviteeWallet: 'g', capsuleId: CAPSULE });
+    expect(state.grants).toEqual([{ setId: 'set-1', kind: 'referral', key: 'guest' }]);
+  });
+
+  it('never takes an edition owed to a capsule: none is given, and the guest is still recorded', async () => {
+    state.owed = state.cards.reduce((n, c) => n + c.edition_size, 0);
+    const reward = await rewardReferrer(db, { inviteePrivyId: 'guest', inviteeWallet: 'g', capsuleId: CAPSULE });
+    expect(reward).toMatchObject({ code: 'ABCDEFGH', edition: null });
+    expect(state.editions).toEqual([]);
+    expect(state.rewards[0]).toMatchObject({ invitee: 'guest', edition_id: null });
+    expect(state.events).toEqual([]);
   });
 
   it('is given once per guest, however many capsules they open', async () => {

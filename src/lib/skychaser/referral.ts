@@ -4,7 +4,7 @@ import { HOLDER_CODE } from '@/lib/invite'
 import type { Db } from './attach'
 import { isDirectOnly, isSealed } from './almanac'
 import { recordEvent } from './events'
-import { allocateEdition } from './repo'
+import { allocateGrant } from './orders'
 import { WELCOME_CARDS } from './welcome'
 
 /**
@@ -12,7 +12,9 @@ import { WELCOME_CARDS } from './welcome'
  * skychaser.io/invite/<code>. When an account that arrived by it opens its
  * first paid capsule, the inviter receives one common edition, chosen at
  * random among the commons with editions left (not the welcome cards, not a
- * sealed or limited card), up to REFERRAL_REWARD_CAP. PROVISIONAL: the
+ * sealed or limited card), up to REFERRAL_REWARD_CAP. It is allocated as a
+ * sale is: behind the set's lock, never from editions owed to capsules, and
+ * logged publicly as 'card_granted'. PROVISIONAL: the
  * reward and the cap are the owner's call (open question, Growth 3).
  */
 export const REFERRAL_REWARD_CAP = 10
@@ -92,13 +94,13 @@ export type Reward = {
 }
 
 /** Commons with editions left that a reward may take from, in no particular order. */
-async function rewardCandidates(db: Db, now: Date): Promise<Array<{ id: string; designation: string; name: string; rarity: string; edition_size: number | string }>> {
+async function rewardCandidates(db: Db, now: Date): Promise<Array<{ id: string; set_id: string; designation: string; name: string; rarity: string; edition_size: number | string }>> {
   const { rows } = (await db.execute(sql`
-    SELECT c.id, c.designation, c.name, c.rarity, c.edition_size
+    SELECT c.id, c.set_id, c.designation, c.name, c.rarity, c.edition_size
     FROM card c JOIN card_set s ON s.id = c.set_id
     WHERE c.rarity = 'common' AND s.status = 'released'
       AND COALESCE((SELECT MAX(e.edition_number) FROM edition e WHERE e.card_id = c.id), 0) < c.edition_size
-  `)) as Rows<{ id: string; designation: string; name: string; rarity: string; edition_size: number | string }>
+  `)) as Rows<{ id: string; set_id: string; designation: string; name: string; rarity: string; edition_size: number | string }>
   return rows.filter((r) => !WELCOME_CARDS.includes(r.designation) && !isSealed(r.designation, now) && !isDirectOnly(r.designation))
 }
 
@@ -136,7 +138,7 @@ export async function rewardReferrer(
   const candidates = await rewardCandidates(db, input.now ?? new Date())
   for (let tries = 0; tries < 3 && candidates.length > 0; tries++) {
     const [pick] = candidates.splice(randomInt(candidates.length), 1)
-    const allocated = await allocateEdition(db, pick.id, referrer.wallet)
+    const allocated = await allocateGrant(db, { cardId: pick.id, setId: pick.set_id, wallet: referrer.wallet, kind: 'referral', key: input.inviteePrivyId })
     if (!allocated) continue
     await db.execute(sql`UPDATE referral_reward SET edition_id = ${allocated.id}::uuid WHERE invitee_privy_id = ${input.inviteePrivyId}`)
     reward.edition = { editionId: allocated.id, designation: pick.designation, name: pick.name, editionNumber: allocated.editionNumber, editionSize: Number(pick.edition_size) }

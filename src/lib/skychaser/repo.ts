@@ -30,7 +30,9 @@ export async function upsertCard(db: Db, seed: typeof card.$inferInsert): Promis
  * — the loser collides and asks again. A card photographed before this edition
  * existed hands it that photograph at once. Returns null when the card is sold
  * out; a card that does not exist is an error, not a sold-out card. Not for
- * sales: those allocate through orders.ts, which logs each one publicly.
+ * sales or grants: those allocate through orders.ts, behind the set's lock,
+ * leaving what capsules are owed, and log each one publicly. This one does
+ * none of that, so only the lifecycle script uses it.
  */
 export async function allocateEdition(
   db: Db,

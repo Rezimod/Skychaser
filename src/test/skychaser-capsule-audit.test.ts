@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { RARITIES } from '@/lib/rarity';
-import { auditLog, type LogRow, type OpenedOutcome } from '@/lib/skychaser/audit';
+import { auditLog, type BeaconOutcome, type LogRow, type OpenedOutcome } from '@/lib/skychaser/audit';
 import { CARDS_PER_CAPSULE, RARITY_ODDS_BPS } from '@/lib/skychaser/economics';
 import { commitmentOf, planPulls, purchaseHash, type SupplyEntry } from '@/lib/skychaser/randomness';
 
@@ -24,7 +24,7 @@ const minute = (m: number) => new Date(T0 + m * 60_000).toISOString();
  * the supply logged with it. Nothing here is the server's code; it is what
  * the published log would contain.
  */
-function honestLog(n: number, draws = CARDS_PER_CAPSULE): LogRow[] {
+function honestLog(n: number, draws = CARDS_PER_CAPSULE, beaconOf?: (sequence: number) => BeaconOutcome): LogRow[] {
   const rows: LogRow[] = [];
   let seq = 0;
   const row = (r: Omit<LogRow, 'seq' | 'at'>, at?: string) => rows.push({ ...r, seq: ++seq, at: at ?? minute(seq) });
@@ -43,7 +43,8 @@ function honestLog(n: number, draws = CARDS_PER_CAPSULE): LogRow[] {
     const supply: SupplyEntry[] = RARITIES.map((rarity) => ({
       designation: rarity.toUpperCase(), rarity, remaining: remaining.get(rarity.toUpperCase())!, editionSize: SIZE,
     }));
-    const pulls = planPulls({ secret: c.secret, nonce, capsuleId: c.id, supply, draws }).map((p) => {
+    const beacon = beaconOf?.(c.sequence);
+    const pulls = planPulls({ secret: c.secret, nonce, capsuleId: c.id, supply, draws, beacon: beacon?.blockhash }).map((p) => {
       const left = remaining.get(p.designation)!;
       remaining.set(p.designation, left - 1);
       return { ...p, editionNumber: SIZE - left + 1 };
@@ -54,7 +55,7 @@ function honestLog(n: number, draws = CARDS_PER_CAPSULE): LogRow[] {
       event: 'opened',
       commitment,
       ...buyer,
-      outcome: { secret: c.secret, draws, oddsBps: RARITY_ODDS_BPS, supply, pulls },
+      outcome: { secret: c.secret, draws, oddsBps: RARITY_ODDS_BPS, supply, pulls, ...(beacon ? { beacon } : {}) },
     });
   }
   return rows;
@@ -230,6 +231,24 @@ describe('auditing the capsule log', () => {
     expect(kinds(auditLog([...log, sale(taken + 2, 100)], NOW).notes)).toContain('editions_outside_log');
   });
 
+  it('matches welcome and invitation cards against the supply too', () => {
+    const log = honestLog(1);
+    const o = log.find((r) => r.event === 'opened')!.outcome as OpenedOutcome;
+    const drawn = o.pulls[0].designation;
+    const taken = Math.max(...o.pulls.filter((p) => p.designation === drawn).map((p) => p.editionNumber));
+    const grant = (n: number, seq: number, kind: 'welcome' | 'referral'): LogRow => ({
+      seq, capsuleId: null, capsuleSequence: null, event: 'card_granted', commitment: null, buyerWallet: null, buyerNonce: null, purchaseHash: null,
+      outcome: { designation: drawn, editionNumber: n, editionSize: SIZE, kind, grantHash: hex(`${kind}-${n}`) }, at: minute(seq),
+    });
+    const audit = auditLog([...log, grant(taken + 1, 100, 'welcome'), grant(taken + 2, 101, 'referral')], NOW);
+    expect(audit.flags).toEqual([]);
+    expect(audit.notes).toEqual([]);
+    expect(audit).toMatchObject({ cardsGranted: 2, cardsSold: 0, listed: 1 });
+
+    expect(kinds(auditLog([...log, grant(taken, 100, 'welcome')], NOW).flags)).toContain('edition_duplicate');
+    expect(kinds(auditLog([...log, grant(taken + 2, 100, 'welcome')], NOW).notes)).toContain('editions_outside_log');
+  });
+
   it('labels capsules marked demo at listing, and holders that are not Solana addresses', () => {
     const rows = honestLog(3).map((r) => {
       if (r.capsuleSequence === 1 && r.event === 'listed') return { ...r, outcome: { demo: true } };
@@ -309,6 +328,41 @@ describe('the paying block in the log', () => {
     // Capsule 3 predates references in the log.
     const a = auditLog(rows, NOW);
     expect(a.flags.filter((f) => f.kind === 'beacon_missing').map((f) => f.capsuleSequence)).toEqual([1]);
+  });
+
+  const blockOf = (i: number) => bs58.encode(createHash('sha256').update(`block-${i}`).digest());
+  const beaconOf = (withReference: boolean) => (i: number): BeaconOutcome => ({
+    signature: `sig-${i}`, slot: 100 + i, blockhash: blockOf(i), ...(withReference ? { reference: `ref-${i}` } : {}),
+  });
+  const onChain = (rows: LogRow[]) => rows.map((r) => (r.event === 'purchased' ? { ...r, outcome: { ...(r.outcome as object), onChain: true } } : r));
+
+  it('passes openings that log the payment reference with the beacon', () => {
+    const a = auditLog(onChain(honestLog(3, CARDS_PER_CAPSULE, beaconOf(true))), NOW);
+    expect(a.flags).toEqual([]);
+    expect(a.notes).toEqual([]);
+    expect(a.verified).toBe(3);
+  });
+
+  it('still passes older openings without the reference, noting the beacon cannot be tied to the order', () => {
+    const a = auditLog(onChain(honestLog(2, CARDS_PER_CAPSULE, beaconOf(false))), NOW);
+    expect(a.flags).toEqual([]);
+    expect(a.verified).toBe(2);
+    expect(kinds(a.notes)).toEqual(['beacon_unbound', 'beacon_unbound']);
+    // A purchase from before 2026-10-21 logged the reference itself: that binds the beacon.
+    const early = honestLog(1, CARDS_PER_CAPSULE, beaconOf(false)).map((r) => (r.event === 'purchased' ? { ...r, outcome: { ...(r.outcome as object), reference: 'ref-1' } } : r));
+    expect(auditLog(early, NOW)).toMatchObject({ flags: [], notes: [] });
+  });
+
+  it('flags a beacon naming another reference than its purchase logged', () => {
+    const rows = honestLog(1, CARDS_PER_CAPSULE, beaconOf(true)).map((r) => (r.event === 'purchased' ? { ...r, outcome: { ...(r.outcome as object), reference: 'some-other-ref' } } : r));
+    expect(auditLog(rows, NOW).flags).toEqual([expect.objectContaining({ kind: 'verification_failed', detail: expect.stringMatching(/payment reference/) })]);
+  });
+
+  it('flags one payment used as the beacon of two capsules, by signature or by reference', () => {
+    const sameSignature = honestLog(2, CARDS_PER_CAPSULE, (i) => ({ ...beaconOf(true)(i), signature: 'sig-shared' }));
+    expect(auditLog(onChain(sameSignature), NOW).flags).toEqual([expect.objectContaining({ kind: 'beacon_reused', detail: expect.stringMatching(/sig-shared.*capsules 1, 2/) })]);
+    const sameReference = honestLog(2, CARDS_PER_CAPSULE, (i) => ({ ...beaconOf(true)(i), reference: 'ref-shared' }));
+    expect(auditLog(onChain(sameReference), NOW).flags).toEqual([expect.objectContaining({ kind: 'beacon_reused', detail: expect.stringMatching(/ref-shared/) })]);
   });
 
   it('treats a purchase logged as on chain the way it treated a logged reference', () => {

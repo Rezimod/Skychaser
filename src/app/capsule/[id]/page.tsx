@@ -9,7 +9,7 @@ import SkychaserVerify from '@/components/skychaser/SkychaserVerify';
 import DataRow from '@/components/skychaser/ui/DataRow';
 import Chapter from '@/components/skychaser/ui/Chapter';
 import { getDb } from '@/lib/db';
-import type { ListedOutcome, OpenedOutcome } from '@/lib/skychaser/audit';
+import { beaconReference, type ListedOutcome, type OpenedOutcome, type PurchasedOutcome } from '@/lib/skychaser/audit';
 import { RARITIES } from '@/lib/rarity';
 import { readFullLog } from '@/lib/skychaser/capsule';
 import { verifyCapsule } from '@/lib/skychaser/randomness';
@@ -69,6 +69,11 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
     verification.ok = false;
     verification.problems.push('opened under odds other than those logged when it was listed');
   }
+  const bound = outcome && purchased ? beaconReference(purchased.outcome as PurchasedOutcome, outcome.beacon) : null;
+  if (verification && bound?.problem) {
+    verification.ok = false;
+    verification.problems.push(bound.problem);
+  }
 
   return (
     <SkychaserShell title={sequence !== null ? `Capsule ${String(sequence).padStart(3, '0')}` : 'Capsule'}>
@@ -106,6 +111,13 @@ export default async function CapsuleRecordPage({ params }: { params: Promise<{ 
               value: outcome?.secret ?? closedOutcome?.secret ?? 'Sealed until it is opened',
             },
             { label: 'Draws', value: outcome ? outcome.draws : '—' },
+            ...(outcome?.beacon
+              ? [
+                  { label: 'Paying transfer', value: outcome.beacon.signature },
+                  { label: 'Payment reference', value: bound?.reference ?? 'Not logged for this opening' },
+                  { label: 'Block hash', value: `${outcome.beacon.blockhash} · slot ${outcome.beacon.slot}` },
+                ]
+              : []),
           ]}
         />
 

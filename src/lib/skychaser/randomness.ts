@@ -13,18 +13,21 @@
  *      purchase message (capsule id, listing sequence, commitment, holder
  *      wallet, nonce), whose SHA-256 is logged with the nonce. A wallet
  *      signature over the message is recorded when the buyer gives one.
- *   3. PAYMENT. The order's payment reference is logged with the purchase.
- *      The transfer that completes the payment lands in a Solana block whose
- *      hash nobody — buyer, operator, or anyone holding the seal key — can
- *      know before it is produced: the beacon.
+ *   3. PAYMENT. The order is paid by a transfer naming its payment
+ *      reference. The reference is not published while the order is unpaid
+ *      (anyone holding it could bury the payment under dust); it is logged
+ *      at opening, with the beacon. The transfer that completes the payment
+ *      lands in a Solana block whose hash nobody — buyer, operator, or anyone
+ *      holding the seal key — can know before it is produced: the beacon.
  *   4. OUTCOME. seed = HMAC-SHA256(key = secret, nonce ‖ capsule_id ‖ beacon),
  *      the beacon as its 32 bytes, and draw i reads
  *      block_i = HMAC-SHA256(key = seed, uint32be(i)). A capsule with no
  *      beacon (a rehearsal or demo, which moved no money, or one opened before
  *      beacons) uses nonce ‖ capsule_id alone.
  *   5. OPEN. The secret is revealed and logged with the pulls, the supply the
- *      draws were made against and the beacon (signature, slot, block hash).
- *      Anyone can re-run `verifyCapsule`, and look the block up on chain.
+ *      draws were made against and the beacon (signature, slot, block hash,
+ *      payment reference). Anyone can re-run `verifyCapsule`, and check on
+ *      chain that the signature names that reference and lands in that block.
  *
  * This is verifiable randomness with a public audit log. It is not trustless:
  * see docs/skychaser/capsule-randomness.md for what it does and does not rule out.

@@ -89,7 +89,7 @@ database: the container cannot reach Neon. The owner's list follows.
 
 ## What only the owner can do
 
-1. Apply `scripts/skychaser-growth.sql` to the skychaser Neon branch (additive: four tables, nothing existing touched).
+1. Apply `scripts/skychaser-growth.sql` to the skychaser Neon branch (four new tables, and the capsule log check widened for `card_granted` entries; no existing row changes).
 2. Set `INVITE_SIGNING_KEY` (or leave it: `CAPSULE_SEAL_KEY` is used), `RESEND_API_KEY`, `NOTIFY_FROM`.
 3. Enable wallet funding (MoonPay or Coinbase) in the Privy dashboard for Solana.
 4. Run the funnel before launch and a week after.

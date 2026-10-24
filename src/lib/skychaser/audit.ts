@@ -18,19 +18,30 @@
  * payment window closed unpaid, a capsule withdrawn unsold) is reported as a
  * note, not a flag.
  *
- * Direct card sales are logged too ('card_sold'), so every edition a capsule's
- * logged supply says was gone can be matched against an entry that took it.
+ * Direct card sales are logged too ('card_sold'), and so are free cards — the
+ * welcome card and an invitation's ('card_granted') — so every edition a
+ * capsule's logged supply says was gone can be matched against an entry that
+ * took it.
+ *
+ * A paid capsule's draws are mixed with the hash of the block its payment
+ * landed in. The opening logs that transfer's signature and, since
+ * 2026-10-24, the order's payment reference, so anyone can check on chain
+ * that the beacon is this capsule's own payment and not some other transfer
+ * to the merchant; and the audit checks no payment serves two capsules.
  */
 
 import bs58 from 'bs58';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { SoldOutError, commitmentOf, planPulls, purchaseHash, verifyCapsule, type SupplyEntry } from './randomness';
 
-export type CapsuleEvent = 'listed' | 'purchased' | 'opened' | 'voided' | 'released' | 'refund_due' | 'card_sold';
+export type CapsuleEvent = 'listed' | 'purchased' | 'opened' | 'voided' | 'released' | 'refund_due' | 'card_sold' | 'card_granted';
+
+/** Entries that belong to no capsule: editions handed out on their own. */
+const EDITION_EVENTS: ReadonlySet<CapsuleEvent> = new Set(['card_sold', 'card_granted']);
 
 export type LogRow = {
   seq: number;
-  /** Null only for 'card_sold', which belongs to no capsule. */
+  /** Null only for 'card_sold' and 'card_granted', which belong to no capsule. */
   capsuleId: string | null;
   capsuleSequence: number | null;
   event: CapsuleEvent;
@@ -53,13 +64,21 @@ export type ListedOutcome = { demo?: boolean; tier?: string; oddsBps?: Record<Ra
  * and that it is paid on chain — or, in rows the rehearsal builds of 2026-09/10
  * wrote, the mark that nothing was paid. That is a note, not a flag: it is in
  * the log, and the log explains it. Rows before 2026-10-21 carry the payment
- * reference instead of `onChain`; it is no longer published, because anyone
- * holding an unpaid order's reference could bury its payment under dust.
+ * reference instead of `onChain`; it is no longer published at purchase,
+ * because anyone holding an unpaid order's reference could bury its payment
+ * under dust. The opening logs it with the beacon instead.
  */
 export type PurchasedOutcome = { expiresAt?: string; simulated?: boolean; onChain?: boolean; reference?: string } | null;
 
-/** The paying transfer's block, logged at opening: its hash is mixed into the draws. */
-export type BeaconOutcome = { signature: string; slot: number; blockhash: string };
+/**
+ * The paying transfer's block, logged at opening: its hash is mixed into the
+ * draws. `reference` is the order's Solana Pay reference, which the paying
+ * transfer names. It is published only once the capsule is opened (or voided
+ * sold out): the order is paid by then, and transfers are read oldest first,
+ * so dust sent to the reference afterwards cannot bury the payment. Openings
+ * before 2026-10-24 do not carry it.
+ */
+export type BeaconOutcome = { signature: string; slot: number; blockhash: string; reference?: string };
 
 /** What an 'opened' row's outcome carries. */
 export type OpenedOutcome = {
@@ -94,6 +113,24 @@ export type RefundOutcome = { reason: string; paidAt: string | null; expiresAt: 
 /** What a 'card_sold' row's outcome carries. No wallet: the order's SHA-256 lets its buyer find it. */
 export type CardSoldOutcome = { designation: string; editionNumber: number; editionSize: number; orderHash: string };
 
+/** What a 'card_granted' row's outcome carries: a free edition, and a hash of the account it was for. No wallet. */
+export type CardGrantedOutcome = { designation: string; editionNumber: number; editionSize: number; kind: 'welcome' | 'referral'; grantHash: string };
+
+/**
+ * The payment reference a capsule's beacon must name: the one the opening
+ * logged, or — for purchases logged before 2026-10-21 — the one the purchase
+ * logged. A problem when both are there and differ. Null when neither is
+ * (openings between those dates): the beacon then cannot be tied to the order.
+ */
+export function beaconReference(purchased: PurchasedOutcome | undefined, beacon: BeaconOutcome | undefined): { reference: string | null; problem?: string } {
+  const atPurchase = purchased?.reference ?? null;
+  const atOpening = beacon?.reference ?? null;
+  if (atPurchase && atOpening && atPurchase !== atOpening) {
+    return { reference: atOpening, problem: 'the beacon names a payment reference other than the one logged at purchase' };
+  }
+  return { reference: atOpening ?? atPurchase };
+}
+
 export type AuditFlag = {
   kind:
     | 'sequence_gap'
@@ -111,6 +148,7 @@ export type AuditFlag = {
     | 'edition_duplicate'
     | 'verification_failed'
     | 'beacon_missing'
+    | 'beacon_reused'
     // Notes: in the log, explained by it.
     | 'awaiting_payment'
     | 'simulated_payment'
@@ -119,6 +157,7 @@ export type AuditFlag = {
     | 'withdrawn_unsold'
     | 'refund_due'
     | 'edition_check_skipped'
+    | 'beacon_unbound'
     | 'editions_outside_log';
   capsuleSequence?: number;
   capsuleId?: string;
@@ -134,6 +173,7 @@ export type Audit = {
   released: number;
   refundsDue: number;
   cardsSold: number;
+  cardsGranted: number;
   verified: number;
   /** Listing numbers of capsules marked demo at listing, or bought by a holder that is not a Solana address. */
   demoCapsules: number[];
@@ -143,7 +183,7 @@ export type Audit = {
   notes: AuditFlag[];
 };
 
-const ORDER: Record<Exclude<CapsuleEvent, 'card_sold'>, number> = {
+const ORDER: Record<Exclude<CapsuleEvent, 'card_sold' | 'card_granted'>, number> = {
   listed: 0, purchased: 1, opened: 2, voided: 2, released: 2, refund_due: 3,
 };
 
@@ -168,7 +208,7 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
   const sorted = [...rows].sort((a, b) => a.seq - b.seq);
   const byCapsule = new Map<string, LogRow[]>();
   for (const r of sorted) {
-    if (r.event === 'card_sold' || !r.capsuleId) continue;
+    if (EDITION_EVENTS.has(r.event) || !r.capsuleId) continue;
     const list = byCapsule.get(r.capsuleId) ?? [];
     list.push(r);
     byCapsule.set(r.capsuleId, list);
@@ -196,16 +236,29 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
 
   let verified = 0;
   const demoCapsules: number[] = [];
-  const counts = { listed: 0, purchased: 0, opened: 0, voided: 0, released: 0, refundsDue: 0, cardsSold: 0 };
+  const counts = { listed: 0, purchased: 0, opened: 0, voided: 0, released: 0, refundsDue: 0, cardsSold: 0, cardsGranted: 0 };
 
   for (const r of sorted) {
-    if (r.event !== 'card_sold') continue;
-    counts.cardsSold++;
-    const s = r.outcome as CardSoldOutcome | null;
-    if (!s) continue;
-    took(s.designation, s.editionNumber, `sale ${s.orderHash.slice(0, 12)}`);
-    sizes.set(s.designation, s.editionSize);
+    if (r.event === 'card_sold') {
+      counts.cardsSold++;
+      const s = r.outcome as CardSoldOutcome | null;
+      if (!s) continue;
+      took(s.designation, s.editionNumber, `sale ${s.orderHash.slice(0, 12)}`);
+      sizes.set(s.designation, s.editionSize);
+    } else if (r.event === 'card_granted') {
+      counts.cardsGranted++;
+      const g = r.outcome as CardGrantedOutcome | null;
+      if (!g) continue;
+      took(g.designation, g.editionNumber, `${g.kind} ${g.grantHash.slice(0, 12)}`);
+      sizes.set(g.designation, g.editionSize);
+    }
   }
+
+  // One payment is one capsule's beacon: the same transfer, or the same
+  // order reference, behind two capsules' draws means one was not its own.
+  const beacons = new Map<string, number[]>();
+  const usedBy = (key: string, capsuleSequence: number | undefined) =>
+    beacons.set(key, [...(beacons.get(key) ?? []), capsuleSequence ?? 0]);
 
   for (const [capsuleId, events] of byCapsule) {
     const at = (e: CapsuleEvent) => events.find((x) => x.event === e);
@@ -291,6 +344,13 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
             soldOut = err instanceof SoldOutError;
           }
         }
+        const spent = v?.soldOut?.beacon;
+        if (spent) {
+          const bound = beaconReference(purchased.outcome as PurchasedOutcome, spent);
+          if (bound.problem) flag('verification_failed', bound.problem);
+          usedBy(`signature ${spent.signature}`, capsuleSequence);
+          if (bound.reference) usedBy(`reference ${bound.reference}`, capsuleSequence);
+        }
         if (soldOut) note('voided_sold_out', 'voided after purchase: its draws could not be made from the logged supply; the payment is owed back');
         else flag('voided_after_purchase', `voided after purchase: ${v?.reason ?? 'no reason given'}`);
       }
@@ -333,6 +393,13 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
       if (o && (bought?.onChain || bought?.reference) && !bought.simulated && !demo && !o.beacon) {
         flag('beacon_missing', 'paid on chain, but opened without the paying block’s hash in its draws');
       }
+      if (o?.beacon) {
+        const bound = beaconReference(bought ?? undefined, o.beacon);
+        if (bound.problem) flag('verification_failed', bound.problem);
+        else if (!bound.reference) note('beacon_unbound', 'opened before the payment reference was logged with the beacon: the beacon cannot be tied to this capsule’s order from the log alone');
+        usedBy(`signature ${o.beacon.signature}`, capsuleSequence);
+        if (bound.reference) usedBy(`reference ${bound.reference}`, capsuleSequence);
+      }
       const promised = (listed?.outcome as ListedOutcome)?.oddsBps;
       if (promised && o && JSON.stringify(RARITIES.map((r) => promised[r])) !== JSON.stringify(RARITIES.map((r) => o.oddsBps?.[r]))) {
         flag('odds_changed', 'opened under odds other than those logged when it was listed');
@@ -343,6 +410,10 @@ export function auditLog(rows: LogRow[], now: Date = new Date()): Audit {
       for (const s of o?.supply ?? []) if (s.editionSize !== undefined) sizes.set(s.designation, s.editionSize);
       for (const p of o?.pulls ?? []) took(p.designation, p.editionNumber, `capsule ${capsuleSequence}`);
     }
+  }
+
+  for (const [key, capsules] of beacons) {
+    if (capsules.length > 1) flags.push({ kind: 'beacon_reused', detail: `the payment ${key} is the beacon of capsules ${capsules.join(', ')}` });
   }
 
   // No edition is handed out twice. Numbers below a card's highest logged one

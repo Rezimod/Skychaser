@@ -15,7 +15,7 @@ vi.mock('@solana/web3.js', async (actual) => {
 vi.mock('@/lib/telegram', () => ({ sendTelegram: pay.telegram }));
 import type { Db } from '@/lib/skychaser/attach';
 import { PublicKey } from '@solana/web3.js';
-import { findPayment, fulfilCardOrder, fulfilPaidCardOrders, grantPaidCredits, markPaid, paymentNetworkProblem, recheckClosedCardOrders, recheckPaidOrders, recheckWindows, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
+import { allocateGrant, findPayment, fulfilCardOrder, grantHash, fulfilPaidCardOrders, grantPaidCredits, markPaid, paymentNetworkProblem, recheckClosedCardOrders, recheckPaidOrders, recheckWindows, reportExtraTransfers, settleCardOrders, unpaidRehearsal, usdToSol, orderHash, type OrderRow } from '@/lib/skychaser/orders';
 import { SolPriceUnavailableError, SOL_PRICE_FALLBACK, fetchSolPriceRates } from '@/lib/sol-price';
 
 const MERCHANT = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU';
@@ -233,6 +233,42 @@ describe('quoting in SOL', () => {
   it('gives no quote without a live feed', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })));
     await expect(usdToSol(39)).rejects.toBeInstanceOf(SolPriceUnavailableError);
+  });
+});
+
+describe('a free card (welcome, invitation)', () => {
+  it('takes the set’s lock and leaves what capsules are owed, as a sale does, and logs the grant without the wallet', async () => {
+    const execute = vi.fn(async (_q: SQL) => ({ rows: [{ id: 'edition-9', edition_number: 9 }] }));
+    const db = { execute, batch: async (items: unknown[]) => Promise.all(items) } as unknown as Db;
+
+    expect(await allocateGrant(db, { cardId: 'card-1', setId: 'set-1', wallet: 'holder-wallet', kind: 'welcome', key: 'did:privy:abc' }))
+      .toEqual({ id: 'edition-9', editionNumber: 9 });
+    expect(new PgDialect().sqlToQuery(execute.mock.calls[0][0]).sql).toMatch(/SELECT k\.designation, k\.edition_size/);
+    expect(new PgDialect().sqlToQuery(execute.mock.calls[1][0]).sql).toMatch(/pg_advisory_xact_lock\(hashtext\('card-set:'/);
+    const { sql, params } = new PgDialect().sqlToQuery(execute.mock.calls[2][0]);
+    // The same reservation as a sale: never directOnly, so the set's spare must cover it.
+    expect(sql).toMatch(/state IN \('listed', 'purchased'\)\)\s*- \$\d+::int\s*>= 1/);
+    expect(params).toContain(false);
+    expect(sql).toMatch(/INSERT INTO capsule_log \(event, outcome\)\s*SELECT 'card_granted'/);
+    expect(sql).not.toMatch(/'card_sold'/);
+    expect(params).toContain('welcome');
+    expect(params).toContain(grantHash('welcome', 'did:privy:abc'));
+    expect(params).not.toContain('did:privy:abc');
+    // No order: the edition's order_id is null.
+    expect(params).toContain(null);
+    const logged = sql.slice(sql.indexOf('INSERT INTO capsule_log'));
+    expect(logged).not.toMatch(/owner_wallet|wallet/);
+  });
+
+  it('is refused (null) when the card or the set cannot spare an edition', async () => {
+    const execute = vi.fn(async () => ({ rows: [] }));
+    const db = { execute, batch: async (items: unknown[]) => Promise.all(items) } as unknown as Db;
+    expect(await allocateGrant(db, { cardId: 'card-1', setId: 'set-1', wallet: 'w', kind: 'referral', key: 'guest' })).toBeNull();
+  });
+
+  it('hashes the kind with the account, so a welcome and an invitation for one account differ', () => {
+    expect(grantHash('welcome', 'p1')).not.toBe(grantHash('referral', 'p1'));
+    expect(grantHash('welcome', 'p1')).toMatch(/^[0-9a-f]{64}$/);
   });
 });
 
