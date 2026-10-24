@@ -1,9 +1,9 @@
 // Flying, as it looks and feels rather than as numbers: the chase camera
 // eases back and up and follows a climb tightly, the same at any frame rate,
-// and keeps out of a giant's deck from below; the crouch key descends in
-// flight without crouching; the suit leans into the travel with its legs
-// trailing, holds its arms out in a hover, and moves between walking and
-// flying without a pop.
+// and keeps out of a giant's deck from below; the crouch key puts the pack
+// out in flight without crouching; the suit leans into the travel with its
+// legs trailing, holds its arms out in a vertical climb, falls when the key
+// is let go, and moves between walking, flying and falling without a pop.
 
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
@@ -106,7 +106,7 @@ describe('the chase camera in flight', () => {
 });
 
 describe('the crouch key in flight', () => {
-  it('descends while held in the air, and crouches only on the ground', () => {
+  it('drops (puts the pack out) while held in the air, and crouches only on the ground', () => {
     const inputs: FootInputs = {
       moveX: 0, moveY: 0, jump: false, run: false, sprint: false, walk: false, crouch: false, use: false, throttle: 0,
       orbitDX: 0, orbitDY: 0, zoom: 0, interact: false, viewToggle: false, viewCycle: false, headlamp: false, shoulderSwap: false,
@@ -140,7 +140,7 @@ describe('the suit in flight', () => {
   const DT = 1 / 120;
   const input = (over: Partial<WalkInput> = {}): WalkInput => ({ moveX: 0, moveZ: 0, jump: false, run: false, crouch: false, work: false, ...over });
 
-  it('leans into the travel with the legs trailing, holds the arms out in a hover, and never pops between the two', async () => {
+  it('leans into the travel with the legs trailing, holds the arms out going straight up, falls when let go, and never pops', async () => {
     const getContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = (() => ctx) as never;
     const { makeCosmonaut } = await import('@/lib/solar-system/moon-cosmonaut');
@@ -159,23 +159,24 @@ describe('the suit in flight', () => {
       }
     };
     run(1, {});
-    run(1.5, { jet: true });
-    run(2, {});
+    run(3.5, { jet: true });
     expect(c.state.anim).toBe('hover');
     const hoverArm = Math.abs(shoulder.rotation.z);
     expect(hoverArm).toBeGreaterThan(0.5);
-    run(3, { moveZ: 1, sprint: true });
+    run(3, { moveZ: 1, sprint: true, jet: true });
     expect(c.state.anim).toBe('fly');
     expect(pelvis.rotation.x).toBeGreaterThan(0.7);
     // Swept back at speed, closer in than in the hover.
     expect(shoulder.rotation.x).toBeGreaterThan(0.2);
     expect(Math.abs(shoulder.rotation.z)).toBeLessThan(hoverArm);
-    run(3, {});
+    // Let go: the flame dies and down they come.
+    let fell = false;
     let t = 0;
-    while (c.state.flying && t < 20) { run(DT, { descend: true }); t += DT; }
+    while (c.state.flying && t < 30) { run(DT, {}); t += DT; fell ||= c.state.anim === 'fall' && !c.state.jetting; }
+    expect(fell).toBe(true);
     expect(c.state.flying).toBe(false);
     run(1.5, {});
-    // Through take-off, cruise, hover, descent and touchdown the body never jumps a pose in a step.
+    // Through take-off, climb, cruise, the fall and touchdown the body never jumps a pose in a step.
     expect(worst).toBeLessThan(0.05);
     expect(Math.abs(pelvis.rotation.x)).toBeLessThan(0.15);
     c.dispose();

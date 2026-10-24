@@ -1,10 +1,12 @@
-// The jetpack, held to what it claims: the tank never runs dry; it lights
-// only once the key has been held a fifth of a second, so a tap is a jump;
-// in flight the key climbs, the descend key sinks and neither hovers; every
-// world can be flown and Jupiter feels heavier than the Moon; the ceiling
-// and the edge of the envelope turn the crew back rather than stopping them
-// dead; off the ground they may land on — and over a giant's sea of cloud —
-// the pack will not let them sink, and left alone it brings them home.
+// The jetpack, held to what it claims: the tank never runs dry; from the
+// ground it lights only once the key has been held a fifth of a second, so a
+// tap is a jump; it burns only while the key is held — let go, the flame is
+// out and the crew falls, and pressed again in the air it lights at once;
+// every world can be flown and Jupiter feels heavier than the Moon; the
+// ceiling and the edge of the envelope turn the crew back rather than
+// stopping them dead; falling toward ground they may not land on — or a
+// giant's sea of cloud — the pack lights by itself and holds them, and left
+// alone it brings them home.
 
 import { describe, expect, it } from 'vitest';
 import { feltGravity, gaitProfile, LUNAR_G } from '@/lib/solar-system/gait-profile';
@@ -46,11 +48,11 @@ function flyer(g: number, env: FlightEnvelope = OPEN_SKY, groundAt: (x: number, 
 }
 
 describe('the jetpack never runs dry', () => {
-  it('flies for two minutes on end, climbing, hovering and cruising, and the tank reads full', () => {
+  it('flies for two minutes on end, climbing and cruising, and the tank reads full', () => {
     const f = flyer(feltGravity(LUNAR_G));
     f.run(40, ctl({ climb: true }));
-    f.run(40, ctl());
-    f.run(40, ctl({ moveZ: 1, boost: true }));
+    f.run(40, ctl({ climb: true, moveX: 1 }));
+    f.run(40, ctl({ climb: true, moveZ: 1, boost: true }));
     expect(f.jet.state.fuel).toBe(1);
     expect(f.jet.state.flying).toBe(true);
     // Still lifting at the end, as hard as at the start.
@@ -89,7 +91,7 @@ describe('lighting the pack', () => {
 });
 
 describe('flight on every world', () => {
-  it('climbs on the key, holds a hover without it, and sinks on descend — everywhere a suit is worn', () => {
+  it('climbs while the key is held, and falls the moment it is let go — everywhere a suit is worn', () => {
     for (const id of SUITED) {
       const g = feltOf(id);
       const T = flightTuning(g);
@@ -97,33 +99,58 @@ describe('flight on every world', () => {
       f.run(3, ctl({ climb: true }));
       expect(f.b.vy, id).toBeGreaterThan(T.climb * 0.9);
       expect(f.b.vy, id).toBeLessThan(T.climb * 1.05);
-      // Let go: the climb stops within a few metres, then the hover holds.
-      const at = f.b.y;
-      f.run(3, ctl());
-      expect(f.b.y - at, id).toBeLessThan(6);
-      const held = f.b.y;
-      f.run(4, ctl());
-      expect(Math.abs(f.b.y - held), id).toBeLessThan(0.2);
-      expect(Math.abs(f.b.vy), id).toBeLessThan(0.05);
-      f.run(2, ctl({ descend: true }));
-      expect(f.b.vy, id).toBeLessThan(-T.descend * 0.8);
-      expect(f.b.y, id).toBeLessThan(held - 5);
+      expect(f.jet.state.jetting, id).toBe(true);
+      // Let go: the flame is out at once, nothing pushes up, and gravity has them.
+      const vy0 = f.b.vy;
+      let lastVy = vy0; let rising = 0;
+      f.run(1, ctl(), () => {
+        expect(f.jet.state.jetting, id).toBe(false);
+        expect(f.jet.state.thrust, id).toBe(0);
+        if (f.b.vy >= lastVy) rising += 1;
+        lastVy = f.b.vy;
+      });
+      expect(rising, id).toBe(0);
+      expect(f.b.vy, id).toBeCloseTo(vy0 - g, 1);
+      expect(f.jet.state.flying, id).toBe(true);
+      expect(f.jet.state.throttle, id).toBeLessThan(0.01);
+      // Pressed again in the air: lit on the very step, and climbing again soon after.
+      const push = { x: 0, y: 0, z: 0 };
+      f.jet.fly(DT, ctl({ climb: true }), f.b, 0, OPEN_SKY, push);
+      expect(f.jet.state.jetting, id).toBe(true);
+      expect(f.jet.state.ignited, id).toBe(true);
+      expect(push.y, id).toBeGreaterThan(g);
+      const before = f.b.vy;
+      f.run(0.5, ctl({ climb: true }));
+      expect(f.b.vy, id).toBeGreaterThan(before + 1);
+      f.run(6, ctl({ climb: true }));
+      expect(f.b.vy, id).toBeGreaterThan(T.climb * 0.9);
+      // The descend key only puts it out.
+      f.run(0.5, ctl({ climb: true, descend: true }));
+      expect(f.jet.state.jetting, id).toBe(false);
     }
   });
 
-  it('flies forward at its cruise, nearly twice that on boost, and comes to a stop on letting go', () => {
+  it('flies forward at its cruise while lit, nearly twice that on boost, keeps its way when let go, and brakes on the pack', () => {
     for (const id of SUITED) {
       const g = feltOf(id);
       const T = flightTuning(g);
-      const f = flyer(g, OPEN_SKY);
-      f.run(5, ctl({ moveZ: 1 }));
+      const f = flyer(g, OPEN_SKY, () => -1e6);
+      f.run(5, ctl({ climb: true, moveZ: 1 }));
       expect(f.b.vz, id).toBeGreaterThan(T.cruise * 0.95);
-      f.run(5, ctl({ moveZ: 1, boost: true }));
+      f.run(5, ctl({ climb: true, moveZ: 1, boost: true }));
       expect(f.b.vz, id).toBeGreaterThan(T.boost * 0.95);
       expect(T.boost / T.cruise).toBeCloseTo(1.8, 6);
-      f.run(5, ctl());
+      // Let go in a vacuum: the momentum carries on as they fall.
+      f.run(1, ctl());
+      expect(f.b.vz, id).toBeGreaterThan(T.boost * 0.95);
+      // The stick still steers a little with the pack out, but only a little.
+      const vz = f.b.vz;
+      f.run(1, ctl({ moveZ: -1 }));
+      expect(f.b.vz, id).toBeLessThan(vz - 0.5);
+      expect(f.b.vz, id).toBeGreaterThan(vz - T.accel * JET.airControl - 0.01);
+      // Lit, the pack brings them to a stop, no harder than it can push.
+      f.run(6, ctl({ climb: true }));
       expect(Math.hypot(f.b.vx, f.b.vz), id).toBeLessThan(0.2);
-      // It brakes no harder than the pack can push.
       expect(f.maxDecel(), id).toBeLessThanOrEqual(T.accel + 1e-6);
     }
   });
@@ -138,28 +165,24 @@ describe('flight on every world', () => {
     expect(jupiter.lift).toBeGreaterThan(4);
     expect(jetThrust(jupiter.g)).toBeGreaterThan(jupiter.g * 1.15);
     // Hanging there costs Jupiter most of what the pack has; the Moon barely opens the valve.
-    const hover = (g: number) => { const f = flyer(g, OPEN_SKY, () => 0, { y: 30 }); f.run(3, ctl()); return f.jet.state.thrust; };
-    expect(hover(jupiter.g)).toBeGreaterThan(0.7);
-    expect(hover(moon.g)).toBeLessThan(0.3);
+    const climb = (g: number) => { const f = flyer(g, OPEN_SKY, () => 0, { y: 30 }); f.run(3, ctl({ climb: true })); return f.jet.state.thrust; };
+    expect(climb(jupiter.g)).toBeGreaterThan(0.7);
+    expect(climb(moon.g)).toBeLessThan(0.3);
   });
 
-  it('settles softly onto ground it may land on: a hover low down sinks, and the last metres ease off', () => {
+  it('drags at a fall\'s sideways speed in a giant\'s thick air, and not at all in a vacuum', () => {
+    const coast = (id: WorldId) => {
+      const env = envOf(id);
+      const f = flyer(feltOf(id), env, () => -1e6, { y: 100, vx: 10 });
+      f.run(2, ctl());
+      return f.b.vx;
+    };
+    expect(coast('mars')).toBeCloseTo(10, 6);
+    expect(coast('jupiter')).toBeLessThan(9);
+    expect(coast('jupiter')).toBeGreaterThan(6);
     for (const id of SUITED) {
-      const g = feltOf(id);
-      const P = gaitProfile(WORLDS[id].gravity, true);
-      const f = flyer(g, OPEN_SKY, () => 0, { y: 30 });
-      let touch = -1;
-      f.run(20, ctl({ descend: true }), () => { if (touch < 0 && f.b.y <= 1e-6) touch = -f.b.vy; });
-      // The integrator here zeroes the fall on contact: the speed the step before tells the impact.
-      const g2 = flyer(g, OPEN_SKY, () => 0, { y: 30 });
-      let lastVy = 0;
-      g2.run(20, ctl({ descend: true }), () => { if (g2.b.y > 1e-6) lastVy = g2.b.vy; });
-      expect(-lastVy, id).toBeLessThan(P.softLand);
-      expect(-lastVy, id).toBeLessThan(2.2);
-      // Let go a metre up: down it comes, gently.
-      const s = flyer(g, OPEN_SKY, () => 0, { y: 0.8 });
-      s.run(3, ctl());
-      expect(s.b.y, id).toBeLessThan(0.01);
+      const v = coast(id);
+      expect(Number.isFinite(v), id).toBe(true);
     }
   });
 });
@@ -202,12 +225,16 @@ describe('the envelope', () => {
       const env = id === 'moon' ? flightEnvelope(TERRAIN_WALK_RADIUS, g) : envOf(id);
       const f = flyer(g, env, () => 0, { y: 20 });
       let far = 0;
-      f.run(60, ctl({ moveX: 1, boost: true }), () => { far = Math.max(far, Math.hypot(f.b.x, f.b.z)); });
+      f.run(60, ctl({ climb: true, moveX: 1, boost: true }), () => { far = Math.max(far, Math.hypot(f.b.x, f.b.z)); });
       expect(far, id).toBeGreaterThan(env.landRadius);
       expect(far, id).toBeLessThan(env.radius + 6);
       expect(Math.hypot(f.b.x, f.b.z), id).toBeLessThanOrEqual(env.radius + 0.5);
-      // Let go out there: the suit flies them back over ground they may land on.
-      f.run(120, ctl());
+      // Let go out there, at full speed: the edge still turns them back as they fall.
+      f.run(3, ctl(), () => { far = Math.max(far, Math.hypot(f.b.x, f.b.z)); });
+      expect(far, id).toBeLessThan(env.radius + 6);
+      // Down they come, the pack catches them over the ground they may not
+      // land on, and the suit flies them back over ground they may.
+      f.run(180, ctl());
       expect(Math.hypot(f.b.x, f.b.z), id).toBeLessThan(env.landRadius);
     }
   });
@@ -216,9 +243,14 @@ describe('the envelope', () => {
     const g = feltOf('mars');
     const env = envOf('mars');
     const f = flyer(g, env, () => 0, { x: env.landRadius + 20, y: 30 });
-    let low = Infinity;
-    f.run(8, ctl({ descend: true, moveX: 0.01 }), () => { low = Math.min(low, f.b.y); });
+    let low = Infinity; let fell = false;
+    f.run(12, ctl({ moveX: 0.06 }), () => { low = Math.min(low, f.b.y); fell ||= !f.jet.state.jetting && f.b.vy < -5; });
+    // It fell first: the pack lit by itself only to catch them.
+    expect(fell).toBe(true);
     expect(low).toBeGreaterThan(JET.hover - 0.5);
+    expect(Math.abs(f.b.y - JET.hover)).toBeLessThan(0.3);
+    expect(f.jet.state.jetting).toBe(true);
+    expect(f.jet.state.flying).toBe(true);
   });
 
   it('over a giant, never sinks into the clouds, and drifts back up and over the deck when left alone', () => {
@@ -229,13 +261,16 @@ describe('the envelope', () => {
       const sea = -deck.seaDepth;
       const groundAt = (x: number, z: number) => (x * x + z * z <= deck.radius * deck.radius ? 0 : sea);
       const f = flyer(g, env, groundAt, { y: 5 });
-      // Off the rail and down as far as the pack will go.
-      f.run(10, ctl({ moveX: 1 }));
+      // Off the rail, then let go and fall as far as the pack will let them.
+      f.run(10, ctl({ climb: true, moveX: 1 }));
       expect(f.b.x, id).toBeGreaterThan(deck.radius + 10);
       let low = Infinity;
-      f.run(20, ctl({ descend: true, moveX: 0.02 }), () => { low = Math.min(low, f.b.y); });
+      f.run(30, ctl({ moveX: 0.06 }), () => { low = Math.min(low, f.b.y); });
       expect(low, id).toBeGreaterThan(sea + JET.seaClear - 1);
       expect(low, id).toBeLessThan(-30);
+      // Held at the floor, the flame showing.
+      expect(f.jet.state.jetting, id).toBe(true);
+      expect(f.jet.state.throttle, id).toBeGreaterThan(0.2);
       // Let go: up past the rim and back over the deck, never through it.
       let inside = false;
       f.run(90, ctl(), () => {
@@ -286,7 +321,7 @@ describe('flight through the locomotion', () => {
     return { loco, position, velocity, run };
   };
 
-  it('a tap of jump is a jump; holding it takes off, and the flight is held until the boots are set down', () => {
+  it('a tap of jump is a jump; holding it takes off, letting go drops the crew, and the boots coming down end the flight', () => {
     const c = crew(LUNAR_G, OPEN_SKY);
     c.loco.update(DT, input({ jump: true, jet: true }), flat, [], 999);
     c.run(JET.arm * 0.5, { jet: true });
@@ -301,16 +336,52 @@ describe('flight through the locomotion', () => {
     expect(c.loco.state.gait).toBe('air');
     const y = c.position.y;
     expect(y).toBeGreaterThan(3);
-    c.run(3);
+    // Let go: the flame is out and down they come.
+    let lastVy = c.velocity.y;
+    c.run(0.5, {}, () => {
+      expect(c.loco.state.jetting).toBe(false);
+      expect(c.velocity.y).toBeLessThan(lastVy);
+      lastVy = c.velocity.y;
+    });
     expect(c.loco.state.flying).toBe(true);
-    expect(Math.abs(c.position.y - y)).toBeLessThan(6);
-    // Down, and set down softly.
+    expect(c.loco.state.mode).toBe('fly');
+    // Pressed again in the air: no wait, it lights on the step.
+    c.loco.update(DT, input({ jet: true }), flat, [], 999);
+    expect(c.loco.state.jetting).toBe(true);
+    expect(c.loco.state.jetIgnited).toBe(true);
+    c.run(0.5, { jet: true });
+    expect(c.velocity.y).toBeGreaterThan(0);
+    // Let go again, and the fall ends on the ground with a landing.
     let landing = '';
-    c.run(10, { descend: true }, () => { if (c.loco.state.landing) landing = c.loco.state.landing; });
+    c.run(10, {}, () => { if (c.loco.state.landing) landing = c.loco.state.landing; });
     expect(c.loco.state.flying).toBe(false);
     expect(c.loco.state.grounded).toBe(true);
-    expect(landing).toBe('soft');
+    expect(['soft', 'hard']).toContain(landing);
+    expect(c.loco.state.fallen).toBe(false);
     expect(c.loco.state.jetFuel).toBe(1);
+  });
+
+  it('falls safely from the ceiling: no tunnelling, no NaN, a landing that plays, and the flight over', () => {
+    for (const id of ['moon', 'mars'] as const) {
+      const g = id === 'moon' ? LUNAR_G : WORLDS.mars.gravity;
+      const env = id === 'moon' ? flightEnvelope(TERRAIN_WALK_RADIUS, feltGravity(LUNAR_G)) : envOf('mars');
+      const c = crew(g, env);
+      c.run(80, { jet: true });
+      expect(c.position.y, id).toBeGreaterThan(env.ceiling - 3);
+      let low = Infinity; let landing = ''; let mode = '';
+      c.run(30, {}, () => {
+        low = Math.min(low, c.position.y);
+        if (c.loco.state.landing) { landing = c.loco.state.landing; mode = c.loco.state.mode; }
+        expect(Number.isFinite(c.position.y + c.velocity.y + c.position.x + c.position.z), id).toBe(true);
+      });
+      expect(low, id).toBeGreaterThanOrEqual(0);
+      expect(c.position.y, id).toBe(0);
+      expect(landing, id).toBe('hard');
+      expect(mode, id).toBe('land');
+      expect(c.loco.state.flying, id).toBe(false);
+      expect(c.loco.state.fallen, id).toBe(false);
+      expect(c.loco.state.grounded, id).toBe(true);
+    }
   });
 
   it('lifts off from standing on the jet key alone', () => {
@@ -324,11 +395,11 @@ describe('flight through the locomotion', () => {
   it('leans into the travel and banks into a turn', () => {
     const c = crew(LUNAR_G, OPEN_SKY);
     c.run(1, { jet: true });
-    c.run(3, { moveZ: 1, sprint: true });
+    c.run(3, { moveZ: 1, sprint: true, jet: true });
     expect(c.loco.state.flyPitch).toBeGreaterThan(0.5);
     expect(c.loco.state.flySpeed).toBeGreaterThan(0.9);
     let bank = 0;
-    c.run(1, { moveX: 1 }, () => { bank = Math.max(bank, Math.abs(c.loco.state.flyBank)); });
+    c.run(1, { moveX: 1, jet: true }, () => { bank = Math.max(bank, Math.abs(c.loco.state.flyBank)); });
     expect(bank).toBeGreaterThan(0.15);
   });
 
@@ -336,16 +407,19 @@ describe('flight through the locomotion', () => {
     const env = flightEnvelope(40, feltGravity(LUNAR_G));
     const c = crew(LUNAR_G, env, 40);
     c.run(1, { jet: true });
-    c.run(6, { moveX: 1 });
+    c.run(6, { moveX: 1, jet: true });
     expect(Math.hypot(c.position.x, c.position.z)).toBeGreaterThan(41);
-    // Down out there: the pack holds them up and, idle, brings them back in, where they may set down.
-    c.run(30, { descend: true });
+    // Let go out there: they fall, the pack lights by itself to hold them up and,
+    // idle, brings them back in, where it lets go and they land.
+    let low = Infinity;
+    c.run(30, { moveX: 0.06 }, () => { low = Math.min(low, c.position.y); });
     expect(c.loco.state.flying).toBe(true);
-    expect(c.position.y).toBeGreaterThan(JET.hover - 0.5);
+    expect(c.loco.state.jetting).toBe(true);
+    expect(low).toBeGreaterThan(JET.hover - 0.5);
     c.run(40);
     expect(Math.hypot(c.position.x, c.position.z)).toBeLessThan(env.landRadius);
-    c.run(10, { descend: true });
     expect(c.loco.state.flying).toBe(false);
+    expect(c.loco.state.jetting).toBe(false);
     expect(Math.hypot(c.position.x, c.position.z)).toBeLessThanOrEqual(40);
     let last = c.position.x;
     let worst = 0;
@@ -360,7 +434,7 @@ describe('flight through the locomotion', () => {
     const wall = [{ x: 0, z: 12, r: 3, top: 6 }];
     for (let i = 0; i < 240; i++) loco.update(DT, input({ jet: true }), flat, wall, 999);
     expect(position.y).toBeGreaterThan(7);
-    for (let i = 0; i < 360; i++) loco.update(DT, input({ moveZ: 1 }), flat, wall, 999);
+    for (let i = 0; i < 360; i++) loco.update(DT, input({ moveZ: 1, jet: true }), flat, wall, 999);
     expect(position.z).toBeGreaterThan(16);
   });
 });

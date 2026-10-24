@@ -1212,6 +1212,8 @@
         "horizon": "Event horizon — tidal forces rising"
       },
       "respawn": "Respawn in {n}",
+      "noReturn": "Past the point of no return",
+      "spaghettified": "Spaghettified — spat back out at home",
       "systems": {
         "sol": "Solar System",
         "alphaCentauri": "Alpha Centauri",
