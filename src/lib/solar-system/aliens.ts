@@ -839,8 +839,13 @@ export function makeAlienEncounters(): AlienHandle {
     group.visible = true;
   };
 
+  const freeBolt = (): Bolt | null => {
+    for (const b of bolts) if (b.t < 0) return b;
+    return null;
+  };
+
   const fireBolt = (from: THREE.Group, target: THREE.Group, spread: number) => {
-    const b = bolts.find((x) => x.t < 0);
+    const b = freeBolt();
     if (!b) return;
     b.mesh.material = boltMat;
     b.mesh.geometry = boltGeom;
@@ -861,7 +866,7 @@ export function makeAlienEncounters(): AlienHandle {
   /** A projectile at the player: aimed at a lead on the target's motion,
    *  with a spread that makes a straight-and-level ship the easy kill. */
   const fireProjectile = (from: THREE.Group, target: HostileTarget, speed: number, spread: number, damage: number) => {
-    const b = bolts.find((x) => x.t < 0);
+    const b = freeBolt();
     if (!b) return;
     b.mesh.material = boltMatRed;
     b.mesh.geometry = boltGeomLong;
