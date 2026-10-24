@@ -395,7 +395,8 @@ async function play(browser, profile) {
 
       await phase(`descent ${tag}`, async () => {
         await wait(p, 12000);
-        await p.evaluate(() => window.__qaSurface()?.skipOrbit());
+        // (In free flight the skip key is Land at base, a toggle: leave the computer flying.)
+        await p.evaluate(() => { const w = window.__qaSurface(); if (w && !w.telemetry.freeFlight) w.skipOrbit(); });
         // The powered descent: the flight from orbit hands over to the lander.
         if (!(await until(p, () => window.__qaSurface()?.telemetry.phase === 'descent', 90))) note(`descent ${tag}: still not in the powered descent 90 s after the skip`);
         await wait(p, 1500);
