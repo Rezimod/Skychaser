@@ -80,7 +80,7 @@ import { lightYearsBetween, resolveDestination } from '@/lib/solar-system/star-r
 import { makeSmallBodies } from '@/lib/solar-system/small-bodies';
 import { makeAlienEncounters, type AlienHandle } from '@/lib/solar-system/aliens';
 import { makeDeepSpaceProbes } from '@/lib/solar-system/probes';
-import { makeRemoteFleet, writeFlightPose } from '@/lib/multiplayer/remote-fleet';
+import { makeRemoteFleet, queueShot, writeFlightPose } from '@/lib/multiplayer/remote-fleet';
 import { writeOrbitPose, type RoomLink } from '@/lib/multiplayer/room-link';
 import {
   makeNearbyStars,
@@ -1524,6 +1524,8 @@ export function SolarSystemCanvas({
             // The encounters read the ship's region, health and drive straight off its telemetry.
             status: session.telemetry,
           });
+          // In a room, every bolt fired goes to the others too.
+          live.onFire = (from, velocity) => { if (roomRef.current) queueShot(roomRef.current, from, velocity, world.bodies); };
           if (QA_HOOKS) window.__stellarFlight = { session, ship: live, world, aliens };
         }
       } else if (ship) {

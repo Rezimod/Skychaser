@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import { game } from '@/game/state';
 import { readCheckpoint, type Checkpoint, type GameScene } from '@/game/save';
 import { titleModes, type GameMode } from '@/game/mode';
-import { useGameAccount } from '@/game/account';
 import { story } from '@/game/story';
 import { GameMenu } from './GameMenu';
 
@@ -14,7 +13,7 @@ interface TitleScreenProps {
   /** Into the game, in a mode, at a scene. */
   onStart: (scene: GameScene, mode: GameMode) => void;
   /** Multiplayer's lobby, starting the game at this scene once in a room.
-   *  Left out (no realtime service), Multiplayer is not offered. */
+   *  Left out (no realtime service), Multiplayer is not offered. Guests play it too. */
   onMultiplayer?: (scene: GameScene) => void;
 }
 
@@ -42,9 +41,8 @@ export function TitleScreen({ onStart, onMultiplayer }: TitleScreenProps) {
   const t = useTranslations('play');
   const tw = useTranslations('solarSystem.flight.worlds');
   const ts = useTranslations('play.story');
-  const { available } = useGameAccount();
-  const multiplayer = available && !!onMultiplayer;
-  const modes = titleModes({ accounts: available, online: !!onMultiplayer });
+  const multiplayer = !!onMultiplayer;
+  const modes = titleModes({ online: multiplayer });
   // Read after mount: the first paint has nothing to disagree with.
   const [resume, setResume] = useState<{ scene: GameScene; mode: GameMode } | null>(null);
   const [chapter, setChapter] = useState<{ index: number; total: number; id: string; complete: boolean } | null>(null);

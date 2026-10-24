@@ -277,11 +277,10 @@ describe('the Grand Tour', () => {
   });
 });
 
-describe('multiplayer is offered only where there are accounts', () => {
+describe('multiplayer is offered wherever there is a realtime service', () => {
   it('as a rule', () => {
-    expect(titleModes({ accounts: true })).toEqual(['free', 'story', 'multi']);
-    expect(titleModes({ accounts: false })).toEqual(['free', 'story']);
-    expect(titleModes({ accounts: true, online: false })).toEqual(['free', 'story']);
+    expect(titleModes({ online: true })).toEqual(['free', 'story', 'multi']);
+    expect(titleModes({ online: false })).toEqual(['free', 'story']);
   });
 
   it('an invite link is the game page and the code, nothing else', () => {
@@ -302,12 +301,12 @@ describe('multiplayer is offered only where there are accounts', () => {
       act(() => root.render(createElement(NextIntlClientProvider, { locale: 'en', messages: en, timeZone: 'UTC', children: title })));
       return [...el.querySelectorAll('.game-mode')].map((b) => b.getAttribute('data-mode'));
     };
-    it('shows Free Fly, Story and Multiplayer with accounts', () => {
+    it('shows Free Fly, Story and Multiplayer with accounts, and to guests on a host without them', () => {
       expect(render({ ...NO_ACCOUNT, available: true }, true)).toEqual(['free', 'story', 'multi']);
-    });
-    it('hides Multiplayer entirely without them', () => {
-      expect(render(NO_ACCOUNT, true)).toEqual(['free', 'story']);
       act(() => root.unmount());
+      expect(render(NO_ACCOUNT, true)).toEqual(['free', 'story', 'multi']);
+    });
+    it('hides Multiplayer entirely without a realtime service', () => {
       expect(render({ ...NO_ACCOUNT, available: true }, false)).toEqual(['free', 'story']);
     });
   });
