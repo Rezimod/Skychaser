@@ -8,7 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { attachDesktopControls, clearFlightInput } from '@/lib/solar-system/flight-input';
-import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, entryAltitudeKm, isAirlessSite, titleCard } from '@/lib/solar-system/flight-approach';
+import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, COOL_RADII, entryAltitudeKm, isAirlessSite, siteRadiusKm, titleCard, WARM_RADII } from '@/lib/solar-system/flight-approach';
 import { assetsFor, SURFACE_GROUPS } from '@/lib/solar-system/surface-assets';
 import { prefetchModels, prefetchDone } from '@/game/models';
 import { type FlightSession, type ShipKind } from '@/lib/solar-system/player-ship';
@@ -36,6 +36,9 @@ interface PlayerShipProps {
   /** A world the ship is diving at: the surface can start building behind the
    *  flight, unseen (null: the ship has pulled away again). */
   onStandby?: (site: LandingSite | null) => void;
+  /** A world the ship is closing on, a radius or so out: the game gets its
+   *  files and data ready so the dive needs no wait (null: pulled away). */
+  onWarm?: (site: LandingSite | null) => void;
   /** Take the con as soon as the orbit is up, without the Explore key: the
    *  game modes start in the ship. */
   autoLaunch?: boolean;
@@ -130,7 +133,7 @@ const saveLayout = (layout: Layout) => {
   }
 };
 
-export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLaunch, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
+export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm, autoLaunch, landed, returnedFrom, onReturned, landscape, onLandscape, shellPaused, onPauseRequest }: PlayerShipProps) {
   const t = useTranslations('solarSystem.flight');
   const tb = useTranslations('solarSystem.bodies');
   const tl = useTranslations('solarSystem.loading');
@@ -351,6 +354,10 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
   onLandRef.current = onLand;
   const onStandbyRef = useRef(onStandby);
   onStandbyRef.current = onStandby;
+  const onWarmRef = useRef(onWarm);
+  onWarmRef.current = onWarm;
+  /** The world being got ready, while the ship is closing on it. */
+  const warmRef = useRef<LandingSite | null>(null);
   /** The world the surface has been asked to build for, while the ship dives at it. */
   const standbyRef = useRef<LandingSite | null>(null);
   /** Into the air of a world: no autopilot, no key. The surface's files
@@ -564,6 +571,15 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, autoLau
       const diving = !!site && tel.nearId === lastNearId && tel.nearAltKm < lastAltKm - 1e-3;
       lastAltKm = tel.nearId === lastNearId ? tel.nearAltKm : Infinity;
       lastNearId = tel.nearId;
+      // A radius or so out: the world's files and data start down.
+      const radiusKm = site ? siteRadiusKm(site) : 0;
+      if (site && flyable && radiusKm > 0 && tel.nearAltKm < radiusKm * WARM_RADII && warmRef.current !== site) {
+        warmRef.current = site;
+        onWarmRef.current?.(site);
+      } else if (warmRef.current && (!site || site !== warmRef.current || tel.nearAltKm > radiusKm * COOL_RADII)) {
+        warmRef.current = null;
+        onWarmRef.current?.(null);
+      }
       if (site && flyable && !arrivalRef.current) {
         // Close and closing: the surface may start building behind the flight.
         if (tel.nearAltKm < entryKm * 4 && standbyRef.current !== site) {

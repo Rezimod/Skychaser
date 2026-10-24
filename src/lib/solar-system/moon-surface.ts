@@ -945,6 +945,9 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   let exertion = 0;
   /** Air moving in the chamber: set when a cycle starts, gone when it ends. */
   let hissK = 0;
+  /** Came in by a dive from the flight deck: the computer lands the ship unless the pilot takes over. */
+  let dived = false;
+  let handTaken = false;
   let egressHold = 0;
   /** The descent camera's lean into the drift, rad. */
   let descentRoll = 0;
@@ -1027,6 +1030,9 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       const step = flight.update(dt, { moveX: input.moveX, moveY: input.moveY, throttle: input.throttle });
       telemetry.orbital = flight.telemetry;
       if (step === 'handover') {
+        // After a dive the computer flies the last of it down onto the base's
+        // pad; the stick (or the engine key) takes it back.
+        if (dived) lander.telemetry.assist = true;
         telemetry.phase = 'descent';
         telemetry.orbital = null;
         cam.yaw = flight.cameraYaw();
@@ -1064,6 +1070,11 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       if (!lt.landed) {
         // Handed to the computer: it flies over the pad and sets down at the base.
         if (input.autoland || input.interact) { lt.assist = true; input.autoland = false; input.interact = false; }
+        else if (dived && !handTaken && lt.assist && (Math.abs(input.moveX) > 0.3 || Math.abs(input.moveY) > 0.3 || input.throttle > 0.3)) {
+          // The pilot takes the con from the computer; the land-at-base key hands it back.
+          lt.assist = false;
+          handTaken = true;
+        }
         telemetry.autoland = lt.assist;
         landerIn.throttle = input.throttle; landerIn.moveX = input.moveX; landerIn.moveY = input.moveY;
         lander.update(dt, landerIn, terrain.heightAt);
@@ -1514,7 +1525,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       egressHold = 0.2;
     },
     skipOrbit() { if (telemetry.phase === 'orbit') flight.skip(); },
-    skipToEntry() { if (telemetry.phase === 'orbit') flight.skipToEntry(); },
+    skipToEntry() { if (telemetry.phase === 'orbit') { flight.skipToEntry(); dived = true; } },
     perf: perf.sample,
     probe: host.probe,
     baseState(next) { if (next) base.setState(next); return base.state; },
