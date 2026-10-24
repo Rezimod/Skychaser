@@ -3149,8 +3149,9 @@
 .room-radar__arrow[data-side='above'] .room-radar__name { bottom: 14px; left: 0; transform: translateX(-50%); }
 .room-nearby {
   position: absolute; z-index: 31; pointer-events: none;
-  right: max(12px, env(safe-area-inset-right));
-  top: max(120px, calc(env(safe-area-inset-top) + 110px));
+  /* Under the place readout on the left: the right side holds the jump card. */
+  left: max(12px, env(safe-area-inset-left));
+  top: max(164px, calc(env(safe-area-inset-top) + 154px));
   width: min(210px, 46vw); padding: 8px 10px; border-radius: 12px;
   background: rgba(6, 9, 14, 0.66); border: 0.5px solid rgba(94, 234, 212, 0.22);
   color: rgba(240, 244, 252, 0.94);

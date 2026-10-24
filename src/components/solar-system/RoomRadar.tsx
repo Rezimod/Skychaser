@@ -5,8 +5,9 @@ import { useTranslations } from 'next-intl';
 import { fmtRange, type RoomLink } from '@/lib/multiplayer/room-link';
 import { ROOM_MAX } from '@/lib/multiplayer/useExploreRoom';
 
-/** The flight scene's view is this old: the ship is not flying, nothing to show. */
-const STALE_VIEW_MS = 600;
+/** The flight scene's view is this old: the ship is not flying, nothing to
+ *  show. Long enough for a slow device's frames to come round. */
+const STALE_VIEW_MS = 2000;
 const LIST_EVERY_MS = 500;
 const LIST_MAX = 5;
 /** How far in from the screen's edge an arrow sits, px. */
