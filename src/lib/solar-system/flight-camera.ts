@@ -54,6 +54,20 @@ export interface CameraRig {
   kick: (amount: number) => void;
   /** Current shake amplitude for the HUD. */
   shake: () => number;
+  /** A short pull-back and lens punch (signed, ~-1..1): a regime change
+   *  up the drive, the boost lighting. Negative draws the rig in. */
+  surge: (amount: number) => void;
+}
+
+/** prefers-reduced-motion: the shake and the lens punches are cut to a
+ *  trace; the rig still follows and still opens with speed. */
+export function prefersReducedMotion(): boolean {
+  try {
+    return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
 }
 
 /** Smooth, deterministic noise: three incommensurate sines — no random
@@ -65,7 +79,6 @@ function wobble(t: number, phase: number): number {
 export function makeCameraRig(): CameraRig {
   const camPos = new THREE.Vector3();
   const camUp = new THREE.Vector3(0, 1, 0);
-  const target = new THREE.Vector3();
   const look = new THREE.Vector3();
   const fwd = new THREE.Vector3();
   const up = new THREE.Vector3();
@@ -78,6 +91,16 @@ export function makeCameraRig(): CameraRig {
   const orbitRight = new THREE.Vector3();
   const yawQ = new THREE.Quaternion();
   const pitchQ = new THREE.Quaternion();
+  /** The rig's place relative to the actor. It is smoothed in the actor's
+   *  frame, not in the world: chasing an absolute point lags by v/rate,
+   *  which at ultra put the camera five times its rest distance back and
+   *  let every uneven frame time shove the hull around the screen. */
+  const rel = new THREE.Vector3();
+  const slip = new THREE.Vector3();
+  const reduced = prefersReducedMotion();
+  const motionK = reduced ? 0.2 : 1;
+  let surgeK = 0;
+  let buffetS = 0;
   let orbitYaw = 0;
   let orbitPitch = 0;
   let snap = true;
@@ -117,10 +140,15 @@ export function makeCameraRig(): CameraRig {
       accel += (norm - accel) * (1 - Math.exp(-dt * 5));
 
       impulse *= Math.exp(-dt * 2.4);
+      // A landing frame (spawn, respawn, view change) starts clean.
+      surgeK = snap ? 0 : surgeK * Math.exp(-dt * 2.2);
       // The entry buffets in earnest: the heat's own shake, and the frame
-      // shuddering under the air (or the burn) on top of it.
-      const buffet = (f.boost ? 0.09 : 0) + (f.speedFrac > 0.92 ? 0.05 : 0) + f.heat * 0.5 + f.entry * 0.55;
-      const amp = impulse + buffet;
+      // shuddering under the air (or the burn) on top of it. The boost and
+      // top-speed hum swell in and out rather than switching on a frame.
+      const hum = (f.boost ? 0.09 : 0) + 0.05 * THREE.MathUtils.smoothstep(f.speedFrac, 0.85, 1);
+      buffetS = snap ? hum : buffetS + (hum - buffetS) * (1 - Math.exp(-dt * 6));
+      const buffet = buffetS + f.heat * 0.5 + f.entry * 0.55;
+      const amp = (impulse + buffet) * motionK;
 
       if (f.view === 'crash') {
         if (snap) camPos.copy(camera.position);
@@ -144,7 +172,9 @@ export function makeCameraRig(): CameraRig {
       } else {
         // Rest distance grows with speed; thrust pulls the rig back, braking
         // pushes it in on the tail.
-        const backTarget = f.camBack * (1 + 0.16 * Math.min(1, f.speedFrac) + 0.22 * Math.max(0, accel) - 0.14 * Math.max(0, -accel));
+        // A surge (regime change, boost lighting) throws it back for a beat.
+        const backTarget = f.camBack * (1 + 0.2 * Math.min(1, f.speedFrac) + (f.boost ? 0.08 : 0)
+          + 0.22 * Math.max(0, accel) - 0.14 * Math.max(0, -accel) + 0.22 * surgeK * motionK);
         if (snap) back = backTarget;
         back += (backTarget - back) * (1 - Math.exp(-dt * 3.5));
         // Turning swings the rig to the outside and lets it fall on a climb.
@@ -152,6 +182,15 @@ export function makeCameraRig(): CameraRig {
         offset.copy(fwd).multiplyScalar(-back)
           .addScaledVector(up, f.camUp - f.angular.x * swing * 0.5)
           .addScaledVector(right, f.angular.y * swing);
+        // Sideslip: with the nose off the line of flight (assist off, or a
+        // hard turn at speed) the rig hangs back along the old line, so the
+        // drift is seen. Dimensionless — the slip angle, not the speed —
+        // so it means the same at cruise and at a tenth of c.
+        const v = f.velocity.length();
+        if (v > 1e-9) {
+          slip.copy(f.velocity).addScaledVector(fwd, -f.velocity.dot(fwd)).divideScalar(v);
+          offset.addScaledVector(slip, -f.camBack * 0.3 * Math.min(1, f.speedFrac));
+        }
         // Free look: walk the rig around the hull and pin the gaze on it, so
         // the ship can be inspected from any angle and released back to the tail.
         const ok = snap ? 1 : 1 - Math.exp(-dt * 9);
@@ -164,15 +203,16 @@ export function makeCameraRig(): CameraRig {
           pitchQ.setFromAxisAngle(orbitRight, orbitPitch);
           offset.applyQuaternion(yawQ).applyQuaternion(pitchQ);
         }
-        target.copy(f.position).add(offset);
         if (snap) {
-          camPos.copy(target);
+          rel.copy(offset);
           camUp.copy(up);
         } else {
-          // Tighter with speed: at cruise the rig floats, at a tenth of c it
-          // is bolted to the tail — anything looser reads as lag, not mass.
-          const rate = 6 + 8 * Math.min(1, f.speedFrac);
-          camPos.lerp(target, 1 - Math.exp(-dt * rate));
+          // Smoothed in the actor's frame: translation is followed exactly
+          // (speed reads through the pull-back and the lens, not through
+          // lag), while turns, climbs and the pull-back swing in with
+          // weight. Tighter with speed, where the drive turns slowly anyway.
+          const rate = 6 + 5 * Math.min(1, f.speedFrac);
+          rel.lerp(offset, 1 - Math.exp(-dt * rate));
           // The camera takes a share of the airframe's bank.
           rollQ.setFromAxisAngle(fwd, f.bank * 0.35);
           bankedUp.copy(up).applyQuaternion(rollQ);
@@ -181,6 +221,7 @@ export function makeCameraRig(): CameraRig {
           if (camUp.lengthSq() < 1e-12) camUp.copy(bankedUp);
           camUp.normalize();
         }
+        camPos.copy(f.position).add(rel);
         camera.position.copy(camPos);
         camera.up.copy(camUp);
         look.copy(f.position)
@@ -197,7 +238,10 @@ export function makeCameraRig(): CameraRig {
           .addScaledVector(fwd, wobble(clock, 6.1) * s * 0.4);
       }
 
-      const fovTarget = f.fov + fovOffset() + (f.boost ? 9 : 0) + 5 * Math.min(1, f.speedFrac) ** 2 + 4 * f.entry;
+      // The lens opens with speed and boost; a surge punches it wider for
+      // a beat (a regime change reads as the drive taking hold).
+      const fovTarget = f.fov + fovOffset() + (f.boost ? 9 : 0) * (reduced ? 0.5 : 1)
+        + 5 * Math.min(1, f.speedFrac) ** 2 + 4 * f.entry + 7 * surgeK * motionK;
       if (snap || fov === 0) fov = fovTarget;
       fov += (fovTarget - fov) * (1 - Math.exp(-dt * 3.2));
       if (Math.abs(fov - camera.fov) > 0.01) {
@@ -215,6 +259,9 @@ export function makeCameraRig(): CameraRig {
     },
     shake() {
       return impulse;
+    },
+    surge(amount) {
+      surgeK = THREE.MathUtils.clamp(surgeK + amount, -1, 1.2);
     },
   };
 }

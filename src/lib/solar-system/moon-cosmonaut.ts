@@ -272,6 +272,7 @@ export function makeCosmonaut(dust: DustHandle, lite = false, g = MOON_G, suited
       else if (ls.fallen) anim = ls.getUp > 0 ? 'getUp' : 'fallen';
       else if (ls.stumble > 0) anim = 'stumble';
       else if (m === 'land') anim = ls.landing === 'roll' || (state.anim === 'roll' && ls.landT < 0.7) ? 'roll' : state.anim === 'landHard' || ls.landing === 'hard' ? 'landHard' : 'landSoft';
+      else if (ls.flying && !ls.jetting && vel.y < -1.5) anim = 'fall';
       else if (ls.flying) anim = ls.flySpeed > 0.12 ? 'fly' : 'hover';
       else if (ls.jetting) anim = 'jet';
       else if (m === 'jump') anim = b.airT < 0.25 && vel.y > 0 ? 'jump' : 'air';

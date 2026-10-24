@@ -6,7 +6,7 @@
 // 2. Free Fly from the title: straight into the flying ship (no Explore key).
 // 3. Story from the title: the ship, and the chapter chip.
 // 4. The leaderboard panel from the title.
-// 5. On Mars (desktop): out of the ship, hold Space to fly, hover, descend.
+// 5. On Mars (desktop): out of the ship, hold Space to fly; let go and fall; Space + W to fly forward; let go and land.
 // 6. On Jupiter (phone, touch): the HUD, and holding the Jet key flies.
 // Each step screenshots; any page error is a failure.
 import { chromium, devices } from 'playwright';
@@ -85,16 +85,23 @@ for (const mode of ['free', 'story']) {
     await p.keyboard.down('Space'); await p.waitForTimeout(3500);
     const up = await p.evaluate(() => ({ flying: window.__stellarWorld.telemetry.flying, alt: window.__stellarWorld.telemetry.altitude, fuel: window.__stellarWorld.telemetry.jetFuel }));
     await shot(p, '5b-mars-flying');
-    await p.keyboard.up('Space'); await p.waitForTimeout(2500);
-    const hover = await p.evaluate(() => ({ flying: window.__stellarWorld.telemetry.flying, alt: window.__stellarWorld.telemetry.altitude }));
-    await p.keyboard.down('KeyW'); await p.waitForTimeout(2500); await p.keyboard.up('KeyW');
+    // Let go: the pack goes out at once and the crew falls (or has already landed).
+    const jetNow = () => p.evaluate(() => ({ flying: window.__stellarWorld.telemetry.flying, jetting: window.__stellarWorld.telemetry.jetting, alt: window.__stellarWorld.telemetry.altitude }));
+    await p.keyboard.up('Space'); await p.waitForTimeout(400);
+    const released = await jetNow();
+    await p.waitForTimeout(1200);
+    const falling = await jetNow();
+    await p.keyboard.down('Space'); await p.keyboard.down('KeyW'); await p.waitForTimeout(2500); await p.keyboard.up('KeyW');
     await shot(p, '5c-mars-flying-forward');
-    await p.keyboard.down('KeyC'); await p.waitForTimeout(6000); await p.keyboard.up('KeyC');
-    const down = await p.evaluate(() => ({ flying: window.__stellarWorld.telemetry.flying, alt: window.__stellarWorld.telemetry.altitude }));
-    say(`mars jet: before ${JSON.stringify(before)} → up ${JSON.stringify(up)} → hover ${JSON.stringify(hover)} → down ${JSON.stringify(down)}`);
+    await p.keyboard.up('Space'); await p.waitForTimeout(8000);
+    const down = await jetNow();
+    say(`mars jet: before ${JSON.stringify(before)} → up ${JSON.stringify(up)} → released ${JSON.stringify(released)} → ${JSON.stringify(falling)} → down ${JSON.stringify(down)}`);
     // Software GL runs a few frames a second and the sim clamps its step, so the climb is slow here: flying is the check.
     if (!up.flying || !(up.alt > before.alt)) fail('mars: holding Space did not fly');
     if (up.fuel !== 1) fail('mars: fuel is not unlimited');
+    if (released.jetting) fail('mars: the pack stayed lit after Space was let go');
+    if (falling.jetting || (released.flying && falling.flying && !(falling.alt < released.alt))) fail('mars: let go, the crew did not fall');
+    if (down.jetting || (down.flying && down.alt > 0.5)) fail('mars: let go, the crew hovered instead of falling to land');
     await shot(p, '5d-mars-landed');
   }
   await ctx.close();

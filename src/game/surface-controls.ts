@@ -17,7 +17,7 @@ export interface FootInputs {
   jump: boolean;
   /** Held: the jetpack — the jump key kept down, or its own key or deck button. Optional for a caller with no pack. */
   jet?: boolean;
-  /** Held, in flight: sink — the crouch key or button, or the deck's descend. */
+  /** Held, in flight: the pack out (drop) — the crouch key or button, or the deck's descend. */
   descend?: boolean;
   run: boolean;
   sprint: boolean;
@@ -42,7 +42,7 @@ export interface FootIntent {
   y: number;
   jump: boolean;
   jet: boolean;
-  /** The crouch key or button held: in flight, descend. */
+  /** The crouch key or button held: in flight, the pack out. */
   descend: boolean;
   sprint: boolean;
   walk: boolean;
@@ -96,7 +96,7 @@ export interface SurfaceControlsOptions {
   /** Any input at all: the audio context may start. */
   wake: () => void;
   onCrouch: (on: boolean) => void;
-  /** The crew is flying on the pack: the crouch key descends instead of crouching. */
+  /** The crew is flying on the pack: the crouch key puts it out instead of crouching. */
   flying?: () => boolean;
   onPauseRequest: () => void;
   /** The mission and map panel (the Moon's expedition log). */
@@ -144,7 +144,7 @@ export function attachSurfaceControls(o: SurfaceControlsOptions): SurfaceControl
     input.jump = keys.jump || pad.jump || deck.jump;
     // The jump key kept down in the air is the jet; so is its own key.
     input.jet = input.jump || keys.jet || pad.jet || deck.jet;
-    // In flight the crouch key held is the way down.
+    // In flight the crouch key held puts the pack out: the way down is to fall.
     input.descend = keys.descend || pad.descend || deck.descend;
     // On the way down the jump is the descent engine.
     input.throttle = input.jump || deck.throttle ? 1 : 0;

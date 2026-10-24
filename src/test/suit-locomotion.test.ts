@@ -457,9 +457,12 @@ describe('the jetpack in the air', () => {
     expect(w.loco.state.jetK).toBeLessThan(1);
     const k = w.loco.state.jetK;
     w.run(DT, { jet: false });
-    // Let go, the pack hovers: still lit, the flame eased rather than cut.
-    expect(w.loco.state.jetting).toBe(true);
-    expect(Math.abs(w.loco.state.jetK - k)).toBeLessThan(0.1);
+    // Let go, the pack is out at once, and the flame dies quickly but is not cut in a frame.
+    expect(w.loco.state.jetting).toBe(false);
+    expect(w.loco.state.jetK).toBeLessThan(k);
+    expect(w.loco.state.jetK).toBeGreaterThan(k * 0.5);
+    w.run(0.4, { jet: false });
+    expect(w.loco.state.jetK).toBeLessThan(0.01);
   });
 });
 

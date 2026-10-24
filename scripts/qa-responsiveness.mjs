@@ -365,9 +365,38 @@ async function play(browser, profile) {
       });
       if (!reached) continue;
 
+      await phase(`flight ${tag}`, async () => {
+        // Through the plasma the ship is the pilot's: fly it, then hand it to the computer for the base.
+        if (!(await until(p, () => window.__qaSurface()?.telemetry.freeFlight === true, 180))) {
+          note(`flight ${tag}: no free flight (not a dive, or the entry ran long under software GL)`);
+          return {};
+        }
+        const at = async () => p.evaluate(() => { const o = window.__qaSurface()?.telemetry.orbital; return o ? { alt: Math.round(o.altitude), spd: Math.round(o.speed), km: +o.downrangeKm.toFixed(2) } : null; });
+        const a0 = await at();
+        await p.keyboard.down('KeyW'); await wait(p, 4000); await p.keyboard.up('KeyW');
+        await p.keyboard.down('KeyD'); await wait(p, 2500); await p.keyboard.up('KeyD');
+        await p.keyboard.down('Space'); await wait(p, 2000); await p.keyboard.up('Space');
+        const a1 = await at();
+        await p.screenshot({ path: `${OUT}${profile}-${tag}-flight.png` }).catch(() => {});
+        const finite = await p.evaluate(() => { const o = window.__qaSurface()?.telemetry.orbital; return !!o && Number.isFinite(o.altitude + o.speed); });
+        if (!finite) fail(`flight ${tag}: the flight numbers went bad`);
+        if (a0 && a1 && a0.km === a1.km && a0.alt === a1.alt) fail(`flight ${tag}: the ship did not move under the pilot's keys`);
+        // Land at base: the computer takes it to the pad and the lander's guidance down.
+        const key = await p.$('[data-action="autoland"]');
+        let handed = null;
+        if (key && await key.isVisible().catch(() => false)) {
+          const t = Date.now();
+          await key.click().catch(() => {});
+          if (await until(p, () => { const w = window.__qaSurface(); return !!w && !w.telemetry.freeFlight && w.telemetry.phase !== 'orbit'; }, 240)) handed = (Date.now() - t) / 1000;
+          else note(`flight ${tag}: the computer had not reached the pad in 240 s of software GL`);
+        } else fail(`flight ${tag}: no Land at base key in free flight`);
+        return { before: a0, after: a1, toPadS: handed };
+      });
+
       await phase(`descent ${tag}`, async () => {
         await wait(p, 12000);
-        await p.evaluate(() => window.__qaSurface()?.skipOrbit());
+        // (In free flight the skip key is Land at base, a toggle: leave the computer flying.)
+        await p.evaluate(() => { const w = window.__qaSurface(); if (w && !w.telemetry.freeFlight) w.skipOrbit(); });
         // The powered descent: the flight from orbit hands over to the lander.
         if (!(await until(p, () => window.__qaSurface()?.telemetry.phase === 'descent', 90))) note(`descent ${tag}: still not in the powered descent 90 s after the skip`);
         await wait(p, 1500);

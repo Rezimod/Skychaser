@@ -5,13 +5,15 @@
 // of flight can be tested on their own, the way the gait profile is.
 //
 // The rules a player feels. The tank never runs dry: the pack is a mode of
-// moving, not a resource. It lights once the jump key (or its own key) has
-// been held for a fifth of a second, so a tap of jump is still just a jump;
-// lit with the boots on the ground it lifts off. From then on the crew
-// flies: the key held climbs, the descend key sinks, neither hovers, and
-// the stick flies them about at a cruise that Shift (or the stick at its
-// rim) nearly doubles. Low over ground they may land on, a hover settles
-// and the last metres of a descent ease off, so a touchdown is always soft.
+// moving, not a resource. It burns only while its key is held. From the
+// ground the key must be held a fifth of a second before it lights, so a tap
+// of jump is still just a jump; lit with the boots on the ground it lifts
+// off. From then on the crew is in flight until the boots are down again:
+// the key held climbs and the stick flies them about at a cruise that Shift
+// (or the stick at its rim) nearly doubles; let go and the pack is out at
+// once, and they fall, keeping their way across the ground, with a little
+// steering on the stick. Pressed again in the air, it lights at once. The
+// descend key only puts it out.
 //
 // Every number comes from the gravity the crew moves under: a light world
 // climbs and turns quickly with a small flame, Jupiter is slow to answer and
@@ -19,29 +21,24 @@
 //
 // Where they may go is the envelope: a ceiling, a horizontal radius whose
 // edge turns them back rather than stopping them, and the ground they may
-// set down on. Off that ground the pack will not let them lower than a few
-// metres above it, and left alone there it carries them gently back. Over a
-// giant the "ground" past the outpost's deck is a sea of cloud: the floor
-// there is a few metres above its tops, and the deck's own rim is a wall to
-// anyone below its top.
+// set down on. Falling toward ground they may not land on, the pack lights
+// by itself in time to catch them a few metres above it, holds them there
+// and, left alone, carries them gently back, letting go once they are over
+// ground they may land on. Over a giant the "ground" past the outpost's deck
+// is a sea of cloud: the floor there is a few metres above its tops, and the
+// deck's own rim is a wall to anyone below its top.
 
 export const JET = {
   /** The key held this long before the pack lights, s: a tap of jump is a jump. */
   arm: 0.2,
   /** Lit with the boots down, the pack lifts the crew off at this, m/s. */
   liftOff: 2.2,
-  /** Hovering lower than this over landable ground settles to it, m, at this speed, m/s. */
-  settle: 1.1,
-  settleSpeed: 1.3,
-  /** A descent over landable ground is never faster than flare + altitude × flareRate, m/s. */
-  flare: 0.9,
-  flareRate: 1.1,
   /** How quickly the pack closes on the velocity it wants, s: vertical, horizontal. */
   tauV: 0.3,
   tauH: 0.45,
-  /** Idle off landable ground, the suit brings the crew back at this, m/s. */
+  /** Caught off landable ground and left alone, the suit brings the crew back at this, m/s. */
   drift: 2.5,
-  /** Off landable ground the pack holds the crew this high over it, m. */
+  /** Off landable ground the pack catches and holds the crew this high over it, m. */
   hover: 3,
   /** Over a giant, the floor off the deck is this far above the cloud tops, m. */
   seaClear: 6,
@@ -51,6 +48,10 @@ export const JET = {
   wallTop: 12,
   /** The landable radius sits this far inside the walk fence, m. */
   landInset: 0.5,
+  /** With the pack out, the stick steers at this fraction of the pack's own push. */
+  airControl: 0.3,
+  /** With the pack out in thick air (a giant's), the drag on going sideways, per second. */
+  airDrag: 0.12,
 } as const;
 
 /** How the pack flies under one gravity. */
@@ -61,9 +62,8 @@ export interface FlightTuning {
   lift: number;
   /** Downward push the attitude jets can add to gravity to stop a climb, m/s². */
   brake: number;
-  /** Climb and descent speeds, m/s. */
+  /** Climb speed, m/s. */
   climb: number;
-  descend: number;
   /** Horizontal speeds: cruise on the stick, boost on Shift or the stick's rim, m/s. */
   cruise: number;
   boost: number;
@@ -83,7 +83,6 @@ export function flightTuning(g: number): FlightTuning {
     lift: 8 / w,
     brake: Math.max(0, 8 - g),
     climb: clamp(9 - 2 * w, 5.5, 8.5),
-    descend: clamp(6 + 2 * w, 6, 10),
     cruise,
     boost: cruise * 1.8,
     accel: 11 / w,
@@ -105,7 +104,11 @@ export interface FlightEnvelope {
   ceiling: number;
   /** A giant's floating deck: its rim, its top, and the floor off it over the cloud sea. */
   deck: { radius: number; top: number; floor: number } | null;
+  /** Drag on the crew's sideways speed with the pack out, per second: none in a vacuum. */
+  air?: number;
 }
+
+const envAir = (env: FlightEnvelope) => Math.max(0, env.air ?? 0);
 
 /** No limits at all: a test's open field, or a caller that has not said. */
 export const OPEN_SKY: FlightEnvelope = { radius: 1e9, landRadius: 1e9, ceiling: 1e9, deck: null };
@@ -115,8 +118,10 @@ export const OPEN_SKY: FlightEnvelope = { radius: 1e9, landRadius: 1e9, ceiling:
  * the walk fence and land inside it; over a giant's deck twice as far, out
  * over the clouds. The ceiling falls with gravity: about 290 m on the Moon,
  * 270 on Mars and Mercury, 220 on Venus, 195 on Proxima b, 150 over the giants.
+ * `air` is the sideways drag a fall meets, per second; a giant's deck rides
+ * thick air, so it defaults to JET.airDrag there and to none elsewhere.
  */
-export function flightEnvelope(walkRadius: number, g: number, deck?: { radius: number; seaDepth: number } | null): FlightEnvelope {
+export function flightEnvelope(walkRadius: number, g: number, deck?: { radius: number; seaDepth: number } | null, air?: number): FlightEnvelope {
   const landRadius = Math.max(1, walkRadius - JET.landInset);
   if (deck) {
     return {
@@ -124,17 +129,18 @@ export function flightEnvelope(walkRadius: number, g: number, deck?: { radius: n
       landRadius,
       ceiling: 150,
       deck: { radius: deck.radius, top: 0, floor: -deck.seaDepth + JET.seaClear },
+      air: air ?? JET.airDrag,
     };
   }
-  return { radius: walkRadius * 1.5, landRadius, ceiling: Math.round(clamp(330 - 12 * g, 180, 300)), deck: null };
+  return { radius: walkRadius * 1.5, landRadius, ceiling: Math.round(clamp(330 - 12 * g, 180, 300)), deck: null, air: air ?? 0 };
 }
 
 export interface JetState {
   /** 0…1 in the tank. The pack never runs dry: always 1, kept for the readouts that ask. */
   fuel: number;
-  /** In flight: the pack is lit and carrying the crew. */
+  /** In flight: the pack has been lit since the boots left the ground, and the flight (lit, or falling with it out) lasts until they are down. */
   flying: boolean;
-  /** Lit this step (the same as flying; the older name the glass and the crowd read). */
+  /** Lit this step: the key held, or the pack catching the crew over ground they may not land on. */
   jetting: boolean;
   /** Eased 0…1: what the flame, the roar and the light follow. */
   throttle: number;
@@ -151,7 +157,7 @@ export interface JetState {
   groundT: number;
 }
 
-/** What the crew asks of the pack in flight: world-space stick, |m| ≤ 1, and the vertical keys. */
+/** What the crew asks of the pack in flight: world-space stick, |m| ≤ 1, the key that fires it (climb) and the one that puts it out (descend). */
 export interface FlightControl {
   moveX: number;
   moveZ: number;
@@ -179,8 +185,9 @@ export interface Jetpack {
    */
   hold: (dt: number, held: boolean, grounded: boolean) => boolean;
   /**
-   * One step of flight. Writes the push the pack gives into `out` (m/s²,
-   * gravity not included: the caller adds it) and returns `out`.
+   * One step of flight, lit or not. Writes the push the pack (or, with it
+   * out, the stick and the air) gives into `out` (m/s², gravity not
+   * included: the caller adds it) and returns `out`.
    */
   fly: (dt: number, c: FlightControl, b: FlightBody, groundY: number, env: FlightEnvelope, out: { x: number; y: number; z: number }) => { x: number; y: number; z: number };
   /** The boots are down: the flight is over and the pack goes out. */
@@ -200,9 +207,11 @@ export function makeJetpack(g = 3): Jetpack {
   const state: JetState = {
     fuel: 1, flying: false, jetting: false, throttle: 0, thrust: 0, ignited: false, flown: false, holdT: 0, airT: 0, groundT: 9,
   };
-  /** The flame eases toward what the push asks, quicker up than down. */
+  /** Off the ground it may not land on, the pack has caught the crew and holds them. */
+  let rescue = false;
+  /** The flame eases toward what the push asks, quicker up than down, and out quickest of all. */
   const ease = (dt: number, to: number) => {
-    state.throttle += (to - state.throttle) * (1 - Math.exp(-dt * (to > state.throttle ? 12 : 6)));
+    state.throttle += (to - state.throttle) * (1 - Math.exp(-dt * (to > state.throttle ? 12 : to === 0 ? 16 : 6)));
     if (state.throttle < 1e-3) state.throttle = 0;
   };
   const jet: Jetpack = {
@@ -228,22 +237,34 @@ export function makeJetpack(g = 3): Jetpack {
       state.groundT = 0;
       state.airT += dt;
       const r = Math.hypot(b.x, b.z);
-      const alt = b.y - groundY;
       const canLand = r <= env.landRadius;
+      // The key is the flame: held, the pack burns; let go, it is out and the
+      // crew falls. Descend held with it puts it out as well.
+      const held = c.climb && !c.descend;
       // ── Where the stick wants to go. ──
       let mx = c.moveX; let mz = c.moveZ;
       const m = Math.hypot(mx, mz);
       if (m > 1) { mx /= m; mz /= m; }
       const top = c.boost ? T.boost : T.cruise;
       let wx = mx * top; let wz = mz * top;
-      const idle = m < 0.05 && !c.climb && !c.descend;
+      const idle = m < 0.05 && !held;
+      // ── The floor off landable ground, and the catch above it. ──
+      const overSea = !canLand && !!env.deck && r > env.deck.radius;
+      const floor = canLand ? -Infinity : overSea && env.deck ? env.deck.floor : groundY + JET.hover;
+      const above = b.y - floor;
+      if (held || canLand) rescue = false;
+      // Falling toward ground it may not land on (or the cloud sea), the pack
+      // lights by itself in time to stop at the floor, and holds there until
+      // the crew is back over ground they may set down on.
+      else if (!rescue && (above < 0.25 || -b.vy >= approach(above, 0, 1.2, T.lift) - 0.05)) rescue = true;
       // Left alone off the ground it may land on, the suit brings the crew back over it.
-      if (idle && !canLand && r > 1e-3) { wx = (-b.x / r) * JET.drift; wz = (-b.z / r) * JET.drift; }
+      if (rescue && idle && r > 1e-3) { wx = (-b.x / r) * JET.drift; wz = (-b.z / r) * JET.drift; }
       // The edge of the envelope: the outward part of the wish fades to nothing
       // over the last stretch, and past the edge it turns into a push home.
       // The stretch is long enough for the pack to stop a boost in it.
       const band = Math.max(15, env.radius * 0.2, (T.boost * T.boost) / (1.6 * T.accel));
       const inner = env.radius - band;
+      let turning = false;
       if (r > inner && r > 1e-3) {
         const ux = b.x / r; const uz = b.z / r;
         const s = (r - inner) / band;
@@ -251,22 +272,34 @@ export function makeJetpack(g = 3): Jetpack {
         const outward = wx * ux + wz * uz;
         if (outward > allowed) { wx -= (outward - allowed) * ux; wz -= (outward - allowed) * uz; }
         if (s > 1) { const back = Math.min(4, (r - env.radius) * 0.5 + 0.5); wx -= ux * back; wz -= uz * back; }
+        // Coasting out with the pack off, the jets turn the crew back all the same.
+        turning = (b.vx * ux + b.vz * uz) > allowed + 0.25 || s > 1;
       }
-      // ── Up, down or hold. ──
-      let wy = c.climb && !c.descend ? T.climb : c.descend && !c.climb ? -T.descend : 0;
-      if (canLand) {
-        // Low over the ground with nothing held up, a hover settles onto it;
-        // and a descent eases off over the last metres.
-        if (!c.climb && wy <= 0 && alt < JET.settle) wy = -JET.settleSpeed;
-        if (wy < 0) wy = Math.max(wy, -approach(alt, JET.flare, JET.flareRate, T.lift));
-      } else {
-        const overSea = !!env.deck && r > env.deck.radius;
-        const floor = overSea && env.deck ? env.deck.floor : groundY + JET.hover;
-        const above = b.y - floor;
-        if (wy < 0) wy = Math.max(wy, -approach(above, 0, 1.2, T.lift));
+      const lit = held || rescue;
+      if (!lit) {
+        // ── The pack is out: gravity has them. The stick still steers a
+        // little (arms and legs, and the suit's trim jets), momentum carries
+        // on, and air, where there is any, drags at it. ──
+        const k = m > 0.05 || turning ? 1 : 0;
+        let ax = k * (wx - b.vx) / JET.tauH; let az = k * (wz - b.vz) / JET.tauH;
+        const cap = turning ? T.accel : T.accel * JET.airControl;
+        const ah = Math.hypot(ax, az);
+        if (ah > cap) { ax *= cap / ah; az *= cap / ah; }
+        const air = envAir(env);
+        ax -= b.vx * air; az -= b.vz * air;
+        out.x = ax; out.y = 0; out.z = az;
+        state.thrust = 0;
+        state.flying = true; state.jetting = false;
+        ease(dt, 0);
+        return out;
+      }
+      if (!state.jetting) state.ignited = true;
+      // ── Up, or hold at the floor. ──
+      let wy = held ? T.climb : -approach(above, 0, 1.2, T.lift);
+      if (!canLand) {
         if (above < 0) wy = Math.max(wy, Math.min(3, -above * 1.5));
         // Coming home to a deck from under its rim: up over the top first.
-        if (idle && env.deck && b.y < env.deck.top + 2) wy = Math.max(wy, 1.5);
+        if (rescue && idle && env.deck && b.y < env.deck.top + 2) wy = Math.max(wy, 1.5);
       }
       const ceiling = Math.max(env.ceiling, groundY + 40);
       if (wy > 0) wy *= clamp((ceiling - b.y) / JET.ceilingBand, 0, 1);
@@ -289,9 +322,11 @@ export function makeJetpack(g = 3): Jetpack {
       return out;
     },
     land() {
+      rescue = false;
       state.flying = false; state.jetting = false; state.thrust = 0; state.holdT = 0;
     },
     reset() {
+      rescue = false;
       state.fuel = 1; state.flying = false; state.jetting = false; state.throttle = 0; state.thrust = 0; state.ignited = false;
       state.flown = false; state.holdT = 0; state.airT = 0; state.groundT = 9;
     },

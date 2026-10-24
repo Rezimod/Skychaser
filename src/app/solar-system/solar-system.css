@@ -488,12 +488,55 @@
   mix-blend-mode: screen;
 }
 
+/* Falling into a black hole (black-hole-fall.ts). --tidal 0..1 closes a
+   vignette in, blueshifts the light ahead and reddens the rim, with a
+   chromatic smear of offset rings; --void takes the view to black at the
+   horizon and --streak draws the infall's streaks in the dark. Gradients
+   only, repainted when a value changes — no filters over the canvas. */
+.flight-hud__hole {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: min(1, calc(var(--tidal, 0) * 2.2 + var(--void, 0)));
+  background:
+    radial-gradient(farthest-corner at 50% 50%, rgba(0, 0, 0, 0) calc(62% - var(--tidal, 0) * 50%), rgba(0, 0, 0, 0.94) 100%),
+    radial-gradient(circle at 50% 50%, rgba(255, 70, 30, 0) calc(56% - var(--tidal, 0) * 30%), rgba(255, 60, 25, calc(var(--tidal, 0) * 0.45)) calc(82% - var(--tidal, 0) * 25%), rgba(255, 60, 25, 0) 100%),
+    radial-gradient(circle at 50% 50%, rgba(140, 180, 255, calc(var(--tidal, 0) * 0.4)) 0%, rgba(140, 180, 255, 0) calc(18% + var(--tidal, 0) * 14%));
+}
+.flight-hud__hole::before,
+.flight-hud__hole::after {
+  content: '';
+  position: absolute;
+  inset: -25%;
+}
+.flight-hud__hole::before {
+  opacity: var(--tidal, 0);
+  background:
+    radial-gradient(circle at 48.6% 50%, rgba(255, 40, 60, 0) 23%, rgba(255, 40, 60, 0.28) 25%, rgba(255, 40, 60, 0) 28%),
+    radial-gradient(circle at 51.4% 50%, rgba(50, 120, 255, 0) 23%, rgba(50, 120, 255, 0.28) 25%, rgba(50, 120, 255, 0) 28%);
+  transform: scale(calc(1.1 - var(--tidal, 0) * 0.5)) scaleY(calc(1 + var(--tidal, 0) * 0.6));
+}
+.flight-hud__hole::after {
+  opacity: var(--void, 0);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 6%, rgba(0, 0, 0, 0) 40%),
+    repeating-conic-gradient(from 0deg at 50% 50%, rgba(170, 200, 255, calc(var(--streak, 0) * 0.26)) 0deg 0.6deg, rgba(0, 0, 0, 0) 0.6deg 7deg),
+    #000;
+  transform: rotate(calc(var(--streak, 0) * 24deg)) scale(calc(1 + var(--streak, 0) * 0.35));
+}
+@media (prefers-reduced-motion: reduce) {
+  .flight-hud__hole::before { transform: none; }
+  .flight-hud__hole::after { transform: none; background: #000; }
+}
+
 /* ── The immersive view: only the eye is drawn; the stick and the look pad
    stay live but unseen, so the view is the whole screen and the ship still
    answers. ── */
 .flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
-.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit) { display: none; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit, .flight-hud__hole) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
 .flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
 .flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
@@ -3297,3 +3340,16 @@
 }
 .moon-surface[data-phase='surface'][data-far='true'] .moon-hud__gobase { display: inline-flex; }
 .moon-surface[data-immersive='true'] .moon-hud__basekey { display: none !important; }
+
+/* Free flight inside the air (atmo-flight): the way to the base on a key,
+   a line on what the pilot may do, and no skip — there is nothing to skip. */
+.orbital-hud__free { display: none; margin-top: 6px; font-size: 11px; letter-spacing: 0.06em; color: var(--hud-warm, #ffc266); text-align: center; }
+.moon-surface[data-free='true'] .orbital-hud__free { display: block; }
+.moon-surface[data-free='true'] .orbital-hud__skip { display: none; }
+.moon-surface[data-free='true'][data-autoland='false'] .moon-hud__autoland { display: inline-flex; }
+.moon-surface[data-free='true'] .moon-hud__autoland { top: calc(max(12px, env(safe-area-inset-top)) + 214px); }
+/* In free flight the thumb has both ways: the engine key climbs, the jump key's "down" face descends. */
+.moon-surface[data-free='true'] .moon-hud__jump { display: flex; }
+.moon-surface[data-free='true'] :is(.moon-hud__ico-jump, .moon-hud__word-jump) { display: none; }
+.moon-surface[data-free='true'] :is(.moon-hud__ico-down, .moon-hud__word-down) { display: block; }
+.moon-surface[data-free='true'] .moon-hud__jump { grid-row: 1; grid-column: 2; }
