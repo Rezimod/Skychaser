@@ -61,6 +61,7 @@ import { projectSunPoint, type SunScreen } from '@/lib/solar-system/post-flare';
 import { currentQuality, onQualityChange, pixelRatioFor } from '@/game/quality';
 import { compileFor, releaseCompilePolls, settleWithin, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
 import { makeLoopGuard, noteContextLoss, rebuildWhenVisible } from '@/game/gpu-recovery';
+import { serviceStill } from '@/game/frame-tap';
 import { probeCalls } from '@/lib/solar-system/moon-perf';
 import {
   createPlayerShip,
@@ -1659,7 +1660,11 @@ export function SolarSystemCanvas({
       // Under the loader nothing is drawn until the programs are built: a
       // frame drawn with half-built programs waits for them on the main
       // thread, and the loader's own animation freezes with it.
-      if (readyFired || compiled) postFx.render(dtSec);
+      if (readyFired || compiled) {
+        postFx.render(dtSec);
+        // A handover asked for this frame as a picture (game/frame-tap).
+        serviceStill(renderer.domElement);
+      }
       if (!readyFired) {
         if (mapsPending > 0 && now < mapsDeadline) {
           // Still waiting on the maps; the loader covers the canvas.

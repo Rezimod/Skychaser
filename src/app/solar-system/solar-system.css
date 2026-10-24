@@ -1367,6 +1367,64 @@
 @media (prefers-reduced-motion: reduce) {
   .game-world__veil[data-kind='entry']::before { animation: none; }
 }
+/* The veil with the last real frame in it (GameWorld, game/frame-tap): no
+   screen of its own. The frame keeps diving on into the air — closing in,
+   shaking, the plasma (or, over an airless world, the dark) building in from
+   the edges — while the scene left behind goes and the next one builds
+   under it; then it fades off the new scene's own entry. On the way up it
+   pulls away into the dark of space. All transform and opacity, so it keeps
+   moving even while the main thread is busy with the build. */
+.game-world__veil[data-waiting='true'] { opacity: 0; animation: none; background: none; }
+.game-world__veil[data-still='true'] { opacity: 1; animation: none; background: #000; overflow: hidden; }
+.game-world__veil[data-still='true']::before { display: none; }
+.game-world__veil[data-still='true'][data-lifting='true'] { animation: game-veil-out 1.1s ease-out both; }
+.game-world__still {
+  position: absolute;
+  inset: -3%;
+  will-change: transform;
+  animation: game-still-shake 0.14s steps(2) infinite;
+}
+.game-world__veil[data-air='false'] .game-world__still,
+.game-world__veil[data-kind='ascent'] .game-world__still { animation: none; }
+.game-world__still-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform-origin: 50% 56%;
+  will-change: transform;
+  animation: game-still-dive 6s cubic-bezier(0.35, 0.05, 0.6, 1) forwards;
+}
+.game-world__veil[data-kind='ascent'] .game-world__still-img { animation: game-still-climb 5s ease-in forwards; }
+.game-world__veil[data-still='true']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: game-still-air 2.2s ease-in forwards;
+}
+.game-world__veil[data-still='true'][data-kind='entry'][data-air='true']::after {
+  background: radial-gradient(ellipse 72% 62% at 50% 56%, rgba(255, 240, 220, 0) 18%, rgba(255, 176, 96, 0.42) 52%, rgba(244, 98, 36, 0.84) 82%, rgba(110, 28, 10, 0.95) 100%);
+}
+.game-world__veil[data-still='true'][data-kind='entry'][data-world='earth'][data-air='true']::after,
+.game-world__veil[data-still='true'][data-kind='entry'][data-world='uranus'][data-air='true']::after,
+.game-world__veil[data-still='true'][data-kind='entry'][data-world='neptune'][data-air='true']::after {
+  background: radial-gradient(ellipse 72% 62% at 50% 56%, rgba(255, 245, 230, 0) 18%, rgba(255, 180, 110, 0.4) 52%, rgba(226, 92, 40, 0.8) 80%, rgba(18, 30, 70, 0.95) 100%);
+}
+.game-world__veil[data-still='true'][data-kind='entry'][data-air='false']::after {
+  background: radial-gradient(ellipse at 50% 56%, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.78) 100%);
+}
+.game-world__veil[data-still='true'][data-kind='ascent']::after {
+  background: radial-gradient(ellipse at 50% 45%, rgba(2, 4, 12, 0.15) 0%, rgba(1, 2, 8, 0.92) 78%);
+}
+@keyframes game-still-dive { from { transform: scale(1); } to { transform: scale(1.75); } }
+@keyframes game-still-climb { from { transform: scale(1); } to { transform: scale(0.82); } }
+@keyframes game-still-air { from { opacity: 0; } to { opacity: 1; } }
+@keyframes game-still-shake { 0% { transform: translate(0, 0); } 100% { transform: translate(2px, -1.5px); } }
+@media (prefers-reduced-motion: reduce) {
+  .game-world__still, .game-world__still-img { animation: none; }
+}
 .moon-surface__canvas { position: absolute; inset: 0; touch-action: none; cursor: grab; }
 .moon-surface__canvas:active { cursor: grabbing; }
 .moon-hud {
