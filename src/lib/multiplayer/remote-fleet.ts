@@ -227,7 +227,7 @@ export function makeRemoteFleet(): RemoteFleet {
         let c = crafts.get(peer.id);
         if (c && c.kind !== kind) { drop(peer.id); c = undefined; }
         if (!c) {
-          c = { kind, ship: buildShip(kind), suit: null, label: makeNameLabel(0.1), labelAt: 0 };
+          c = { kind, ship: buildShip(kind), suit: null, label: makeNameLabel(0.09), labelAt: 0 };
           group.add(c.ship.group, c.label.sprite);
           crafts.set(peer.id, c);
         }

@@ -2605,8 +2605,6 @@
       "reconnecting": "Connection lost — reconnecting…",
       "retry": "Try again",
       "fullHint": "Join open space finds a room with a free seat.",
-      "publicRoom": "Public room — anyone can drop in",
-      "privateRoom": "Private room — only people with the code or link",
       "nearby": "Nearby pilots",
       "nearbyNone": "Nobody else is flying right now.",
       "memberAt": "{name} · {place}"

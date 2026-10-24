@@ -7,13 +7,14 @@
 //   node scripts/qa-multiplayer.mjs [--url http://localhost:3302] [--out dir]
 //
 // Pilot A renames themselves and taps Join open space; pilot B opens A's
-// invite link (no sign-in). Both launch; B is put just ahead of A, then
-// behind A, and fires. Checks: the lobby, the invite, the roster, the name
-// tag and the nearby list, the arrow to a pilot off the screen, the other
-// pilot's bolts, and the toast and fade when B goes.
+// invite link in a second browser (no sign-in) and lands in the room. Then A
+// flies, and a bot pilot (Gio, over the same protocol) flies beside A,
+// fires, drops behind A, goes quiet and leaves. Checks: the lobby, the
+// invite, the roster, the name tag and the nearby list, the other pilot's
+// bolts, the arrow to a pilot off the screen, the fade, and the toast.
 
 import { chromium } from 'playwright';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 const arg = (name, fallback) => {
@@ -21,6 +22,7 @@ const arg = (name, fallback) => {
   return i > 0 ? process.argv[i + 1] : fallback;
 };
 const BASE = arg('url', 'http://localhost:3302');
+const BASE_RT = arg('realtime', 'ws://localhost:54321');
 const OUT = `${arg('out', `${tmpdir()}/qa-multiplayer`)}/`;
 mkdirSync(OUT, { recursive: true });
 
@@ -51,6 +53,12 @@ async function open(browser, label) {
   await context.addInitScript(() => {
     try { localStorage.setItem('stellar_explore_help', '1'); } catch { /* none */ }
   });
+  // --css file: extra rules over the build's, to check a style fix without rebuilding.
+  const css = arg('css', '');
+  if (css) {
+    const text = readFileSync(css, 'utf8');
+    await context.addInitScript((t) => { document.addEventListener('DOMContentLoaded', () => { const s = document.createElement('style'); s.textContent = t; document.head.appendChild(s); }); }, text);
+  }
   const page = await context.newPage();
   // No Privy app id on a local build: not multiplayer's.
   page.on('pageerror', (e) => { if (!/PRIVY_APP_ID/.test(e.message)) fail(`[${label}] page error: ${e.message}`); });
@@ -79,13 +87,9 @@ async function launch(page, label) {
   console.log(`    [${label}] flying: ${await ask(page, () => JSON.stringify({ code: window.__stellarRoom?.code, peers: window.__stellarRoom?.peers.size, viewAge: Math.round(performance.now() - (window.__stellarRoom?.view.at ?? 0)), badge: !!document.querySelector('.room-badge'), nearby: !!document.querySelector('.room-nearby'), panel: !!document.querySelector('.room-panel') })).catch((e) => e.message)}`);
 }
 
-/** Put this ship where the other one is (by its pose: body and offset), `ahead` hull-lengths along its nose. */
-const placeBy = (page, other, ahead, side) => page.evaluate(([o, ahead, side]) => {
-  const f = window.__stellarFlight;
-  const body = f.world.bodies.find((b) => b.id === o.b);
-  if (!body || !o.p || !o.q) return false;
+/** A pose `ahead` hull-lengths along another's nose and `side` to its right, from the same body. */
+function offsetPose(o, ahead, side) {
   const [x, y, z, w] = o.q;
-  // The nose (+z) and the right (+x) of the other ship, turned by its quaternion.
   const rot = (vx, vy, vz) => {
     const ix = w * vx + y * vz - z * vy;
     const iy = w * vy + z * vx - x * vz;
@@ -96,13 +100,41 @@ const placeBy = (page, other, ahead, side) => page.evaluate(([o, ahead, side]) =
   const fwd = rot(0, 0, 1);
   const right = rot(1, 0, 0);
   const H = 0.044 * 0.006;
-  const at = [0, 1, 2].map((i) => body.position.getComponent(i) + o.p[i] + fwd[i] * ahead * H + right[i] * side * H);
-  const look = [0, 1, 2].map((i) => body.position.getComponent(i) + o.p[i]);
-  // Real vectors: Object3D.lookAt reads a plain {x, y, z} as three numbers, and goes NaN.
-  f.ship.spawn({ position: body.position.clone().set(at[0], at[1], at[2]), lookAt: body.position.clone().set(look[0], look[1], look[2]), yaw: 0 });
-  f.session.input.thrust = 0;
-  return true;
-}, [other, ahead, side]);
+  return { b: o.b, q: o.q, fwd, p: o.p.map((v, i) => v + fwd[i] * ahead * H + right[i] * side * H) };
+}
+
+/** A pilot without a browser: joins the room over the Realtime protocol, tracks
+ *  presence, sends poses and bolts like the game does. */
+async function bot(code, name) {
+  const { WebSocket } = await import('ws');
+  const ws = new WebSocket(`${BASE_RT}/realtime/v1/websocket?apikey=dev&vsn=1.0.0`);
+  await new Promise((res, rej) => { ws.once('open', res); ws.once('error', rej); });
+  const topic = `realtime:explore-room-${code}`;
+  const id = `bot-${name}`;
+  let ref = 0;
+  const send = (event, payload, t = topic) => ws.send(JSON.stringify({ topic: t, event, payload, ref: String(++ref), join_ref: '1' }));
+  send('phx_join', { config: { broadcast: { self: false }, presence: { key: id, enabled: true } } });
+  send('presence', { type: 'presence', event: 'track', payload: { name, scene: 'flight', world: '', joinedAt: Date.now(), epoch: 0, pub: true } });
+  let pose = null;
+  let firing = false;
+  let muted = false;
+  let n = 0;
+  const t0 = Date.now();
+  const beat = setInterval(() => send('heartbeat', {}, 'phoenix'), 20_000);
+  const tick = setInterval(() => {
+    if (!pose || muted) return;
+    const t = Date.now() - t0;
+    send('broadcast', { type: 'broadcast', event: 'pose', payload: { id, n: ++n, s: 'flight', b: pose.b, p: pose.p, q: pose.q, k: 'xfoil', t } });
+    if (firing) send('broadcast', { type: 'broadcast', event: 'shot', payload: { id, b: pose.b, p: pose.p, v: pose.fwd.map((f) => f * 0.144), t } });
+  }, 150);
+  return {
+    ahead: 0, side: 0,
+    setPose(p) { pose = p; },
+    setFiring(f) { firing = f; },
+    mute() { muted = true; },
+    close() { clearInterval(beat); clearInterval(tick); ws.close(); },
+  };
+}
 
 const selfPose = (page) => page.evaluate(() => ({ ...window.__stellarRoom.self }));
 
@@ -142,49 +174,66 @@ try {
   ok(`B's roster: ${roster.join(', ')}`);
   await shot(B.page, '03-invite-joined');
 
+  // The lobby side of B is done. In flight B goes on as a bot speaking the
+  // same protocol: two software-GL flights at once are more than a shared
+  // machine can draw, and A's view of B is what is being checked.
+  await B.context.close();
+
   console.log('Flight');
   await launch(A.page, 'A');
-  await launch(B.page, 'B');
+  const gio = await bot(code, 'Gio');
+  const follow = async (ahead, side) => {
+    const a = await selfPose(A.page).catch(() => null);
+    if (a?.b && a.p && a.q) gio.setPose(offsetPose(a, ahead, side));
+  };
+  await follow(14, 3);
+  const keep = setInterval(() => { void follow(gio.ahead, gio.side); }, 1000);
+  gio.ahead = 14; gio.side = 3;
+  const sees = await waitFor(A.page, () => (window.__stellarRoom?.view.pilots ?? []).some((p) => p.onScreen && p.name === 'Gio'), '[A] Gio on the screen', 60);
+  if (sees) ok(`A sees Gio: ${JSON.stringify(await A.page.evaluate(() => window.__stellarRoom.view.pilots.map((p) => ({ name: p.name, km: Math.round(p.km), on: p.onScreen }))))}`);
+  await waitFor(A.page, () => !!document.querySelector('.room-nearby__row'), '[A] the nearby list', 20);
+  const nearby = await A.page.$$eval('.room-nearby__row', (els) => els.map((e) => e.textContent)).catch(() => []);
+  if (nearby.length) ok(`A's nearby list: ${nearby.join(' | ')}`);
   await A.page.waitForTimeout(1500);
-  // B just ahead of A, a little to the side: in A's view.
-  const aPose = await selfPose(A.page);
-  if (!(await placeBy(B.page, aPose, 14, 3))) fail('could not place B by A');
-  const sees = await waitFor(A.page, () => (window.__stellarRoom?.view.pilots ?? []).some((p) => p.onScreen && p.km < 5000), '[A] B on the screen', 30);
-  if (sees) ok(`A sees B: ${JSON.stringify(await A.page.evaluate(() => window.__stellarRoom.view.pilots.map((p) => ({ name: p.name, km: Math.round(p.km), on: p.onScreen }))))}`);
-  await waitFor(A.page, () => !!document.querySelector('.room-nearby__row'), '[A] the nearby list', 10);
-  const nearby = await A.page.$$eval('.room-nearby__row', (els) => els.map((e) => e.textContent));
-  ok(`A's nearby list: ${nearby.join(' | ')}`);
-  await A.page.waitForTimeout(800);
-  await shot(A.page, '04-A-sees-B');
-  const bSees = await waitFor(B.page, () => (window.__stellarRoom?.view.pilots ?? []).some((p) => p.name === 'Nino'), '[B] Nino in the view', 20);
-  if (bSees) ok('B sees Nino');
-  await shot(B.page, '05-B-sees-A');
+  await shot(A.page, '04-A-sees-Gio');
 
-  // B fires: A gets the bolts.
-  await B.page.evaluate(() => { const f = window.__stellarFlight; f.session.combat = true; f.session.input.fire = true; });
-  const got = await waitFor(A.page, () => (window.__stellarRoom?.shotsIn.length ?? 0) > 0, '[A] B\'s bolts', 10);
-  await A.page.evaluate(() => new Promise((r) => setTimeout(r, 300)));
-  await shot(A.page, '06-A-sees-B-fire');
-  await B.page.evaluate(() => { window.__stellarFlight.session.input.fire = false; });
-  if (got) ok('A received B\'s cannon fire');
+  // Gio fires along A's heading: A gets the bolts and draws them.
+  gio.setFiring(true);
+  const got = await waitFor(A.page, () => (window.__stellarRoom?.shotsIn.length ?? 0) > 0, '[A] Gio\'s bolts', 20);
+  if (got) ok('A received Gio\'s cannon fire');
+  await A.page.waitForTimeout(700);
+  await shot(A.page, '05-A-sees-Gio-fire');
+  gio.setFiring(false);
 
-  // B behind A: an arrow at A's screen edge.
-  const aPose2 = await selfPose(A.page);
-  await placeBy(B.page, aPose2, -25, 0);
-  const arrow = await waitFor(A.page, () => [...document.querySelectorAll('.room-radar__arrow')].some((el) => el.style.display !== 'none'), '[A] an arrow to B', 20);
+  // Gio behind A: an arrow at A's screen edge.
+  gio.ahead = -30; gio.side = 4;
+  await follow(gio.ahead, gio.side);
+  const arrow = await waitFor(A.page, () => [...document.querySelectorAll('.room-radar__arrow')].some((el) => el.style.display !== 'none'), '[A] an arrow to Gio', 30);
   if (arrow) {
     const where = await A.page.$eval('.room-radar__arrow:not([style*="display: none"])', (el) => `${el.style.transform} "${el.textContent}"`);
-    ok(`arrow to B off the screen: ${where}`);
+    ok(`arrow to Gio off the screen: ${where}`);
   }
-  await shot(A.page, '07-A-arrow-to-B');
+  await A.page.waitForTimeout(800);
+  await shot(A.page, '06-A-arrow-to-Gio');
+
+  // The room panel from the badge, over the flight.
+  await click(A.page, '.room-badge__chip').catch(() => fail('no room badge to open'));
+  if (await waitFor(A.page, () => !!document.querySelector('.room-panel .room-panel__bigcode'), '[A] the in-game room panel', 20)) ok('the in-game room panel opens from the badge');
+  await A.page.waitForTimeout(800);
+  await shot(A.page, '06b-A-room-panel');
+  await click(A.page, '.room-panel__icon').catch(() => {});
+
+  // Gio's packets stop (the socket stays): A fades him out rather than freezing him.
+  clearInterval(keep);
+  gio.mute();
+  const faded = await waitFor(A.page, () => (window.__stellarRoom?.view.pilots ?? []).length === 0, '[A] a silent Gio faded out', 30);
+  if (faded) ok('a pilot whose packets stopped faded out of A\'s sky');
 
   console.log('Leaving');
-  await B.context.close();
-  const left = await waitFor(A.page, () => [...document.querySelectorAll('.room-badge__toast')].some((el) => /left/.test(el.textContent ?? '')), '[A] the left toast', 30);
+  gio.close();
+  const left = await waitFor(A.page, () => [...document.querySelectorAll('.room-badge__toast')].some((el) => /Gio left/.test(el.textContent ?? '')), '[A] the left toast', 30);
   if (left) ok(`toast: ${await A.page.$eval('.room-badge__toast', (el) => el.textContent)}`);
-  await shot(A.page, '08-A-B-left');
-  const gone = await waitFor(A.page, () => (window.__stellarRoom?.view.pilots ?? []).length === 0, '[A] B gone from the view', 20);
-  if (gone) ok('B is gone from A\'s sky');
+  await shot(A.page, '07-A-Gio-left');
   await A.context.close();
 } finally {
   await browser.close();
