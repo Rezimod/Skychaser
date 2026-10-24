@@ -1418,7 +1418,7 @@
 .game-world__veil[data-still='true'][data-kind='ascent']::after {
   background: radial-gradient(ellipse at 50% 45%, rgba(2, 4, 12, 0.15) 0%, rgba(1, 2, 8, 0.92) 78%);
 }
-@keyframes game-still-dive { from { transform: scale(1); } to { transform: scale(1.75); } }
+@keyframes game-still-dive { from { transform: scale(1); } to { transform: scale(1.4); } }
 @keyframes game-still-climb { from { transform: scale(1); } to { transform: scale(0.82); } }
 @keyframes game-still-air { from { opacity: 0; } to { opacity: 1; } }
 @keyframes game-still-shake { 0% { transform: translate(0, 0); } 100% { transform: translate(2px, -1.5px); } }

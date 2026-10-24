@@ -240,7 +240,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     const next = { kind, to, lifting: false, still: null, waiting: true };
     veilRef.current = next;
     setVeil(next);
-    void requestStill().then((still) => {
+    void requestStill(1).then((still) => {
       setVeil((v) => (v && v.to === to && v.waiting ? { ...v, still, waiting: false } : v));
     });
   }, []);
