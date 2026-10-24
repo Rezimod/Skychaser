@@ -3352,3 +3352,4 @@
 .moon-surface[data-free='true'] .moon-hud__jump { display: flex; }
 .moon-surface[data-free='true'] :is(.moon-hud__ico-jump, .moon-hud__word-jump) { display: none; }
 .moon-surface[data-free='true'] :is(.moon-hud__ico-down, .moon-hud__word-down) { display: block; }
+.moon-surface[data-free='true'] .moon-hud__jump { grid-row: 1; grid-column: 2; }
