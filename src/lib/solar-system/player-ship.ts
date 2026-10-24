@@ -18,11 +18,12 @@ import * as THREE from 'three';
 import type { AlienHandle } from '@/lib/solar-system/aliens';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
-import { makeCameraRig, type CameraFrame } from '@/lib/solar-system/flight-camera';
+import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
 import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
 import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
+import { createBlackHoleFall, type SwallowPhase } from '@/lib/solar-system/black-hole-fall';
 import { approachPose, approachProfileFor, approachSpeedCap, APPROACH_SECONDS, descentBurn, entryHeat, isLandable, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
@@ -172,6 +173,9 @@ const PITCH_RATE = 1.0;
  *  once, and the drive's answer to it is what stays smooth. */
 const INPUT_EASE = 11;
 const ROLL_RATE = 1.8;
+/** Soft expo for analog steering: 0.5 of the travel is about 0.35 of the
+ *  rate. Monotonic, odd, and exact at 0 and ±1. */
+const steerCurve = (v: number) => v * (0.4 + 0.6 * Math.abs(v));
 /** Assist-off: keys accelerate the rates instead of setting them. */
 const FREE_ANG_ACCEL = 2.4;
 const FREE_ANG_MAX = 2.2;
@@ -415,6 +419,13 @@ export interface FlightTelemetry {
   orderId: string;
   orderIntegrity: number;
   orderDone: boolean;
+  /** Black hole (black-hole-fall.ts): the phase of a capture ('' none, 'pull'
+   *  in the well, 'fall' past the point of no return, 'dark' past the
+   *  horizon, 'spat' just thrown back out at home), 0..1 through it, and
+   *  the tidal strength 0..1. */
+  swallow: SwallowPhase;
+  swallowT: number;
+  tidal: number;
 }
 
 export interface FlightSession {
@@ -559,6 +570,9 @@ export function createFlightSession(opts: { combat?: boolean } = {}): FlightSess
       orderId: '',
       orderIntegrity: 1,
       orderDone: false,
+      swallow: '',
+      swallowT: 0,
+      tidal: 0,
     },
   };
 }
@@ -890,7 +904,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const audio = makeFlightAudio();
   const crash = makeCrashFx();
   const rig = makeCameraRig();
+  const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
+  const holeFall = createBlackHoleFall();
   tel.discoveryTotal = missions.total;
   tel.discoveryCount = missions.count();
   audio.launch();
@@ -921,20 +937,29 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
 
   // Speed streaks: a box of particles around the ship, drawn as segments
   // stretched along the flow — motes at cruise, lines at a tenth of c, a
-  // tunnel in hyperspace.
+  // tunnel in hyperspace. The buffer holds positions relative to the ship
+  // and the mesh rides on it, so float32 never has to carry a coordinate
+  // the size of the solar system (the streaks used to shimmer out past the
+  // inner planets). Each segment is bright at its head and fades to black
+  // down its tail — under additive blending that is a taper for free.
   const dustRel: THREE.Vector3[] = [];
   const dustPos = new Float32Array(DUST_N * 6);
+  const dustCol = new Float32Array(DUST_N * 6);
   for (let i = 0; i < DUST_N; i++) {
     dustRel.push(new THREE.Vector3(
       (Math.random() - 0.5) * DUST_BOX,
       (Math.random() - 0.5) * DUST_BOX,
       (Math.random() - 0.5) * DUST_BOX,
     ));
+    const b = 0.55 + 0.45 * Math.random();
+    dustCol[i * 6] = dustCol[i * 6 + 1] = dustCol[i * 6 + 2] = b;
   }
   const dustGeom = new THREE.BufferGeometry();
-  dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+  dustGeom.setAttribute('position', new THREE.BufferAttribute(dustPos, 3).setUsage(THREE.DynamicDrawUsage));
+  dustGeom.setAttribute('color', new THREE.BufferAttribute(dustCol, 3));
   const dustMat = new THREE.LineBasicMaterial({
     color: 0xaac4ff,
+    vertexColors: true,
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -1126,6 +1151,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   /** The eased steering the model actually flies on. */
   const eased = { yaw: 0, pitch: 0 };
   let bank = 0;
+  /** Visual-only nose attitude under thrust (rad): the hull squats nose-up
+   *  as the drive bites and settles as the speed comes up. */
+  let noseLift = 0;
   let foilT = 0;
   let foilsForced: boolean | null = null;
   let heat = 0;
@@ -1149,6 +1177,14 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let lockedFor = 0;
   let lowShieldWarned = false;
   let vibe = 0;
+  /** The engine glow's terms, eased so a throttle, boost or regime step
+   *  swells the plume instead of switching it; and the flare a boost lights. */
+  let thrustGlow = 0;
+  let boostGlow = 0;
+  let driveGlow = 0;
+  let boostFlash = 0;
+  let wasBoost = false;
+  let lastMode: SpeedMode = 'cruise';
   let dockedTo: FlightBody | null = null;
   let dockHold = 0;
   /** Frames the relaunch has waited for the world it is going back to. */
@@ -1272,6 +1308,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     tel.crashed = false;
     tel.respawnIn = 0;
     tel.pilot = 'ship';
+    holeFall.reset();
   };
 
   /** Come alongside: the berth holds the ship a few hull-lengths off the
@@ -1455,8 +1492,11 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       stretch = 0.02 + 0.06 * THREE.MathUtils.clamp(speed / (10 * U), 0, 1)
         + 0.07 * THREE.MathUtils.clamp((speed - 12 * U) / (80 * U), 0, 1);
     }
+    // Reduced motion: motes drift past, they never draw out into lines.
+    if (reducedMotion) stretch = Math.min(stretch, 0.03);
     const half = DUST_BOX / 2;
-    const p = actor().position;
+    // The mesh rides on the ship; the buffer is ship-relative (see above).
+    dust.position.copy(actor().position);
     for (let i = 0; i < DUST_N; i++) {
       const r = dustRel[i];
       r.addScaledVector(flow, -dt);
@@ -1464,19 +1504,21 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       if (r.y > half) r.y -= DUST_BOX; else if (r.y < -half) r.y += DUST_BOX;
       if (r.z > half) r.z -= DUST_BOX; else if (r.z < -half) r.z += DUST_BOX;
       const o = i * 6;
-      dustPos[o] = p.x + r.x;
-      dustPos[o + 1] = p.y + r.y;
-      dustPos[o + 2] = p.z + r.z;
-      dustPos[o + 3] = p.x + r.x - flow.x * stretch;
-      dustPos[o + 4] = p.y + r.y - flow.y * stretch;
-      dustPos[o + 5] = p.z + r.z - flow.z * stretch;
+      dustPos[o] = r.x;
+      dustPos[o + 1] = r.y;
+      dustPos[o + 2] = r.z;
+      dustPos[o + 3] = r.x - flow.x * stretch;
+      dustPos[o + 4] = r.y - flow.y * stretch;
+      dustPos[o + 5] = r.z - flow.z * stretch;
     }
     dustGeom.getAttribute('position').needsUpdate = true;
     if (jumping) {
       dustMat.opacity = 0.95;
       dustMat.color.setRGB(0.9, 1.2, 2.0);
     } else {
-      dustMat.opacity = THREE.MathUtils.clamp(speed / (3 * U), 0.06, 1) * 0.5;
+      // The tapered tails carry half the light the flat lines did: a little
+      // more opacity keeps the field as present, and the boost lifts it.
+      dustMat.opacity = Math.min(1, THREE.MathUtils.clamp(speed / (3 * U), 0.06, 1) * 0.62 * (tel.boost ? 1.25 : 1));
       dustMat.color.setRGB(0.67, 0.77, 1.0);
     }
     dust.visible = crashT < 0 && dustMat.opacity > 0.01;
@@ -1767,6 +1809,34 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         }
       }
 
+      // ── Black hole: the well, spaghettification, the horizon and the way
+      // out (black-hole-fall.ts). From the point of no return the hole has
+      // the frame; past the horizon the ship is spat back out by the Earth. ──
+      {
+        const flown = parts();
+        const act = holeFall.step(dt, world.bodies, actor(), flown.hull, flown.length, vel, input.thrust,
+          eff.accel * (input.boost && input.thrust > 0 && boostCharge > BOOST_FLOOR ? 2 : 1),
+          jumpPhase === 'none' && !arrival && !dockedTo && !autodock);
+        if (act === 'respawn') {
+          spawn(holeFall.homeAnchor(world));
+          audio.drone(0);
+          audio.whoosh();
+          tel.jumpFlash = holeFall.flash;
+        } else if (act === 'hold') {
+          heat = 0;
+          rig.kick(holeFall.shake);
+          camBack += (holeFall.camBack(regimes.cruise.camBack) - camBack) * (1 - Math.exp(-dt * 1.5));
+          updateCamera(dt, camera, holeFall.fov(regimes.cruise.fov));
+          updateDust(dt, vel.length());
+          updateTunnel(dt, timeSec);
+          for (const j of shipParts.rcs) j.mat.opacity = 0;
+          audio.drone(holeFall.phase === 'fall' ? 1 : 0, holeFall.rise);
+          tel.shake = rig.shake();
+        }
+        holeFall.fillTelemetry(tel, act === 'hold');
+        if (act === 'hold') return;
+      }
+
       energy = Math.min(1, energy + ENERGY_REGEN * dt);
       sinceBoost += dt;
       if (sinceBoost > BOOST_REGEN_DELAY) boostCharge = Math.min(1, boostCharge + BOOST_REGEN * dt);
@@ -1942,8 +2012,10 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         // either way, shaped in flight-input. ──
         const turn = eff.turn;
         const ek = 1 - Math.exp(-dt * INPUT_EASE);
-        eased.yaw += (THREE.MathUtils.clamp(input.yaw + input.lookYaw, -1, 1) - eased.yaw) * ek;
-        eased.pitch += (input.pitch - eased.pitch) * ek;
+        // A soft expo on analog travel (stick, pad, thumb): fine aim near
+        // the centre, the full rate at the stop. Keys are ±1 and unchanged.
+        eased.yaw += (steerCurve(THREE.MathUtils.clamp(input.yaw + input.lookYaw, -1, 1)) - eased.yaw) * ek;
+        eased.pitch += (steerCurve(input.pitch) - eased.pitch) * ek;
         const yawIn = eased.yaw;
         angTarget.set(-eased.pitch * PITCH_RATE * turn, -yawIn * YAW_RATE * turn, input.roll * ROLL_RATE);
         if (assist || pilot === 'eva') {
@@ -1996,7 +2068,13 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         const bankTarget = yawIn * 0.32 - dYaw * 5 - angVel.y * 0.1;
         bank += (THREE.MathUtils.clamp(bankTarget, -0.55, 0.55) - bank) * (1 - Math.exp(-dt * 3.4));
         parts().hull.rotation.z = pilot === 'ship' ? bank : bank * 0.3;
-        parts().hull.rotation.x = -angVel.x * 0.05;
+        // Weight: the nose lags the pitch rate a touch, and squats up as
+        // the drive bites — most at a standstill, gone at the ceiling.
+        const pushing = input.thrust > 0 && !autodock ? input.thrust * (input.boost && boostCharge > BOOST_FLOOR ? 1.7 : 1) : 0;
+        const room = eff.max > 0 ? THREE.MathUtils.clamp(1 - vel.length() / eff.max, 0.2, 1) : 1;
+        const liftTarget = pilot === 'ship' ? -0.035 * pushing * room + (input.thrust < 0 ? 0.025 : 0) : 0;
+        noseLift += (liftTarget - noseLift) * (1 - Math.exp(-dt * 3));
+        parts().hull.rotation.x = -angVel.x * 0.05 + noseLift;
 
         // ── The docking computer: asked for with a station in reach, it
         // brings the ship to the berth on the side it was on, nose on the
@@ -2316,9 +2394,35 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       const chargeK = jumpPhase === 'charge' ? jumpT / JUMP_CHARGE : jumpPhase === 'travel' ? 1 : 0;
       const throttle = jumpPhase === 'none' ? Math.max(0, input.thrust, burn) : 1;
       heatSoak += ((thrusting ? (tel.boost ? 1 : 0.55) : 0) - heatSoak) * (1 - Math.exp(-dt * (thrusting ? 0.5 : 0.9)));
+      // Boost lighting: a kick in the frame, a beat of pull-back and lens,
+      // and a flare off the nozzles that settles into the boost's own glow.
+      if (tel.boost && !wasBoost) {
+        rig.kick(0.22);
+        rig.surge(0.45);
+        boostFlash = 1;
+      }
+      wasBoost = tel.boost;
+      // A step up the drive throws the rig back and opens the lens for a
+      // beat; a step down draws it in. The jump has its own choreography.
+      if (mode !== lastMode) {
+        const rank = (m: SpeedMode) => (m === 'cruise' ? 0 : m === 'fast' ? 1 : m === 'ultra' ? 2 : -1);
+        const a = rank(lastMode);
+        const b = rank(mode);
+        if (a >= 0 && b >= 0 && pilot === 'ship') {
+          rig.surge(b > a ? 0.9 : -0.45);
+          if (b > a) rig.kick(0.18);
+        }
+        lastMode = mode;
+      }
+      boostFlash *= Math.exp(-dt * 5);
+      const gk = (target: number, cur: number, up: number, down: number) =>
+        cur + (target - cur) * (1 - Math.exp(-dt * (target > cur ? up : down)));
+      thrustGlow = gk(thrusting ? 1 : 0, thrustGlow, 16, 6);
+      boostGlow = gk(tel.boost ? 1 : 0, boostGlow, 14, 4);
+      driveGlow = gk(mode === 'fast' ? 0.5 : mode === 'ultra' ? 1.1 : 0, driveGlow, 2.5, 2.5);
       const pulse = 0.8 + 0.08 * Math.sin(timeSec * 7)
-        + (thrusting ? 0.55 : 0) + (tel.boost ? 1.0 : 0) + burn * 0.9
-        + (mode === 'fast' ? 0.5 : mode === 'ultra' ? 1.1 : 0) + chargeK * 1.6;
+        + thrustGlow * 0.55 + boostGlow * 1.0 + boostFlash * 0.9 + burn * 0.9
+        + driveGlow + chargeK * 1.6;
       live.engineMat.emissiveIntensity = 1.5 * pulse;
       live.bellMat.emissive.setRGB(0.9, 0.22, 0.05).multiplyScalar(heatSoak * 0.6);
       const glowBase = pilot === 'ship' ? H : 0.45 * E;

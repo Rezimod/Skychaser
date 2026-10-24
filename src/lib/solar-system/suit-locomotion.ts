@@ -45,9 +45,9 @@ export interface WalkInput {
   crouch: boolean;
   /** Using a tool at a work site. */
   work: boolean;
-  /** Held: the jetpack — the jump key kept down, or its own key. In flight, climb. */
+  /** Held: the jetpack — the jump key kept down, or its own key. It burns only while held: in flight, climb. */
   jet?: boolean;
-  /** Held, in flight: sink toward the ground. */
+  /** Held, in flight: the pack out, whatever else is held. */
   descend?: boolean;
 }
 
@@ -276,7 +276,8 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
 
       // ── The jetpack. Held a fifth of a second, it lights — in the air, or
       // with the boots down, when it lifts the crew off — and from then on
-      // the body flies until it is set down. ──
+      // the body is in flight until the boots are down: the pack burns while
+      // the key is held and the crew falls when it is let go. ──
       if (!jet.state.flying) {
         const held = !!input.jet && authority > 0.5 && !state.fallen && state.stumble <= 0 && !(input.crouch && wasGrounded);
         if (jet.hold(dt, held, wasGrounded)) {
@@ -517,9 +518,9 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
     },
   };
   /**
-   * One step of flight: the pack's push and gravity, the envelope, walls
-   * low down, a roof only from below, and the ground — set down on where it
-   * may be landed on, skimmed where it may not.
+   * One step of flight, the pack lit or out: its push and gravity, the
+   * envelope, walls low down, a roof only from below, and the ground — set
+   * down on where it may be landed on, skimmed where it may not.
    */
   function flyStep(dt: number, input: WalkInput, heightAt: (x: number, z: number) => number, colliders: Collider[], authority: number, wantX: number, wantZ: number) {
     const g = P.g;
@@ -548,12 +549,15 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
       const impact = Math.max(0, -velocity.y);
       position.y = g2;
       if (velocity.y < 0) velocity.y = 0;
-      if (!flightIn.climb && r <= env.landRadius) {
-        // ── Set down. The pack lowered the crew, so the legs only soak it up. ──
+      if (!jet.state.jetting && r <= env.landRadius) {
+        // ── Down, the pack out. The suit takes a fall off the pack on its
+        // legs: a hard one shows, but never knocks the crew over. ──
         landed = true;
         jet.land();
-        state.impact = impact; state.landing = 'soft'; lastLanding = 'soft'; state.landT = 0;
+        const kind: Landing = impact <= P.rollLand ? 'soft' : 'hard';
+        state.impact = impact; state.landing = kind; lastLanding = kind; state.landT = 0;
         recoverFor = landRecovery(P, impact);
+        if (kind === 'hard') { state.landed = true; velocity.x *= 0.5; velocity.z *= 0.5; }
         state.mode = 'land';
         state.jumping = false; state.striding = false; state.bounding = false;
         feet.land(Math.min(1, 0.35 + impact * 0.25), false);
@@ -581,8 +585,10 @@ export function makeLocomotion(position: Vec3, velocity: Vec3, initial: GaitProf
     const vf = velocity.x * fx + velocity.z * fz;
     const aF = push.x * fx + push.z * fz;
     const aL = push.x * fz - push.z * fx;
-    const pitch = clamp(0.06 + 0.8 * (vf / T.boost) + Math.atan2(aF, g + T.lift) * 0.7, -0.35, 1.05);
-    const bank = clamp(-Math.atan2(aL, g + T.lift) * 1.5, -0.6, 0.6);
+    // With the pack out the body comes upright to fall feet first and take the landing.
+    const lean = jet.state.jetting ? 1 : 0.2;
+    const pitch = clamp(0.06 + (0.8 * (vf / T.boost) + Math.atan2(aF, g + T.lift) * 0.7) * lean, -0.35, 1.05);
+    const bank = clamp(-Math.atan2(aL, g + T.lift) * 1.5 * lean, -0.6, 0.6);
     const k = 1 - Math.exp(-dt * 4);
     state.flyPitch += (pitch - state.flyPitch) * k;
     state.flyBank += (bank - state.flyBank) * k;

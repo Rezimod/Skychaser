@@ -375,12 +375,12 @@
         "t12": "Menu, top right — targets, the cockpit view, landscape, sound and help",
         "r12": "K — docking computer: bring the ship in to a station nearby",
         "t13": "Dock key — near a station it appears; tap and the computer brings you in. Push forward to leave.",
-        "r13": "Landing — fly down at any planet, the Moon or Proxima b. Dive into the atmosphere and the ship enters and lands by itself.",
+        "r13": "Landing — fly down at any planet, the Moon or Proxima b and dive into its air: inside, the ship is yours. Fly anywhere, set down near the base, or press Land at base and the computer takes you in.",
         "r14": "M — sound on and off",
         "t14": "Sound — on and off in the menu",
         "r15": "Z — flight assist · V — step out in the suit, and back aboard · R — clear the target",
         "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
-        "t15": "Fly down at any planet or moon — dive into its atmosphere and the ship lands by itself"
+        "t15": "Dive into any planet’s air: inside, the ship is yours — fly, land near the base, or tap Land at base"
       },
       "dockedAt": "Docked at {body} — push forward to leave",
       "supplying": "Taking on fuel and stores",
@@ -502,7 +502,9 @@
           "temp": "−201 °C"
         }
       },
-      "landSlowing": "Slowing for the approach"
+      "landSlowing": "Slowing for the approach",
+      "noReturn": "Past the point of no return",
+      "spaghettified": "Spaghettified — spat back out at home"
     },
     "moon": {
       "place": "Skychaser Base · Moon",
@@ -524,8 +526,8 @@
         "jump": "Space — jump. One sixth g: you will be up there a while.",
         "walkTouch": "Left stick — walk. Drag the right half of the screen to look around.",
         "jumpTouch": "Jump is bottom right. One sixth g: you will be up there a while.",
-        "fly": "Hold Space to fly: Space climbs, C goes down, Shift flies faster. The pack never runs dry.",
-        "flyTouch": "Hold Jet to fly. In the air the Jump key takes you down — or drag the Jet key down."
+        "fly": "Hold Space to fire the jetpack and climb; let go and it cuts out and you fall. W A S D steer, Shift flies faster. The pack never runs dry.",
+        "flyTouch": "Hold Jet to fire the jetpack and climb; let go and you fall. The stick steers."
       },
       "keys": {
         "r7": "Meteoroids land now and then. They never land on you.",
@@ -537,8 +539,8 @@
         "r13": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
         "t10": "The mission computer in OPS-B, through the airlock, hands out the day’s jobs",
         "r16": "The rover: E to climb in · hold E at a roll to bail out · Space is the handbrake",
-        "r17": "The jetpack: hold Space in the air, or J. It burns for a few seconds and refills on the ground.",
-        "t11": "The jetpack: keep the jump key held in the air, or hold the jet key beside it. It refills on the ground."
+        "r17": "The jetpack: hold Space (or J) to fire it and climb; let go and you fall. It never runs dry.",
+        "t11": "The jetpack: hold the jump key, or the jet key beside it, to fire it and climb; let go and you fall."
       },
       "pois": {
         "habitatA": "Habitat A — crew quarters",
@@ -605,7 +607,8 @@
             "approach": "Approach",
             "climb": "Lift-off",
             "ascent": "Ascent",
-            "done": "Powered descent"
+            "done": "Powered descent",
+            "flight": "Free flight"
           },
           "altitude": "Altitude",
           "speed": "Speed",
@@ -617,7 +620,8 @@
           "realTime": "Real time",
           "mach": "Mach {n}",
           "skip": "Skip to landing",
-          "skipTouch": "Tap to skip to landing"
+          "skipTouch": "Tap to skip to landing",
+          "flightHint": "Stick: forward faster, back slower, sideways to turn · Engine climbs, Down descends · land near the base, or climb out of the air to leave"
         }
       },
       "gears": {
@@ -1559,10 +1563,10 @@
       "look": "look around (click once to take the mouse; Esc lets go and pauses)",
       "zoom": "zoom; out past the far stop is the wide view",
       "jump": "jump; on the way down, the descent engine",
-      "jet": "the jetpack: hold to take off and climb (the jump key held does the same); let go to hover. It never runs dry",
+      "jet": "the jetpack: it burns only while held — hold to take off and climb (the jump key held does the same); let go and you fall. It never runs dry",
       "sprint": "sprint: hold it, or tap it to latch. In one-sixth g it is a two-footed bound. In flight, faster",
       "walk": "walk on purpose",
-      "crouch": "crouch: slow, low and steady. In flight, hold it to go down",
+      "crouch": "crouch: slow, low and steady. In flight, it cuts the jetpack",
       "interact": "the thing in front of you: tap to use, hold to work",
       "headlamp": "headlamp on and off",
       "view": "in and out of the helmet",
@@ -1573,8 +1577,8 @@
       "touch": {
         "move": "Left stick — walk; push it to the rim to lope",
         "look": "Right half — drag to look around",
-        "jump": "Jump — bottom right; in flight it takes you down; on the way down, hold the engine key",
-        "jet": "Jet — beside Jump; hold it to fly, drag it down to descend",
+        "jump": "Jump — bottom right; in flight it cuts the jetpack; on the way down, hold the engine key",
+        "jet": "Jet — beside Jump; hold it to fly and climb, let go to fall",
         "sprint": "Lope — the key beside the stick",
         "crouch": "Crouch — beside the stick",
         "interact": "The amber key — tap to use, hold to work",
