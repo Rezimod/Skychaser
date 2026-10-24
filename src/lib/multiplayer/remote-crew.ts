@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { buildSuit, type SuitRig } from '@/lib/solar-system/moon-suit-mesh';
 import { mergeStatic } from '@/lib/solar-system/moon-batch';
 import { makeNameLabel, type NameLabel } from '@/lib/multiplayer/name-label';
-import { bracket, lerpAngle, RENDER_DELAY_MS, trim, type PoseMsg, type RoomLink } from '@/lib/multiplayer/room-link';
+import { bracket, lerpAngle, peerAlpha, RENDER_DELAY_MS, trim, type PoseMsg, type RoomLink } from '@/lib/multiplayer/room-link';
 
 /**
  * Where this explorer stands, for the room. `visible` false while inside the
@@ -105,16 +105,22 @@ export function makeRemoteCrew(scene: THREE.Scene, world: string, lite: boolean,
         if (!w) {
           const rig = buildSuit(lite, bareHead);
           const merged = mergeStatic(rig.group, { isPivot: (o) => (o as THREE.Group).isGroup === true, minCaster: 0.05 });
-          const label = makeNameLabel(0.065);
+          const label = makeNameLabel(0.085);
           label.sprite.position.y = 2.1;
           rig.group.add(label.sprite);
           scene.add(rig.group);
           w = { rig, geometries: merged.geometries, label, phase: 0, swing: 0, jet: 0, clock: 0 };
           walkers.set(peer.id, w);
         }
+        // Not heard from in a while: faded out, not frozen mid-stride.
+        const alpha = peerAlpha(peer, now);
+        const g = w.rig.group;
+        g.visible = alpha > 0;
+        w.label.setOpacity(alpha);
+        if (!g.visible) continue;
+        g.scale.setScalar(Math.max(0.001, alpha));
         const from = at.a.s === 'surface' && at.a.w === world && at.a.p ? at.a : next;
         const k = from === next ? 0 : at.alpha;
-        const g = w.rig.group;
         g.position.set(
           from.p![0] + (next.p[0] - from.p![0]) * k,
           from.p![1] + (next.p[1] - from.p![1]) * k,
@@ -123,7 +129,7 @@ export function makeRemoteCrew(scene: THREE.Scene, world: string, lite: boolean,
         g.rotation.y = lerpAngle(from.y ?? 0, next.y ?? 0, k);
         const v = readSurfaceSpeed(next.v);
         pose(w, dt, v.speed, v.jetting);
-        w.label.set(peer.name, '');
+        w.label.set(peer.name || '…', '');
       }
     },
     dispose() {

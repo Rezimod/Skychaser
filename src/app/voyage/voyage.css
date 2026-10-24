@@ -698,6 +698,14 @@ body[data-solar-immersive] .sd-backdrop { display: none; }
 .game-menu__item--leave { color: #ffb4a8; }
 .game-menu__item--leave > svg { color: #ff9a8a; }
 
+/* A room over the game: the world is a fixed layer at z-index 100, so the
+   room's badge and toasts, the pilots overlay and the in-game room panel sit
+   above it — and under the loader and the menus. */
+.game-shell > .room-radar { z-index: 110; }
+.game-shell > .room-nearby { z-index: 111; }
+.game-shell > .room-badge { z-index: 120; }
+.game-shell > .room-panel { z-index: 150; }
+
 /* The multiplayer lobby: the room panel's own parts, set into the title's sheet. */
 .room-panel.room-panel--lobby {
   position: static;

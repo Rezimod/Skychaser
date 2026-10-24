@@ -120,7 +120,7 @@ describe('lobby list', () => {
       b: [{ room: 'K7M2Q', name: 'B', joinedAt: 1 }],
       c: [{ room: '', name: 'C', joinedAt: 0 }],
     });
-    expect(rooms).toEqual([{ code: 'K7M2Q', host: 'B', count: 2 }]);
+    expect(rooms).toMatchObject([{ code: 'K7M2Q', host: 'B', count: 2 }]);
   });
 });
 

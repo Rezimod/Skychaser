@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Users } from 'lucide-react';
+import { RotateCw, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { RosterEntry } from '@/lib/multiplayer/useExploreRoom';
 import { placeKey } from './ExploreRoomPanel';
@@ -9,13 +9,15 @@ import { placeKey } from './ExploreRoomPanel';
 interface ExploreRoomBadgeProps {
   code: string;
   roster: RosterEntry[];
+  /** The connection dropped and is being made again. */
+  reconnecting?: boolean;
   onOpen: () => void;
 }
 
 const TOAST_MS = 4200;
 
 /** The room, wherever the explorer is — and a line when someone arrives, leaves or lands. */
-export function ExploreRoomBadge({ code, roster, onOpen }: ExploreRoomBadgeProps) {
+export function ExploreRoomBadge({ code, roster, reconnecting, onOpen }: ExploreRoomBadgeProps) {
   const t = useTranslations('solarSystem.room');
   const [toasts, setToasts] = useState<{ id: number; text: string }[]>([]);
   const prevRef = useRef<Map<string, RosterEntry> | null>(null);
@@ -48,8 +50,9 @@ export function ExploreRoomBadge({ code, roster, onOpen }: ExploreRoomBadgeProps
 
   return (
     <div className="room-badge">
-      <button type="button" className="room-badge__chip" onClick={onOpen} aria-label={t('badgeAria', { code, n: roster.length })}>
-        <Users size={14} aria-hidden />
+      <button type="button" className={reconnecting ? 'room-badge__chip is-reconnecting' : 'room-badge__chip'} onClick={onOpen}
+        aria-label={reconnecting ? t('reconnecting') : t('badgeAria', { code, n: roster.length })} title={reconnecting ? t('reconnecting') : undefined}>
+        {reconnecting ? <RotateCw size={14} className="room-badge__spin" aria-hidden /> : <Users size={14} aria-hidden />}
         <span className="room-badge__code">{code}</span>
         <span className="room-badge__count">{roster.length}</span>
       </button>

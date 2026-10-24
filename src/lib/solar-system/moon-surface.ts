@@ -1446,7 +1446,9 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     host.followShadow(shadowFocus, SUN_DIR);
     lightPool.flush(crew.x, crew.y, crew.z);
     sky.update(dt, camera, renderer.getPixelRatio());
-    if (surfacing > 0) { surfacing = Math.max(0, surfacing - dt * 0.7); post.setBlack(surfacing); }
+    // Out of the Backrooms: the picture and the glass's black layer fade up together
+    // (the climb ends on black, and nothing underground sets that layer any more).
+    if (surfacing > 0) { surfacing = Math.max(0, surfacing - dt * 0.7); post.setBlack(surfacing); bt.black = surfacing; }
     if (telemetry.phase === 'surface') build.update(crew.x, crew.z, camera);
     orbit.update(dt);
     host.render(dt);
