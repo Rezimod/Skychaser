@@ -87,7 +87,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   const rewards = useExploreRewards();
   const paused = state === 'paused';
   const flightRef = useRef<FlightSession | null>(null);
-  if (!flightRef.current) flightRef.current = createFlightSession({ combat: false });
+  if (!flightRef.current) flightRef.current = createFlightSession({ combat: false, armed: true });
   const session = flightRef.current;
   // The clock the canvas reads is a mutable cell; React only sees it once a
   // second, for the mini-clock, so ticking it never re-renders the deck.

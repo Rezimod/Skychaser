@@ -24,6 +24,10 @@ import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
 import { createBlackHoleFall, type SwallowPhase } from '@/lib/solar-system/black-hole-fall';
+import {
+  HULL_REGEN_DELAY, HULL_REGEN_PER_SEC, MAX_HULL, MAX_SHIELD, PLAYER_BOLT_DAMAGE, SHIELD_REGEN_DELAY, SHIELD_REGEN_PER_SEC,
+  alienZone, type AlienZone, type ZoneOrbits,
+} from '@/lib/solar-system/combat-balance';
 import { approachPose, approachProfileFor, approachSpeedCap, APPROACH_SECONDS, descentBurn, entryHeat, isLandable, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
@@ -200,13 +204,10 @@ const BOOST_REGEN_DELAY = 1.2;
 /** Below this the reservoir is spent and the boost cuts out. */
 const BOOST_FLOOR = 0.02;
 
-const MAX_SHIELD = 100;
-const MAX_HULL = 100;
-/** Shields come back a few seconds after the last hit; the hull knits slowly. */
-const SHIELD_REGEN_PER_SEC = 7;
-const SHIELD_REGEN_DELAY = 5;
-const HULL_REGEN_PER_SEC = 1.2;
-const HULL_REGEN_DELAY = 10;
+// Shields, hull and their regeneration live in combat-balance.ts, beside
+// the aliens' weapons they are tuned against.
+/** How long an encounter's callout stays on the deck. */
+const CALLOUT_HOLD = 4.5;
 const RADAR_RANGE = 60 * U;
 export const RADAR_MAX = 16;
 /** Bodies the canvas may label with an on-screen bracket at once. */
@@ -402,6 +403,11 @@ export interface FlightTelemetry {
   discoveryTotal: number;
   /** Alien contact state as the sensors see it. */
   contact: 'none' | 'scan' | 'hostile';
+  /** The region of the system, as the aliens see it (combat-balance.ts). */
+  zone: AlienZone;
+  /** An encounter callout for the deck ('raiders', 'gift'…), held a few
+   *  seconds, then ''. */
+  encounter: string;
   /** Incoming transmission: who, which line (1-based, 0 = none), how far typed. */
   commsFrom: string;
   commsLine: number;
@@ -434,8 +440,10 @@ export interface FlightSession {
   paused: boolean;
   /** Chosen in the hangar before launch. */
   shipKind: ShipKind;
-  /** Cannons, standing orders and hostile waves. The game runs without them. */
+  /** Standing orders to take worlds apart. The game runs without them. */
   combat: boolean;
+  /** The cannon — on wherever there are aliens to shoot at. */
+  armed: boolean;
   /** The system the hyperdrive is set for; the canvas resolves it against
    *  the one the ship is in. */
   destination: string;
@@ -479,12 +487,13 @@ export interface FlightWorld {
   systemName: string;
 }
 
-export function createFlightSession(opts: { combat?: boolean } = {}): FlightSession {
+export function createFlightSession(opts: { combat?: boolean; armed?: boolean } = {}): FlightSession {
   return {
     active: false,
     paused: false,
     shipKind: 'kestrel',
     combat: opts.combat ?? true,
+    armed: opts.armed ?? opts.combat ?? true,
     destination: 'alphaCentauri',
     input: {
       thrust: 0, yaw: 0, lookYaw: 0, pitch: 0, roll: 0,
@@ -559,6 +568,8 @@ export function createFlightSession(opts: { combat?: boolean } = {}): FlightSess
       discoveryCount: 0,
       discoveryTotal: 0,
       contact: 'none',
+      zone: 'home',
+      encounter: '',
       commsFrom: '',
       commsLine: 0,
       commsProgress: 0,
@@ -845,6 +856,8 @@ export interface PlayerShipHandle {
   parts: ShipParts;
   spawn: (anchor: FlightAnchor) => void;
   takeDamage: (amount: number) => void;
+  /** A gift or salvage reached the ship: top the hull and shields up. */
+  repair: (hull: number, shield: number) => void;
   update: (
     dtSec: number,
     timeSec: number,
@@ -1174,6 +1187,10 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let discoveryHold = 0;
   let lastEnemies = 0;
   let lastContact: 'none' | 'scan' | 'hostile' = 'none';
+  let lastCalloutSeq = 0;
+  let calloutKey = '';
+  let calloutHold = 0;
+  const zoneOrbits: ZoneOrbits = { mars: NaN, jupiter: NaN, neptune: NaN };
   let lockedFor = 0;
   let lowShieldWarned = false;
   let vibe = 0;
@@ -1242,6 +1259,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     // browser mouse-flight combat is otherwise a coin toss.
     let bestDot = Math.cos(AIM_ASSIST_CONE);
     for (const e of enemies) {
+      // Friendly and neutral craft are fair game, but the sight does not pull toward them.
+      if (e.hostile === false) continue;
       tmp2.copy(e.group.position).sub(group.position);
       const d = tmp2.length();
       if (d < 1e-9 || d > BORESIGHT * 3) continue;
@@ -1728,6 +1747,15 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     spawn,
     takeDamage(amount) {
       damage(amount, false);
+    },
+    repair(h, s) {
+      if (crashT >= 0) return;
+      hull = Math.min(MAX_HULL, hull + h);
+      shield = Math.min(MAX_SHIELD, shield + s);
+      tel.hp = hull;
+      tel.shield = shield;
+      if (shield > MAX_SHIELD * 0.25) lowShieldWarned = false;
+      audio.confirm();
     },
     update(dt, timeSec, camera, aliens, world) {
       audio.setPaused(session.paused);
@@ -2266,7 +2294,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         }
 
         fireAcc -= dt;
-        if (input.fire && session.combat && fireAcc <= 0 && pilot === 'ship' && cannonTips.length > 0 && energy >= ENERGY_PER_SHOT) {
+        if (input.fire && session.armed && fireAcc <= 0 && pilot === 'ship' && cannonTips.length > 0 && energy >= ENERGY_PER_SHOT) {
           fireAcc = FIRE_INTERVAL;
           energy -= ENERGY_PER_SHOT;
           fire(enemies);
@@ -2282,7 +2310,18 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       let nearScore = Infinity;
       let sunBody: FlightBody | null = null;
       let sunD = Infinity;
+      let solD = NaN;
+      let solPos: THREE.Vector3 | null = null;
+      zoneOrbits.mars = zoneOrbits.jupiter = zoneOrbits.neptune = NaN;
       for (const b of world.bodies) {
+        if (b.id === 'sun') solPos = b.position;
+      }
+      for (const b of world.bodies) {
+        if (solPos) {
+          if (b.id === 'mars') zoneOrbits.mars = b.position.distanceTo(solPos);
+          else if (b.id === 'jupiter') zoneOrbits.jupiter = b.position.distanceTo(solPos);
+          else if (b.id === 'neptune') zoneOrbits.neptune = b.position.distanceTo(solPos);
+        }
         if (b.destroyed || b.kind === 'station') continue;
         const d = me.position.distanceTo(b.position);
         // Altitude in the body's own radii, so a small moon only takes the
@@ -2334,6 +2373,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       }
       regionHold -= dt;
       tel.region = regionHold > 0 ? region : '';
+      if (solPos) solD = me.position.distanceTo(solPos);
+      tel.zone = alienZone(world.systemName, tel.nearId, solD, zoneOrbits);
       // The arrival's entry is scripted: the profile says how hot the hull
       // is, whatever the air under it happens to compute. Orbit insertion
       // stays out of the air altogether (the entry is flown in the surface
@@ -2374,7 +2415,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
 
       // ── Wings: spread for a fight (firing, or contacts on the radar),
       // swept flat for speed. F overrides until the next regime change. ──
-      const foilsAuto = jumpPhase === 'none' && !isDrive(mode) && ((input.fire && session.combat) || aliens.contactState === 'hostile');
+      const foilsAuto = jumpPhase === 'none' && !isDrive(mode) && ((input.fire && session.armed) || aliens.contactState === 'hostile');
       const foilsOpen = pilot === 'ship' && jumpPhase === 'none' && (foilsForced ?? foilsAuto);
       foilT += ((foilsOpen ? 1 : 0) - foilT) * (1 - Math.exp(-dt * 3.2));
       for (const w of shipParts.wings) {
@@ -2542,7 +2583,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           tmp2.copy(prevPos).addScaledVector(seg, along);
           if (tmp2.distanceToSquared(e.group.position) < r * r) {
             aliens.spawnSparks(b.mesh.position, 0.034);
-            if (aliens.damage(e, 15)) tel.kills += 1;
+            if (aliens.damage(e, PLAYER_BOLT_DAMAGE)) tel.kills += 1;
             spent = true;
             break;
           }
@@ -2583,11 +2624,20 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         setAlert('hostile', 2.5);
       }
       lastEnemies = enemies.length;
-      if (contactState === 'scan' && lastContact !== 'scan') {
+      // The scanning alert is for the scout; other visitors have their own callout.
+      if (contactState === 'scan' && lastContact !== 'scan' && (aliens.encounter ?? 'scout') === 'scout') {
         setAlert('contact', 3);
       }
       lastContact = contactState;
       tel.contact = contactState;
+      const seq = aliens.calloutSeq ?? 0;
+      if (seq !== lastCalloutSeq) {
+        lastCalloutSeq = seq;
+        calloutKey = aliens.callout ?? '';
+        calloutHold = CALLOUT_HOLD;
+      }
+      calloutHold -= dt;
+      tel.encounter = calloutHold > 0 ? calloutKey : '';
 
       // ── Navigation target. ──
       candidates.length = 0;

@@ -1517,7 +1517,13 @@ export function SolarSystemCanvas({
           session.input.fromHome = false;
           ship.spawn(fromHome || !parkedRef.current ? world.home : parkedRef.current);
           const live = ship;
-          aliens.setHostile({ group: live.group, onHit: (dmg) => live.takeDamage(dmg) });
+          aliens.setHostile({
+            group: live.group,
+            onHit: (dmg) => live.takeDamage(dmg),
+            onRepair: (hull, shield) => live.repair(hull, shield),
+            // The encounters read the ship's region, health and drive straight off its telemetry.
+            status: session.telemetry,
+          });
           if (QA_HOOKS) window.__stellarFlight = { session, ship: live, world, aliens };
         }
       } else if (ship) {
