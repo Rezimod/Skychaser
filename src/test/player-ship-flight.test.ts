@@ -13,6 +13,7 @@ import {
 } from '@/lib/solar-system/player-ship';
 import { projectTarget } from '@/lib/solar-system/flight-targeting';
 import { makeMissionTracker } from '@/lib/solar-system/flight-missions';
+import { MAX_SHIELD, SHIELD_REGEN_DELAY } from '@/lib/solar-system/combat-balance';
 import type { AlienHandle } from '@/lib/solar-system/aliens';
 
 const U = FLIGHT_UNIT;
@@ -241,7 +242,7 @@ describe('gravity and solid bodies', () => {
     expect(session.telemetry.alert).toBe('entry');
     expect(session.telemetry.heat).toBeGreaterThan(0.05);
     // Re-entry heat bleeds the shields before it touches the hull.
-    expect(session.telemetry.shield).toBeLessThan(100);
+    expect(session.telemetry.shield).toBeLessThan(MAX_SHIELD);
     expect(session.telemetry.hp).toBe(100);
   });
 
@@ -342,10 +343,10 @@ describe('gravity and solid bodies', () => {
       expect(session.telemetry.crashed).toBe(false);
       const d = ship.group.position.distanceTo(world.bodies[1].position);
       if (d < EARTH_R * 1.06) touched = true;
-      if (touched && session.telemetry.shield < 100) break;
+      if (touched && session.telemetry.shield < MAX_SHIELD) break;
     }
     expect(touched).toBe(true);
-    expect(session.telemetry.shield).toBeLessThan(100);
+    expect(session.telemetry.shield).toBeLessThan(MAX_SHIELD);
     expect(ship.group.position.distanceTo(world.bodies[1].position)).toBeGreaterThan(EARTH_R);
     // Pushed against the surface for seconds on end: no death by a thousand scrapes.
     seconds(4);
@@ -570,9 +571,9 @@ describe('cockpit and radio', () => {
 describe('shields, hull and wings', () => {
   it('shields absorb fire first, then the hull, and enough fire destroys the ship', () => {
     ship.takeDamage(40);
-    expect(session.telemetry.shield).toBe(60);
+    expect(session.telemetry.shield).toBe(MAX_SHIELD - 40);
     expect(session.telemetry.hp).toBe(100);
-    ship.takeDamage(90);
+    ship.takeDamage(MAX_SHIELD - 40 + 30);
     expect(session.telemetry.shield).toBe(0);
     expect(session.telemetry.hp).toBe(70);
     step(1);
@@ -582,14 +583,14 @@ describe('shields, hull and wings', () => {
     expect(session.telemetry.crashed).toBe(true);
     seconds(3.7);
     expect(session.telemetry.crashed).toBe(false);
-    expect(session.telemetry.shield).toBe(100);
+    expect(session.telemetry.shield).toBe(MAX_SHIELD);
   });
 
   it('shields recharge after a quiet spell; the hull knits back slowly', () => {
-    ship.takeDamage(120);
+    ship.takeDamage(MAX_SHIELD + 20);
     expect(session.telemetry.shield).toBe(0);
     expect(session.telemetry.hp).toBe(80);
-    seconds(4);
+    seconds(SHIELD_REGEN_DELAY - 0.5);
     expect(session.telemetry.shield).toBe(0);
     seconds(3);
     expect(session.telemetry.shield).toBeGreaterThan(5);

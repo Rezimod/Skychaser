@@ -26,6 +26,15 @@ export interface StarSystemHandle {
   dispose: () => void;
 }
 
+/** How much of its orbital pace Proxima b keeps with a ship this many of its
+ *  radii away. At full pace it runs about five of its own radii a second,
+ *  faster than any drive and far faster than the approach lets a ship close
+ *  on a world, so a dive could never catch it: it slows as the ship comes
+ *  in and holds still for the way down, the way Sol's worlds do in flight. */
+export function proximaOrbitPace(distRadii: number): number {
+  return THREE.MathUtils.smoothstep(distRadii, 15, 60);
+}
+
 export function makeAlphaCentauri(sunMaterial: THREE.Material, lite: boolean): StarSystemHandle {
   const group = new THREE.Group();
   group.name = 'alphaCentauri';
@@ -276,7 +285,7 @@ export function makeAlphaCentauri(sunMaterial: THREE.Material, lite: boolean): S
       coronaA.update(cameraPos, center, dtSec, camera);
       // The corona group is a child here, so undo the world position it sets.
       coronaA.group.position.set(0, 0, 0);
-      pbAngle += dtSec * 0.06;
+      pbAngle += dtSec * 0.06 * proximaOrbitPace(cameraPos.distanceTo(pb.body.position) / pb.body.radius);
       pb.mesh.position.set(proximaLocal.x + Math.cos(pbAngle) * PB_ORBIT, proximaLocal.y, proximaLocal.z + Math.sin(pbAngle) * PB_ORBIT);
       pb.mesh.rotation.y = pbAngle;
       pb.body.position.copy(pb.mesh.position).add(center);

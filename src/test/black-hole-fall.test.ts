@@ -160,10 +160,11 @@ describe('black hole: the fall', () => {
 
   it('past the horizon the ship is spat back out at home by the Earth, whole', () => {
     ship.spawn(world.home);
-    ship.takeDamage(150);
+    // Through the shields and into the hull.
+    ship.takeDamage(session.telemetry.maxShield + 50);
     expect(session.telemetry.hp).toBeLessThan(session.telemetry.maxHp);
     placeAt(NO_RETURN_RS * 0.99);
-    ship.takeDamage(150);
+    ship.takeDamage(session.telemetry.maxShield + 50);
     const tel = session.telemetry;
     const frames = Math.ceil((FALL_SEC + DARK_SEC + 0.5) / DT);
     let sawDark = false;

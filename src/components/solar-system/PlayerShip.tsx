@@ -58,8 +58,8 @@ interface PlayerShipProps {
 }
 const SHIPS: ShipKind[] = ['kestrel', 'xfoil', 'cruiser', 'endurance'];
 const BARS = ['shield', 'energy', 'boost'] as const;
-const KEY_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r10', 'r12', 'r13', 'r7', 'r15', 'r8', 'r16', 'r11', 'r14', 'r9'] as const;
-const TOUCH_ROWS = ['t1', 't2', 't3', 't11', 't6', 't15', 't12', 't14', 't5'] as const;
+const KEY_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r17', 'r6', 'r10', 'r12', 'r13', 'r7', 'r15', 'r8', 'r16', 'r11', 'r14', 'r9'] as const;
+const TOUCH_ROWS = ['t1', 't2', 't3', 't16', 't11', 't6', 't15', 't12', 't14', 't5'] as const;
 const HELP_SEEN = 'stellar_explore_help';
 /** The arrival has been watched once; from now on it can be skipped from the first second. */
 const ARRIVAL_SEEN = 'stellar_explore_arrival';
@@ -73,6 +73,10 @@ const POPUP_MS = 4200;
 /** The ship's alerts that are a danger, and the ones that are good news. */
 const WARN_ALERTS = new Set(['proximity', 'solar', 'lowshield', 'shielddown', 'hullcritical', 'hostile', 'horizon', 'masslock']);
 const OK_ALERTS = new Set(['jumpready', 'arrived', 'docked', 'undocked']);
+/** Alien encounter callouts (aliens.ts): good news, a curiosity, or trouble. */
+const CALLOUT_OK = new Set(['greeter', 'beacon', 'beaconGreets', 'gift', 'salvage', 'clear', 'breakoff']);
+const CALLOUT_WARN = new Set(['raiders', 'swarm', 'mines', 'patrol', 'carrier', 'gunship', 'wave']);
+const calloutTone = (key: string) => CALLOUT_WARN.has(key) ? 'warn' : CALLOUT_OK.has(key) ? 'ok' : 'info';
 /** The quick targets in the menu: a named world, or a kind to walk through.
  *  A key only shows when the system it is flown in has one. */
 interface RailKey {
@@ -180,6 +184,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
   const rangeRef = useRef<HTMLSpanElement>(null);
   const statusRef = useRef<HTMLSpanElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
+  const calloutRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<HTMLDivElement>(null);
   const markerNameRef = useRef<HTMLSpanElement>(null);
   const commsRef = useRef<HTMLDivElement>(null);
@@ -505,6 +510,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
     let lastAltKm = Infinity;
     let lastNearId = '';
     let lastOrder = '';
+    let lastCallout = '';
     const pop = (value: string, tone: string, now: number) => { popText = value; popTone = tone; popUntil = now + POPUP_MS; };
     const name = (id: string) => SOLAR_IDS.has(id) ? tb(`${id}.name`) : t.has(`bodies.${id}`) ? t(`bodies.${id}`) : id.toUpperCase();
     const text = (el: HTMLElement | null, value: string) => { if (el && el.textContent !== value) el.textContent = value; };
@@ -684,6 +690,21 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       }
       wasReady = landNow;
       lastOrder = orderKey;
+      // Alien encounters: a line at the top of the glass as they turn up —
+      // on a phone, through the same popup as everything else.
+      const enc = tel.encounter && t.has(`encounters.${tel.encounter}`) ? tel.encounter : '';
+      if (compact && enc && enc !== lastCallout) pop(t(`encounters.${enc}`), calloutTone(enc), now);
+      lastCallout = enc;
+      const callout = calloutRef.current;
+      if (callout) {
+        const show = !compact && !!enc;
+        if (callout.hidden !== !show) callout.hidden = !show;
+        if (show) {
+          text(callout, t(`encounters.${enc}`));
+          const tone = calloutTone(enc);
+          if (callout.dataset.tone !== tone) callout.dataset.tone = tone;
+        }
+      }
       const toast = toastRef.current;
       if (toast) {
         const showing = !compact ? '' : status || (now < popUntil ? popText : '');
@@ -1053,6 +1074,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
           )}
           <div ref={markerRef} className="flight-hud__marker" hidden><span ref={markerNameRef} /></div>
           <div ref={toastRef} className="flight-hud__toast" role="status" aria-live="polite" hidden />
+          <div ref={calloutRef} className="flight-hud__callout" role="status" aria-live="polite" hidden />
           <div ref={commsRef} className="flight-hud__comms" role="status" hidden>
             <span ref={commsFromRef} className="flight-hud__comms-from" />
             <p ref={commsTextRef} />
@@ -1081,10 +1103,10 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
                 }} />}
               </div>
             )}
-            <div className="flight-hud__keys" data-combat={session.combat}>
+            <div className="flight-hud__keys" data-combat={session.armed}>
               {touch ? (
                 <>
-                  {session.combat && <button type="button" className="flight-hud__key flight-hud__key--fire" {...placed('fire')} {...hold('fire')} disabled={keysOff} aria-label={t('fire')} title={t('fire')}><Crosshair size={26} aria-hidden /><span>{t('fire')}</span></button>}
+                  {session.armed && <button type="button" className="flight-hud__key flight-hud__key--fire" {...placed('fire')} {...hold('fire')} disabled={keysOff} aria-label={t('fire')} title={t('fire')}><Crosshair size={26} aria-hidden /><span>{t('fire')}</span></button>}
                   <button type="button" className="flight-hud__key" {...placed('boost')} {...hold('boost')} disabled={keysOff} aria-label={t('boost')} title={t('boost')}><ChevronsUp size={20} aria-hidden /><span>{t('boost')}</span></button>
                   <button type="button" className="flight-hud__key" {...placed('brake')} {...hold('brake')} disabled={keysOff} aria-label={t('brake')} title={t('brake')}><Pause size={16} aria-hidden /><span>{t('brake')}</span></button>
                   <div className="flight-hud__gear-slot" {...placed('gear')}><FlightGear session={session} paused={keysOff} touch={touch} /></div>

@@ -18,6 +18,14 @@ import { getSettings } from '@/game/settings';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { currentQuality, onQualityChange, pixelRatioFor, stepQualityDown, type QualityProfile } from '@/game/quality';
 
+/** Seconds since the last frame, at most a tenth. 0 when no time has passed:
+ *  a coarse clock (a privacy-hardened browser rounds performance.now to a
+ *  millisecond or more) can stamp two frames alike, and a step of 0 s is a
+ *  0/0 in the walk, the car and the rover, which sticks as NaN for good. */
+export function frameSeconds(now: number, last: number): number {
+  return now > last ? Math.min(0.1, (now - last) / 1000) : 0;
+}
+
 export interface SurfaceHostOptions {
   clearColor: THREE.ColorRepresentation;
   exposure: number;
@@ -214,7 +222,9 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
     if (!docVisible || paused || !frameFn) return;
     raf = requestAnimationFrame(loop);
     const now = performance.now();
-    const dt = Math.min(0.1, (now - last) / 1000);
+    const dt = frameSeconds(now, last);
+    // Nothing has moved on since the last frame: wait for the next one.
+    if (dt <= 0) return;
     last = now;
     perf.begin(now);
     rendered = false;
