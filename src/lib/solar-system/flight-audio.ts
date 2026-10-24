@@ -32,8 +32,9 @@ export interface FlightAudio {
   warn: () => void;
   /** Docked, released, or a landing accepted. */
   confirm: () => void;
-  /** The black hole's organ, 0 far away and 1 at the horizon. Call every frame. */
-  drone: (k: number) => void;
+  /** The black hole's organ, 0 far away and 1 at the horizon. Call every
+   *  frame. `rise` (0..1) bends the pipes upward through the fall. */
+  drone: (k: number, rise?: number) => void;
   /** The roar of air on a re-entry heat shield, 0 silent … 1 at peak heating. Call every frame. */
   reentry: (k: number) => void;
   /** Down through the speed of sound: the double thud of the ship's own
@@ -58,6 +59,9 @@ export function makeFlightAudio(): FlightAudio {
   /** The black hole's organ, once it has been heard. */
   let droneGain: GainNode | null = null;
   let droneK = 0;
+  /** Pitch rise of the organ, quantised so it is only retuned when it moves. */
+  let droneRise = 0;
+  const dronePipes: { osc: OscillatorNode; f: number }[] = [];
   let roar: { gain: GainNode; filter: BiquadFilterNode; src: AudioBufferSourceNode; rumble: OscillatorNode } | null = null;
   let lastHit = -1;
   let paused = false;
@@ -293,8 +297,14 @@ export function makeFlightAudio(): FlightAudio {
         tone(c, 'triangle', 784, 790, 0.22, 0.26, 0.11);
       });
     },
-    drone(k) {
+    drone(k, rise = 0) {
       const next = k > 0.01 ? Math.min(1, k) : 0;
+      const bend = Math.round(Math.max(0, Math.min(1, rise)) * 40) / 40;
+      if (bend !== droneRise && droneGain && ctx) {
+        droneRise = bend;
+        // Up to an octave and a fifth by the horizon, gliding.
+        for (const p of dronePipes) p.osc.frequency.setTargetAtTime(p.f * (1 + 2 * bend * bend), ctx.currentTime, 0.25);
+      }
       if (next === droneK) return;
       if (!droneGain && next === 0) return;
       droneK = next;
@@ -327,6 +337,7 @@ export function makeFlightAudio(): FlightAudio {
             g.gain.value = level;
             o.connect(g).connect(trem);
             o.start();
+            dronePipes.push({ osc: o, f });
           }
         }
         droneGain.gain.setTargetAtTime(droneK * 1.1, c.currentTime, droneK > 0 ? 0.9 : 0.5);
@@ -405,6 +416,8 @@ export function makeFlightAudio(): FlightAudio {
       chargeVoice = null;
       droneGain = null;
       droneK = 0;
+      droneRise = 0;
+      dronePipes.length = 0;
       closeAudio(ctx);
       ctx = null;
       master = null;

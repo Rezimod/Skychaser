@@ -549,9 +549,17 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       // dive into an atmosphere. The glide's haze comes up under it.
       prop(root, '--heat', Math.min(1, tel.heat).toFixed(3));
       prop(root, '--glide', (tel.approachPhase === 'glide' ? tel.approachLegT : 0).toFixed(3));
+      // A black hole (black-hole-fall.ts): the tides at the glass, the view
+      // closing to black at the horizon, and the dark beyond it.
+      const hole = tel.swallow;
+      prop(root, '--tidal', (hole === 'pull' || hole === 'fall' ? tel.tidal : hole === 'dark' ? 1 : 0).toFixed(2));
+      prop(root, '--void', (hole === 'dark' ? 1 : hole === 'fall' ? Math.max(0, tel.swallowT - 0.78) / 0.22 : 0).toFixed(2));
+      prop(root, '--streak', (hole === 'dark' ? Math.sin(tel.swallowT * Math.PI) : 0).toFixed(3));
       if (root && root.dataset.view !== tel.view) root.dataset.view = tel.view;
       let status = '';
-      if (tel.crashed) status = t('respawn', { n: Math.ceil(tel.respawnIn) });
+      if (hole === 'spat') status = t('spaghettified');
+      else if (hole === 'fall' || hole === 'dark') status = t('noReturn');
+      else if (tel.crashed) status = t('respawn', { n: Math.ceil(tel.respawnIn) });
       else if (tel.docked) status = t('dockedAt', { body: name(tel.dockedTo) });
       else if (tel.alert) status = t(`alerts.${tel.alert}`, { target: t(`systems.${tel.targetName}`), system });
       else if (tel.supply) status = t('supplying');
@@ -930,6 +938,8 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
               and the flash goes off at both ends of the jump. */}
           <div className="flight-hud__warp" aria-hidden />
           <div className="flight-hud__flash" aria-hidden />
+          {/* Falling into a black hole: tides, shifted light, then the dark. */}
+          <div className="flight-hud__hole" aria-hidden />
           {/* The air on the hull, seen from the seat: an orange glow at the
               edges of the glass that follows the heat, and the ground's haze
               coming up through the glide. */}
