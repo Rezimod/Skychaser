@@ -45,7 +45,8 @@ export default function OddsBoard({ supply }: { supply: Supply }) {
         ))}
       </div>
 
-      <ul className="sd-pub__tiles" role="tabpanel" aria-label={`${tier.name} capsule odds`}>
+      <div role="tabpanel" aria-label={`${tier.name} capsule odds`}>
+      <ul className="sd-pub__tiles">
         {[...RARITIES].reverse().map((r) => (
           <li key={r} className={`sd-pub__tile sd-pub--${r}${tier.oddsBps[r] === 0 ? ' is-none' : ''}`}>
             <span className="sd-pub__mark" />
@@ -57,6 +58,7 @@ export default function OddsBoard({ supply }: { supply: Supply }) {
           </li>
         ))}
       </ul>
+      </div>
 
       <div className="sd-pub__foot">
         <span>
