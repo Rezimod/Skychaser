@@ -296,8 +296,6 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
       // The landing computer's key while it can still be handed the ship,
       // and the way back to base once the crew are out of sight of it.
       root.dataset.autoland = String(tel.autoland);
-      // Flying inside the air after a dive: the pilot's ship, free to land or not.
-      root.dataset.free = String(tel.freeFlight);
       root.dataset.far = String(tel.baseDistance > BASE_KEY_M);
       // In flight the jump key is the way down (suit-jet.css swaps its face).
       root.dataset.jetFlying = String(tel.flying);
@@ -569,9 +567,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
   const jumpKey = hold((on) => {
     const c = controlsRef.current;
     if (!c) return;
-    // In flight (the pack, or the ship inside the air) the key is the way down.
-    const tel = handleRef.current?.telemetry;
-    const down = on && !!(tel?.flying || tel?.freeFlight);
+    const down = on && !!handleRef.current?.telemetry.flying;
     c.touchDeck.jump = on && !down;
     c.touchDeck.descend = down;
     c.sync();
@@ -663,7 +659,6 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
               <span ref={orbWarpRef} className="orbital-hud__warp" data-warp="true" />
               <span ref={orbMachRef} className="orbital-hud__mach" hidden />
             </span>
-            <span className="orbital-hud__free">{t('landing.orbital.flightHint')}</span>
             <span ref={orbSkipRef} className="orbital-hud__skip">
               {touch
                 ? <button type="button" onClick={() => handleRef.current?.skipOrbit()}>{t('landing.orbital.skipTouch')}</button>
