@@ -218,8 +218,6 @@ export interface SurfaceTelemetry {
   gemPoints: number;
   gemLast: GemKind | '';
   gemPicks: number;
-  /** The pilot is flying the ship over the Moon (after a dive), free to land or not. */
-  freeFlight: boolean;
   /** The landing computer is flying the descent down to the pad. */
   autoland: boolean;
   /** Metres from the crew to where they stepped off the ship, on the surface. */
@@ -486,11 +484,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   scene.add(lander.group);
   // The way down from orbit to where the lander's powered descent begins,
   // and the way back up: flown in this scene (surface-flight).
-  const flight = makeSurfaceFlight({
-    world: 'moon', lander, scene, camera, lite, baseFov: () => baseFov,
-    // After a dive the ship is the pilot's over the Moon, landing near the base.
-    free: () => ({ ground: terrain.heightAt, landRadius: TERRAIN_WALK_RADIUS - 2, pad: lander.pad, floor: 40 }),
-  });
+  const flight = makeSurfaceFlight({ world: 'moon', lander, scene, camera, lite, baseFov: () => baseFov });
   const mission = makeMission(terrain.heightAt, dig, dust, lite, lightPool, base.zones.anchors.scienceTerminal);
   scene.add(mission.group);
   base.colliders.push(...mission.colliders);
@@ -596,7 +590,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     mission: mission.telemetry, missions: moonMissions.missions.telemetry, props: moonMissions.props.telemetry,
     jobs: jobs.telemetry, prompt: interactions.prompt, achievements: sink.list(),
     airlock: { near: false, state: 'closed', cycle: 0 }, readout: '', readoutHold: 0, inside: '',
-    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0, freeFlight: false,
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0,
     backrooms: {
       phase: '', black: 0, crack: false, helmet: true, gravity: MOON_G, prompt: { active: false, label: '', kind: 'tap', progress: -1 },
       radio: '', radioHold: 0, readout: '', glitch: 0, guiding: false, seconds: 0, escaped: saved.escaped, bestSeconds: saved.bestSeconds,
@@ -1032,28 +1026,10 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
       // ── From orbit: the ship flies itself down the corridor to where the
       // powered descent begins; the stick leans on it, the action key
       // skips to the end, and the lander takes over with no seam. ──
-      if (input.interact || input.autoland) { input.interact = false; input.autoland = false; flight.skip(); }
-      const step = flight.update(dt, { moveX: input.moveX, moveY: input.moveY, throttle: input.throttle, descend: !!input.descend });
+      if (input.interact) { input.interact = false; flight.skip(); }
+      const step = flight.update(dt, { moveX: input.moveX, moveY: input.moveY, throttle: input.throttle });
       telemetry.orbital = flight.telemetry;
-      telemetry.freeFlight = flight.leg === 'free';
-      telemetry.autoland = !!flight.free?.autopilot;
-      if (step === 'landed') {
-        telemetry.freeFlight = false;
-        telemetry.orbital = null;
-        lander.settle(terrain.heightAt);
-        lander.telemetry.touchdown = 0.5;
-        settleLander();
-        telemetry.phase = 'touchdown';
-        telemetry.grade = 'feather';
-        egressHold = EGRESS_HOLD;
-        cam.yaw = flight.cameraYaw();
-      } else if (step === 'orbit') {
-        telemetry.freeFlight = false;
-        telemetry.orbital = null;
-        telemetry.ascended = true;
-      }
       if (step === 'handover') {
-        telemetry.freeFlight = false;
         // After a dive the computer flies the last of it down onto the base's
         // pad; the stick (or the engine key) takes it back.
         if (dived) lander.telemetry.assist = true;

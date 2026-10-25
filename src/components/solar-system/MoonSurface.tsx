@@ -308,8 +308,6 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
       if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
       root.dataset.phase = tel.phase;
       root.dataset.autoland = String(tel.autoland);
-      // Flying inside the air after a dive: the pilot's ship, free to land or not.
-      root.dataset.free = String(tel.freeFlight);
       root.dataset.far = String(tel.baseDistance > 40 && tel.backrooms.phase === '');
       root.dataset.view = tel.view;
       // In flight the jump key is the way down (suit-jet.css swaps its face).
@@ -637,9 +635,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
   const jumpKey = hold((on) => {
     const c = controlsRef.current;
     if (!c) return;
-    // In flight (the pack, or the ship inside the air) the key is the way down.
-    const tel = handleRef.current?.telemetry;
-    const down = on && !!(tel?.flying || tel?.freeFlight);
+    const down = on && !!handleRef.current?.telemetry.flying;
     c.touchDeck.jump = on && !down;
     c.touchDeck.descend = down;
     c.sync();
@@ -749,7 +745,6 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
             </div>
             <span className="orbital-hud__heat"><span>{t('landing.orbital.heat')}</span><i><b ref={orbHeatRef} /></i></span>
             <span ref={orbWarpRef} className="orbital-hud__warp" data-warp="true" />
-            <span className="orbital-hud__free">{t('landing.orbital.flightHint')}</span>
             <span ref={orbSkipRef} className="orbital-hud__skip">
               {touch
                 ? <button type="button" onClick={() => handleRef.current?.skipOrbit()}>{t('landing.orbital.skipTouch')}</button>

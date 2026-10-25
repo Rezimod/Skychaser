@@ -162,8 +162,6 @@ export interface WorldTelemetry {
   /** The last gem picked up, and a count of pickups this visit so the glass can tell a new one. */
   gemLast: GemKind | '';
   gemPicks: number;
-  /** The pilot is flying the ship inside the air (after a dive), free to land or not. */
-  freeFlight: boolean;
   /** The landing computer is flying the descent down to the pad. */
   autoland: boolean;
   /** Metres from the crew to the base's pad (where the ship stands), on the surface. */
@@ -405,15 +403,6 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   const flight = globeWorld ? makeSurfaceFlight({
     world: globeWorld, lander, scene, camera, lite, baseFov: () => baseFov,
     sounds: { reentry: (k) => flightAudio?.reentry(k), boom: () => flightAudio?.sonicBoom() },
-    // After a dive the ship is the pilot's inside the air. Over Tbilisi it
-    // stays clear of the rooftops and comes down only on the park's lawn;
-    // over a giant only on the outpost's deck.
-    free: () => ({
-      ground: floorAt,
-      landRadius: earth ? 150 : deck ? deck.radius - 4 : walkRadius - 2,
-      pad: { x: padX, z: padZ },
-      floor: earth ? 90 : deck ? 60 : 40,
-    }),
   }) : null;
   const walkRadius = earth ? EARTH_WALK_RADIUS : profile.walkRadius;
   // Where the jetpack may take the crew: past the fence, up to this world's
@@ -461,7 +450,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     aliens: aliens ? aliens.telemetry : null,
     earth: earth ? earth.state : null,
     entry: false,
-    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0, freeFlight: false,
+    gems: gems.count, gemsTotal: gems.total, gemPoints: gems.points, gemLast: '', gemPicks: 0, autoland: false, baseDistance: 0,
   };
   function banner(key: string) { telemetry.banner = key; telemetry.bannerHold = 5; }
 
@@ -612,36 +601,14 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       // the entry, the glide — to where the powered descent begins; the
       // stick leans on it, the action key skips to the end, and the lander
       // takes over with no seam. ──
-      if (input.interact || input.autoland) { input.interact = false; input.autoland = false; flight.skip(); }
-      const step = flight.update(dt, { moveX: input.moveX, moveY: input.moveY, throttle: input.throttle, descend: !!input.descend });
+      if (input.interact) { input.interact = false; flight.skip(); }
+      const step = flight.update(dt, { moveX: input.moveX, moveY: input.moveY, throttle: input.throttle });
       telemetry.orbital = flight.telemetry;
       telemetry.entry = flight.telemetry.phase === 'entry';
-      telemetry.freeFlight = flight.leg === 'free';
-      telemetry.autoland = !!flight.free?.autopilot;
-      if (step === 'landed') {
-        // Set down by the pilot, where the ship was: on its gear, crew out beside it.
-        telemetry.freeFlight = false;
-        telemetry.orbital = null;
-        telemetry.entry = false;
-        lander.settle(floorAt);
-        lander.telemetry.touchdown = 0.5;
-        settleLander();
-        telemetry.phase = 'touchdown';
-        telemetry.grade = 'feather';
-        egressHold = EGRESS_HOLD;
-        audio.thump(40);
-        cam.yaw = flight.cameraYaw();
-      } else if (step === 'orbit') {
-        // Up through the top of the air: back to space.
-        telemetry.freeFlight = false;
-        telemetry.orbital = null;
-        telemetry.ascended = true;
-      }
       if (step === 'handover') {
         // After a dive the computer flies the last of it down onto the base's
         // pad; the stick (or the engine key) takes it back.
         if (dived) lander.telemetry.assist = true;
-        telemetry.freeFlight = false;
         telemetry.phase = 'descent';
         telemetry.orbital = null;
         telemetry.entry = false;

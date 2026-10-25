@@ -46,8 +46,7 @@ import {
  *  and more. */
 export const DIVE_PACE = 4;
 
-/** `flight`: the pilot's own, inside the air after a dive (atmo-flight.ts). */
-export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'flight' | 'done';
+export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'done';
 /** The legs of the way back up. */
 export type AscentPhase = 'climb' | 'ascent' | 'orbit' | 'done';
 
