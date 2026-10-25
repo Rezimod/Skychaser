@@ -20,7 +20,11 @@ export const metadata: Metadata = {
     'A capsule holds one card from Genesis. The outcome is sealed before it goes on sale and can be checked by anyone after it opens.',
 };
 
-export default async function CapsulesPage() {
+/** Capsules of one tier are alike, so the page lists the next few of each and links to the rest. */
+const PER_TIER = 3;
+
+export default async function CapsulesPage({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
+  const showAll = (await searchParams).all === '1';
   const db = getDb();
   let onSale: Awaited<ReturnType<typeof capsulesOnSale>> | null = null;
   let supply: SupplyRow[] | null = null;
@@ -35,6 +39,14 @@ export default async function CapsulesPage() {
   }
 
   const sealed = onSale?.[0];
+  const perTier = new Map<string, number>();
+  const shown = showAll
+    ? onSale
+    : onSale?.filter((c) => {
+        const n = perTier.get(c.tier ?? '') ?? 0;
+        perTier.set(c.tier ?? '', n + 1);
+        return n < PER_TIER;
+      });
   // The odds each capsule on the shelf was listed under — what it opens under — one row per distinct set.
   const oddsRows = new Map<string, { key: string; label: string; odds: Record<Rarity, number> }>();
   for (const c of onSale ?? []) {
@@ -111,7 +123,7 @@ export default async function CapsulesPage() {
         {onSale === null && <p className="sd-note">The sale cannot be read at the moment.</p>}
         {onSale?.length === 0 && <p className="sd-note">Nothing is listed right now.</p>}
         <div className="sd-capsules">
-          {onSale?.map((c) => {
+          {shown?.map((c) => {
             const gone = supply ? goneRarities(c.oddsBps, supply, held) : [];
             return (
             <article key={c.id} className="sd-capsule">
@@ -143,6 +155,13 @@ export default async function CapsulesPage() {
             );
           })}
         </div>
+        {onSale && shown && shown.length < onSale.length && (
+          <p className="sd-note">
+            <Link href="/capsules?all=1" className="sd-link" scroll={false}>
+              Show all {onSale.length} capsules
+            </Link>
+          </p>
+        )}
       </section>
 
       <section className="sd-container">

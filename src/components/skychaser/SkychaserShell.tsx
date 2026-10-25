@@ -20,13 +20,11 @@ const RECOGNITION = [
     href: 'https://superteam.fun/earn/listing/tether-frontier-hackathon-track',
     logo: '/brand-partners/qvac.svg', logoAlt: 'QVAC by Tether', logoWidth: 218, logoHeight: 24,
     label: 'Tether Frontier', rank: '1st place',
-    linkLabel: 'View Tether Frontier Hackathon track on Superteam Earn',
   },
   {
     href: 'https://superteam.fun/earn/grants/solana-foundation-georgia-grants',
     logo: '/brand-partners/superteam-mark.png', logoAlt: 'Superteam', logoWidth: 160, logoHeight: 48,
     label: 'Superteam', rank: 'Grant',
-    linkLabel: 'View the Solana Foundation grant on Superteam Earn',
   },
 ];
 
@@ -114,7 +112,7 @@ export default function SkychaserShell({
                 <ul className="sd-recog">
                   {RECOGNITION.map((r) => (
                     <li key={r.label}>
-                      <a href={r.href} target="_blank" rel="noopener noreferrer" aria-label={r.linkLabel} className="sd-recog__item">
+                      <a href={r.href} target="_blank" rel="noopener noreferrer" className="sd-recog__item">
                         <img src={r.logo} alt={r.logoAlt} width={r.logoWidth} height={r.logoHeight} loading="lazy" />
                         <span className="sd-recog__cap">
                           {r.label} · <b>{r.rank}</b>

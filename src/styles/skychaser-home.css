@@ -65,7 +65,7 @@
 .skychaser .sd-flight__text { color: var(--sd-ink-2, rgba(244, 244, 242, 0.75)); font-size: 14.5px; line-height: 1.5; }
 .skychaser .sd-flight__tag { margin-top: 4px; font: 600 11px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-ink-3, rgba(244, 244, 242, 0.55)); }
 .skychaser .sd-flight > li.is-live .sd-flight__tag { color: var(--sd-hal, #e3482c); }
-.skychaser .sd-flight > li:not(.is-live) :is(.sd-flight__title, .sd-flight__text) { opacity: 0.6; }
+.skychaser .sd-flight > li:not(.is-live) :is(.sd-flight__title, .sd-flight__text) { opacity: 0.8; }
 .skychaser a.sd-flight__step:hover .sd-flight__title { color: var(--sd-hal, #e3482c); }
 @media (max-width: 859px) { .skychaser .sd-flight { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 20px; } }
 @media (max-width: 479px) { .skychaser .sd-flight { grid-template-columns: 1fr; gap: 0; } .skychaser .sd-flight__step { padding: 16px 0 18px; } }

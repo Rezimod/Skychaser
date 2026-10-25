@@ -10,7 +10,7 @@ export default function OrbitRing({ designations }: { designations: string[] }) 
       <div className="sd-orbit__path" />
       <div className="sd-orbit__sun">
         <span className="sd-orbit__corona" />
-        <img src="/sky/targets/sun.jpg" alt="" width={640} height={611} loading="lazy" decoding="async" />
+        <img src="/sky/targets/sun-480.webp" alt="" width={480} height={458} loading="lazy" decoding="async" />
       </div>
       <ul className="sd-orbit__ring" style={{ '--n': designations.length } as React.CSSProperties}>
         {designations.map((d, i) => (
