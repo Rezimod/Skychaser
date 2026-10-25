@@ -3432,16 +3432,3 @@
 }
 .moon-surface[data-phase='surface'][data-far='true'] .moon-hud__gobase { display: inline-flex; }
 .moon-surface[data-immersive='true'] .moon-hud__basekey { display: none !important; }
-
-/* Free flight inside the air (atmo-flight): the way to the base on a key,
-   a line on what the pilot may do, and no skip — there is nothing to skip. */
-.orbital-hud__free { display: none; margin-top: 6px; font-size: 11px; letter-spacing: 0.06em; color: var(--hud-warm, #ffc266); text-align: center; }
-.moon-surface[data-free='true'] .orbital-hud__free { display: block; }
-.moon-surface[data-free='true'] .orbital-hud__skip { display: none; }
-.moon-surface[data-free='true'][data-autoland='false'] .moon-hud__autoland { display: inline-flex; }
-.moon-surface[data-free='true'] .moon-hud__autoland { top: calc(max(12px, env(safe-area-inset-top)) + 214px); }
-/* In free flight the thumb has both ways: the engine key climbs, the jump key's "down" face descends. */
-.moon-surface[data-free='true'] .moon-hud__jump { display: flex; }
-.moon-surface[data-free='true'] :is(.moon-hud__ico-jump, .moon-hud__word-jump) { display: none; }
-.moon-surface[data-free='true'] :is(.moon-hud__ico-down, .moon-hud__word-down) { display: block; }
-.moon-surface[data-free='true'] .moon-hud__jump { grid-row: 1; grid-column: 2; }

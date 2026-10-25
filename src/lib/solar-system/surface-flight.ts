@@ -21,7 +21,6 @@ import {
 } from '@/lib/solar-system/orbital-descent';
 import { makeEntryFx, plasmaFor } from '@/lib/solar-system/entry-fx';
 import type { LanderHandle } from '@/lib/solar-system/moon-lander';
-import { makeFreeFlight, type FreeFlight, type FreeFlightOptions } from '@/lib/solar-system/atmo-flight';
 
 export interface SurfaceFlightSounds {
   /** The air on the hull, 0…1, every frame. */
@@ -39,23 +38,17 @@ export interface SurfaceFlightOptions {
   /** The player's field of view, read each frame (it can change in Settings). */
   baseFov: () => number;
   sounds?: SurfaceFlightSounds;
-  /** Free flight inside the world after a dive (atmo-flight.ts): where it may
-   *  go and land. Without it a dive flies the corridor down as before. */
-  free?: () => FreeFlightOptions;
 }
 
-/** `landed`: free flight set the ship down where it was (not on the pad). */
-export type SurfaceFlightStep = 'idle' | 'flying' | 'handover' | 'landed' | 'orbit';
+export type SurfaceFlightStep = 'idle' | 'flying' | 'handover' | 'orbit';
 
 export interface SurfaceFlight {
-  /** Which leg is being flown: `free` is the pilot's own, inside the air after a dive. */
-  leg: 'descent' | 'free' | 'ascent' | null;
-  /** Free flight, while it is flown: the computer, the edge, the height over the ground. */
-  free: FreeFlight | null;
+  /** Which leg is being flown. */
+  leg: 'descent' | 'ascent' | null;
   /** The live numbers of that leg (the last leg's once it is over). */
   telemetry: OrbitalTelemetry;
   /** Fly one frame: the scene's stick (x right, y forward) and throttle. */
-  update: (dt: number, stick: { moveX: number; moveY: number; throttle: number; descend?: boolean }) => SurfaceFlightStep;
+  update: (dt: number, stick: { moveX: number; moveY: number; throttle: number }) => SurfaceFlightStep;
   /** Development and the skip key: straight to the handover. */
   skip: () => void;
   /** Development: to the top of the entry (or the braking burn). */
@@ -87,12 +80,8 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
   let descent: OrbitalDescent | null = makeOrbitalDescent(world, handoverAt, { thrustTilt: lander.thrustTilt });
   let ascent: OrbitalFlight | null = null;
   let flight: OrbitalFlight | null = descent;
-  let free: FreeFlight | null = null;
-  /** Came in by a dive: once through the plasma, the ship is the pilot's. */
-  let dive = false;
   const self: SurfaceFlight = {
     leg: 'descent',
-    free: null,
     telemetry: descent.telemetry,
     update: () => 'idle',
     skip: () => undefined,
@@ -232,23 +221,6 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     const f = flight;
     if (!f) return 'idle';
     legT += dt;
-    if (free && f === free) {
-      // ── The pilot's own: free flight inside the air. ──
-      const step = free.step(dt, stick);
-      self.telemetry = free.telemetry;
-      flyShip(dt, free);
-      flyCamera(dt, free);
-      if (step === 'flying') return 'flying';
-      flight = null;
-      free = null;
-      self.free = null;
-      quiet();
-      if (step === 'orbit') { self.leg = 'ascent'; return 'orbit'; }
-      // Down onto the ground where it was, or over the pad for the lander's guidance.
-      lander.handover(f.position, f.velocity, f.finalYaw);
-      self.leg = null;
-      return step;
-    }
     input.pitch = -stick.moveY;
     input.cross = stick.moveX;
     input.throttle = stick.throttle;
@@ -256,18 +228,6 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     self.telemetry = f.telemetry;
     flyShip(dt, f);
     flyCamera(dt, f);
-    // A dive: past the plasma (into the glide, or the approach over an airless
-    // world), the ship is handed to the pilot to fly where they like.
-    const opened = dive && opts.free && self.leg === 'descent' && !f.telemetry.done
-      && (f.telemetry.phase === 'glide' || f.telemetry.phase === 'approach');
-    if (opened) {
-      free = makeFreeFlight(world, { position: f.position, velocity: f.velocity }, opts.free!());
-      flight = free;
-      self.free = free;
-      self.leg = 'free';
-      self.telemetry = free.telemetry;
-      return 'flying';
-    }
     if (!f.telemetry.done) return 'flying';
     const leg = self.leg;
     flight = null;
@@ -279,15 +239,12 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     return 'orbit';
   };
   self.skip = () => {
-    // In free flight the skip key is the way to the base: the computer flies it there.
-    if (free && flight === free) { free.landAtBase(); return; }
     if (!flight || self.leg !== 'descent' || !descent) return;
     descent.skip();
   };
   self.skipToEntry = () => {
     if (!descent || self.leg !== 'descent' || !flight) return;
     descent.skipToEntry();
-    dive = true;
     legT = Math.max(legT, INTRO);
   };
   self.beginAscent = () => {
@@ -308,8 +265,6 @@ export function makeSurfaceFlight(opts: SurfaceFlightOptions): SurfaceFlight {
     if (!flight) return;
     flight = null;
     descent = null;
-    free = null;
-    self.free = null;
     quiet();
   };
   self.cameraYaw = () => Math.atan2(offset.x, offset.z);
