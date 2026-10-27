@@ -45,8 +45,8 @@ import {
  *  `DIVE_TAIL_S` seconds of it, so the handover to the powered descent is
  *  at the lander's own speed. From the top of the air to the handover in
  *  about ten seconds, not half a minute and more. */
-export const DIVE_PACE = 9;
-export const DIVE_TAIL_S = 3;
+export const DIVE_PACE = 22;
+export const DIVE_TAIL_S = 1.6;
 
 export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'done';
 /** The legs of the way back up. */

@@ -309,9 +309,9 @@ declare global {
 }
 
 /** How long the touchdown plaque stays up before the crew steps out. */
-const EGRESS_HOLD = 4.2;
+const EGRESS_HOLD = 2.2;
 /** How much of that before the exit key is offered. */
-const EXIT_AFTER = 1.4;
+const EXIT_AFTER = 0.8;
 /** How long the crew is outside before the base gets round to mentioning the
  *  hum on channel two. Long enough not to talk over the first expedition act,
  *  short enough that nobody leaves without hearing it. */
