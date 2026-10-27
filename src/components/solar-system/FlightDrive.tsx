@@ -107,7 +107,7 @@ export function FlightJumpCard({ session, paused }: DriveProps) {
 
   return (
     <div className="flight-drive__jump-wrap">
-      <button ref={cardRef} type="button" className="flight-hud__card flight-drive__jump" onClick={() => setMenu((m) => !m)} disabled={paused} aria-expanded={menu && !paused} aria-haspopup="menu" aria-label={t('jumpLabel')}>
+      <button ref={cardRef} type="button" className="flight-hud__card flight-drive__jump" {...tapKey(() => setMenu((m) => !m))} disabled={paused} aria-expanded={menu && !paused} aria-haspopup="menu" aria-label={t('jumpLabel')}>
         <span className="flight-hud__card-icon"><Orbit size={18} aria-hidden /></span>
         <span className="flight-hud__card-text">
           <span className="flight-hud__card-label">{t('jumpShort')}<span ref={distRef} className="flight-drive__dist" /></span>
