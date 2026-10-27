@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { approachSpeedCap } from '@/lib/solar-system/flight-approach';
+import { entryShellRadii } from '@/lib/solar-system/flight-approach';
 import * as THREE from 'three';
 import {
   createFlightSession,
@@ -172,13 +172,12 @@ describe('speed regimes', () => {
 });
 
 describe('hyperdrive', () => {
-  it('is mass-locked inside three radii of a body', () => {
-    ship.group.position.set(1, 0, EARTH_R * 3.5);
+  it('jumps from anywhere, even a radius off a world: there is no mass lock', () => {
+    ship.group.position.set(1, 0, EARTH_R * 2);
+    expect(session.telemetry.driveReady).toBe(true);
     session.input.modeRequest = 'jump';
     step(1);
-    expect(session.telemetry.alert).toBe('masslock');
-    expect(session.telemetry.mode).toBe('cruise');
-    expect(session.telemetry.jumpPhase).toBe('none');
+    expect(session.telemetry.jumpPhase).toBe('charge');
   });
 
   it('charges, travels to the latched destination and arrives coasting', () => {
@@ -246,20 +245,6 @@ describe('gravity and solid bodies', () => {
     expect(session.telemetry.hp).toBe(100);
   });
 
-  it('throttles the fast drive inside a gravity well and frees it outside', () => {
-    ship.group.position.set(1, 0, EARTH_R * 4.5);
-    session.input.modeRequest = 'fast';
-    session.input.thrust = 1;
-    faceAway();
-    seconds(0.3);
-    // Still climbing out of Earth's well: well short of the fast ceiling.
-    expect(session.telemetry.alert).toBe('gravity');
-    expect(session.telemetry.speed).toBeLessThan(18);
-    seconds(14);
-    expect(session.telemetry.alert).not.toBe('gravity');
-    expect(session.telemetry.speed).toBeCloseTo(12, 0);
-  });
-
   it('flight assist off keeps momentum and needs counter-thrust', () => {
     // Clear of Earth's well, so only the drive and the drag act on the ship.
     ship.group.position.set(1, 0, EARTH_R * 14);
@@ -284,25 +269,40 @@ describe('gravity and solid bodies', () => {
     expect(session.telemetry.speed).toBeLessThan(0.2);
   });
 
-  it('slows by itself closing on a world to land on, whatever the throttle', () => {
-    // Three radii out in the fast drive, nose on Earth, throttle held: the
-    // approach must take the way off, not let the drive fling the ship in.
+  it('keeps the fast drive at full speed near a world: no well, no approach slow-down', () => {
     const earth = world.bodies[1];
-    ship.group.position.set(1, 0, EARTH_R * 4);
+    // Flying past Earth, two radii off it, nose along the track.
+    ship.group.position.set(1 - EARTH_R * 40, 0, EARTH_R * 3);
+    ship.group.lookAt(new THREE.Vector3(2, 0, EARTH_R * 3));
+    session.input.modeRequest = 'fast';
+    session.input.thrust = 1;
+    seconds(6);
+    const far = session.telemetry.speed;
+    let near = 0;
+    for (let i = 0; i < 6000 && near === 0; i++) {
+      step(1);
+      if (Math.abs(ship.group.position.x - earth.position.x) < EARTH_R) near = session.telemetry.speed;
+    }
+    expect(near).toBeGreaterThan(far * 0.97);
+  });
+
+  it('dives at full fast speed straight into the air, caught at its top, never crashing', () => {
+    const earth = world.bodies[1];
+    const shell = EARTH_R * entryShellRadii('earth');
+    ship.group.position.set(1, 0, EARTH_R * 30);
     ship.group.lookAt(earth.position);
     session.input.modeRequest = 'fast';
     session.input.thrust = 1;
-    let closeSpeed = Infinity;
-    for (let i = 0; i < 4000; i++) {
+    let into = '';
+    for (let i = 0; i < 20000 && !into; i++) {
       step(1);
       expect(session.telemetry.crashed).toBe(false);
-      const alt = ship.group.position.distanceTo(earth.position) / EARTH_R - 1;
-      if (alt < 0.15) { closeSpeed = session.telemetry.speed * FLIGHT_UNIT; break; }
+      into = session.telemetry.diveInto;
     }
-    // By the top of the air it is down near the approach's own pace.
-    // (The telemetry reads in flight units; the cap is in world radii a second.)
-    expect(closeSpeed).toBeLessThan(approachSpeedCap(0.15) * EARTH_R * 1.5);
-    expect(session.telemetry.approachSlow || closeSpeed <= approachSpeedCap(0.15) * EARTH_R * 1.05).toBe(true);
+    expect(into).toBe('earth');
+    // Stopped at the top of the air, however fast it came.
+    expect(ship.group.position.distanceTo(earth.position)).toBeGreaterThan(shell * 0.999);
+    expect(ship.group.position.distanceTo(earth.position)).toBeLessThan(shell * 1.001 + session.telemetry.speed * U * DT);
   });
 
   it('crashes on contact, holds the wreck, then respawns at home', () => {

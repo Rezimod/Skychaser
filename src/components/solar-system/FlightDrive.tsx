@@ -78,7 +78,7 @@ export function FlightGear({ session, paused, touch }: DriveProps) {
 
 /** The jump: a card that names where the drive is pointed and how far that
  *  is, opens the list of stars, and carries a light for the drive's state —
- *  green when it is clear to jump, amber inside a mass lock. */
+ *  green when it is clear to jump, amber while the pilot is out of the ship. */
 export function FlightJumpCard({ session, paused }: DriveProps) {
   const t = useTranslations('solarSystem.flight');
   const locale = useLocale();

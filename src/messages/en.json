@@ -1195,13 +1195,10 @@
       "alerts": {
         "proximity": "Collision — pull up",
         "entry": "Atmospheric entry",
-        "masslock": "Mass lock — too close to jump",
         "charging": "Hyperdrive charging → {target}",
         "jump": "Light speed → {target}",
         "arrived": "Arrived: {system}",
         "solar": "Solar proximity — hull heating",
-        "gravity": "Gravity well — the drive is throttled",
-        "jumpready": "Jump ready",
         "hostile": "Hostile contact",
         "contact": "Unknown contact — scanning",
         "lowshield": "Low shield",
@@ -1285,7 +1282,7 @@
         "endurance": "Interstellar explorer"
       },
       "driveReady": "Drive ready",
-      "driveLocked": "Mass locked",
+      "driveLocked": "Drive offline",
       "targets": "Targets",
       "targetClear": "Clear target",
       "align": "Align",
@@ -1565,8 +1562,7 @@
           "descriptors": "Ice giant · Fastest winds · Floating station",
           "temp": "−201 °C"
         }
-      },
-      "landSlowing": "Slowing for the approach"
+      }
     },
     "moon": {
       "place": "Stellar Base · Moon",
