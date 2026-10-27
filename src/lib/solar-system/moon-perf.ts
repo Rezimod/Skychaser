@@ -240,9 +240,10 @@ export function probeCalls(renderer: THREE.WebGLRenderer, scene: THREE.Scene, re
     o.visible = true;
     if (d > 0) out[`${o.name || o.type}#${i}`] = d;
   });
+  const shadows = renderer.shadowMap.enabled;
   renderer.shadowMap.enabled = false;
   out.shadowPass = total - count();
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = shadows;
   renderer.info.autoReset = was;
   return out;
 }
