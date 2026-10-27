@@ -220,10 +220,11 @@ export function normalizeRoomCode(raw: string): string | null {
 export function readPose(raw: unknown): PoseMsg | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
-  const nums = (v: unknown, len: number) => (Array.isArray(v) && v.length === len && v.every((x) => typeof x === 'number' && Number.isFinite(x)) ? (v as number[]) : undefined);
+  // Sane magnitudes only: a huge one overflows the radar's projection to NaN.
+  const nums = (v: unknown, len: number) => (Array.isArray(v) && v.length === len && v.every((x) => typeof x === 'number' && Number.isFinite(x) && Math.abs(x) < 1e7) ? (v as number[]) : undefined);
   const str = (v: unknown) => (typeof v === 'string' && v.length <= 40 ? v : undefined);
   const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
-  if (typeof r.id !== 'string' || typeof r.n !== 'number') return null;
+  if (typeof r.id !== 'string' || r.id.length > 64 || typeof r.n !== 'number') return null;
   if (r.s !== 'orbit' && r.s !== 'flight' && r.s !== 'surface') return null;
   const k = r.k === 'kestrel' || r.k === 'xfoil' || r.k === 'endurance' || r.k === 'cruiser' ? r.k : undefined;
   const pose: PoseMsg = { id: r.id, n: r.n, s: r.s, w: str(r.w), b: str(r.b), p: nums(r.p, 3), q: nums(r.q, 4), k, e: nums(r.e, 3), y: num(r.y), v: num(r.v) };
