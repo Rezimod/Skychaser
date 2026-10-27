@@ -181,11 +181,27 @@ function autoLevel(): QualityLevel {
   return governed ?? detected;
 }
 
+/** `performance` on a phone draws no shadow map: the depth pass is a second
+ *  draw of every caster, and that is the frame a phone does not have. Pure,
+ *  so it is tested. */
+export function profileForDevice(level: QualityLevel, touch: boolean): QualityProfile {
+  return level === 'performance' && touch ? PERFORMANCE_TOUCH : PROFILES[level];
+}
+
+const PERFORMANCE_TOUCH: QualityProfile = { ...PROFILES.performance, shadowMapSize: 0 };
+
+let coarseCached: boolean | null = null;
+function coarsePointer(): boolean {
+  if (coarseCached === null) {
+    coarseCached = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+  }
+  return coarseCached;
+}
+
 /** The preset in force: the player's choice, or the device's as the governor left it. */
 export function currentQuality(): QualityProfile {
   const pick = getSettings().quality;
-  if (pick !== 'auto') return PROFILES[pick];
-  return PROFILES[autoLevel()];
+  return profileForDevice(pick !== 'auto' ? pick : autoLevel(), coarsePointer());
 }
 
 /** The level the governor has settled on, or null while it has not had to act. */
@@ -238,6 +254,7 @@ export function setDetectedQuality(level: QualityLevel) {
 /** Tests only. */
 export function resetQualityDetection() {
   detected = null;
+  coarseCached = null;
   governed = null;
 }
 

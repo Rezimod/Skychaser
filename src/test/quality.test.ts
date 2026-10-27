@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   budgetedPixelRatio, clearQualityGovernor, currentQuality, detectQuality, governedQuality, onQualityChange, qualityProfile,
-  overlapAllowed, QUALITY_LEVELS, resetQualityDetection, setDetectedQuality, stepQualityDown, type DeviceSignals,
+  overlapAllowed, profileForDevice, QUALITY_LEVELS, resetQualityDetection, setDetectedQuality, stepQualityDown, type DeviceSignals,
 } from '@/game/quality';
 import { resetSettings, updateSettings } from '@/game/settings';
 
@@ -53,6 +53,12 @@ describe('quality presets', () => {
     });
     // Still under the integrated-graphics budget: ultra on an Iris is the governor's problem, not a 3 MP frame.
     expect(budgetedPixelRatio(2, u.maxPixelRatio, desktop.gpu, 1440, 900)).toBeLessThan(1.2);
+  });
+  it('performance on a phone draws no shadow map; a desktop on performance keeps it', () => {
+    expect(profileForDevice('performance', true).shadowMapSize).toBe(0);
+    expect(profileForDevice('performance', false).shadowMapSize).toBe(1024);
+    expect(profileForDevice('balanced', true).shadowMapSize).toBe(2048);
+    expect(profileForDevice('performance', true).level).toBe('performance');
   });
   it('the screen-space passes and the cloud quality follow the preset', () => {
     const [p, b, h] = QUALITY_LEVELS.map(qualityProfile);
