@@ -22,6 +22,7 @@ interface Row { id: string; name: string; km: number; faded: boolean }
 export function RoomRadar({ link }: { link: RoomLink }) {
   const t = useTranslations('solarSystem.room');
   const arrowsRef = useRef<(HTMLDivElement | null)[]>([]);
+  const boxRef = useRef<HTMLDivElement>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
 
   useEffect(() => {
@@ -33,8 +34,11 @@ export function RoomRadar({ link }: { link: RoomLink }) {
       const view = link.view;
       const live = link.code !== null && performance.now() - view.at < STALE_VIEW_MS;
       const pilots = live ? view.pilots : [];
-      const w = window.innerWidth;
-      const h = window.innerHeight;
+      // The radar's own box, not the window's: turned landscape, the shell
+      // (and the scene with it) is drawn a quarter turn round, and the
+      // arrows live in its frame.
+      const w = boxRef.current?.clientWidth || window.innerWidth;
+      const h = boxRef.current?.clientHeight || window.innerHeight;
       let used = 0;
       for (const p of pilots) {
         if (p.onScreen || p.alpha <= 0) continue;
@@ -79,7 +83,7 @@ export function RoomRadar({ link }: { link: RoomLink }) {
 
   return (
     <>
-      <div className="room-radar" aria-hidden>
+      <div ref={boxRef} className="room-radar" aria-hidden>
         {Array.from({ length: ROOM_MAX - 1 }, (_, i) => (
           <div key={i} className="room-radar__arrow" style={{ display: 'none' }} ref={(el) => { arrowsRef.current[i] = el; }}>
             <span className="room-radar__tip" />
