@@ -3,7 +3,7 @@ S = __import__('os').environ.get('ADWORK', '.')
 SR=48000
 raw=subprocess.run(['ffmpeg','-v','error','-i',f'{S}/src/astroman-01_v5.mp4','-f','f32le','-ac','2','-ar',str(SR),'-'],capture_output=True,check=True).stdout
 m=np.frombuffer(raw,np.float32).reshape(-1,2).copy()
-A,B,X=12.90,41.02,0.03          # splice: new 12.90 == original 41.02 (both on a downbeat hit)
+A,B,X=35.74,39.24,0.03          # splice: new 35.74 == original 39.24 (both on a downbeat hit)
 a=m[:int((A+X/2)*SR)]; b=m[int((B-X/2)*SR):]
 n=int(X*SR); f=np.linspace(0,1,n)[:,None]
 mus=np.concatenate([a[:-n], a[-n:]*(1-f)+b[:n]*f, b[n:]])
@@ -32,11 +32,12 @@ def riser(dur=1.5):
     tone=np.sin(2*np.pi*np.cumsum(180+900*x**2)/SR)*x**3*0.25
     return np.stack([s+tone,s+tone],1)
 put(boom(1.3),0.0,0.55)
-for t in (4.14,5.02,5.90): put(whoosh(),t-0.26,0.18)
-for t in (1.50,6.78,11.18): put(whoosh(0.28),t-0.22,0.12)
-r=riser(1.45); put(r,12.90-len(r)/SR,0.22)
-put(boom(1.6,85,30),12.90,0.8)
-put(boom(1.2,60,30),16.46,0.5)
+for t in (9.34,12.86,16.38): put(whoosh(0.4),t-0.34,0.18)
+for t in (3.18,6.70,19.90,24.30,27.82,31.34): put(whoosh(0.34),t-0.28,0.11)
+r=riser(2.2); put(r,35.74-len(r)/SR,0.22)
+put(boom(1.6,85,30),35.74,0.8)
+put(boom(0.9,70,34),37.53,0.35)
+put(boom(1.2,60,30),41.04,0.5)
 mix=mus+out
 mix[:int(0.02*SR)]*=np.linspace(0,1,int(0.02*SR))[:,None]
 fo=int(0.35*SR); mix[-fo:]*=np.linspace(1,0,fo)[:,None]

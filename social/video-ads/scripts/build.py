@@ -54,7 +54,7 @@ def text_layer(text, size, color, weight=0.035, track=0):
     bb = im.getbbox()
     return im.crop((0, max(0, bb[1] - 4), im.width, min(im.height, bb[3] + 4)))
 
-def shadowed(layer, blur=14, alpha=200, off=(0, 6)):
+def shadowed(layer, blur=10, alpha=190, off=(3, 6)):
     pad = blur * 3
     out = Image.new('RGBA', (layer.width + 2 * pad, layer.height + 2 * pad), (0, 0, 0, 0))
     a = layer.split()[3].point(lambda v: v * alpha // 255)
@@ -132,53 +132,68 @@ CLEAN_MASK = _m.filter(ImageFilter.GaussianBlur(38))
 # ================= TIMELINE (seconds on the new timeline) =================
 LOW = "delogo=x=90:y=905:w=900:h=230"
 TOP = "delogo=x=250:y=110:w=580:h=140"
+# cuts sit on the music's hit grid; offer lands on the hit where the music is spliced to its outro
 SHOTS = [
- # start, dur, src, z0, z1, cx, cy, filter, flash
- dict(t=0.00, d=1.50, src=2.85,  z0=1.02, z1=1.34, cx=.5, cy=.42, vf=None, flash=1.0, band=True),   # moon hook
- dict(t=1.50, d=1.32, src=0.05,  z0=1.10, z1=1.00, cx=.5, cy=.5,  vf=LOW,  flash=.35, band=True),   # shop
- dict(t=2.82, d=1.32, src=6.00,  z0=1.00, z1=1.12, cx=.5, cy=.45, vf=LOW,  flash=.25, band=True),   # eyepiece
- dict(t=4.14, d=0.88, src=11.20, z0=1.85, z1=2.15, cx=.5, cy=.5,  vf=None, flash=.6,  band=True),   # jupiter
- dict(t=5.02, d=0.88, src=16.60, z0=1.85, z1=2.15, cx=.485,cy=.5, vf=None, flash=.6,  band=True),   # saturn
- dict(t=5.90, d=0.88, src=24.40, z0=2.10, z1=2.45, cx=.5, cy=.5,  vf=None, flash=.6,  band=True),   # mars
- dict(t=6.78, d=1.76, src=8.15,  z0=1.12, z1=1.00, cx=.5, cy=.5,  vf=LOW,  flash=.35, band=True),   # telescope 1
- dict(t=8.54, d=1.32, src=21.45, z0=1.00, z1=1.10, cx=.5, cy=.5,  vf=None, flash=.25, band=True),   # refractor
- dict(t=9.86, d=1.32, src=13.60, z0=1.08, z1=1.00, cx=.5, cy=.5,  vf=None, flash=.25, band=True),   # SE mount
- dict(t=11.18,d=1.72, src=26.85, z0=1.00, z1=1.16, cx=.5, cy=.48, vf=TOP,  flash=.45, band=True),   # 6SE
- dict(t=12.90,d=3.56, src=18.90, z0=1.25, z1=1.05, cx=.5, cy=.5,  vf=None, flash=1.0, band=False, kind='offer', srcdur=2.25),
- dict(t=16.46,d=3.59, src=None,  z0=1.0,  z1=1.08, cx=.5, cy=.5,  vf=None, flash=.8,  band=False, kind='end'),
+ dict(t=0.00, d=3.18, src=2.80,  sd=2.50, z0=1.02, z1=1.38, cx=.5, cy=.42, vf=None, flash=1.0, band=True),   # moon hook
+ dict(t=3.18, d=3.52, src=0.02,  sd=2.53, z0=1.10, z1=1.00, cx=.5, cy=.5,  vf=LOW,  flash=.30, band=True),   # shop
+ dict(t=6.70, d=2.64, src=5.95,  sd=2.00, z0=1.00, z1=1.14, cx=.5, cy=.45, vf=LOW,  flash=.25, band=True),   # eyepiece
+ dict(t=9.34, d=3.52, src=10.95, sd=2.40, z0=1.80, z1=2.20, cx=.5, cy=.5,  vf=None, flash=.55, band=True),   # jupiter
+ dict(t=12.86,d=3.52, src=16.30, sd=2.35, z0=1.80, z1=2.20, cx=.485,cy=.5, vf=None, flash=.55, band=True),   # saturn
+ dict(t=16.38,d=3.52, src=24.10, sd=2.45, z0=2.05, z1=2.50, cx=.5, cy=.5,  vf=None, flash=.55, band=True),   # mars
+ dict(t=19.90,d=4.40, src=8.15,  sd=2.50, z0=1.12, z1=1.00, cx=.5, cy=.5,  vf=LOW,  flash=.35, band=True),   # telescope 1
+ dict(t=24.30,d=3.52, src=21.45, sd=2.40, z0=1.00, z1=1.12, cx=.5, cy=.5,  vf=None, flash=.25, band=True),   # refractor
+ dict(t=27.82,d=3.52, src=13.60, sd=2.25, z0=1.10, z1=1.00, cx=.5, cy=.5,  vf=None, flash=.25, band=True),   # SE mount
+ dict(t=31.34,d=4.40, src=26.85, sd=2.25, z0=1.00, z1=1.18, cx=.5, cy=.48, vf=TOP,  flash=.45, band=True),   # NexStar 6SE
+ dict(t=35.74,d=5.30, src=18.90, sd=2.25, z0=1.25, z1=1.04, cx=.5, cy=.5,  vf=None, flash=1.0, band=False, kind='offer'),
+ dict(t=41.04,d=3.60, src=None,  z0=1.0,  z1=1.08, cx=.5, cy=.5,  vf=None, flash=.8,  band=False, kind='end'),
 ]
 TOTAL = SHOTS[-1]['t'] + SHOTS[-1]['d']
 
-def two(l1, s1, c1, l2, s2, c2, caps1=True, caps2=False, gap=16):
-    a = fit(text_layer(mt(l1) if caps1 else l1, s1, c1), 940)
-    b = fit(text_layer(mt(l2) if caps2 else l2, s2, c2), 940)
-    return [a, b], gap
+def seg_path(i): return f'{S}/build/seg{i:02d}.mp4'
+def prep():
+    from concurrent.futures import ThreadPoolExecutor
+    def job(i):
+        sh = SHOTS[i]; f = sh['d'] / sh['sd']
+        chain = (sh['vf'] + ',' if sh['vf'] else '') + f"setpts={f:.5f}*PTS,minterpolate=fps={FPS}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+        subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f"{sh['src']:.3f}", '-t', f"{sh['sd'] + 0.12:.3f}", '-i', SRC,
+                        '-vf', chain, '-an', '-c:v', 'libx264', '-preset', 'fast', '-crf', '12', seg_path(i)], check=True)
+        return i
+    todo = [i for i, sh in enumerate(SHOTS) if sh['src'] is not None and not os.path.exists(seg_path(i))]
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        for i in ex.map(job, todo): print('seg', i, 'ready', flush=True)
 
-ZONE_Y = 1015   # vertical centre of the caption block (covers the old burned-in text band)
-TEXTS = []      # (t_in, t_out, [layers], center_y, gap, style)
-def add(t_in, t_out, layers, cy=ZONE_Y, gap=8, stagger=0.09, shake=False):
+def read_shot(i):
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', seg_path(i), '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], capture_output=True, check=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, H, W, 3)
+
+TXT = CREAM = (247, 238, 220)   # warm cream, as in the original captions
+ZONE_Y = 1015
+TEXTS = []
+def add(t_in, t_out, layers, cy=ZONE_Y, gap=14, stagger=0.0):
     TEXTS.append(dict(a=t_in, b=t_out, layers=[shadowed(l) for l in layers], cy=cy, gap=gap, stagger=stagger))
+def ln(s, size, color=TXT, w=0.038): return fit(text_layer(s, size, color, weight=w), 960)
 
-L, g = two('ცა ახლოსაა', 124, WHITE, 'ვიდრე გგონია', 70, ORANGE, caps2=True); add(0.10, 2.82, L, gap=g)
-L, g = two('ნახე', 70, ORANGE, 'საკუთარი თვალით', 104, WHITE, caps1=True, caps2=True); L = L[::-1][::-1]; add(2.86, 4.14, L, gap=g)
-for t0, name in [(4.14, 'იუპიტერი'), (5.02, 'სატურნი'), (5.90, 'მარსი')]:
-    add(t0 + 0.02, t0 + 0.88, [fit(text_layer(mt(name), 150, WHITE), 940)])
-L, g = two('ტელესკოპები', 116, WHITE, 'ყველა დონისთვის', 76, ORANGE, caps2=True); add(6.82, 8.54, L, gap=g)
-L, g = two('დამწყებიდან', 104, WHITE, 'პროფესიონალამდე', 104, ORANGE, caps2=True); add(8.58, 9.86, L, gap=g)
-add(9.90, 11.18, [pill('CELESTRON', 46, (20, 12, 4), ORANGE), fit(text_layer(mt('ავტომატური GoTo'), 92, WHITE), 940)], gap=22)
-add(11.22, 12.90, [fit(text_layer('Celestron', 60, ORANGE, weight=0.02, track=6), 900), fit(text_layer('NexStar 6SE', 150, WHITE, weight=0.03), 960)], gap=2)
-# offer
-add(12.92, 16.46, [text_layer('-20%', 330, ORANGE, weight=0.03)], cy=560, stagger=0)
-add(13.18, 16.46, [fit(text_layer(mt('ტელესკოპებზე'), 112, WHITE), 960)], cy=835)
-add(14.70, 16.46, [pill(mt('ონლაინ და მაღაზიაში'), 46, WHITE, None, outline=WHITE, padx=40)], cy=1010)
+sh = {k: SHOTS[i]['t'] for i, k in enumerate(['moon','shop','eye','jup','sat','mars','tel','ref','mount','se','offer','end'])}
+add(0.12, sh['eye'], [ln('ცა ახლოსაა', 136), ln('ვიდრე გგონია', 84, ORANGE)], stagger=1.45)
+add(sh['eye'] + 0.08, sh['jup'], [ln('ნახე', 96, ORANGE), ln('საკუთარი თვალით', 116)], stagger=0.45)
+for k, name in [('jup', 'იუპიტერი'), ('sat', 'სატურნი'), ('mars', 'მარსი')]:
+    add(sh[k] + 0.10, sh[k] + 3.52, [ln(name, 160)])
+add(sh['tel'] + 0.10, sh['ref'], [ln('ტელესკოპები', 132), ln('ყველა დონისთვის', 92, ORANGE)], stagger=0.6)
+add(sh['ref'] + 0.10, sh['mount'], [ln('დამწყებიდან', 116), ln('პროფესიონალამდე', 116, ORANGE)], stagger=0.5)
+add(sh['mount'] + 0.10, sh['se'], [pill('CELESTRON', 46, (20, 12, 4), ORANGE), ln('ავტომატური GoTo', 108)], gap=26, stagger=0.45)
+add(sh['se'] + 0.15, sh['offer'], [fit(text_layer('Celestron', 62, ORANGE, weight=0.02, track=6), 900), ln('NexStar 6SE', 156, w=0.035)], gap=4, stagger=0.45)
+# offer: -20% on the hit, then the line, then the pill on the next hit
+add(sh['offer'] + 0.02, sh['end'], [text_layer('-20%', 340, ORANGE, weight=0.03)], cy=560)
+add(sh['offer'] + 0.35, sh['end'], [ln('ტელესკოპებზე', 132)], cy=840)
+add(sh['offer'] + 1.79, sh['end'], [pill('ონლაინ და მაღაზიაში', 52, TXT, None, outline=TXT, padx=44)], cy=1010)
 # end card
 logo = Image.open(LOGO).convert('LA'); la = logo.split()[1]
 logo_w = Image.new('RGBA', logo.size, (255, 255, 255, 0)); logo_w.putalpha(la)
 logo_w = logo_w.resize((820, int(820 * logo.height / logo.width)), Image.LANCZOS)
-add(16.50, TOTAL, [logo_w], cy=440, stagger=0)
-add(16.80, TOTAL, [fit(text_layer(mt('შეუკვეთე ახლავე'), 92, WHITE), 940)], cy=735)
-add(16.98, TOTAL, [pill('astroman.ge', 66, (20, 12, 4), ORANGE, padx=54, pady=22)], cy=880)
-add(17.16, TOTAL, [text_layer('ა. ყაზბეგის გამზ. 17', 50, CREAM, weight=0.02)], cy=1030)
+add(sh['end'] + 0.04, TOTAL, [logo_w], cy=440)
+add(sh['end'] + 0.40, TOTAL, [ln('შეუკვეთე ახლავე', 104)], cy=740)
+add(sh['end'] + 0.60, TOTAL, [pill('astroman.ge', 66, (20, 12, 4), ORANGE, padx=54, pady=22)], cy=885)
+add(sh['end'] + 0.80, TOTAL, [text_layer('ა. ყაზბეგის გამზ. 17', 54, CREAM, weight=0.03)], cy=1030)
 
 # ================= backgrounds =================
 rng = np.random.default_rng(7)
@@ -208,12 +223,7 @@ def frame_for(i, shot, frames, star):
         x0 = (star.width - cw) / 2; y0 = (star.height - ch) / 2
         img = star.resize((W, H), Image.BICUBIC, box=(x0 + (star.width - W) * 0, y0, x0 + cw, y0 + ch))
     else:
-        if kind == 'offer':
-            fi = (lt / shot['d']) * shot['srcdur'] * FPS
-            k = int(fi); f = fi - k; k = min(k, len(frames) - 2)
-            arr = frames[k].astype(np.float32) * (1 - f) + frames[k + 1].astype(np.float32) * f
-            img = Image.fromarray(arr.astype(np.uint8))
-        else:
+        if True:
             img = Image.fromarray(frames[min(i, len(frames) - 1)])
             if shot['vf'] == LOW:
                 img = Image.composite(img.filter(ImageFilter.GaussianBlur(26)), img, CLEAN_MASK)
@@ -239,7 +249,7 @@ def compose_text(a, T):
     img = Image.fromarray(a.astype(np.uint8)).convert('RGBA')
     for e in TEXTS:
         if not (e['a'] <= T < e['b']): continue
-        ls = e['layers']; tot = sum(l.height for l in ls) + (e['gap'] - 84) * (len(ls) - 1)
+        ls = e['layers']; tot = sum(l.height for l in ls) + (e['gap'] - 60) * (len(ls) - 1)
         y = e['cy'] - tot / 2
         for j, l in enumerate(ls):
             lt = T - e['a'] - j * e['stagger']
@@ -251,11 +261,11 @@ def compose_text(a, T):
                     aa = ll.split()[3].point(lambda v, al=al: int(v * al)); ll = ll.copy(); ll.putalpha(aa)
                 cx = W / 2 - ll.width / 2; cy = y + l.height / 2 - ll.height / 2
                 img.alpha_composite(ll, (int(cx), int(cy)))
-            y += l.height + e['gap'] - 84
+            y += l.height + e['gap'] - 60
     return np.asarray(img.convert('RGB')).astype(np.float32)
 
 def render(out_path, only=None):
-    star = starfield()
+    prep(); star = starfield()
     enc = None
     if only is None:
         enc = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
@@ -267,8 +277,8 @@ def render(out_path, only=None):
         want = [k for k in range(n) if only is None or any(abs((start_f + k) / FPS - o) < 0.5 / FPS for o in only)]
         if not want: continue
         frames = None
-        if shot.get('kind') != 'end':
-            frames = read_seg(shot['src'], shot.get('srcdur', shot['d']), shot['vf'])
+        if shot['src'] is not None:
+            frames = read_shot(si)
         for k in want:
             T = (start_f + k) / FPS
             a = frame_for(k, shot, frames, star)
