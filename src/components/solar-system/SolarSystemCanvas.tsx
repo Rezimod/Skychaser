@@ -643,7 +643,7 @@ export function SolarSystemCanvas({
     }, mapSettled);
 
     const detailLoaded = new Set<SolarBodyId>();
-    const applyLoadedTexture = (id: SolarBodyId, tex: THREE.Texture) => {
+    const prepareMap = (tex: THREE.Texture) => {
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = Math.min(quality.anisotropy, maxAniso);
       tex.wrapS = THREE.RepeatWrapping;
@@ -651,6 +651,9 @@ export function SolarSystemCanvas({
       tex.generateMipmaps = true;
       tex.minFilter = THREE.LinearMipmapLinearFilter;
       tex.magFilter = THREE.LinearFilter;
+    };
+    const applyLoadedTexture = (id: SolarBodyId, tex: THREE.Texture) => {
+      prepareMap(tex);
       const previous = textureById.get(id);
       textureById.set(id, tex);
       if (id === 'sun') {
@@ -720,15 +723,28 @@ export function SolarSystemCanvas({
       // Apparent radius as a fraction of the viewport height.
       const apparent =
         worldRadiusForBody(id) / Math.max(camera.position.distanceTo(mesh.position), 1e-6);
-      if (apparent < 0.06) return;
+      // Asked for early, while the world is still small on the glass: the
+      // swap then happens well before the approach fills the frame.
+      if (apparent < 0.03) return;
       detailRequested.add(id);
       loader.load(url, (tex) => {
         if (textureLoadsCancelled) {
           disposePlanetTexture(tex);
           return;
         }
-        detailLoaded.add(id);
-        applyLoadedTexture(id, tex);
+        // Up to the GPU in its own task, between frames, then swapped in on
+        // the next: the 4K upload and its mipmaps no longer land inside a
+        // frame that is also drawing the approach.
+        prepareMap(tex);
+        window.setTimeout(() => {
+          if (textureLoadsCancelled || contextLost) { disposePlanetTexture(tex); return; }
+          try { renderer.initTexture(tex); } catch { /* uploaded on first draw instead */ }
+          requestAnimationFrame(() => {
+            if (textureLoadsCancelled) { disposePlanetTexture(tex); return; }
+            detailLoaded.add(id);
+            applyLoadedTexture(id, tex);
+          });
+        }, 0);
       }, () => {
         // A dropped connection: the body keeps its base map and may ask again.
         detailRequested.delete(id);
