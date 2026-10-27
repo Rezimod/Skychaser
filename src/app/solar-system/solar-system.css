@@ -2252,6 +2252,16 @@
   .build-hud__modules small { display: none; }
   .moon-hud .build-hud__actions button { min-height: 40px; grid-auto-flow: column; align-items: center; gap: 6px; }
 }
+/* A finger needs 44px: every build key, the close key square too. */
+@media (pointer: coarse) {
+  .moon-hud .build-hud__head button { min-width: 44px; min-height: 44px; }
+  .moon-hud :is(.build-hud__scopes, .build-hud__modules, .build-hud__actions) button,
+  .moon-hud .build-hud__signin { min-height: 44px; }
+}
+/* Upright on a phone the thumbs (stick, keys) take the bottom ~210px. */
+@media (max-width: 599px) {
+  .build-hud { max-height: calc(100% - var(--edge-top) - 104px - var(--edge-bottom) - 210px); }
+}
 
 @media (max-width: 599px) {
   /* The top row is the compass and the three keys; the cards run down the
