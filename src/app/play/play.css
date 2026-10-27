@@ -761,13 +761,40 @@
 .story-chip__text { grid-column: 1; font: 500 13px/1.35 var(--font-body, system-ui), sans-serif; }
 .story-chip__count { grid-column: 2; grid-row: 1 / span 2; font: 600 13px/1 var(--font-mono, ui-monospace), monospace; color: #ffb347; }
 @keyframes story-in { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* On a phone the deck's right edge is a column of round keys (menu, then the
+   jump key at about +106..150): the chip keeps to their left, never over them. */
+@keyframes story-in-edge { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @media (max-width: 599px) {
-  .story-comms, .story-chip { top: calc(max(10px, env(safe-area-inset-top)) + 112px); width: calc(100% - 24px); max-width: none; }
+  .story-comms, .story-chip {
+    top: calc(max(10px, env(safe-area-inset-top)) + 112px);
+    left: max(12px, env(safe-area-inset-left));
+    right: calc(max(10px, env(safe-area-inset-right)) + 54px);
+    width: auto;
+    max-width: none;
+    transform: none;
+    animation-name: story-in-edge;
+  }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .story-comms, .story-chip { top: calc(max(8px, env(safe-area-inset-top)) + 4px); width: min(420px, 44vw); }
   .story-comms { padding: 8px 12px; gap: 4px; }
   .story-comms__text { font-size: 13px; line-height: 1.4; }
+}
+/* Turned landscape (the shell drawn a quarter turn round): the screen's own
+   media queries still say portrait, so the landscape layout is named here. */
+.game-shell[data-rotate='cw'] :is(.story-comms, .story-chip) {
+  top: 12px;
+  left: 50%;
+  right: auto;
+  width: min(420px, 44vh);
+  max-width: none;
+  transform: translateX(-50%);
+  animation-name: story-in;
+}
+.game-shell[data-rotate='cw'] .story-comms { padding: 8px 12px; gap: 4px; }
+/* No blur on a phone: it resamples the live canvas every frame (see the HUD's own list). */
+@media (pointer: coarse) {
+  .story-comms, .story-chip { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(8, 12, 22, 0.9); }
 }
 
 /* A chapter done: one card in the middle of the glass, a fact, the next world, one key. */

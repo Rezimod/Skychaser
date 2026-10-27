@@ -142,12 +142,15 @@
    the deck also refuses the one that scrolls a menu, so a menu too tall for
    the screen could not be reached past its first screenful. */
 .solar-system[data-flying='true'] :is(.flight-hud__menu, .flight-hud__help) { touch-action: pan-y; }
-/* Landscape on a phone that will not turn: the whole viewport — canvas and
-   deck — is drawn a quarter turn clockwise and sized to the screen's other
-   way round. The deck's container queries then lay it out as landscape,
-   and its four edges swap to keep clear of the notch and the home bar. */
-.solar-system__viewport--fill[data-rotate='cw'] {
+/* Landscape on a phone that will not turn: the whole game shell — canvas,
+   deck and every overlay over them (story, pause menu, settings, room keys,
+   notices) — is drawn a quarter turn clockwise and sized to the screen's
+   other way round. The deck's container queries then lay it out as
+   landscape, and its four edges swap to keep clear of the notch and the
+   home bar. The shell sets data-rotate from GameWorld's `onTurn`. */
+.game-shell[data-rotate='cw'] {
   position: fixed;
+  inset: auto;
   top: 0;
   left: 0;
   width: 100vh;
@@ -157,6 +160,7 @@
   transform-origin: top left;
   transform: rotate(90deg) translateY(-100%);
 }
+.game-shell[data-rotate='cw'] .solar-system--immersive { min-height: 0; }
 .solar-system__viewport--fill[data-rotate='cw'] .flight-hud {
   --edge-top: max(var(--gutter), env(safe-area-inset-right));
   --edge-right: max(var(--gutter), env(safe-area-inset-bottom));
@@ -1225,6 +1229,13 @@
 @container viewport (max-width: 599px) {
   /* Upright, the menu keys stand in a column: the jump key is the third. */
   .flight-hud[data-touch='true'] .flight-hud__side { top: calc(var(--edge-top) + (var(--hud-round) + 9px) * 2); }
+  /* The transmission keeps to the left of that column, never over the jump key. */
+  .flight-hud[data-touch='true'] .flight-hud__comms {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--hud-round) + 10px);
+    width: auto;
+    transform: none;
+  }
 }
 @container viewport (max-width: 380px) {
   .flight-hud__rail-key > span:last-child { display: none; }
@@ -2241,6 +2252,16 @@
   .build-hud__modules small { display: none; }
   .moon-hud .build-hud__actions button { min-height: 40px; grid-auto-flow: column; align-items: center; gap: 6px; }
 }
+/* A finger needs 44px: every build key, the close key square too. */
+@media (pointer: coarse) {
+  .moon-hud .build-hud__head button { min-width: 44px; min-height: 44px; }
+  .moon-hud :is(.build-hud__scopes, .build-hud__modules, .build-hud__actions) button,
+  .moon-hud .build-hud__signin { min-height: 44px; }
+}
+/* Upright on a phone the thumbs (stick, keys) take the bottom ~210px. */
+@media (max-width: 599px) {
+  .build-hud { max-height: calc(100% - var(--edge-top) - 104px - var(--edge-bottom) - 210px); }
+}
 
 @media (max-width: 599px) {
   /* The top row is the compass and the three keys; the cards run down the
@@ -2268,7 +2289,11 @@
   .moon-hud__impact { top: calc(var(--edge-top) + 310px); }
 }
 @media (max-height: 460px) {
-  .moon-hud__objective { display: none; }
+  /* A phone on its side has no room for the card: the objective is one
+     ellipsised line, still a key that opens the log. */
+  .moon-hud__objective { align-content: center; min-height: 32px; max-width: min(260px, 44vw); }
+  .moon-hud__objective :is(.moon-hud__objective-tag, .moon-hud__objective-range, .moon-hud__objective-job) { display: none; }
+  .moon-hud__objective .moon-hud__objective-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .moon-hud__suit { padding: 4px 8px; }
 }
 
@@ -3361,7 +3386,9 @@
   /* Every blurred layer resamples the live canvas each frame; on a phone
      GPU that is time the scene needs. A deeper glass reads the same. */
   .flight-hud button, .flight-hud .flight-hud__card, .flight-hud__console, .flight-hud .game-stick,
-  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help {
+  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help,
+  .flight-hud__comms, .flight-hud__toast, .flight-hud__callout, .flight-hud__menu, .flight-drive__menu,
+  .moon-surface .moon-hud__basekey, .moon-hud__menu, .moon-hud__help, .moon-hud__log {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }

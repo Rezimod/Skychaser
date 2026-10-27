@@ -75,6 +75,8 @@ interface GameWorldProps {
   room: RoomLink;
   /** The orrery's clock, owned by the shell so a room can set it. */
   epoch: EpochRef;
+  /** The flight is turned on its side: the shell turns, so every overlay goes round with the deck. */
+  onTurn?: (on: boolean) => void;
 }
 
 /** The orrery, the ship and the surfaces, composed by the game's scene.
@@ -82,7 +84,7 @@ interface GameWorldProps {
 /** Room to hold the scene being left and the next one at once. */
 const roomForTwo = () => canOverlapScenes() && contextLosses() === 0;
 
-export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
+export function GameWorld({ scene, state, mode, room, epoch, onTurn }: GameWorldProps) {
   const t = useTranslations('solarSystem');
   const tp = useTranslations('play');
   const format = useFormatter();
@@ -223,6 +225,11 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   // The turned viewport has new sides; the renderer refits on the resize it
   // would otherwise never hear about.
   useEffect(() => { window.dispatchEvent(new Event('resize')); }, [landscape]);
+  const turned = landscape && flightActive;
+  useEffect(() => {
+    onTurn?.(turned);
+    return () => onTurn?.(false);
+  }, [turned, onTurn]);
   // The orrery's clock stands still while a surface is open or the game is
   // paused: ticking it would re-render the whole surface HUD every frame.
   useEffect(() => {
