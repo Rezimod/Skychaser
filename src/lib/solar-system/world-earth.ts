@@ -29,7 +29,7 @@ import { makeTraffic } from '@/lib/solar-system/world-earth-traffic';
 
 /** From 600 m over the city, sinking at 38 m/s, coming in from the north-west over the river. The
  *  guidance only closes about a tenth of the gap a second, so the entry leaves it nearly overhead. */
-export const EARTH_DESCENT: DescentStart = { alt: 600, descent: 38, offsetX: -35, offsetZ: -52, driftX: 2, driftZ: 3 };
+export const EARTH_DESCENT: DescentStart = { alt: 380, descent: 38, offsetX: -35, offsetZ: -52, driftX: 2, driftZ: 3 };
 export const EARTH_WALK_RADIUS = 1950;
 
 export interface EarthState {

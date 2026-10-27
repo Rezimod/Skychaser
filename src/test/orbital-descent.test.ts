@@ -15,7 +15,7 @@ import {
 import {
   GLOBE_WORLDS, PLANET_BODIES, altitudeOf, hasAir, localUpAt, orbitalSpeed, siteBasis, type GlobeWorld,
 } from '@/lib/solar-system/planet-frame';
-import { makeLander, type DescentStart, type LanderHandle } from '@/lib/solar-system/moon-lander';
+import { makeLander, type LanderHandle } from '@/lib/solar-system/moon-lander';
 import type { DustHandle } from '@/lib/solar-system/moon-fx';
 import { makeSurfaceFlight } from '@/lib/solar-system/surface-flight';
 
@@ -26,8 +26,8 @@ const FIRST: GlobeWorld[] = ['moon', 'mars', 'earth'];
 const NEW: GlobeWorld[] = WORLDS.filter((w) => !FIRST.includes(w));
 const AIR = WORLDS.filter((w) => hasAir(w));
 const AIRLESS = WORLDS.filter((w) => !hasAir(w));
-/** The powered descents the scenes start: the default everywhere but Earth, Earth's own (world-earth EARTH_DESCENT). */
-const EARTH_DESCENT: DescentStart = { alt: 600, descent: 38, offsetX: -35, offsetZ: -52, driftX: 2, driftZ: 3 };
+/** The powered descents the scenes start: the default everywhere but Earth, Earth's own. */
+import { EARTH_DESCENT } from '@/lib/solar-system/world-earth';
 /** Ground under the pad: the Moon's mare, Jezero, Tbilisi at about 480 m above the sea; the datum elsewhere
  *  (the giants' platform deck rides at the 1-bar level). */
 const GROUND: Record<GlobeWorld, number> = {
@@ -409,13 +409,13 @@ describe('the skips and the clock', () => {
     expect(d.telemetry.done).toBe(true);
   });
 
-  it.each(WORLDS)('%s: a dive from the flight deck flies the way down in well under a minute, still through the plasma, to the same handover', (world) => {
+  it.each(WORLDS)('%s: a dive from the flight deck flies the way down in seconds, still through the plasma, to the same handover', (world) => {
     const { d, lander } = descentFor(world);
     d.skipToEntry();
     let hot = 0; let lastWarp = 0;
     const t = flyOut(d, undefined, () => { if (d.telemetry.heat > 0.3) hot += DT; lastWarp = d.telemetry.timeWarp; });
-    expect(t).toBeLessThan(45);
-    expect(t).toBeGreaterThan(15);
+    expect(t).toBeLessThan(16);
+    expect(t).toBeGreaterThan(6);
     // The entry still burns long enough to be seen where there is air to burn in.
     if (hasAir(world)) expect(hot).toBeGreaterThan(3);
     // The last of it is still at real time, and it ends where the lander takes over.
@@ -588,5 +588,25 @@ describe('the flight in a surface scene', () => {
     expect(camera.up.y).toBe(1);
     flight.dispose();
     lander.dispose();
+  });
+});
+
+describe('the whole way down, flown by the computer', () => {
+  it.each(WORLDS)('%s: from the top of the air to the pad in under half a minute, set down gently on it', (world) => {
+    const { d, lander, ground } = descentFor(world);
+    d.skipToEntry();
+    const dive = flyOut(d);
+    lander.position.copy(lander.start.position);
+    lander.velocity.copy(lander.start.velocity);
+    let powered = 0;
+    while (!lander.telemetry.landed && powered < 120) {
+      lander.telemetry.assist = true;
+      lander.update(DT, { throttle: 0, moveX: 0, moveY: 0 }, ground);
+      powered += DT;
+    }
+    expect(lander.telemetry.landed).toBe(true);
+    expect(dive + powered).toBeLessThan(28);
+    expect(lander.telemetry.touchdown).toBeLessThan(2);
+    expect(Math.hypot(lander.position.x - lander.pad.x, lander.position.z - lander.pad.z)).toBeLessThan(5);
   });
 });

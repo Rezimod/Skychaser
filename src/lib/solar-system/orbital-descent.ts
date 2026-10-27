@@ -40,11 +40,13 @@ import {
 /** The legs of the way down. `entry` and `glide` are the air worlds';
  *  `braking` and `approach` the airless ones' (the Moon, Mercury); `done`
  *  is the handover. */
-/** How much faster the high, fast part of the way down runs after a dive
- *  from the flight deck (the last of it, at real time, is unchanged): from
- *  the top of the air to the handover in about half a minute, not a minute
- *  and more. */
-export const DIVE_PACE = 4;
+/** How much faster the way down runs after a dive from the flight deck:
+ *  the whole corridor's clock, easing back to its own over the last
+ *  `DIVE_TAIL_S` seconds of it, so the handover to the powered descent is
+ *  at the lander's own speed. From the top of the air to the handover in
+ *  about ten seconds, not half a minute and more. */
+export const DIVE_PACE = 9;
+export const DIVE_TAIL_S = 3;
 
 export type OrbitalPhase = 'orbit' | 'deorbit' | 'entry' | 'braking' | 'glide' | 'approach' | 'done';
 /** The legs of the way back up. */
@@ -652,7 +654,20 @@ function makeFlight(
   // the whole flight down from orbit, more for the dive (see DIVE_PACE). The
   // real-time end of the corridor (warp 1) stays real time either way.
   let pace = 1;
-  const warpAt = (at: number) => { const w = corridor.read(corridor.warp, at); return w <= 1 ? w : 1 + (w - 1) * pace; };
+  // Seconds of play left to the end of the corridor at its own clock, per sample.
+  const timeLeft = new Float64Array(corridor.s.length);
+  for (let i = corridor.s.length - 2; i >= 0; i--) {
+    const ds = corridor.s[i + 1] - corridor.s[i];
+    const rate = Math.max(1e-3, 0.5 * (corridor.v[i] * corridor.warp[i] + corridor.v[i + 1] * corridor.warp[i + 1]));
+    timeLeft[i] = timeLeft[i + 1] + ds / rate;
+  }
+  const warpAt = (at: number) => {
+    const w = corridor.read(corridor.warp, at);
+    if (pace <= 1) return w;
+    // Through the plasma at a third of the pace: the entry is the show.
+    const k = (pace - 1) * (1 - 0.66 * Math.min(1, telemetry.heat * 2));
+    return w * (1 + k * THREE.MathUtils.smoothstep(corridor.read(timeLeft, at), 0, DIVE_TAIL_S));
+  };
   const telemetry: OrbitalTelemetry = {
     phase: corridor.phases[0], phaseT: 0, progress: 0, wallSeconds: 0, simSeconds: 0,
     altitude: 0, speed: 0, vertical: 0, downrangeKm: 0, heat: 0, turbulence: 0, mach: 0,

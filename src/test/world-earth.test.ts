@@ -42,9 +42,9 @@ const dust: DustHandle = { points: new THREE.Points(), burst: vi.fn(), setCap: v
 const DT = 1 / 60;
 
 describe('the descent into Tbilisi', () => {
-  it('guidance sets the lander down under a full g from 600 m', () => {
+  it('guidance sets the lander down under a full g from 380 m', () => {
     const lander = makeLander(0, 20, flat, dust, true, undefined, WORLDS.earth.gravity, EARTH_DESCENT);
-    expect(lander.telemetry.altitude).toBe(600);
+    expect(lander.telemetry.altitude).toBe(380);
     for (let i = 0; i < 60 * 120 && !lander.telemetry.landed; i++) lander.update(DT, { throttle: 0, moveX: 0, moveY: 0 }, flat);
     expect(lander.telemetry.landed).toBe(true);
     expect(lander.telemetry.assist).toBe(true);
