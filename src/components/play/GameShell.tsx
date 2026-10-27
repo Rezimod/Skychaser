@@ -84,6 +84,9 @@ export default function GameShell() {
   const rootRef = useRef<HTMLDivElement>(null);
   /** The governor had to take a level off: say so once, then get out of the way. */
   const [dropped, setDropped] = useState(false);
+  // Turned landscape flight: the whole shell is drawn a quarter turn round,
+  // the deck and every overlay over it (story, menus, room keys, notices).
+  const [turned, setTurned] = useState(false);
   const dropTimer = useRef(0);
   const { state, scene, mode, stage, overlay, seamless } = snap;
   const account = useGameAccount();
@@ -278,11 +281,11 @@ export default function GameShell() {
   const loaderBody: LoaderBody = scene === 'orbit' ? (fromSurface ? from : 'earth') : scene;
 
   return (
-    <div ref={rootRef} className="game-shell" data-state={state}>
+    <div ref={rootRef} className="game-shell" data-state={state} data-rotate={turned && inWorld ? 'cw' : undefined}>
       {inWorld && (
         <GameBoundary key={snap.generation} onRetry={() => game.recover()} onTitle={toTitle}
           labels={{ title: t('failed.title'), body: t('failed.body'), retry: t('failed.retry'), toTitle: t('loading.toTitle') }}>
-          <GameWorld scene={scene} state={state} mode={mode} room={roomLinkRef.current} epoch={epochRef.current} />
+          <GameWorld scene={scene} state={state} mode={mode} room={roomLinkRef.current} epoch={epochRef.current} onTurn={setTurned} />
         </GameBoundary>
       )}
       {/* A handover in flight has no loading screen: the scene being left stays up until the next has drawn. */}

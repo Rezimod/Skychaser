@@ -142,12 +142,15 @@
    the deck also refuses the one that scrolls a menu, so a menu too tall for
    the screen could not be reached past its first screenful. */
 .solar-system[data-flying='true'] :is(.flight-hud__menu, .flight-hud__help) { touch-action: pan-y; }
-/* Landscape on a phone that will not turn: the whole viewport — canvas and
-   deck — is drawn a quarter turn clockwise and sized to the screen's other
-   way round. The deck's container queries then lay it out as landscape,
-   and its four edges swap to keep clear of the notch and the home bar. */
-.solar-system__viewport--fill[data-rotate='cw'] {
+/* Landscape on a phone that will not turn: the whole game shell — canvas,
+   deck and every overlay over them (story, pause menu, settings, room keys,
+   notices) — is drawn a quarter turn clockwise and sized to the screen's
+   other way round. The deck's container queries then lay it out as
+   landscape, and its four edges swap to keep clear of the notch and the
+   home bar. The shell sets data-rotate from GameWorld's `onTurn`. */
+.game-shell[data-rotate='cw'] {
   position: fixed;
+  inset: auto;
   top: 0;
   left: 0;
   width: 100vh;
@@ -157,6 +160,7 @@
   transform-origin: top left;
   transform: rotate(90deg) translateY(-100%);
 }
+.game-shell[data-rotate='cw'] .solar-system--immersive { min-height: 0; }
 .solar-system__viewport--fill[data-rotate='cw'] .flight-hud {
   --edge-top: max(var(--gutter), env(safe-area-inset-right));
   --edge-right: max(var(--gutter), env(safe-area-inset-bottom));

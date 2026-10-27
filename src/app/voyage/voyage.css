@@ -792,6 +792,18 @@ body[data-solar-immersive] .sd-backdrop { display: none; }
   .story-comms { padding: 8px 12px; gap: 4px; }
   .story-comms__text { font-size: 13px; line-height: 1.4; }
 }
+/* Turned landscape (the shell drawn a quarter turn round): the screen's own
+   media queries still say portrait, so the landscape layout is named here. */
+.game-shell[data-rotate='cw'] :is(.story-comms, .story-chip) {
+  top: 12px;
+  left: 50%;
+  right: auto;
+  width: min(420px, 44vh);
+  max-width: none;
+  transform: translateX(-50%);
+  animation-name: story-in;
+}
+.game-shell[data-rotate='cw'] .story-comms { padding: 8px 12px; gap: 4px; }
 
 /* A chapter done: one card in the middle of the glass, a fact, the next world, one key. */
 .story-card {
