@@ -1229,6 +1229,13 @@
 @container viewport (max-width: 599px) {
   /* Upright, the menu keys stand in a column: the jump key is the third. */
   .flight-hud[data-touch='true'] .flight-hud__side { top: calc(var(--edge-top) + (var(--hud-round) + 9px) * 2); }
+  /* The transmission keeps to the left of that column, never over the jump key. */
+  .flight-hud[data-touch='true'] .flight-hud__comms {
+    left: var(--edge-left);
+    right: calc(var(--edge-right) + var(--hud-round) + 10px);
+    width: auto;
+    transform: none;
+  }
 }
 @container viewport (max-width: 380px) {
   .flight-hud__rail-key > span:last-child { display: none; }
