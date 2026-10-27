@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { attachDesktopControls, clearFlightInput } from '@/lib/solar-system/flight-input';
+import { attachDesktopControls, clearFlightInput, makeFlickDodge } from '@/lib/solar-system/flight-input';
 import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, COOL_RADII, siteRadiusKm, titleCard, WARM_RADII } from '@/lib/solar-system/flight-approach';
 import { assetsFor, SURFACE_GROUPS } from '@/lib/solar-system/surface-assets';
 import { prefetchModels, prefetchDone } from '@/game/models';
@@ -214,6 +214,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
   const pauseRef = useRef<() => void>(() => {});
   const brakeRef = useRef(false);
   const thrustRef = useRef(0);
+  const flickRef = useRef(makeFlickDodge());
   const heldRef = useRef<Partial<Record<'fire' | 'boost' | 'brake', number>>>({});
   const lookRef = useRef<{ id: number; x: number; y: number } | null>(null);
   const zoomRef = useRef(1);
@@ -1095,6 +1096,8 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
                   thrustRef.current = y;
                   session.input.thrust = brakeRef.current ? -1 : y;
                   session.input.yaw = x;
+                  const dodge = flickRef.current(x, performance.now());
+                  if (dodge) session.input.dodge = dodge;
                 }} />}
               </div>
             )}

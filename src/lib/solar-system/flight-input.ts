@@ -41,6 +41,27 @@ function wrapPi(a: number): number {
   return (t < 0 ? t + Math.PI * 2 : t) - Math.PI;
 }
 
+/** The touch stick's dodge: two quick flicks out to the same side (out past
+ *  `out`, back under `back` between) within `withinMs`. Steering held hard
+ *  over is one flick, not two. Returns -1/1 on the second flick, else 0. */
+export function makeFlickDodge(withinMs = 350, out = 0.85, back = 0.5) {
+  let armed = true;
+  let last = { side: 0, at: -1e9 };
+  return (x: number, now: number): number => {
+    const a = Math.abs(x);
+    if (a < back) { armed = true; return 0; }
+    if (!armed || a < out) return 0;
+    armed = false;
+    const side = Math.sign(x);
+    if (last.side === side && now - last.at < withinMs) {
+      last = { side: 0, at: -1e9 };
+      return side;
+    }
+    last = { side, at: now };
+    return 0;
+  };
+}
+
 /** Pull the chase camera in or push it out, within its stops. */
 export function zoomFlightCamera(input: FlightInput, direction: number) {
   const next = input.camZoom * (direction > 0 ? CAM_ZOOM_STEP : 1 / CAM_ZOOM_STEP);
@@ -122,6 +143,9 @@ export function attachDesktopControls(
   // macOS swallows the keyup of every key pressed while Cmd is down, so a W
   // held across Cmd+Tab would thrust for ever. Any Cmd chord lets go of all.
   const metaChord = (e: KeyboardEvent) => e.metaKey || e.code === 'MetaLeft' || e.code === 'MetaRight';
+  // A quick second tap of a turn key fires the side thrusters that way.
+  let lastTap = { side: 0, at: -1e9 };
+  const DOUBLE_TAP_MS = 260;
   const onKeyDown = (e: KeyboardEvent) => {
     if (metaChord(e)) { releaseKeys(); return; }
     if (e.code === 'Escape' || e.code === 'KeyX') {
@@ -135,6 +159,14 @@ export function attachDesktopControls(
     if (!pressed.has(e.code)) { pressed.add(e.code); sync(); }
     // Only the one-shot presses wait for a fresh stroke.
     if (e.repeat) return;
+    const side = e.code === 'KeyD' || e.code === 'ArrowRight' ? 1 : e.code === 'KeyA' || e.code === 'ArrowLeft' ? -1 : 0;
+    if (side !== 0) {
+      const now = performance.now();
+      if (lastTap.side === side && now - lastTap.at < DOUBLE_TAP_MS) {
+        input.dodge = side;
+        lastTap = { side: 0, at: -1e9 };
+      } else lastTap = { side, at: now };
+    }
     const mode = modeFor[e.code];
     if (mode) input.modeRequest = mode;
     else if (e.code === 'KeyF') input.foilsToggle = true;
@@ -265,6 +297,7 @@ export function clearFlightInput(input: FlightInput) {
   input.eject = false;
   input.viewToggle = false;
   input.assistToggle = false;
+  input.dodge = 0;
   input.hudToggle = false;
   input.dockRequest = false;
   input.landRequest = false;
