@@ -1004,7 +1004,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
 
           {/* Top right: the menu. Everything else lives in it. */}
           <div className="flight-hud__top-keys" {...placed('topkeys')}>
-            <button type="button" className="flight-hud__round" onClick={() => { setMenu((m) => !m); setHelp(false); }} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
+            <button type="button" className="flight-hud__round" {...tapKey(() => { setMenu((m) => !m); setHelp(false); })} aria-expanded={menu} aria-haspopup="menu" aria-label={t('menu')} title={t('menu')}>
               {menu ? <X size={19} aria-hidden /> : <Menu size={19} aria-hidden />}
             </button>
             {menu && (
@@ -1079,7 +1079,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
             <div className="flight-hud__prompts">
               {/* The way down: names the world, fills as the ship closes, and lands it in one press. */}
               <button type="button" ref={landRef} className="flight-hud__prompt flight-hud__land" hidden tabIndex={-1}
-                onMouseDown={(e) => e.preventDefault()} onClick={() => { session.input.landRequest = true; }}>
+                onMouseDown={(e) => e.preventDefault()} {...tapKey(() => { session.input.landRequest = true; })}>
                 <span className="flight-hud__land-icon"><ArrowDownToLine size={15} aria-hidden /></span>
                 <span className="flight-hud__land-text">
                   <span ref={landTextRef} className="flight-hud__land-title">{t('landOn.moon')}</span>
