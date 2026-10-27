@@ -77,6 +77,9 @@ export interface ShipParts {
   /** Model ships: hand the loaded hull back. Called before the ship's meshes
    *  are disposed, so the shared model geometry is left to its cache. */
   release?: () => void;
+  /** What the hull reflects (setShipEnvironment), and the materials that take it. */
+  env?: THREE.Texture | null;
+  reflective?: THREE.MeshStandardMaterial[];
 }
 
 interface Palette {
@@ -133,7 +136,89 @@ function driveMats(driveHex: number) {
     color: plumeCoreColor(drive), transparent: true, opacity: 0.6,
     depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
   });
+  exhaust(plumeMat, 0);
+  exhaust(plumeCoreMat, 4);
   return { engineMat, bellMat, plumeMat, plumeCoreMat };
+}
+
+/** The exhaust's clock, seconds: the flight model sets it every frame. */
+export const PLUME_TIME = { value: 0 };
+
+/** Exhaust shading on a plume cone: hottest at the nozzle and fading down
+ *  its length, soft where the cone turns edge-on (no hard silhouette), a
+ *  shimmer running down it and, on the core, standing shock bands. */
+function exhaust(mat: THREE.MeshBasicMaterial, bands: number) {
+  const fallK = bands > 0 ? '2.8' : '1.6';
+  const shock = bands > 0 ? `1.0 + 0.6 * pow(abs(sin(vAlong * ${bands.toFixed(1)} * 3.1416)), 6.0) * (1.0 - vAlong)` : '1.0';
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uPlumeTime = PLUME_TIME;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vFacing;\nvarying float vAlong;\nvarying float vRound;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+        vFacing = abs(dot(normalize(normalMatrix * normal), normalize(-mvPosition.xyz)));
+        vAlong = uv.y;
+        vRound = uv.x;`);
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uPlumeTime;\nvarying float vFacing;\nvarying float vAlong;\nvarying float vRound;')
+      .replace('#include <opaque_fragment>', `
+        float fall = pow(1.0 - vAlong, ${fallK});
+        float edge = smoothstep(0.08, 0.8, vFacing);
+        float shimmer = 0.8 + 0.2 * sin(vAlong * 34.0 - uPlumeTime * 52.0 + vRound * 18.85);
+        outgoingLight *= ${shock};
+        diffuseColor.a *= fall * edge * shimmer;
+        #include <opaque_fragment>`);
+  };
+  mat.customProgramCacheKey = () => `exhaust${bands}`;
+}
+
+let shipEnv: THREE.Texture | null = null;
+let shipEnvOwner: THREE.WebGLRenderer | null = null;
+/** What the hull reflects: no sun (the scene's own light gives the
+ *  highlight), a dark sky with a faint galaxy band, a cool glow overhead
+ *  and two soft nebula patches, so painted metal and glass read as metal
+ *  and glass rather than chalk. Built once per renderer. */
+export function shipEnvironment(renderer: THREE.WebGLRenderer): THREE.Texture {
+  if (shipEnv && shipEnvOwner === renderer) return shipEnv;
+  const scene = new THREE.Scene();
+  const geom = new THREE.SphereGeometry(10, 48, 24);
+  const mat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false,
+    vertexShader: 'varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `varying vec3 vDir;
+      float blob(vec3 d, vec3 c, float w) { return pow(max(0.0, dot(d, normalize(c))), w); }
+      void main() {
+        vec3 d = normalize(vDir);
+        vec3 col = mix(vec3(0.012, 0.014, 0.022), vec3(0.09, 0.11, 0.17), smoothstep(-0.3, 1.0, d.y));
+        col += vec3(0.22, 0.2, 0.18) * exp(-pow(d.y * 7.0 + d.x * 1.5, 2.0));
+        col += vec3(0.16, 0.3, 0.62) * blob(d, vec3(0.7, 0.35, -0.6), 6.0);
+        col += vec3(0.5, 0.26, 0.12) * blob(d, vec3(-0.8, -0.1, 0.55), 8.0);
+        col += vec3(0.35, 0.38, 0.42) * blob(d, vec3(0.0, 1.0, 0.0), 3.0);
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  });
+  scene.add(new THREE.Mesh(geom, mat));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const target = pmrem.fromScene(scene, 0.02, 0.1, 100);
+  pmrem.dispose();
+  geom.dispose();
+  mat.dispose();
+  shipEnv?.dispose();
+  shipEnv = target.texture;
+  shipEnvOwner = renderer;
+  return shipEnv;
+}
+
+/** How strongly the hull and its glass take the environment. */
+const HULL_ENV = 1.15;
+
+/** Hands the hull its reflections, now and whenever the model arrives. */
+export function setShipEnvironment(parts: ShipParts, env: THREE.Texture | null) {
+  parts.env = env;
+  for (const m of parts.reflective ?? [parts.skinMat]) {
+    m.envMap = env;
+    m.envMapIntensity = HULL_ENV;
+    m.needsUpdate = true;
+  }
 }
 
 /** The core's colour: the drive hue pulled most of the way to white and
@@ -142,11 +227,12 @@ export function plumeCoreColor(drive: THREE.Color): THREE.Color {
   return drive.clone().lerp(new THREE.Color(0.95, 0.98, 1.0), 0.72).multiplyScalar(2.6);
 }
 
-/** Hollow cone for an exhaust plume: wide end at the nozzle, tip trailing. */
-function plumeCone(radius: number, length: number): THREE.ConeGeometry {
-  const geom = new THREE.ConeGeometry(radius, length, 14, 1, true);
-  geom.translate(0, length / 2, 0);
-  return geom;
+/** An exhaust plume along +Y from the nozzle at y = 0: it swells as it
+ *  leaves the bell and tapers to a point, the way a flame does in vacuum,
+ *  rather than a straight cone. `uv.y` runs 0 at the nozzle to 1 at the tip. */
+const PLUME_PROFILE: [number, number][] = [[0.95, 0], [1.22, 0.1], [1.3, 0.26], [1.1, 0.5], [0.66, 0.74], [0.26, 0.9], [0.02, 1]];
+function plumeCone(radius: number, length: number): THREE.LatheGeometry {
+  return new THREE.LatheGeometry(PLUME_PROFILE.map(([r, y]) => new THREE.Vector2(r * radius, y * length)), 16);
 }
 
 /** The entry's plasma: a ring of thin ribbons round the nose, streaming aft
@@ -440,7 +526,7 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
     group, hull, wings: [], cannonTips: [noseGun], skinMat, engineMat, bellMat,
     glowMats: [], glowSprites: [], plumes: [], plumeMat, plumeCores: [], plumeCoreMat, plasmaMat, plasma, streaks, streakMat, strobeMat,
     navMats: [], rcs: [], owned: [skinMat, engineMat, bellMat, plumeMat, plumeCoreMat, streakMat, strobeMat],
-    length: spec.length * H, spinner: null,
+    length: spec.length * H, spinner: null, env: null, reflective: [skinMat, bellMat],
     release() {
       released = true;
       for (const o of loaded) o.removeFromParent();
@@ -480,13 +566,20 @@ function fitModel(parts: ShipParts, source: THREE.Group, spec: ModelSpec, H: num
       if (!lampMat) {
         lampMat = m.clone();
         lampMat.emissiveIntensity = 2.2;
+        lampMat.envMap = parts.env ?? null;
+        lampMat.envMapIntensity = HULL_ENV;
         parts.owned.push(lampMat);
+        parts.reflective?.push(lampMat);
       }
       mesh.material = lampMat;
     } else if (m !== parts.skinMat) {
       if (parts.skinMat.name !== m.name) {
         parts.skinMat.copy(m);
         parts.skinMat.color.multiplyScalar(spec.tint ?? 1);
+        // A shade glossier than the model's own maps: painted metal, not chalk.
+        parts.skinMat.roughness = 0.72;
+        parts.skinMat.envMap = parts.env ?? null;
+        parts.skinMat.envMapIntensity = HULL_ENV;
         parts.skinMat.needsUpdate = true;
       }
       mesh.material = parts.skinMat;
@@ -621,7 +714,7 @@ function modelEngine(parts: ShipParts, add: (o: THREE.Object3D) => THREE.Object3
 
 /** The STELLAR exploration craft (ShipKind `kestrel`): the survey ship. */
 export function buildKestrel(H: number): ShipParts {
-  return buildModelShip(H, { url: '/explore/models/ship-stellar.glb', metres: 18.4, length: 8, drive: 0xff9448 });
+  return buildModelShip(H, { url: '/explore/models/ship-stellar.glb', metres: 18.4, length: 8, drive: 0xff9448, tint: 0.84 });
 }
 
 /** The Magpie (ShipKind `xfoil`): four forward-swept wings that lie stacked

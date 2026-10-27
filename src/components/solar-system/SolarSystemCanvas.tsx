@@ -75,6 +75,7 @@ import {
   type FlightWorld,
   type PlayerShipHandle,
 } from '@/lib/solar-system/player-ship';
+import { setShipEnvironment, shipEnvironment } from '@/lib/solar-system/ship-mesh';
 import { makeAlphaCentauri } from '@/lib/solar-system/star-systems';
 import { makeGargantua } from '@/lib/solar-system/black-hole';
 import { lightYearsBetween, resolveDestination } from '@/lib/solar-system/star-routes';
@@ -1497,6 +1498,7 @@ export function SolarSystemCanvas({
       if (session && flightActive) {
         if (!ship) {
           ship = createPlayerShip(session);
+          setShipEnvironment(ship.parts, shipEnvironment(renderer));
           scene.add(ship.group);
           scene.add(ship.boltGroup);
           scene.add(ship.fxGroup);
