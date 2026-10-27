@@ -11,6 +11,7 @@ import type { SolarBodyId } from '@/lib/solar-system/ephemeris';
 import type { RoomLink } from '@/lib/multiplayer/room-link';
 import { game, type GameState, type LoadStage } from '@/game/state';
 import { canOverlapScenes, currentQuality } from '@/game/quality';
+import { contextLosses } from '@/game/gpu-recovery';
 import { dropPrefetch, prefetchModels } from '@/game/models';
 import { assetsFor } from '@/lib/solar-system/surface-assets';
 import type { GameScene } from '@/game/save';
@@ -78,6 +79,9 @@ interface GameWorldProps {
 
 /** The orrery, the ship and the surfaces, composed by the game's scene.
  *  The orbit canvas is not built until the player first goes to orbit. */
+/** Room to hold the scene being left and the next one at once. */
+const roomForTwo = () => canOverlapScenes() && contextLosses() === 0;
+
 export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   const t = useTranslations('solarSystem');
   const tp = useTranslations('play');
@@ -124,8 +128,10 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
   // overlaps them (`overlap`); everywhere else the scene being left goes
   // first, behind a veil: the entry's plasma on the way down, the dark of
   // space on the way up, lifted once the next scene has drawn.
+  // Asked again at each handover: a context lost since, or quality stepped
+  // down, means this machine no longer has the room.
   const overlap = useRef<boolean | null>(null);
-  if (overlap.current === null) overlap.current = canOverlapScenes();
+  if (overlap.current === null) overlap.current = roomForTwo();
   // The veil now carries the last real frame of the scene being left
   // (`still`, from game/frame-tap): it keeps moving — diving on into the
   // air, or pulling away into space — while the next scene builds under it,
@@ -250,6 +256,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     // A surface that never finished loading has nothing to climb out of:
     // back to a fresh orbit.
     if (g.state === 'loading') { game.rescue(); return; }
+    overlap.current = roomForTwo();
     if (!overlap.current) { lowerVeil('ascent', 'orbit'); return; }
     setLeaving(g.scene as LandingSite);
     game.travel('orbit', { seamless: true });
@@ -261,6 +268,7 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     if (game.get().state !== 'playing' || game.get().scene !== 'orbit') return false;
     setLandscape(false);
     setEntryInto(site);
+    overlap.current = roomForTwo();
     if (overlap.current) {
       setStandby(site);
       return game.travel(site, { seamless: true });
@@ -269,7 +277,10 @@ export function GameWorld({ scene, state, mode, room, epoch }: GameWorldProps) {
     lowerVeil('entry', site);
     return true;
   }, [lowerVeil]);
-  const onStandbyChange = useCallback((site: LandingSite | null) => setStandby(overlap.current ? site : null), []);
+  const onStandbyChange = useCallback((site: LandingSite | null) => {
+    if (site) overlap.current = roomForTwo();
+    setStandby(overlap.current ? site : null);
+  }, []);
   // Closing on a world: its surface's code, its models and (Earth) its data
   // start down now, so the dive in has nothing left to wait for but the
   // build. Pulled away again, it is all let go.
