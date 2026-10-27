@@ -17,6 +17,7 @@
 import * as THREE from 'three';
 import type { AlienHandle } from '@/lib/solar-system/aliens';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
+import { makeCrashFx } from '@/lib/solar-system/crash-fx';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
 import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
 import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
@@ -28,7 +29,7 @@ import {
   HULL_REGEN_DELAY, HULL_REGEN_PER_SEC, MAX_HULL, MAX_SHIELD, PLAYER_BOLT_DAMAGE, SHIELD_REGEN_DELAY, SHIELD_REGEN_PER_SEC,
   alienZone, type AlienZone, type ZoneOrbits,
 } from '@/lib/solar-system/combat-balance';
-import { approachPose, approachProfileFor, APPROACH_SECONDS, descentBurn, entryHeat, entryShellRadii, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
+import { approachPose, approachProfileFor, APPROACH_SECONDS, descentBurn, entryHeat, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
 export { zoomFlightCamera, clearFlightInput } from '@/lib/solar-system/flight-input';
@@ -107,9 +108,6 @@ const STATION_HP = 6;
 const DOCK_SPEED = 0.45 * U;
 /** Faster than this into a station and it comes apart; slower is a bump. */
 const DOCK_WRECK_SPEED = 1.0 * U;
-/** Into a planet or moon slower than this — anything a cruise pass can do —
- *  the ship scrapes and bounces off the surface instead of wrecking. */
-const SCRAPE_SPEED = 1.6 * U;
 /** The docking computer takes the con inside this many station radii, and
  *  flies the approach at this pace at most. */
 const DOCK_ASSIST_RADII = 14;
@@ -338,8 +336,6 @@ export interface FlightTelemetry {
   /** Nearest body ('' when nothing within reach) and altitude above its surface. */
   nearId: string;
   nearAltKm: number;
-  /** The world whose air the ship has just dived into this frame ('' when none): the deck hands over to its surface. */
-  diveInto: string;
   /** A body has just come within sensor reach: named once, then cleared. */
   region: string;
   jumpPhase: JumpPhase;
@@ -523,7 +519,6 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
       alert: '',
       nearId: '',
       nearAltKm: 0,
-      diveInto: '',
       region: '',
       jumpPhase: 'none',
       jumpT: 0,
@@ -575,256 +570,6 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
       swallow: '',
       swallowT: 0,
       tidal: 0,
-    },
-  };
-}
-
-/* ───────────────────────── crash effects ───────────────────────── */
-
-interface Debris {
-  mesh: THREE.Mesh;
-  vel: THREE.Vector3;
-  spin: THREE.Vector3;
-  settled: boolean;
-}
-
-interface CrashFx {
-  group: THREE.Group;
-  /** `body` null = destroyed in open space: no gravity, debris drifts.
-   *  `scale` multiplies the whole burst — 1 is a ship, hundreds is a world. */
-  trigger: (point: THREE.Vector3, normal: THREE.Vector3, body: FlightBody | null, impactVel: THREE.Vector3, scale?: number) => void;
-  update: (dt: number) => void;
-  dispose: () => void;
-}
-
-function ringTexture(): THREE.CanvasTexture {
-  const s = 128;
-  const c = document.createElement('canvas');
-  c.width = c.height = s;
-  const g = c.getContext('2d')!;
-  const grad = g.createRadialGradient(s / 2, s / 2, s * 0.3, s / 2, s / 2, s / 2);
-  grad.addColorStop(0, 'rgba(255,255,255,0)');
-  grad.addColorStop(0.62, 'rgba(255,255,255,0)');
-  grad.addColorStop(0.8, 'rgba(255,220,180,0.9)');
-  grad.addColorStop(1, 'rgba(255,160,90,0)');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, s, s);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
-/**
- * Impact on a planet: a white-hot core inside an orange fireball, a dark
- * smoke bloom that outlives both, a shock ring racing across the surface,
- * a spray of sparks, and hull fragments thrown up the surface normal that
- * fall back under the body's own gravity and come to rest on the ground.
- * In open space the same burst with no ground: the fragments tumble away.
- */
-function makeCrashFx(): CrashFx {
-  const group = new THREE.Group();
-  group.name = 'playerCrash';
-  group.visible = false;
-  const glowTex = softSpriteTexture();
-  const ringTex = ringTexture();
-
-  const mkSprite = (color: number, additive: boolean) => {
-    const mat = new THREE.SpriteMaterial({
-      map: glowTex,
-      color,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
-    });
-    const s = new THREE.Sprite(mat);
-    group.add(s);
-    return { s, mat };
-  };
-  const core = mkSprite(0xfff4dc, true);
-  const fire = mkSprite(0xff7a2a, true);
-  const smoke = mkSprite(0x14100c, false);
-
-  const ringMat = new THREE.MeshBasicMaterial({
-    map: ringTex,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    side: THREE.DoubleSide,
-    blending: THREE.AdditiveBlending,
-  });
-  const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), ringMat);
-  group.add(ring);
-
-  const SPARK_N = 160;
-  const sparkPos = new Float32Array(SPARK_N * 3);
-  const sparkVel: THREE.Vector3[] = [];
-  for (let i = 0; i < SPARK_N; i++) sparkVel.push(new THREE.Vector3());
-  const sparkGeom = new THREE.BufferGeometry();
-  sparkGeom.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
-  const sparkMat = new THREE.PointsMaterial({
-    map: glowTex,
-    color: new THREE.Color(1.8, 0.9, 0.4),
-    size: 0.5 * H,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    sizeAttenuation: true,
-  });
-  const sparks = new THREE.Points(sparkGeom, sparkMat);
-  group.add(sparks);
-
-  const debrisSkin = new THREE.MeshStandardMaterial({ color: 0x8c9199, roughness: 0.7, metalness: 0.5, transparent: true });
-  const debrisDark = new THREE.MeshStandardMaterial({ color: 0x23272e, roughness: 0.75, metalness: 0.4, transparent: true });
-  const debris: Debris[] = [];
-  const debrisGeoms: THREE.BufferGeometry[] = [];
-  for (let i = 0; i < 16; i++) {
-    const geom = new THREE.BoxGeometry(
-      (0.15 + Math.random() * 0.45) * H,
-      (0.05 + Math.random() * 0.15) * H,
-      (0.2 + Math.random() * 0.6) * H,
-    );
-    debrisGeoms.push(geom);
-    const mesh = new THREE.Mesh(geom, i % 3 === 0 ? debrisDark : debrisSkin);
-    mesh.visible = false;
-    group.add(mesh);
-    debris.push({ mesh, vel: new THREE.Vector3(), spin: new THREE.Vector3(), settled: false });
-  }
-
-  let life = -1;
-  let fxScale = 1;
-  let body: FlightBody | null = null;
-  const normal = new THREE.Vector3();
-  const point = new THREE.Vector3();
-  const tmp = new THREE.Vector3();
-  const tangent = new THREE.Vector3();
-  const bitangent = new THREE.Vector3();
-  const LIFE = 3.4;
-
-  const randomInHemisphere = (out: THREE.Vector3, spread: number) => {
-    out.copy(normal)
-      .addScaledVector(tangent, (Math.random() * 2 - 1) * spread)
-      .addScaledVector(bitangent, (Math.random() * 2 - 1) * spread)
-      .normalize();
-  };
-
-  return {
-    group,
-    trigger(at, n, hitBody, impactVel, scale = 1) {
-      life = 0;
-      fxScale = scale;
-      sparkMat.size = 0.5 * H * scale;
-      body = hitBody;
-      point.copy(at);
-      normal.copy(n);
-      tangent.set(0, 1, 0);
-      if (Math.abs(normal.dot(tangent)) > 0.9) tangent.set(1, 0, 0);
-      tangent.cross(normal).normalize();
-      bitangent.crossVectors(normal, tangent);
-      group.position.copy(point);
-      group.visible = true;
-      core.s.position.set(0, 0, 0);
-      fire.s.position.copy(normal).multiplyScalar(0.8 * H * scale);
-      smoke.s.position.copy(normal).multiplyScalar(2.2 * H * scale);
-      ring.position.copy(normal).multiplyScalar(0.05 * H * scale);
-      ring.quaternion.setFromUnitVectors(tmp.set(0, 0, 1), normal);
-      ring.visible = !!body;
-      const kick = Math.min(1.6, 0.6 + impactVel.length() / (4 * U));
-      const spread = body ? 1.4 : 4;
-      for (let i = 0; i < SPARK_N; i++) {
-        sparkPos[i * 3] = 0;
-        sparkPos[i * 3 + 1] = 0;
-        sparkPos[i * 3 + 2] = 0;
-        randomInHemisphere(sparkVel[i], spread);
-        sparkVel[i].multiplyScalar((1 + Math.random() * 5) * U * kick * scale);
-      }
-      sparkGeom.getAttribute('position').needsUpdate = true;
-      for (const d of debris) {
-        d.mesh.visible = true;
-        d.mesh.scale.setScalar(scale);
-        d.settled = false;
-        d.mesh.position.set(0, 0, 0).addScaledVector(normal, 0.3 * H * scale);
-        d.mesh.rotation.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
-        randomInHemisphere(d.vel, body ? 1.1 : 4);
-        d.vel.multiplyScalar((0.8 + Math.random() * 3.2) * U * kick * scale * (body ? 1 : 0.4));
-        d.spin.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(14);
-      }
-      debrisSkin.opacity = 1;
-      debrisDark.opacity = 1;
-    },
-    update(dt) {
-      if (life < 0) return;
-      life += dt;
-      // A world takes longer to come apart than a hull does.
-      const tk = Math.min(2.5, Math.sqrt(fxScale));
-      if (life > LIFE * tk) {
-        life = -1;
-        group.visible = false;
-        for (const d of debris) d.mesh.visible = false;
-        return;
-      }
-      const t = life / tk;
-      const hs = H * fxScale;
-      const coreK = Math.min(1, t / 0.45);
-      core.s.scale.setScalar((1.5 + 6 * coreK) * hs);
-      core.mat.opacity = Math.max(0, 1 - t / 0.5);
-      const fireK = Math.min(1, t / 1.4);
-      fire.s.scale.setScalar((2 + 14 * Math.sqrt(fireK)) * hs);
-      fire.mat.opacity = t < 0.15 ? t / 0.15 : Math.max(0, 1 - (t - 0.15) / 1.3) * 0.95;
-      fire.mat.color.setRGB(1.6, 0.45 + 0.5 * (1 - fireK), 0.15);
-      const smokeK = Math.min(1, t / 2.8);
-      smoke.s.scale.setScalar((3 + 20 * Math.sqrt(smokeK)) * hs);
-      smoke.mat.opacity = t < 0.3 ? (t / 0.3) * 0.85 : Math.max(0, 1 - (t - 0.3) / 3.0) * 0.85;
-      const ringK = Math.min(1, t / 1.0);
-      ring.scale.setScalar((1 + 22 * Math.sqrt(ringK)) * hs);
-      ringMat.opacity = Math.max(0, 1 - ringK) * 0.9;
-
-      const g = body ? Math.min(MAX_SURFACE_G, body.surfaceG) / 9.81 * ONE_G : 0;
-      const floor = body ? body.radius : 0;
-      for (let i = 0; i < SPARK_N; i++) {
-        const v = sparkVel[i];
-        v.addScaledVector(normal, -g * dt);
-        v.multiplyScalar(Math.exp(-dt * 1.6));
-        sparkPos[i * 3] += v.x * dt;
-        sparkPos[i * 3 + 1] += v.y * dt;
-        sparkPos[i * 3 + 2] += v.z * dt;
-      }
-      sparkGeom.getAttribute('position').needsUpdate = true;
-      sparkMat.opacity = Math.max(0, 1 - t / 1.3);
-
-      for (const d of debris) {
-        if (d.settled) continue;
-        d.vel.addScaledVector(normal, -g * dt);
-        d.mesh.position.addScaledVector(d.vel, dt);
-        d.mesh.rotation.x += d.spin.x * dt;
-        d.mesh.rotation.y += d.spin.y * dt;
-        d.mesh.rotation.z += d.spin.z * dt;
-        if (body) {
-          tmp.copy(d.mesh.position).add(point).sub(body.position);
-          if (tmp.length() < floor + 0.08 * hs) {
-            tmp.normalize().multiplyScalar(floor + 0.08 * hs).add(body.position).sub(point);
-            d.mesh.position.copy(tmp);
-            d.settled = true;
-          }
-        }
-      }
-      const fade = Math.max(0, Math.min(1, (LIFE - t) / 1.0));
-      debrisSkin.opacity = fade;
-      debrisDark.opacity = fade;
-    },
-    dispose() {
-      core.mat.dispose();
-      fire.mat.dispose();
-      smoke.mat.dispose();
-      ringMat.dispose();
-      ringTex.dispose();
-      ring.geometry.dispose();
-      sparkGeom.dispose();
-      sparkMat.dispose();
-      for (const gm of debrisGeoms) gm.dispose();
-      debrisSkin.dispose();
-      debrisDark.dispose();
     },
   };
 }
@@ -908,7 +653,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const tel = session.telemetry;
   const input = session.input;
   const audio = makeFlightAudio();
-  const crash = makeCrashFx();
+  const crash = makeCrashFx(H, ONE_G);
   const rig = makeCameraRig();
   const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
@@ -1168,8 +913,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let sinceBoost = 99;
   let odometerKm = 0;
   let crashT = -1;
-  /** Seconds since the hull last scraped a surface: resting against one costs nothing more. */
-  let sinceScrape = 9;
   let alertHold = 0;
   let levelHold = 0;
   let heldAlert: FlightAlert = '';
@@ -1297,7 +1040,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     dockedTo = null;
     autodock = null;
     arrival = null;
-    tel.diveInto = '';
     tel.approachPhase = '';
     tel.approachId = '';
     tel.approachT = tel.approachLegT = 0;
@@ -1862,7 +1604,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       sinceBoost += dt;
       if (sinceBoost > BOOST_REGEN_DELAY) boostCharge = Math.min(1, boostCharge + BOOST_REGEN * dt);
       sinceHit += dt;
-      sinceScrape += dt;
       if (shield < MAX_SHIELD && sinceHit > SHIELD_REGEN_DELAY) {
         shield = Math.min(MAX_SHIELD, shield + SHIELD_REGEN_PER_SEC * dt);
         tel.shield = shield;
@@ -2183,44 +1924,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           }
         }
 
-        // ── The dive: closing on a world there is a way down to, the ship
-        // that crosses into its air (an airless world: comes down low over
-        // it) is handed to its surface, however fast it came. Swept, like the
-        // crash test below, so no speed carries it through the air and into
-        // the ground between two frames: it stops at the top of the air until
-        // the deck takes it. The deck reads `diveInto` and clears it. ──
-        if (pilot === 'ship' && !arrival && !autodock && !dockedTo) {
-          seg.copy(me.position).sub(prevPos);
-          const a = seg.lengthSq();
-          for (const b of world.bodies) {
-            if (b.destroyed || (b.kind !== 'planet' && b.kind !== 'moon')) continue;
-            const shell = entryShellRadii(b.id);
-            if (!shell) continue;
-            const R = b.radius * shell;
-            tmp.copy(prevPos).sub(b.position);
-            const c = tmp.lengthSq() - R * R;
-            if (c <= 0) {
-              // Already inside the air: diving on in starts the way down.
-              tmp2.copy(b.position).sub(me.position);
-              if (vel.dot(tmp2) > 0) { tel.diveInto = b.id; break; }
-              continue;
-            }
-            const bq = tmp.dot(seg);
-            const disc = bq * bq - a * c;
-            if (a <= 0 || bq >= 0 || disc < 0) continue;
-            const t = (-bq - Math.sqrt(disc)) / a;
-            if (t > 1) continue;
-            me.position.copy(prevPos).addScaledVector(seg, t);
-            // Resting on the top of the air: the way in is taken off.
-            tmp2.copy(me.position).sub(b.position).normalize();
-            const inward = vel.dot(tmp2);
-            if (inward < 0) vel.addScaledVector(tmp2, -inward);
-            speed = vel.length();
-            tel.diveInto = b.id;
-            break;
-          }
-        }
-
         // ── Solid bodies: swept sphere test, so a tenth of c cannot tunnel
         // through a planet between two frames. ──
         seg.copy(me.position).sub(prevPos);
@@ -2262,23 +1965,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
               damage(6, false);
               rig.kick(0.4);
               break;
-            }
-            // A glancing or slow contact: off the surface with the inward speed
-            // taken out and a little bounce, paid for in shield and hull.
-            const into = -vel.dot(tmp2);
-            if ((b.kind === 'planet' || b.kind === 'moon') && into < SCRAPE_SPEED) {
-              autodock = null;
-              me.position.copy(b.position).addScaledVector(tmp2, b.radius + hr + 0.3 * H);
-              if (into > 0) vel.addScaledVector(tmp2, into * 1.3);
-              vel.multiplyScalar(0.8);
-              if (sinceScrape > 0.6 && into > 0.05 * U) {
-                damage(8 + (into / U) * 25, false);
-                rig.kick(0.6);
-              }
-              sinceScrape = 0;
-              setAlert('proximity', 1.5);
-              if (crashT >= 0) break;
-              continue;
             }
             if (b.kind === 'station') destroyStation(b, prevPos);
             autodock = null;

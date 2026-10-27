@@ -238,10 +238,3 @@ export function isLandable(id: string): boolean {
   return id in SITE_ATMOSPHERE;
 }
 
-/** Where the dive begins, from the world's centre in its own radii: the top
- *  of its air, or over an airless world the low pass. 0 where there is no way down. */
-export function entryShellRadii(id: string): number {
-  if (!isLandable(id)) return 0;
-  const r = siteRadiusKm(id);
-  return r > 0 ? 1 + entryAltitudeKm(id) / r : 0;
-}

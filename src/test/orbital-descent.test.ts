@@ -119,7 +119,7 @@ describe('the way down from orbit', () => {
     expect(lander.yaw).toBeCloseTo(d.finalYaw, 9);
     expect(lander.telemetry.landed).toBe(false);
     const start = lander.telemetry.altitude;
-    expect(start).toBeGreaterThan(100);
+    expect(start).toBeGreaterThan(40);
     for (let i = 0; i < 60 * 120 && !lander.telemetry.landed; i++) lander.update(DT, { throttle: 0, moveX: 0, moveY: 0 }, ground);
     expect(lander.telemetry.landed).toBe(true);
     expect(lander.telemetry.touchdown).toBeLessThan(2.5);
@@ -414,10 +414,10 @@ describe('the skips and the clock', () => {
     d.skipToEntry();
     let hot = 0; let lastWarp = 0;
     const t = flyOut(d, undefined, () => { if (d.telemetry.heat > 0.3) hot += DT; lastWarp = d.telemetry.timeWarp; });
-    expect(t).toBeLessThan(16);
-    expect(t).toBeGreaterThan(6);
+    expect(t).toBeLessThan(7);
+    expect(t).toBeGreaterThan(2.5);
     // The entry still burns long enough to be seen where there is air to burn in.
-    if (hasAir(world)) expect(hot).toBeGreaterThan(3);
+    if (hasAir(world)) expect(hot).toBeGreaterThan(1.2);
     // The last of it is still at real time, and it ends where the lander takes over.
     expect(lastWarp).toBeLessThan(1.1);
     expect(d.position.distanceTo(lander.start.position)).toBeLessThan(0.5);
@@ -489,7 +489,7 @@ describe('the way back up', () => {
       peakHeat = Math.max(peakHeat, a.telemetry.heat);
     }
     expect(seen).toEqual(['climb', 'ascent', 'orbit', 'done']);
-    expect(t).toBeGreaterThan(25);
+    expect(t).toBeGreaterThan(20);
     expect(t).toBeLessThan(45);
     expect(a.telemetry.altitude).toBeCloseTo(body.orbitKm * 1000, -2);
     expect(a.telemetry.speed).toBeCloseTo(orbitalSpeed(body, body.orbitKm * 1000), -1);
@@ -580,7 +580,7 @@ describe('the flight in a surface scene', () => {
     const camera = new THREE.PerspectiveCamera();
     const flight = makeSurfaceFlight({ world: 'earth', lander, scene, camera, lite: true, baseFov: () => 60 });
     flight.skipToEntry();
-    for (let i = 0; i < 300; i++) flight.update(DT, { moveX: 0, moveY: 0, throttle: 0 });
+    for (let i = 0; i < 100; i++) flight.update(DT, { moveX: 0, moveY: 0, throttle: 0 });
     expect(flight.telemetry.heat).toBeGreaterThan(0.3);
     flight.stop();
     expect(flight.update(DT, { moveX: 0, moveY: 0, throttle: 0 })).toBe('idle');
@@ -592,7 +592,7 @@ describe('the flight in a surface scene', () => {
 });
 
 describe('the whole way down, flown by the computer', () => {
-  it.each(WORLDS)('%s: from the top of the air to the pad in under half a minute, set down gently on it', (world) => {
+  it.each(WORLDS)('%s: from the top of the air to the pad in under fifteen seconds, set down gently on it', (world) => {
     const { d, lander, ground } = descentFor(world);
     d.skipToEntry();
     const dive = flyOut(d);
@@ -605,7 +605,7 @@ describe('the whole way down, flown by the computer', () => {
       powered += DT;
     }
     expect(lander.telemetry.landed).toBe(true);
-    expect(dive + powered).toBeLessThan(28);
+    expect(dive + powered).toBeLessThan(15);
     expect(lander.telemetry.touchdown).toBeLessThan(2);
     expect(Math.hypot(lander.position.x - lander.pad.x, lander.position.z - lander.pad.z)).toBeLessThan(5);
   });
