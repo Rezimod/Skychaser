@@ -9,6 +9,7 @@ import {
   type FlightSession,
   type FlightWorld,
   type PlayerShipHandle,
+  surfaceRadius,
 } from '@/lib/solar-system/player-ship';
 import { projectTarget } from '@/lib/solar-system/flight-targeting';
 import { makeMissionTracker } from '@/lib/solar-system/flight-missions';
@@ -397,6 +398,28 @@ describe('gravity and solid bodies', () => {
     expect(crashed).toBe(true);
     expect(session.telemetry.hp).toBe(0);
     expect(ship.group.position.distanceTo(world.bodies[1].position)).toBeGreaterThan(EARTH_R);
+  });
+
+  it('meets a flattened giant at its drawn poles, not at the equator sphere', () => {
+    const giant = body('saturn', 3, 0.1, 58_232, 0, 1);
+    giant.oblate = 0.9;
+    giant.pole = new THREE.Vector3(0, 1, 0);
+    world.bodies.push(giant);
+    expect(surfaceRadius(giant, new THREE.Vector3(0, 1, 0))).toBeCloseTo(0.09, 9);
+    expect(surfaceRadius(giant, new THREE.Vector3(1, 0, 0))).toBeCloseTo(0.1, 9);
+    // Hovering over the pole between the drawn ground and the equator sphere: alive.
+    ship.group.position.set(3, 0.095, 0);
+    ship.group.lookAt(new THREE.Vector3(4, 0.095, 0));
+    step(5);
+    expect(session.telemetry.crashed).toBe(false);
+    // Down onto the pole: wrecked on the drawn ground.
+    ship.group.lookAt(giant.position);
+    session.input.thrust = 1;
+    for (let i = 0; i < 600 && !session.telemetry.crashed; i++) step(1);
+    expect(session.telemetry.crashed).toBe(true);
+    const d = ship.group.position.distanceTo(giant.position);
+    expect(d).toBeGreaterThan(0.09);
+    expect(d).toBeLessThan(0.095);
   });
 
   it('cannot tunnel through a small body between frames', () => {
