@@ -51,7 +51,8 @@ export interface AlienTargetStatus {
 export interface HostileTarget {
   group: THREE.Group;
   /** Called when an enemy bolt or blast connects with the target. */
-  onHit: (damage: number) => void;
+  /** `from`: a world point the hit came from, for the shield's flare. */
+  onHit: (damage: number, from?: THREE.Vector3) => void;
   /** A gift reached the ship: hull and shield to restore. */
   onRepair?: (hull: number, shield: number) => void;
   /** The ship's state, read every frame (region, health, drive). */
@@ -888,8 +889,8 @@ export function makeAlienEncounters(): AlienHandle {
 
   /** Damage at the ship from anything alien: softer in the first fights,
    *  softer still once the crew is in trouble. */
-  const hurt = (target: HostileTarget, amount: number) => {
-    target.onHit(amount * (mercy ? 0.4 : 1));
+  const hurt = (target: HostileTarget, amount: number, from?: THREE.Vector3) => {
+    target.onHit(amount * (mercy ? 0.4 : 1), from);
   };
 
   /** Steer a craft toward its goal with a speed cap and finite thrust. */
@@ -1279,7 +1280,7 @@ export function makeAlienEncounters(): AlienHandle {
   const detonate = (c: Craft, target: HostileTarget | null) => {
     explode(c.ship, S * 1.4);
     if (target && c.ship.position.distanceTo(target.group.position) < S * MINE_BLAST) {
-      hurt(target, c.spec.damage * damageScale(fights));
+      hurt(target, c.spec.damage * damageScale(fights), c.ship.position);
     }
     despawn(c);
   };
@@ -1701,7 +1702,7 @@ export function makeAlienEncounters(): AlienHandle {
           tmp.addScaledVector(b.vel, along * dtSec);
           if (tmp.distanceToSquared(playerGroup.position) < HIT_R2) {
             spawnSparks(playerGroup.position, S * 2.8);
-            if (hostile) hurt(hostile, b.damage);
+            if (hostile) hurt(hostile, b.damage, tmp2.copy(playerGroup.position).sub(b.vel));
             b.t = -1;
             b.mesh.visible = false;
             continue;

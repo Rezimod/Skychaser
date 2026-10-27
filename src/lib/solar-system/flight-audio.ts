@@ -18,6 +18,8 @@ export interface FlightAudio {
   boom: () => void;
   /** Entering and leaving light speed. */
   whoosh: () => void;
+  /** The side thrusters' hard kick for a dodge. */
+  thrusters: () => void;
   /** A star system reached: the chord that resolves after the exit flash. */
   arrive: () => void;
   /** The drive winding up: a swell that climbs for `dur` and then stops. */
@@ -220,6 +222,12 @@ export function makeFlightAudio(): FlightAudio {
       safe((c) => {
         burst(c, 'lowpass', 200, 4200, 1.2, 1.2);
         tone(c, 'sine', 60, 900, 0.5, 0.9);
+      });
+    },
+    thrusters() {
+      safe((c) => {
+        burst(c, 'bandpass', 2600, 700, 0.55, 0.28);
+        tone(c, 'sine', 140, 70, 0.25, 0.18);
       });
     },
     arrive() {

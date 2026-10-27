@@ -16,7 +16,7 @@ import {
 } from '@/lib/solar-system/surface-input';
 import { springTo } from '@/lib/solar-system/moon-camera';
 import { makeLander } from '@/lib/solar-system/moon-lander';
-import { shapeMouse } from '@/lib/solar-system/flight-input';
+import { makeFlickDodge, shapeMouse } from '@/lib/solar-system/flight-input';
 import { attachSurfaceControls, intentFromKeys, intentFromPad, type FootInputs } from '@/game/surface-controls';
 import { FOOT_BINDINGS, PAD } from '@/game/bindings';
 import type { DustHandle } from '@/lib/solar-system/moon-fx';
@@ -431,5 +431,27 @@ describe('one table, every controller', () => {
     expect(inputs.viewToggle).toBe(true);
     expect(onMap).toHaveBeenCalledTimes(2);
     c.detach();
+  });
+});
+
+describe('the touch stick dodge', () => {
+  it('fires on two quick flicks to one side, not on steering held hard over', () => {
+    const flick = makeFlickDodge();
+    // Held hard right for a second: one flick, no dodge.
+    let got = 0;
+    for (let t = 0; t <= 1000; t += 16) got ||= flick(1, t);
+    expect(got).toBe(0);
+    // Back to centre, then two flicks right in quick succession.
+    expect(flick(0, 1100)).toBe(0);
+    expect(flick(0.95, 1150)).toBe(0);
+    expect(flick(0.1, 1220)).toBe(0);
+    expect(flick(0.95, 1300)).toBe(1);
+    // Two flicks too far apart, or to opposite sides: nothing.
+    expect(flick(0, 1400)).toBe(0);
+    expect(flick(-0.95, 1450)).toBe(0);
+    expect(flick(0, 1500)).toBe(0);
+    expect(flick(0.95, 1550)).toBe(0);
+    expect(flick(0, 1600)).toBe(0);
+    expect(flick(0.95, 2400)).toBe(0);
   });
 });
