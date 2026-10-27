@@ -15,6 +15,8 @@
 // the same at 30 frames a second as at 144; the camera, the effects and the
 // glass run once per drawn frame.
 
+import type { Slice } from '@/game/slice';
+import { releaseScene } from '@/lib/solar-system/gpu-warm';
 import * as THREE from 'three';
 import { makeMoonSky } from '@/lib/solar-system/moon-sky';
 import { makeMoonTerrain, makeMoonHorizon, TERRAIN_WALK_RADIUS, PAD_CENTER } from '@/lib/solar-system/moon-terrain';
@@ -117,6 +119,8 @@ export interface AirlockTelemetry {
 }
 
 export interface SurfaceOptions {
+  /** Awaited between the build's steps, so a long build hands the frame back (game/slice). */
+  slice?: Slice;
   /** Open on the surface beside the vehicle rather than on the way down. */
   startOnSurface?: boolean;
   /** The GPU took the context away; the owner should rebuild the scene. */
@@ -374,11 +378,17 @@ function makeEnvironment(renderer: THREE.WebGLRenderer): THREE.WebGLRenderTarget
   return target;
 }
 
-export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): MoonSurfaceHandle {
+export async function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): Promise<MoonSurfaceHandle> {
   const isMobile = window.matchMedia('(max-width: 768px)').matches;
   // One hard sun; the host owns it, its shadow box and the light pool.
   const host = makeSurfaceHost(mount, { clearColor: 0x000000, exposure: 1.08, sun: { color: 0xfff8ee, intensity: 3.6 }, near: 0.05, far: 4000, onContextLost: opts.onContextLost });
   const { renderer, scene, camera, lightPool, post, perf, lite, quality } = host;
+  // Between steps the frame goes back to the browser; a build abandoned
+  // there lets go of the context and of what it had made so far.
+  const step = async () => {
+    try { await opts.slice?.(); } catch (e) { host.dispose(() => releaseScene(scene)); throw e; }
+  };
+  await step();
   const envTarget = makeEnvironment(renderer);
   scene.environment = envTarget.texture;
   scene.environmentIntensity = 0.45;
@@ -388,23 +398,29 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   // scatter light, but the sunlit ground bounces a warm grey up into every
   // shadow: that is what keeps a shaded suit readable. ──
   scene.add(new THREE.HemisphereLight(0x11141b, 0x6f6b65, 0.4));
+  await step();
   const sky = makeMoonSky(SUN_DIR, { faint: quality.stars, band: quality.band });
+  await step();
   scene.add(sky.group);
   const earthFill = new THREE.DirectionalLight(0xa9bde0, 0.12);
   earthFill.position.copy(sky.earthDir);
   scene.add(earthFill);
 
   const terrain = makeMoonTerrain(lite, quality.propDensity);
+  await step();
   scene.add(terrain.mesh);
   scene.add(terrain.rocks);
   const sinkhole = makeSinkhole(terrain, lite);
+  await step();
   scene.add(sinkhole.group);
   const dust = makeMoonDust(1600, quality.dustMax);
   scene.add(dust.points);
   const prints = makePrints(900, quality.printsMax);
   scene.add(prints.mesh);
   const kit = makeKit(lite);
+  await step();
   const base = makeMoonBase(terrain.heightAt, lite, kit, SUN_DIR, lightPool);
+  await step();
   scene.add(base.group);
   // The ground the crew uses every day: compacted where people walk and
   // park, scoured where the landers set down; boot prints and tracks already
@@ -454,10 +470,13 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     prints.clear(x, z, r * 1.2);
     history.clear(x, z, r * 1.2);
   };
+  await step();
   const horizon = makeMoonHorizon(terrain, lite);
+  await step();
   scene.add(horizon);
 
   const cosmonaut = makeCosmonaut(dust, lite);
+  await step();
   cosmonaut.setCeiling(base.ceilingAt);
   // The jetpack's envelope: half as far again as the walk fence, up to the Moon's ceiling.
   cosmonaut.setFlight(flightEnvelope(TERRAIN_WALK_RADIUS, cosmonaut.profile.g));
@@ -478,14 +497,18 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
     cam.footfall(e.hard, cosmonaut.state.gait === 'run' || cosmonaut.state.gait === 'sprint' ? 1 : 0.25);
   };
   const gears: RoverGear[] = missionComplete() ? ['creep', 'cruise', 'sprint', 'ion'] : ['creep', 'cruise', 'sprint'];
+  await step();
   const rover = makeRover(base.rover, base.roverCollider, base.roverParts, terrain, dust, prints, gears);
+  await step();
   // The crew's own ship comes down; the lander only when no hull is named.
   const lander = makeLander(PAD_CENTER.x, PAD_CENTER.y + 26, terrain.heightAt, dust, lite, lightPool, MOON_G, undefined, { kind: opts.shipKind });
   scene.add(lander.group);
   // The way down from orbit to where the lander's powered descent begins,
   // and the way back up: flown in this scene (surface-flight).
   const flight = makeSurfaceFlight({ world: 'moon', lander, scene, camera, lite, baseFov: () => baseFov });
+  await step();
   const mission = makeMission(terrain.heightAt, dig, dust, lite, lightPool, base.zones.anchors.scienceTerminal);
+  await step();
   scene.add(mission.group);
   base.colliders.push(...mission.colliders);
   base.walkColliders.push(...mission.colliders);
@@ -495,6 +518,7 @@ export function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions = {}): 
   });
   scene.add(meteors.group);
   // Player-built pieces: private ones round the outpost, the shared colony to the east.
+  await step();
   const build = makeBuildMode({
     world: 'moon', kit, scene, heightAt: terrain.heightAt,
     blockers: base.colliders.filter((c) => c !== base.roverCollider),

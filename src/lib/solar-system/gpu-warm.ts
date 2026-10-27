@@ -7,6 +7,14 @@
 
 import * as THREE from 'three';
 
+/** three reads every program's info logs on its first use, to report shader
+ *  errors. Each read waits for the GPU process to finish compiling: on an
+ *  Intel Mac (Chrome on Metal) that held the main thread 6 s on one frame of
+ *  cruise. The logs are for development; a release build skips them. */
+export function skipShaderChecks(renderer: THREE.WebGLRenderer) {
+  renderer.debug.checkShaderErrors = process.env.NODE_ENV !== 'production';
+}
+
 /** Run a compile as the frame will draw: into the post chain's target. three
  *  keys a program on where it draws — the canvas gets tone mapping and sRGB
  *  output in the shader, a target gets neither — so a compile aimed at the
@@ -41,6 +49,23 @@ function texturesOf(material: THREE.Material, into: Set<THREE.Texture>) {
 /** Upload every texture in the scene now, including those of objects the
  *  camera cannot see yet (they would otherwise stall the frame they enter). */
 export function uploadSceneTextures(renderer: THREE.WebGLRenderer, scene: THREE.Object3D) {
+  for (const t of uploadable(scene)) renderer.initTexture(t);
+}
+
+/** The same, one texture at a time with `slice` awaited between, so a scene
+ *  with a hundred megabytes of maps does not hold one frame for a second. */
+export async function uploadSceneTexturesSliced(renderer: THREE.WebGLRenderer, scenes: THREE.Object3D[], slice: () => Promise<void>, stop: () => boolean) {
+  for (const scene of scenes) {
+    for (const t of uploadable(scene)) {
+      if (stop()) return;
+      renderer.initTexture(t);
+      await slice();
+    }
+  }
+}
+
+function uploadable(scene: THREE.Object3D): THREE.Texture[] {
+  const out: THREE.Texture[] = [];
   const textures = new Set<THREE.Texture>();
   scene.traverse((o) => {
     const m = (o as THREE.Mesh).material;
@@ -54,8 +79,9 @@ export function uploadSceneTextures(renderer: THREE.WebGLRenderer, scene: THREE.
     // A texture with no image yet (a load still in flight) is uploaded when it lands.
     const image = t.image as { width?: number } | undefined;
     if (!(t as THREE.DataTexture).isDataTexture && !(t as THREE.CanvasTexture).isCanvasTexture && !(image && image.width)) continue;
-    renderer.initTexture(t);
+    out.push(t);
   }
+  return out;
 }
 
 /** A compile (or any wait) that cannot hold the game up for good: it settles
@@ -75,4 +101,19 @@ export function releaseCompilePolls(renderer: THREE.WebGLRenderer) {
   const programs = (renderer.info as unknown as { programs?: Array<{ isReady?: () => boolean }> | null }).programs;
   if (!programs) return;
   for (const p of programs) p.isReady = () => true;
+}
+
+/** Free everything a scene holds on the GPU: its geometries, materials and
+ *  their textures. For a build abandoned half-way, whose own dispose was
+ *  never made. */
+export function releaseScene(scene: THREE.Object3D) {
+  const textures = new Set<THREE.Texture>();
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    mesh.geometry?.dispose();
+    const m = mesh.material;
+    if (!m) return;
+    for (const x of Array.isArray(m) ? m : [m]) { texturesOf(x, textures); x.dispose(); }
+  });
+  for (const t of textures) t.dispose();
 }

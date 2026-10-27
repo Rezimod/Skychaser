@@ -10,7 +10,8 @@ import * as THREE from 'three';
 import { makeMoonPost, type MoonPostHandle } from '@/lib/solar-system/moon-post';
 import { makeMoonPerf, probeCalls, type MoonPerf } from '@/lib/solar-system/moon-perf';
 import { makeLightPool, type LightPool } from '@/lib/solar-system/moon-lights';
-import { compileFor, releaseCompilePolls, settleWithin, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
+import { compileFor, releaseCompilePolls, settleWithin, skipShaderChecks, uploadSceneTexturesSliced } from '@/lib/solar-system/gpu-warm';
+import { makeSlicer } from '@/game/slice';
 import { makeLoopGuard } from '@/game/gpu-recovery';
 import { serviceStill } from '@/game/frame-tap';
 import { projectSunDirection, type SunScreen } from '@/lib/solar-system/post-flare';
@@ -89,6 +90,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   // MSAA lives on the composer's target (moon-post); the default framebuffer
   // only ever receives the final quad, so it needs none of its own.
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: 'high-performance' });
+  skipShaderChecks(renderer);
   let profile = quality;
   const ratioFor = (q: QualityProfile) => pixelRatioFor(q, mount.clientWidth, mount.clientHeight);
   let maxRatio = ratioFor(quality);
@@ -293,16 +295,16 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
         if (disposed || contextLost) return undefined;
         const hiddenForCompile: THREE.Object3D[] = [];
         scene.traverse((o) => { if (!o.visible) { hiddenForCompile.push(o); o.visible = true; } });
-        const begin = () => {
+        const begin = async () => {
           if (!disposed && !raf && !contextLost) {
-            // Still under the loader: every upload, and one frame through
-            // the shadow pass and the whole post chain, whose programs the
+            // Still under the loader: every upload, a texture at a time with
+            // the frame handed back between, then one frame through the
+            // shadow pass and the whole post chain, whose programs the
             // compile above never sees. With the hidden props still shown,
             // their maps go up too.
             try {
-              uploadSceneTextures(renderer, scene);
-              for (const e of extras) uploadSceneTextures(renderer, e.scene);
-              post.render(0);
+              await uploadSceneTexturesSliced(renderer, [scene, ...extras.map((e) => e.scene)], makeSlicer(8), () => disposed || contextLost);
+              if (!disposed && !contextLost) post.render(0);
             } catch { /* a lost context mid-warm: the loss handler rebuilds */ }
           }
           for (const o of hiddenForCompile) o.visible = false;
