@@ -185,6 +185,8 @@ const FUEL_BURN = 0.035;
 /** How much of the engine's braking the profile asks for: the rest is the
  *  margin that makes the profile flyable at all. */
 const PROFILE = 0.8;
+/** The same, for the landing computer. */
+const ASSIST_PROFILE = 0.9;
 /** How much plume the engines show with the throttle closed, in the air. */
 const IDLE_PLUME = 0.32;
 /** Radius of the laid pad the crew aims at, as moon-base-zones draws it. The
@@ -507,8 +509,10 @@ export function makeLander(
     // flyable rather than theoretical. Cross it by a clear margin and the
     // computer takes the stick, because from there on nothing the pilot
     // does gets it down gently.
-    const safe = Math.sqrt(2 * net * Math.max(0, alt - REST - 0.85)) * PROFILE;
-    const want = Math.max(0.6, Math.min(Math.max(START_DESCENT, start.descent * (1 - 1 / (1 + alt / 60))), safe));
+    const stop = Math.sqrt(2 * net * Math.max(0, alt - REST - 0.85));
+    const safe = stop * PROFILE;
+    const cruise = Math.max(START_DESCENT, start.descent * (1 - 1 / (1 + alt / 60)));
+    const want = Math.max(0.6, Math.min(cruise, safe));
     // Landing thirty metres off the middle of a pad that is forty-six
     // across is a landing; landing in the rocks beyond it is not, so the
     // computer also steps in for a pilot who has not killed the drift.
@@ -528,11 +532,19 @@ export function makeLander(
       // sink rate so there is height left to close it in — which is what a
       // pilot does, and what the fuel is for (a full tank is over a minute
       // of hover and the descent takes a quarter of that).
-      const wide = offset > PAD_R * 0.25 && alt > 12;
-      const target = wide ? Math.min(want, 2.4) : want;
+      // The sideways error is closed on a ~3 s time constant, so the sink
+      // is held back only once the pad is near and still not under it.
+      // The computer flies a tighter profile than it asks of a pilot: it
+      // knows the engine, and a landing it flies should not crawl.
+      // The engine takes a moment to spool (the throttle eases in at 7/s),
+      // so the height that lag eats at this fall is not counted as braking room.
+      const room = Math.max(0, alt - REST - 0.85 - fall * 0.2);
+      const quick = Math.max(1.2, Math.min(cruise * 1.4, Math.sqrt(2 * net * room) * ASSIST_PROFILE));
+      const wide = offset > PAD_R * 0.25 && alt < 12 + offset * 2;
+      const target = wide ? Math.min(quick, 2.4) : quick;
       throttle = THREE.MathUtils.clamp((fall - target) * 1.4 + (g / MAX_THRUST), 0, 1);
-      const backX = (padX - position.x) * 0.13 - vel.x * 0.62;
-      const backZ = (padZ - position.z) * 0.13 - vel.z * 0.62;
+      const backX = (padX - position.x) * 0.35 - vel.x * 1.1;
+      const backZ = (padZ - position.z) * 0.35 - vel.z * 1.1;
       tx = THREE.MathUtils.clamp(backX, -1, 1);
       tz = THREE.MathUtils.clamp(backZ, -1, 1);
     }
