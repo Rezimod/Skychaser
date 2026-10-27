@@ -629,6 +629,10 @@ export function makePlanetGlobe(world: GlobeWorld, opts: GlobeOptions): PlanetGl
       const across = angleBetween(p.x / d, p.y / d, p.z / d, siteDir[0], siteDir[1], siteDir[2]) * R;
       if (across < patchKm) near = Math.max(near, Math.min((patchKm - across) * 0.5, Math.hypot(overGround, patchKm - across) * 0.5));
     }
+    // A cloud deck in view is drawn from where it actually is: a near plane
+    // pushed out over the patch would cut a ~120 km hole in it around the
+    // camera, snapping open and shut at the top of the descent.
+    if (clouds?.visible && shellDef) near = Math.min(near, Math.max(0.002, Math.abs(camAltKm - shellDef.km) * 0.35));
     // Far: the horizon over the lowest ground, and on past it to the top of
     // the air (or the highest ground): the last thing a grazing ray meets.
     const r0 = R + Math.max(field.min, field.floor) / 1000;
