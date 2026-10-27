@@ -792,6 +792,10 @@
   animation-name: story-in;
 }
 .game-shell[data-rotate='cw'] .story-comms { padding: 8px 12px; gap: 4px; }
+/* No blur on a phone: it resamples the live canvas every frame (see the HUD's own list). */
+@media (pointer: coarse) {
+  .story-comms, .story-chip { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(8, 12, 22, 0.9); }
+}
 
 /* A chapter done: one card in the middle of the glass, a fact, the next world, one key. */
 .story-card {
