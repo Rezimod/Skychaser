@@ -39,11 +39,19 @@ const OUT = `${arg('out', './qa-responsiveness')}/`;
 const PROFILES = arg('profiles', 'desktop,phone').split(',').filter(Boolean);
 const SITES = arg('sites', 'earth,mars,moon').split(',').filter(Boolean);
 const CYCLES = Number(arg('cycles', '1'));
-const GL = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-precise-memory-info'];
+/** --gpu: a headed Chrome on the machine's own graphics card, the numbers that matter. */
+const GPU = process.argv.includes('--gpu');
+const GL = GPU
+  ? ['--ignore-gpu-blocklist', '--enable-precise-memory-info', '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows']
+  : ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-precise-memory-info'];
+/** --cpu 4: the phone profile's CPU slowed this many times (CDP throttling). */
+const CPU_THROTTLE = Number(arg('cpu', '1'));
+/** --quality high: the preset forced through the saved settings before boot. */
+const QUALITY = arg('quality', '');
 mkdirSync(OUT, { recursive: true });
 
 /** Software GL draws a few frames a second, so a "stall" here is long. */
-const STALL_MS = Number(arg('stall', '6000'));
+const STALL_MS = Number(arg('stall', GPU ? '1500' : '6000'));
 
 const say = (m) => console.log(m);
 
@@ -51,7 +59,7 @@ const say = (m) => console.log(m);
 function monitor() {
   const m = {
     t0: performance.now(),
-    beats: 0, maxGap: 0, gaps250: 0, gaps1000: 0, lastBeat: performance.now(),
+    beats: 0, maxGap: 0, gaps250: 0, gaps1000: 0, lastBeat: performance.now(), over50: 0, over100: 0, recent: [],
     longTasks: [], loafs: [], errors: [], contextsMade: 0, contextsLost: 0,
     clears: new Map(), canvasIds: new WeakMap(), nextCanvas: 1, labels: new Map(), contexts: [],
   };
@@ -61,6 +69,9 @@ function monitor() {
     if (gap > m.maxGap) m.maxGap = gap;
     if (gap > 250) m.gaps250++;
     if (gap > 1000) m.gaps1000++;
+    if (gap > 50) m.over50++;
+    if (gap > 100) m.over100++;
+    if (!document.hidden) { m.recent.push(gap); if (m.recent.length > 20000) m.recent.splice(0, 5000); }
     m.lastBeat = now;
     m.beats++;
     requestAnimationFrame(beat);
@@ -131,7 +142,13 @@ function monitor() {
     loafs: m.loafs.length,
   });
   window.__qaSurface = () => window.__stellarWorld ?? window.__stellarMoon ?? null;
-  window.__qaResetGap = () => { m.maxGap = 0; };
+  window.__qaResetGap = () => { m.maxGap = 0; m.over50 = 0; m.over100 = 0; m.recent = []; };
+  window.__qaFrames = () => {
+    const g = m.recent.slice().sort((a, b) => a - b);
+    const q = (f) => (g.length ? Math.round(g[Math.min(g.length - 1, Math.floor(g.length * f))]) : 0);
+    const sum = g.reduce((a, x) => a + x, 0);
+    return { n: g.length, fps: sum ? +(g.length * 1000 / sum).toFixed(1) : 0, p50: q(0.5), p95: q(0.95), p99: q(0.99), over50: m.over50, over100: m.over100 };
+  };
   window.__qaLoafs = (since) => m.loafs.filter((e) => e.at >= since);
   window.__qaLong = (since) => m.longTasks.filter((e) => e.at >= since);
 }
@@ -162,9 +179,13 @@ async function play(browser, profile) {
     ? { ...devices['Pixel 7'], deviceScaleFactor: 1 }
     : { viewport: { width: 1100, height: 620 }, deviceScaleFactor: 1 });
   await ctx.addInitScript(monitor);
+  if (QUALITY) await ctx.addInitScript((q) => {
+    try { const k = 'stellar_explore_settings'; const cur = JSON.parse(localStorage.getItem(k) || '{}'); localStorage.setItem(k, JSON.stringify({ ...cur, v: 1, quality: q })); } catch { /* storage off */ }
+  }, QUALITY);
   const p = await ctx.newPage();
   const cdp = await ctx.newCDPSession(p);
   await cdp.send('Performance.enable');
+  if (phone && CPU_THROTTLE > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU_THROTTLE });
   const run = { profile, phases: [], failures: [], notes: [] };
   const fail = (m) => { run.failures.push(m); say(`  FAIL [${profile}] ${m}`); };
   const note = (m) => { run.notes.push(m); say(`  note [${profile}] ${m}`); };
@@ -228,6 +249,7 @@ async function play(browser, profile) {
     const after = await p.evaluate(() => window.__qaSnap?.()).catch(() => null);
     const m1 = await cdpMetrics(cdp).catch(() => null);
     const loafs = await p.evaluate((since) => window.__qaLoafs?.(since) ?? [], pageT0).catch(() => []);
+    const frameStats = await p.evaluate(() => window.__qaFrames?.() ?? null).catch(() => null);
     const longs = await p.evaluate((since) => window.__qaLong?.(since) ?? [], pageT0).catch(() => []);
     const secs = (Date.now() - t0) / 1000;
     const frames = lastClears - n0;
@@ -235,6 +257,7 @@ async function play(browser, profile) {
       name, ok, secs: +secs.toFixed(1),
       gameFrames: frames, gameFps: +(frames / secs).toFixed(2),
       worstStallMs: worstStall,
+      frames: frameStats,
       mainThread: after && before ? {
         maxGapMs: after.maxGap, gaps1s: after.gaps1000 - before.gaps1000,
         longTasks: longs.length, longTaskMs: longs.reduce((a, e) => a + e.ms, 0), worstLongMs: longs.reduce((a, e) => Math.max(a, e.ms), 0),
@@ -247,7 +270,7 @@ async function play(browser, profile) {
       ...detail,
     };
     run.phases.push(rec);
-    say(`  ${name.padEnd(22)} ${String(rec.secs).padStart(6)} s  frames ${String(frames).padStart(5)} (${rec.gameFps}/s)  stall ${worstStall} ms  longest task ${rec.mainThread?.worstLongMs ?? '?'} ms  heap ${rec.memory?.heapMB.join('→') ?? '?'} MB  listeners ${rec.memory?.listeners.join('→') ?? '?'}  contexts alive ${rec.contexts?.alive ?? '?'}`);
+    say(`  ${name.padEnd(22)} ${String(rec.secs).padStart(6)} s  rAF ${frameStats?.fps ?? '?'} fps p95 ${frameStats?.p95 ?? '?'} ms >50:${frameStats?.over50 ?? '?'} >100:${frameStats?.over100 ?? '?'}  frames ${String(frames).padStart(5)} (${rec.gameFps}/s)  stall ${worstStall} ms  longest task ${rec.mainThread?.worstLongMs ?? '?'} ms  heap ${rec.memory?.heapMB.join('→') ?? '?'} MB  listeners ${rec.memory?.listeners.join('→') ?? '?'}  contexts alive ${rec.contexts?.alive ?? '?'}`);
     if (rec.errors.length) fail(`${name}: errors: ${rec.errors.slice(0, 3).join(' | ')}`);
     if (worstStall > STALL_MS) fail(`${name}: the picture stopped for ${(worstStall / 1000).toFixed(1)} s while the game was playing`);
     if (rec.contexts && rec.contexts.alive > 2) fail(`${name}: ${rec.contexts.alive} WebGL contexts alive at once`);
@@ -478,7 +501,9 @@ async function play(browser, profile) {
   return run;
 }
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium', args: GL });
+const browser = await chromium.launch(GPU
+  ? { channel: 'chrome', headless: false, args: GL }
+  : { executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium', args: GL });
 const runs = [];
 for (const profile of PROFILES) {
   say(`\n── ${profile} ──`);
@@ -489,8 +514,8 @@ await browser.close();
 writeFileSync(`${OUT}report.json`, JSON.stringify(runs, null, 2));
 const md = ['# Responsiveness report', '', `Server: ${BASE} · sites: ${SITES.join(', ')} · cycles: ${CYCLES}`, ''];
 for (const r of runs) {
-  md.push(`## ${r.profile}`, '', '| phase | s | game fps | worst stall ms | longest task ms | heap MB | listeners | GPU contexts |', '|---|---|---|---|---|---|---|---|');
-  for (const x of r.phases) md.push(`| ${x.name} | ${x.secs} | ${x.gameFps} | ${x.worstStallMs} | ${x.mainThread?.worstLongMs ?? ''} | ${x.memory?.heapMB.join(' → ') ?? ''} | ${x.memory?.listeners.join(' → ') ?? ''} | ${x.contexts?.alive ?? ''} |`);
+  md.push(`## ${r.profile}`, '', '| phase | s | rAF fps | p95 ms | >50 ms | >100 ms | game fps | worst stall ms | longest task ms | heap MB | listeners | GPU contexts |', '|---|---|---|---|---|---|---|---|---|---|---|---|');
+  for (const x of r.phases) md.push(`| ${x.name} | ${x.secs} | ${x.frames?.fps ?? ''} | ${x.frames?.p95 ?? ''} | ${x.frames?.over50 ?? ''} | ${x.frames?.over100 ?? ''} | ${x.gameFps} | ${x.worstStallMs} | ${x.mainThread?.worstLongMs ?? ''} | ${x.memory?.heapMB.join(' → ') ?? ''} | ${x.memory?.listeners.join(' → ') ?? ''} | ${x.contexts?.alive ?? ''} |`);
   md.push('', '**Slowest frames and their scripts**', '');
   for (const x of r.phases) for (const f of (x.worstFrames ?? []).slice(0, 2)) md.push(`- ${x.name}: ${f.ms} ms — ${f.scripts.map((s) => `${s.fn || s.invoker || '?'} (${s.src}:${s.pos}) ${s.ms} ms`).join('; ')}`);
   md.push('', r.failures.length ? `**Failures:**\n${r.failures.map((f) => `- ${f}`).join('\n')}` : '**No failures.**', '');

@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   // share a build folder: each names its own. Unset, it is the usual .next.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   compress: true,
+  // Profiling builds (QA_SOURCEMAPS=1) ship browser source maps, so traces name the real functions.
+  productionBrowserSourceMaps: process.env.QA_SOURCEMAPS === '1',
   generateBuildId: () => buildId,
   env: { NEXT_PUBLIC_BUILD_ID: buildId },
   experimental: {
