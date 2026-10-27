@@ -207,6 +207,46 @@ describe('hyperdrive', () => {
     expect(heading().angleTo(new THREE.Vector3(-1, -1, 0).normalize())).toBeLessThan(0.01);
   });
 
+  it('a jump charged straight at a world does not carry the ship through it', () => {
+    const earth = world.bodies[1];
+    ship.group.position.set(1, 0, 0.3);
+    ship.group.lookAt(earth.position);
+    session.input.modeRequest = 'ultra';
+    session.input.thrust = 1;
+    for (let i = 0; i < 600 && ship.group.position.distanceTo(earth.position) > 0.09 && !session.telemetry.crashed; i++) step(1);
+    expect(session.telemetry.crashed).toBe(false);
+    // Fast enough that the charge's coast (a third of the speed) reaches the ground.
+    expect(session.telemetry.speed * U / 3).toBeGreaterThan(0.09);
+    session.input.thrust = 0;
+    session.input.modeRequest = 'jump';
+    let closest = Infinity;
+    for (let i = 0; i < 240 && !session.telemetry.crashed; i++) {
+      step(1);
+      closest = Math.min(closest, ship.group.position.distanceTo(earth.position));
+    }
+    expect(session.telemetry.crashed).toBe(true);
+    expect(session.telemetry.jumpPhase).toBe('none');
+    expect(closest).toBeGreaterThan(EARTH_R);
+  });
+
+  it('fires at the same rate at 10 fps as at 60', () => {
+    const count = (dt: number) => {
+      ship.spawn(world.home);
+      faceAway();
+      let shots = 0;
+      ship.onFire = () => { shots += 1; };
+      session.input.fire = true;
+      seconds(2, dt);
+      session.input.fire = false;
+      step(1, dt);
+      return shots;
+    };
+    const fast = count(1 / 60);
+    const slow = count(1 / 10);
+    expect(fast).toBeGreaterThan(12);
+    expect(Math.abs(fast - slow)).toBeLessThanOrEqual(1);
+  });
+
   it('ignores regime requests while jumping', () => {
     session.input.modeRequest = 'jump';
     step(1);

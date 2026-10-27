@@ -654,6 +654,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const input = session.input;
   const audio = makeFlightAudio();
   const crash = makeCrashFx(H, ONE_G);
+  // A world or station going up has its own burst: the ship's crash must
+  // not cut short an eight-second planet explosion still playing.
+  const blast = makeCrashFx(H, ONE_G);
   const rig = makeCameraRig();
   const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
@@ -669,6 +672,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const fxGroup = new THREE.Group();
   fxGroup.name = 'playerFx';
   fxGroup.add(crash.group);
+  fxGroup.add(blast.group);
   fxGroup.add(evaG);
 
   // Pooled bolts — HDR amber so the bloom pass lights them up, and long
@@ -859,6 +863,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const jumpTarget: FlightAnchor = { position: new THREE.Vector3(), lookAt: new THREE.Vector3(), yaw: 0 };
   const relaunchAnchor: FlightAnchor = { position: new THREE.Vector3(), lookAt: new THREE.Vector3(), yaw: 0 };
   let jumpName = '';
+  let jumpLy = 0;
   let jumpOrigin = '';
   let arrivedHold = 0;
   const crashLook = new THREE.Vector3();
@@ -1056,6 +1061,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     foilsForced = null;
     lowShieldWarned = false;
     group.visible = true;
+    // Back at the cruise distance, or the camera snaps to the old regime's
+    // and then visibly zooms in for a second after every respawn.
+    camBack = Math.max(MIN_CAM_BACK, regimes.cruise.camBack * THREE.MathUtils.clamp(input.camZoom || 1, CAM_ZOOM_MIN, CAM_ZOOM_MAX));
     rig.snap();
     tel.hp = hull;
     tel.shield = shield;
@@ -1111,7 +1119,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     tmp2.copy(from).sub(b.position);
     if (tmp2.lengthSq() < 1e-12) tmp2.set(0, 1, 0);
     tmp2.normalize();
-    crash.trigger(b.position, tmp2, null, vel, b.radius / (8 * H));
+    blast.trigger(b.position, tmp2, null, vel, b.radius / (8 * H));
     b.destroyed = true;
     audio.boom();
     rig.kick(1.2);
@@ -1123,12 +1131,20 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const destroyStation = (b: FlightBody, from: THREE.Vector3) => {
     tmp2.copy(from).sub(b.position).normalize();
     if (tmp2.lengthSq() < 0.5) tmp2.set(0, 1, 0);
-    crash.trigger(b.position, tmp2, b, vel);
+    blast.trigger(b.position, tmp2, b, vel);
     b.destroyed = true;
     audio.boom();
   };
 
   const doCrash = (at: THREE.Vector3, normal: THREE.Vector3, body: FlightBody | null) => {
+    if (jumpPhase !== 'none') {
+      jumpPhase = 'none';
+      jumpT = 0;
+      mode = 'cruise';
+      regime = regimes.cruise;
+      audio.stopCharge();
+    }
+    holeFall.reset();
     crash.trigger(at, normal, body, vel);
     crashLook.copy(at);
     vel.set(0, 0, 0);
@@ -1153,7 +1169,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
 
   /** Shields take the hit first; whatever is left reaches the hull. */
   const damage = (amount: number, fromHeat: boolean) => {
-    if (crashT >= 0 || jumpPhase !== 'none') return;
+    if (crashT >= 0 || jumpPhase === 'travel') return;
     sinceHit = 0;
     const hadShield = shield > 0;
     const toShield = Math.min(shield, amount);
@@ -1206,7 +1222,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     crashLook,
   };
 
-  const updateCamera = (dt: number, camera: THREE.PerspectiveCamera, fovTarget: number) => {
+  const updateCamera = (dt: number, camera: THREE.PerspectiveCamera, fovTarget: number, bodies: readonly FlightBody[] = []) => {
     const a = actor();
     camFrame.view = crashT >= 0 ? 'crash' : view === 'cockpit' && pilot === 'ship' ? 'cockpit' : 'chase';
     camFrame.position = a.position;
@@ -1226,7 +1242,20 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     // burn shakes it a little: the frame under the seat, not the air.
     camFrame.entry = arrival ? Math.max(arrivalHeat, arrivalBurn * 0.35) : 0;
     rig.update(dt, camFrame, camera);
+    // The chase camera sits behind and above the ship: skimming a world
+    // nose-up it would sink into the ground and the world would vanish
+    // (seen from inside). Lift it back out over the surface.
+    for (const b of bodies) {
+      if (b.destroyed) continue;
+      const floor = b.radius + 2 * FLIGHT_NEAR;
+      camLift.subVectors(camera.position, b.position);
+      const d = camLift.length();
+      if (d >= floor || d < 1e-9) continue;
+      camera.position.copy(b.position).addScaledVector(camLift, floor / d);
+      camera.updateMatrixWorld();
+    }
   };
+  const camLift = new THREE.Vector3();
 
   const updateDust = (dt: number, speed: number) => {
     const jumping = jumpPhase === 'travel';
@@ -1451,6 +1480,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const holdTelemetry = (camera: THREE.PerspectiveCamera, dt: number) => {
     tel.speed = tel.speedKmS = tel.speedC = tel.speedFrac = 0;
     tel.throttle = 0;
+    tel.boost = false;
+    tel.driveReady = false;
     tel.alert = '';
     tel.heat = 0;
     tel.atmo = 0;
@@ -1549,6 +1580,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       tel.jumpFlash = Math.max(0, tel.jumpFlash - dt * 1.6);
       alertHold -= dt;
       crash.update(dt);
+      blast.update(dt);
       if (jumpPhase !== 'none' || crashT >= 0) {
         input.mouseDX = input.mouseDY = 0;
         input.dockRequest = false;
@@ -1558,7 +1590,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       tel.systemName = arrivedHold > 0 ? jumpName : jumpPhase === 'none' ? world.systemName : jumpOrigin;
       if (arrivedHold > 0) arrivedHold -= dt;
       tel.targetName = jumpPhase === 'none' ? world.jump.name : jumpName;
-      tel.targetLy = world.jump.distanceLy;
+      // Latched for the jump: mid-run the canvas already counts the ship as
+      // in the destination system, and the live figure would jump.
+      tel.targetLy = jumpPhase !== 'none' ? jumpLy : world.jump.distanceLy;
 
       // ── Wreck: hold the camera on the impact, count down, respawn. ──
       if (crashT >= 0) {
@@ -1589,7 +1623,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           heat = 0;
           rig.kick(holeFall.shake);
           camBack += (holeFall.camBack(regimes.cruise.camBack) - camBack) * (1 - Math.exp(-dt * 1.5));
-          updateCamera(dt, camera, holeFall.fov(regimes.cruise.fov));
+          updateCamera(dt, camera, holeFall.fov(regimes.cruise.fov), world.bodies);
           updateDust(dt, vel.length());
           updateTunnel(dt, timeSec);
           for (const j of shipParts.rcs) j.mat.opacity = 0;
@@ -1680,6 +1714,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           jumpTarget.lookAt.copy(world.jump.lookAt);
           jumpTarget.yaw = world.jump.yaw;
           jumpName = world.jump.name;
+          jumpLy = world.jump.distanceLy;
           jumpOrigin = world.systemName;
         } else {
           mode = req;
@@ -1707,9 +1742,27 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         qB.copy(group.quaternion);
         group.quaternion.copy(qA).slerp(qB, 1 - Math.exp(-dt * 4));
         vel.multiplyScalar(Math.exp(-dt * 3));
-        group.position.addScaledVector(vel, dt);
+        // The charge only bleeds the way off: a ship charging straight at a
+        // world still meets it. Then the drive drops out and the ordinary
+        // flight below sweeps the path, so the contact is a crash as always.
+        let blocked = false;
+        const hrc = hullRadius();
+        for (const b of world.bodies) {
+          if (b.destroyed) continue;
+          tmp.copy(b.position).sub(group.position);
+          const t = THREE.MathUtils.clamp(tmp.dot(vel) * dt / Math.max(1e-18, vel.lengthSq() * dt * dt), 0, 1);
+          tmp2.copy(group.position).addScaledVector(vel, dt * t);
+          if (tmp2.distanceTo(b.position) < b.radius + hrc) { blocked = true; break; }
+        }
+        if (blocked) {
+          jumpPhase = 'none';
+          jumpT = 0;
+          mode = 'cruise';
+          regime = regimes.cruise;
+          audio.stopCharge();
+        } else group.position.addScaledVector(vel, dt);
         rig.kick(Math.min(0.35, jumpT / JUMP_CHARGE * 0.35));
-        if (jumpT >= JUMP_CHARGE) {
+        if (jumpPhase === 'charge' && jumpT >= JUMP_CHARGE) {
           jumpPhase = 'travel';
           jumpT = 0;
           jumpStart.copy(group.position);
@@ -1980,9 +2033,12 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           return;
         }
 
+        // The leftover carries, so the rate is the same at 20 fps as at 60;
+        // an idle gun does not bank a burst.
         fireAcc -= dt;
+        fireAcc = Math.max(fireAcc, input.fire ? -FIRE_INTERVAL : 0);
         if (input.fire && session.armed && fireAcc <= 0 && pilot === 'ship' && cannonTips.length > 0 && energy >= ENERGY_PER_SHOT) {
-          fireAcc = FIRE_INTERVAL;
+          fireAcc += FIRE_INTERVAL;
           energy -= ENERGY_PER_SHOT;
           fire(enemies);
         }
@@ -2397,7 +2453,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         ? THREE.MathUtils.lerp(regime.fov, 38, jumpK)
         : jumpPhase === 'travel' ? JUMP_FOV + 14 * Math.sin(jumpK * Math.PI)
         : view === 'cockpit' && pilot === 'ship' ? COCKPIT_FOV : regime.fov;
-      updateCamera(dt, camera, fovTarget);
+      updateCamera(dt, camera, fovTarget, world.bodies);
       if (navC) projectTarget(navPos, camera, tel.nav);
       // The velocity vector: a point down the line of flight, on the glass.
       if (speed > 0.05 * U && jumpPhase === 'none') {
@@ -2538,6 +2594,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       shipParts.release?.();
       audio.dispose();
       crash.dispose();
+      blast.dispose();
       boltGeom.dispose();
       boltMat.dispose();
       dustGeom.dispose();
