@@ -272,6 +272,7 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
   document.addEventListener('visibilitychange', onVis);
 
   let compiling: Promise<unknown> = Promise.resolve();
+  let compileSettled = true;
   const extras: { scene: THREE.Scene; camera: THREE.Camera }[] = [];
   const host: SurfaceHost = {
     renderer, scene, camera, sun, lightPool, post, perf, mount, quality, lite,
@@ -323,6 +324,8 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
       };
       // Nor may what the build waits on (the crew's model, say) hold it.
       compiling = after ? settleWithin(after, 30000).then(compile) : compile() ?? Promise.resolve();
+      compileSettled = false;
+      void compiling.then(() => { compileSettled = true; }, () => { compileSettled = true; });
     },
     render(dt) {
       perf.mark();
@@ -374,7 +377,10 @@ export function makeSurfaceHost(mount: HTMLElement, opts: SurfaceHostOptions): S
       };
       // A lost context has nothing left to compile: free it now. Otherwise
       // wait for the compile, but not for ever.
-      if (contextLost || renderer.getContext().isContextLost()) {
+      // A settled compile frees now, in this same call: on take-off the
+      // orbit scene is built in the same commit, and the surface must have
+      // given its memory back before that starts.
+      if (compileSettled || contextLost || renderer.getContext().isContextLost()) {
         releaseCompilePolls(renderer);
         finish();
       } else {
