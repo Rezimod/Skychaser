@@ -173,7 +173,7 @@ describe('the ship as the descent vehicle', () => {
     for (const kind of KINDS) {
       const l = makeLander(0, 0, flat, dust, true, undefined, undefined, undefined, { kind });
       expect(keysOf(l.telemetry)).toEqual(reference);
-      expect(l.telemetry.altitude).toBe(138);
+      expect(l.telemetry.altitude).toBe(70);
       expect(l.telemetry.landed).toBe(false);
       expect(l.chase).toBeGreaterThan(10);
       expect(l.hull).toBeGreaterThan(3);

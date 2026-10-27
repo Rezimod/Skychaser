@@ -506,7 +506,9 @@ describe('the landing', () => {
   it('burns fuel only when the engine is lit', () => {
     const l = makeLander(0, 0, flat, dust, true);
     const dt = 1 / 60;
-    for (let i = 0; i < 120; i++) l.update(dt, { throttle: 0, moveX: 0, moveY: 0 }, flat);
+    // Coasting, before the fall is fast enough for the computer to take it.
+    for (let i = 0; i < 30; i++) l.update(dt, { throttle: 0, moveX: 0, moveY: 0 }, flat);
+    expect(l.telemetry.assist).toBe(false);
     expect(l.telemetry.fuel).toBe(1);
     for (let i = 0; i < 120; i++) l.update(dt, { throttle: 1, moveX: 0, moveY: 0 }, flat);
     expect(l.telemetry.fuel).toBeLessThan(1);

@@ -8,7 +8,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { attachDesktopControls, clearFlightInput } from '@/lib/solar-system/flight-input';
-import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, COOL_RADII, entryAltitudeKm, isAirlessSite, siteRadiusKm, titleCard, WARM_RADII } from '@/lib/solar-system/flight-approach';
+import { APPROACH_LEGS, APPROACH_SECONDS, approachProfileFor, COOL_RADII, siteRadiusKm, titleCard, WARM_RADII } from '@/lib/solar-system/flight-approach';
 import { assetsFor, SURFACE_GROUPS } from '@/lib/solar-system/surface-assets';
 import { prefetchModels, prefetchDone } from '@/game/models';
 import { type FlightSession, type ShipKind } from '@/lib/solar-system/player-ship';
@@ -193,7 +193,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
   const orderRef = useRef<HTMLDivElement>(null);
   const orderTextRef = useRef<HTMLSpanElement>(null);
   const orderBarRef = useRef<HTMLSpanElement>(null);
-  const landRef = useRef<HTMLDivElement>(null);
+  const landRef = useRef<HTMLButtonElement>(null);
   const landTextRef = useRef<HTMLSpanElement>(null);
   const landStateRef = useRef<HTMLSpanElement>(null);
   const landFillRef = useRef(-1);
@@ -569,16 +569,13 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       else if (tel.supply) status = t('supplying');
       else if (tel.pilot === 'eva') status = t(tel.canBoard ? 'evaBoardTouch' : 'evaOut');
       text(statusRef.current, status);
-      // A world with ground to reach in the ship. Nothing to press: dive at
-      // it, and once the ship is inside its air (or, over an airless world,
-      // low over the ground) and still coming down, the way down begins by
-      // itself (the flight step catches the crossing, `diveInto`), in the
-      // surface's own scene, at the top of the entry. The pill by the stick
-      // only says how far that is.
+      // A world with ground to reach in the ship: close enough, one press
+      // (L, or the card by the stick) and the computer flies the way down,
+      // in the surface's own scene, from the top of the entry. Flying into
+      // the ground instead is a wreck.
       const ceiling = LANDING_SITES[tel.nearId];
       const flyable = tel.pilot === 'ship' && !tel.crashed && tel.jumpPhase === 'none' && !tel.docked && !session.paused;
       const site = ceiling !== undefined ? (tel.nearId as LandingSite) : null;
-      const entryKm = site ? entryAltitudeKm(site) : 0;
       const ready = !!site && tel.nearAltKm < ceiling;
       const canLand = ready && flyable;
       // A radius or so out: the world's files and data start down.
@@ -591,20 +588,19 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
         onWarmRef.current?.(null);
       }
       if (site && flyable && !arrivalRef.current) {
-        // Close and closing: the surface may start building behind the flight.
-        if (tel.nearAltKm < entryKm * 4 && standbyRef.current !== site) {
+        // In landing range: the surface starts building behind the flight,
+        // so the press that lands finds it ready.
+        if (ready && standbyRef.current !== site) {
           standbyRef.current = site;
           onStandbyRef.current?.(site);
         }
       }
-      // Into the air (caught in the flight step, at any speed): the way down begins.
-      if (tel.diveInto && flyable && !arrivalRef.current) {
-        const into = tel.diveInto as LandingSite;
-        tel.diveInto = '';
-        if (LANDING_SITES[into] !== undefined && enterAir(into)) return;
+      if (session.input.landRequest) {
+        session.input.landRequest = false;
+        if (canLand && site && !arrivalRef.current && enterAir(site)) return;
       }
       // Pulled away again: whatever was being built for it can go.
-      if (standbyRef.current && (!site || site !== standbyRef.current || tel.nearAltKm > entryKm * 12)) {
+      if (standbyRef.current && (!site || site !== standbyRef.current || tel.nearAltKm > ceiling * 1.5)) {
         standbyRef.current = null;
         onStandbyRef.current?.(null);
       }
@@ -612,25 +608,22 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       if (landKey) {
         landKey.hidden = !site || !flyable;
         landKey.dataset.ready = String(ready);
-        const label = `${tel.nearId}:${ready}`;
+        const label = `${tel.nearId}:${ready}:${touch}`;
         if (!landKey.hidden) landSiteRef.current = tel.nearId as LandingSite;
         if (!landKey.hidden && landLabelRef.current !== label && site) {
           landLabelRef.current = label;
           text(landTextRef.current, t(`landOn.${tel.nearId}`));
-          // While the approach is easing the ship down, the card says so.
-          text(landStateRef.current, t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive'));
+          text(landStateRef.current, ready ? t(touch ? 'landTap' : 'landPress') : t('landDescend', { n: fmt(ceiling) }));
         }
-        // How far down to the top of the entry, on a log scale: full at it.
-        if (!landKey.hidden && entryKm > 0) {
-          const fill = Math.max(0, Math.min(1, 1 - Math.log(Math.max(1, tel.nearAltKm / entryKm)) / Math.log(40)));
+        // How far down to landing range, on a log scale: full in range.
+        if (!landKey.hidden && ceiling) {
+          const fill = ready ? 1 : Math.max(0, Math.min(1, 1 - Math.log(tel.nearAltKm / ceiling) / Math.log(40)));
           if (Math.abs(fill - landFillRef.current) > 0.005) {
             landFillRef.current = fill;
             landKey.style.setProperty('--land', fill.toFixed(3));
           }
         }
       }
-      // L on a keyboard no longer lands: the dive does.
-      if (session.input.landRequest) session.input.landRequest = false;
       // ── The arrival, while the ship flies it: which leg, how far through,
       // what has come down for the surface, and the way out of it. ──
       if (arrivalRef.current) {
@@ -686,7 +679,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       const landNow = canLand;
       const orderKey = session.combat ? (tel.orderDone ? 'done' : tel.orderId) : '';
       if (compact) {
-        if (landNow && !wasReady && site) pop(`${t(`landOn.${site}`)} · ${t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive')}`, 'ok', now);
+        if (landNow && !wasReady && site) pop(`${t(`landOn.${site}`)} · ${t('landTap')}`, 'ok', now);
         if (orderKey && orderKey !== lastOrder) pop(tel.orderDone ? t('orderDone') : t('order', { body: name(tel.orderId) }), tel.orderDone ? 'ok' : 'warn', now);
       }
       wasReady = landNow;
@@ -1084,15 +1077,16 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
           {/* The dock: the stick, the thumb keys, the console bar. */}
           <div className="flight-hud__dock">
             <div className="flight-hud__prompts">
-              {/* Not a key: the way down is the dive. It names the world and how close the air is. */}
-              <div ref={landRef} className="flight-hud__prompt flight-hud__land" role="status" hidden>
+              {/* The way down: names the world, fills as the ship closes, and lands it in one press. */}
+              <button type="button" ref={landRef} className="flight-hud__prompt flight-hud__land" hidden tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()} onClick={() => { session.input.landRequest = true; }}>
                 <span className="flight-hud__land-icon"><ArrowDownToLine size={15} aria-hidden /></span>
                 <span className="flight-hud__land-text">
                   <span ref={landTextRef} className="flight-hud__land-title">{t('landOn.moon')}</span>
                   <span className="flight-hud__land-gauge" aria-hidden><i /></span>
                   <span ref={landStateRef} className="flight-hud__land-state" />
                 </span>
-              </div>
+              </button>
             </div>
             {touch && (
               <div className="flight-hud__move" {...placed('move')}>

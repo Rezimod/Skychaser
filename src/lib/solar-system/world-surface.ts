@@ -215,9 +215,9 @@ declare global {
   }
 }
 
-const EGRESS_HOLD = 4.2;
+const EGRESS_HOLD = 2.2;
 /** How much of that before the exit key is offered. */
-const EXIT_AFTER = 1.4;
+const EXIT_AFTER = 0.8;
 /** Seconds of the lander's own climb before the flight back to orbit takes it. */
 const ASCENT_HANDOFF = 6;
 const STEP = 1 / 120;

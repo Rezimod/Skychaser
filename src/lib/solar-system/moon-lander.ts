@@ -176,8 +176,8 @@ const VEHICLES: Record<DescentKind, VehicleSpec> = {
 };
 VEHICLES.endurance = VEHICLES.lander;
 
-const START_ALT = 138;
-const START_DESCENT = 13.5;
+const START_ALT = 70;
+const START_DESCENT = 11;
 /** Full throttle, in gravities — a shade over twice the surface pull, as the LM had. */
 const THRUST_G = 2.4;
 const RCS_G = 1.48;
@@ -195,7 +195,7 @@ const PAD_R = 11.5;
 
 /** Where the powered descent begins: height over the pad, sink rate, and how far off it the vehicle is. */
 export interface DescentStart { alt: number; descent: number; offsetX: number; offsetZ: number; driftX: number; driftZ: number }
-const MOON_START: DescentStart = { alt: START_ALT, descent: START_DESCENT, offsetX: -34, offsetZ: 52, driftX: 1.6, driftZ: -2.4 };
+const MOON_START: DescentStart = { alt: START_ALT, descent: START_DESCENT, offsetX: -4, offsetZ: 6, driftX: 0.2, driftZ: -0.3 };
 
 export interface LanderOptions {
   /** Which hull comes down. Left out, the lander does. */
@@ -519,7 +519,10 @@ export function makeLander(
     // The threshold stays wide on purpose: a pilot who is still working the
     // drift keeps the stick, and it is the computer's own approach below
     // that has to put the vehicle on the paint.
-    if (fall > safe * 1.06 + 0.9 || (alt < 25 && offset > 32)) telemetry.assist = true;
+    // The engine takes a moment to spool, so the height that lag eats at
+    // this fall is not counted as braking room.
+    const lagged = Math.sqrt(2 * net * Math.max(0, alt - REST - 0.85 - fall * 0.25)) * PROFILE;
+    if (fall > lagged * 1.06 + 0.9 || (alt < 25 && offset > 32)) telemetry.assist = true;
 
     let throttle = THREE.MathUtils.clamp(input.throttle, 0, 1);
     tx = input.moveX; tz = -input.moveY;
@@ -539,8 +542,8 @@ export function makeLander(
       // The engine takes a moment to spool (the throttle eases in at 7/s),
       // so the height that lag eats at this fall is not counted as braking room.
       const room = Math.max(0, alt - REST - 0.85 - fall * 0.2);
-      const quick = Math.max(1.2, Math.min(cruise * 1.4, Math.sqrt(2 * net * room) * ASSIST_PROFILE));
-      const wide = offset > PAD_R * 0.25 && alt < 12 + offset * 2;
+      const quick = Math.max(1.5, Math.min(cruise * 1.4, Math.sqrt(2 * net * room) * ASSIST_PROFILE));
+      const wide = offset > PAD_R * 0.35 && alt < 12 + offset * 2;
       const target = wide ? Math.min(quick, 2.4) : quick;
       throttle = THREE.MathUtils.clamp((fall - target) * 1.4 + (g / MAX_THRUST), 0, 1);
       const backX = (padX - position.x) * 0.35 - vel.x * 1.1;

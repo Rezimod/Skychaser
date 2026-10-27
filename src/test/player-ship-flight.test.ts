@@ -1,5 +1,4 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { entryShellRadii } from '@/lib/solar-system/flight-approach';
 import * as THREE from 'three';
 import {
   createFlightSession,
@@ -286,23 +285,18 @@ describe('gravity and solid bodies', () => {
     expect(near).toBeGreaterThan(far * 0.97);
   });
 
-  it('dives at full fast speed straight into the air, caught at its top, never crashing', () => {
+  it('dives at full fast speed into a planet: nothing catches it, the ship wrecks on the ground', () => {
     const earth = world.bodies[1];
-    const shell = EARTH_R * entryShellRadii('earth');
     ship.group.position.set(1, 0, EARTH_R * 30);
     ship.group.lookAt(earth.position);
     session.input.modeRequest = 'fast';
     session.input.thrust = 1;
-    let into = '';
-    for (let i = 0; i < 20000 && !into; i++) {
-      step(1);
-      expect(session.telemetry.crashed).toBe(false);
-      into = session.telemetry.diveInto;
-    }
-    expect(into).toBe('earth');
-    // Stopped at the top of the air, however fast it came.
-    expect(ship.group.position.distanceTo(earth.position)).toBeGreaterThan(shell * 0.999);
-    expect(ship.group.position.distanceTo(earth.position)).toBeLessThan(shell * 1.001 + session.telemetry.speed * U * DT);
+    for (let i = 0; i < 20000 && !session.telemetry.crashed; i++) step(1);
+    expect(session.telemetry.crashed).toBe(true);
+    // The wreck lies on the ground, not inside the planet.
+    const d = ship.group.position.distanceTo(earth.position);
+    expect(d).toBeGreaterThan(EARTH_R);
+    expect(d).toBeLessThan(EARTH_R * 1.05);
   });
 
   it('crashes on contact, holds the wreck, then respawns at home', () => {
@@ -332,26 +326,18 @@ describe('gravity and solid bodies', () => {
     expect(ship.group.position.distanceTo(world.home.position)).toBeLessThan(1e-4);
   });
 
-  it('scrapes off a planet at cruise instead of wrecking, and pays for it', () => {
+  it('wrecks on a planet even at cruise: the ground is never a bounce', () => {
     ship.group.position.set(1, 0, EARTH_R * 1.4);
     ship.group.lookAt(world.bodies[1].position);
     session.input.thrust = 1;
-    session.input.boost = true;
-    let touched = false;
-    for (let i = 0; i < 900; i++) {
+    let crashed = false;
+    for (let i = 0; i < 900 && !crashed; i++) {
       step(1);
-      expect(session.telemetry.crashed).toBe(false);
-      const d = ship.group.position.distanceTo(world.bodies[1].position);
-      if (d < EARTH_R * 1.06) touched = true;
-      if (touched && session.telemetry.shield < MAX_SHIELD) break;
+      crashed = session.telemetry.crashed;
     }
-    expect(touched).toBe(true);
-    expect(session.telemetry.shield).toBeLessThan(MAX_SHIELD);
+    expect(crashed).toBe(true);
+    expect(session.telemetry.hp).toBe(0);
     expect(ship.group.position.distanceTo(world.bodies[1].position)).toBeGreaterThan(EARTH_R);
-    // Pushed against the surface for seconds on end: no death by a thousand scrapes.
-    seconds(4);
-    expect(session.telemetry.crashed).toBe(false);
-    expect(session.telemetry.hp).toBeGreaterThan(50);
   });
 
   it('cannot tunnel through a small body between frames', () => {
