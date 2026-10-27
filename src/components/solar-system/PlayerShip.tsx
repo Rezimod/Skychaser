@@ -71,8 +71,8 @@ const ICONS = [Shield, Zap, ChevronsUp];
 /** How long a passing moment stays up in the popup. */
 const POPUP_MS = 4200;
 /** The ship's alerts that are a danger, and the ones that are good news. */
-const WARN_ALERTS = new Set(['proximity', 'solar', 'lowshield', 'shielddown', 'hullcritical', 'hostile', 'horizon', 'masslock']);
-const OK_ALERTS = new Set(['jumpready', 'arrived', 'docked', 'undocked']);
+const WARN_ALERTS = new Set(['proximity', 'solar', 'lowshield', 'shielddown', 'hullcritical', 'hostile', 'horizon']);
+const OK_ALERTS = new Set(['arrived', 'docked', 'undocked']);
 /** Alien encounter callouts (aliens.ts): good news, a curiosity, or trouble. */
 const CALLOUT_OK = new Set(['greeter', 'beacon', 'beaconGreets', 'gift', 'salvage', 'clear', 'breakoff']);
 const CALLOUT_WARN = new Set(['raiders', 'swarm', 'mines', 'patrol', 'carrier', 'gunship', 'wave']);
@@ -507,8 +507,6 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
     let popUntil = 0;
     let wasReady = false;
     /** The last frame's height over the near world, km: the dive is a height that is falling. */
-    let lastAltKm = Infinity;
-    let lastNearId = '';
     let lastOrder = '';
     let lastCallout = '';
     const pop = (value: string, tone: string, now: number) => { popText = value; popTone = tone; popUntil = now + POPUP_MS; };
@@ -574,17 +572,15 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       // A world with ground to reach in the ship. Nothing to press: dive at
       // it, and once the ship is inside its air (or, over an airless world,
       // low over the ground) and still coming down, the way down begins by
-      // itself, in the surface's own scene, at the top of the entry. The
-      // pill by the stick only says how far that is.
+      // itself (the flight step catches the crossing, `diveInto`), in the
+      // surface's own scene, at the top of the entry. The pill by the stick
+      // only says how far that is.
       const ceiling = LANDING_SITES[tel.nearId];
       const flyable = tel.pilot === 'ship' && !tel.crashed && tel.jumpPhase === 'none' && !tel.docked && !session.paused;
       const site = ceiling !== undefined ? (tel.nearId as LandingSite) : null;
       const entryKm = site ? entryAltitudeKm(site) : 0;
       const ready = !!site && tel.nearAltKm < ceiling;
       const canLand = ready && flyable;
-      const diving = !!site && tel.nearId === lastNearId && tel.nearAltKm < lastAltKm - 1e-3;
-      lastAltKm = tel.nearId === lastNearId ? tel.nearAltKm : Infinity;
-      lastNearId = tel.nearId;
       // A radius or so out: the world's files and data start down.
       const radiusKm = site ? siteRadiusKm(site) : 0;
       if (site && flyable && radiusKm > 0 && tel.nearAltKm < radiusKm * WARM_RADII && warmRef.current !== site) {
@@ -600,7 +596,12 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
           standbyRef.current = site;
           onStandbyRef.current?.(site);
         }
-        if (entryKm > 0 && tel.nearAltKm < entryKm && diving && enterAir(site)) return;
+      }
+      // Into the air (caught in the flight step, at any speed): the way down begins.
+      if (tel.diveInto && flyable && !arrivalRef.current) {
+        const into = tel.diveInto as LandingSite;
+        tel.diveInto = '';
+        if (LANDING_SITES[into] !== undefined && enterAir(into)) return;
       }
       // Pulled away again: whatever was being built for it can go.
       if (standbyRef.current && (!site || site !== standbyRef.current || tel.nearAltKm > entryKm * 12)) {
@@ -611,13 +612,13 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       if (landKey) {
         landKey.hidden = !site || !flyable;
         landKey.dataset.ready = String(ready);
-        const label = `${tel.nearId}:${ready}:${tel.approachSlow}`;
+        const label = `${tel.nearId}:${ready}`;
         if (!landKey.hidden) landSiteRef.current = tel.nearId as LandingSite;
         if (!landKey.hidden && landLabelRef.current !== label && site) {
           landLabelRef.current = label;
           text(landTextRef.current, t(`landOn.${tel.nearId}`));
           // While the approach is easing the ship down, the card says so.
-          text(landStateRef.current, tel.approachSlow ? t('landSlowing') : t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive'));
+          text(landStateRef.current, t(isAirlessSite(site) ? 'landDiveAirless' : 'landDive'));
         }
         // How far down to the top of the entry, on a log scale: full at it.
         if (!landKey.hidden && entryKm > 0) {
