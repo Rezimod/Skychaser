@@ -225,6 +225,7 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
     let cancelFailed: (() => void) | null = null;
     const run = (handle: MoonSurfaceHandle): (() => void) => {
       handleRef.current = handle;
+      handle.setPaused(pausedRef.current);
       beginEntry();
       onProgressRef.current?.('compile');
       let readyReported = false;
@@ -614,10 +615,13 @@ export function MoonSurface({ onReturn, room, sink, paused, standby, startAt, on
     h.skipToEntry();
   };
   useEffect(beginEntry, [startAt, standby, glGeneration]);
+  // Hidden (built ahead in standby, or being left) it holds its last frame:
+  // drawing it unseen would halve the flight's frame rate on the approach,
+  // and its descent clock would run on without the player.
   useEffect(() => {
-    handleRef.current?.setPaused(!!paused);
+    handleRef.current?.setPaused(!!paused || !!standby);
     if (paused) unlockPointer();
-  }, [paused, glGeneration]);
+  }, [paused, standby, glGeneration]);
 
   /** Capture the finger so a key stays down when it slides off, but never at
    *  the cost of the key itself: the press is registered first either way. */

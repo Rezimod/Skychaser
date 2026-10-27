@@ -237,6 +237,7 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     let cancelFailed: (() => void) | null = null;
     const run = (handle: WorldSurfaceHandle): (() => void) => {
       handleRef.current = handle;
+      handle.setPaused(pausedRef.current);
       beginEntry();
       onProgressRef.current?.('compile');
       let readyReported = false;
@@ -549,10 +550,13 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     h.skipToEntry();
   };
   useEffect(beginEntry, [startAt, standby, glGeneration]);
+  // Hidden (built ahead in standby, or being left) it holds its last frame:
+  // drawing it unseen would halve the flight's frame rate on the approach,
+  // and its descent clock would run on without the player.
   useEffect(() => {
-    handleRef.current?.setPaused(!!paused);
+    handleRef.current?.setPaused(!!paused || !!standby);
     if (paused) unlockPointer();
-  }, [paused, glGeneration]);
+  }, [paused, standby, glGeneration]);
 
   const capture = (e: React.PointerEvent<HTMLElement>) => {
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* no live pointer: the key still works */ }
