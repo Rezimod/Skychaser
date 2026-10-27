@@ -337,7 +337,8 @@ export function makeSuitAudio(open = false): SuitAudio {
       });
       if (!b) return;
       b.tune?.(k);
-      ramp(b, k * 0.11, 0.06);
+      // Out is out: the roar stops with the flame, not a moment after it.
+      ramp(b, k * 0.11, lit ? 0.06 : 0.008);
     },
     hiss(k) {
       // Only while the chamber has air in it: in vacuum this is silence.

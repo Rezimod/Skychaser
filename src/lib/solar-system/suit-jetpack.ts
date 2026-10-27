@@ -11,7 +11,7 @@
 // off. From then on the crew is in flight until the boots are down again:
 // the key held climbs and the stick flies them about at a cruise that Shift
 // (or the stick at its rim) nearly doubles; let go and the pack is out at
-// once, and they fall, keeping their way across the ground, with a little
+// once — flame, roar and climb with it — and they fall, keeping their way across the ground, with a little
 // steering on the stick. Pressed again in the air, it lights at once. The
 // descend key only puts it out.
 //
@@ -52,6 +52,10 @@ export const JET = {
   airControl: 0.3,
   /** With the pack out in thick air (a giant's), the drag on going sideways, per second. */
   airDrag: 0.12,
+  /** Let go while climbing, the climb is gone in about this long, s: the crew falls, not coasts on up. */
+  cutTau: 0.08,
+  /** Lit, the flame shows at once at no less than this much of what it is asked. */
+  igniteK: 0.6,
 } as const;
 
 /** How the pack flies under one gravity. */
@@ -209,10 +213,12 @@ export function makeJetpack(g = 3): Jetpack {
   };
   /** Off the ground it may not land on, the pack has caught the crew and holds them. */
   let rescue = false;
-  /** The flame eases toward what the push asks, quicker up than down, and out quickest of all. */
+  /** The flame follows the push: out on the step the pack goes out, at once
+   *  when it lights, and eased between, quicker up than down. */
   const ease = (dt: number, to: number) => {
-    state.throttle += (to - state.throttle) * (1 - Math.exp(-dt * (to > state.throttle ? 12 : to === 0 ? 16 : 6)));
-    if (state.throttle < 1e-3) state.throttle = 0;
+    if (to === 0) { state.throttle = 0; return; }
+    if (state.throttle < to * JET.igniteK) state.throttle = to * JET.igniteK;
+    state.throttle += (to - state.throttle) * (1 - Math.exp(-dt * (to > state.throttle ? 12 : 6)));
   };
   const jet: Jetpack = {
     state,
@@ -287,7 +293,9 @@ export function makeJetpack(g = 3): Jetpack {
         if (ah > cap) { ax *= cap / ah; az *= cap / ah; }
         const air = envAir(env);
         ax -= b.vx * air; az -= b.vz * air;
-        out.x = ax; out.y = 0; out.z = az;
+        // A climb does not carry on for seconds after the key is let go: the
+        // rise is gone in a moment and gravity has them.
+        out.x = ax; out.y = b.vy > 0 ? -b.vy / Math.max(dt, JET.cutTau) : 0; out.z = az;
         state.thrust = 0;
         state.flying = true; state.jetting = false;
         ease(dt, 0);

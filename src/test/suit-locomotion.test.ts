@@ -449,7 +449,7 @@ describe('the jetpack in the air', () => {
     expect(w.loco.state.flying).toBe(true);
   });
 
-  it('burns from the throttle, eased, so the flame and the roar never snap', () => {
+  it('lights at once, burns from the throttle, and is out on the step it is let go', () => {
     const w = walker(moon);
     w.loco.update(DT, input({ jump: true }), flat, [], 999);
     w.run(JET.arm + 0.1, { jet: true });
@@ -457,12 +457,12 @@ describe('the jetpack in the air', () => {
     expect(w.loco.state.jetK).toBeLessThan(1);
     const k = w.loco.state.jetK;
     w.run(DT, { jet: false });
-    // Let go, the pack is out at once, and the flame dies quickly but is not cut in a frame.
+    expect(k).toBeGreaterThan(0);
+    // Let go, the pack is out at once: the flame, the light and the roar all read 0 on that step.
     expect(w.loco.state.jetting).toBe(false);
-    expect(w.loco.state.jetK).toBeLessThan(k);
-    expect(w.loco.state.jetK).toBeGreaterThan(k * 0.5);
+    expect(w.loco.state.jetK).toBe(0);
     w.run(0.4, { jet: false });
-    expect(w.loco.state.jetK).toBeLessThan(0.01);
+    expect(w.loco.state.jetK).toBe(0);
   });
 });
 
