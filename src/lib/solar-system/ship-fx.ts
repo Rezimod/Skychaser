@@ -150,7 +150,7 @@ const shieldFrag = /* glsl */ `
     float ripple = exp(-pow((d - front) * 7.0, 2.0)) * (1.0 - uT);
     float spot = exp(-d * d * 18.0) * (1.0 - uT) * 1.6;
     float hex = 0.6 + 0.4 * sin(vLocal.x * 60.0) * sin(vLocal.y * 60.0) * sin(vLocal.z * 60.0);
-    float a = (rim * 0.5 + ripple * hex * 0.7 + spot * 0.8) * uK * smoothstep(0.0, 0.3, nv);
+    float a = (rim * 0.6 + ripple * hex + spot) * uK * smoothstep(0.0, 0.3, nv);
     gl_FragColor = vec4(uColor * a, a);
   }
 `;
@@ -284,7 +284,7 @@ export function makeShipFx(H: number, length: number): ShipFx {
     },
     shieldHit(from, strength) {
       shieldT = 0;
-      shieldK = Math.min(1.1, 0.5 + strength);
+      shieldK = Math.min(1.5, 0.75 + strength);
       if (from && shield.parent) {
         shield.updateWorldMatrix(true, false);
         tmp.copy(from);
