@@ -18,6 +18,11 @@ export interface PostFxHandle {
   dispose: () => void;
 }
 
+/** MSAA samples on the flight composer's target: the preset's own, clamped to the context. */
+export function flightSamples(q: Pick<QualityProfile, 'msaa'>, maxSamples: number): number {
+  return Math.min(q.msaa, maxSamples);
+}
+
 /**
  * Scene → god rays → bloom → lens flare → tone-mapped output → grade. The
  * bloom threshold sits above every lit planet surface so only HDR emitters
@@ -39,11 +44,10 @@ export function makePostFx(
   const size = renderer.getSize(new THREE.Vector2());
   const pr0 = renderer.getPixelRatio();
   // The scene is drawn into the composer's target, never the canvas, so the
-  // anti-aliasing has to live here. Off the `performance` preset nothing
-  // changes from what the orrery always drew: a multisampled target (four
-  // samples, or the preset's own count when that is more) and a
-  // full-resolution bloom chain.
-  const samplesFor = (q: QualityProfile) => Math.min(q.bloom ? Math.max(4, q.msaa) : q.msaa, renderer.capabilities.maxSamples ?? 0);
+  // anti-aliasing has to live here: the preset's own sample count, clamped
+  // to the context, and the bloom chain at the preset's scale.
+  const samplesFor = (q: QualityProfile) => flightSamples(q, renderer.capabilities.maxSamples ?? 0);
+  let q0 = quality;
   const target = new THREE.WebGLRenderTarget(size.x * pr0, size.y * pr0, {
     type: THREE.HalfFloatType,
     samples: samplesFor(quality),
@@ -52,7 +56,7 @@ export function makePostFx(
   let bl = bloomFor(quality.level, 'flight');
   const renderPass = new RenderPass(scene, camera);
   const godRays = makeGodRaysPass(quality.level, quality.godRays);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), bl.strength, bl.radius, bl.threshold);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(size.x * pr0 * quality.bloomScale, size.y * pr0 * quality.bloomScale), bl.strength, bl.radius, bl.threshold);
   bloom.enabled = quality.bloom;
   const flare = makeLensFlarePass(quality.level, quality.flare);
   const output = new OutputPass();
@@ -65,8 +69,10 @@ export function makePostFx(
   composer.addPass(grade.pass);
 
   const setSize = (w: number, h: number) => {
-    composer.setPixelRatio(renderer.getPixelRatio());
+    const ratio = renderer.getPixelRatio();
+    composer.setPixelRatio(ratio);
     composer.setSize(w, h);
+    bloom.setSize(w * ratio * q0.bloomScale, h * ratio * q0.bloomScale);
   };
   setSize(size.x, size.y);
 
@@ -77,6 +83,7 @@ export function makePostFx(
     setSize,
     drawTarget: () => composer.renderTarget1,
     setQuality(q) {
+      q0 = q;
       bl = bloomFor(q.level, 'flight');
       bloom.enabled = q.bloom;
       bloom.strength = bl.strength;
@@ -93,6 +100,8 @@ export function makePostFx(
         rt.samples = samplesFor(q);
         rt.dispose();
       }
+      const size = renderer.getSize(new THREE.Vector2());
+      setSize(size.x, size.y);
     },
     setSun(x, y, visible, strength) {
       godRays.setSun(x, y, visible, strength);
