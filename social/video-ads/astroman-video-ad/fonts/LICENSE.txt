@@ -1,0 +1,3 @@
+NotoSansGeorgian-Bold.ttf and NotoSansDisplay-Bold.ttf are from the Noto project
+(https://notofonts.github.io), Copyright The Noto Project Authors.
+They are licensed under the SIL Open Font License, Version 1.1: https://openfontlicense.org

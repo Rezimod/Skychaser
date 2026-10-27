@@ -1,0 +1,4 @@
+.adkit-cache/
+examples/media/
+*_preview.png
+__pycache__/

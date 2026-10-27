@@ -1,0 +1,28 @@
+{
+  "output": "astroman-01_from_kit.mp4",
+  "format": "4x5",
+  "music": { "file": "media/astroman-01_v5.mp4", "start": 0, "outro_from": 39.24 },
+  "brand": { "site": "astroman.ge", "address": "ა. ყაზბეგის გამზ. 17", "cta": "შეუკვეთე ახლავე" },
+  "shots": [
+    { "file": "media/astroman-01_v5.mp4", "in": 2.80, "src_dur": 2.50, "dur": 3.2, "zoom": [1.02, 1.38], "zoom_center": [0.5, 0.42],
+      "caption": ["ცა ახლოსაა", "ვიდრე გგონია"], "caption_stagger": 1.45 },
+    { "file": "media/astroman-01_v5.mp4", "in": 0.02, "src_dur": 2.53, "dur": 3.5, "zoom": [1.10, 1.0],
+      "clean": [[90, 905, 900, 230]], "caption": "same" },
+    { "file": "media/astroman-01_v5.mp4", "in": 5.95, "src_dur": 2.00, "dur": 2.6, "zoom": [1.0, 1.14], "zoom_center": [0.5, 0.45],
+      "clean": [[90, 905, 900, 230]], "caption": { "kicker": "ნახე", "lines": ["საკუთარი თვალით"] } },
+    { "file": "media/astroman-01_v5.mp4", "in": 10.95, "src_dur": 2.40, "dur": 3.5, "zoom": [1.8, 2.2], "flash": 0.55, "caption": ["იუპიტერი"] },
+    { "file": "media/astroman-01_v5.mp4", "in": 16.30, "src_dur": 2.35, "dur": 3.5, "zoom": [1.8, 2.2], "zoom_center": [0.485, 0.5], "flash": 0.55, "caption": ["სატურნი"] },
+    { "file": "media/astroman-01_v5.mp4", "in": 24.10, "src_dur": 2.45, "dur": 3.5, "zoom": [2.05, 2.5], "flash": 0.55, "caption": ["მარსი"] },
+    { "file": "media/astroman-01_v5.mp4", "in": 8.15, "src_dur": 2.50, "dur": 4.4, "zoom": [1.12, 1.0],
+      "clean": [[90, 905, 900, 230]], "caption": ["ტელესკოპები", "ყველა დონისთვის"] },
+    { "file": "media/astroman-01_v5.mp4", "in": 21.45, "src_dur": 2.40, "dur": 3.5, "zoom": [1.0, 1.12],
+      "caption": { "lines": ["დამწყებიდან", "პროფესიონალამდე"], "sizes": [116, 116] } },
+    { "file": "media/astroman-01_v5.mp4", "in": 13.60, "src_dur": 2.25, "dur": 3.5, "zoom": [1.10, 1.0],
+      "caption": { "pill": "CELESTRON", "lines": ["ავტომატური GoTo"] } },
+    { "file": "media/astroman-01_v5.mp4", "in": 26.85, "src_dur": 2.25, "dur": 4.4, "zoom": [1.0, 1.18], "zoom_center": [0.5, 0.48],
+      "clean": [[250, 110, 580, 140]], "flash": 0.45, "caption": { "kicker": "Celestron", "lines": ["NexStar 6SE"] } },
+    { "type": "offer", "file": "media/astroman-01_v5.mp4", "in": 18.90, "src_dur": 2.25, "dur": 5.3,
+      "big": "-20%", "line": "ტელესკოპებზე", "pill": "ონლაინ და მაღაზიაში" },
+    { "type": "end", "dur": 3.6 }
+  ]
+}
