@@ -284,12 +284,10 @@ export function SolarSystemCanvas({
       // No WebGL (disabled, or the browser is out of contexts): let the
       // loading screen go rather than leave it up, and draw nothing. After a
       // lost context the GPU process may still be coming back: try again.
+      // Try again either way: on take-off this canvas is new (generation 0)
+      // and the surface's context may only just be on its way out.
       onReadyRef.current?.();
-      if (glGeneration > 0) {
-        const cancel = rebuildWhenVisible(() => setGlGeneration((g) => g + 1), noteContextLoss());
-        return cancel;
-      }
-      return;
+      return rebuildWhenVisible(() => setGlGeneration((g) => g + 1), noteContextLoss());
     }
     const ratioFor = () => pixelRatioFor(currentQuality(), mount.clientWidth, mount.clientHeight);
     renderer.setPixelRatio(ratioFor());
@@ -318,10 +316,14 @@ export function SolarSystemCanvas({
     };
     // A frame that throws must not stop the loop; one that throws every
     // frame gets the scene rebuilt.
-    const guard = makeLoopGuard('orbit', () => rebuild(1000));
+    // Counted as a loss, so a frame that fails every time steps the quality
+    // down and backs off instead of rebuilding every two seconds for good.
+    const guard = makeLoopGuard('orbit', () => rebuild(noteContextLoss()));
     // Materials are freed only between compiles: three's compile poll reads
     // each material's program, and a freed one breaks it.
     let compiling = 0;
+    let lastCompile: Promise<unknown> = Promise.resolve();
+    let disposed = false;
     const retired: THREE.Material[] = [];
     const retireMat = (m: THREE.Material) => {
       if (compiling > 0) retired.push(m);
@@ -329,10 +331,11 @@ export function SolarSystemCanvas({
     };
     const compileScene = () => {
       compiling += 1;
-      return settleWithin(compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera)), 25000).finally(() => {
+      lastCompile = settleWithin(compileFor(renderer, postFx.drawTarget(), () => renderer.compileAsync(scene, camera)), 25000).finally(() => {
         compiling -= 1;
-        if (compiling === 0) for (const m of retired.splice(0)) disposeMat(m);
+        if (compiling === 0 && !disposed) for (const m of retired.splice(0)) disposeMat(m);
       });
+      return lastCompile;
     };
     renderer.domElement.addEventListener('webglcontextlost', onContextLost);
     renderer.domElement.style.display = 'block';
@@ -1687,9 +1690,9 @@ export function SolarSystemCanvas({
           // before the loader goes. Then a couple of frames to show it holds.
           warmed = true;
           void compileScene().then(async () => {
-            if (contextLost) return;
+            if (contextLost || disposed) return;
             // A texture at a time, the frame handed back between.
-            try { await uploadSceneTexturesSliced(renderer, [scene], makeSlicer(8), () => contextLost); } catch { /* drawn on first use instead */ }
+            try { await uploadSceneTexturesSliced(renderer, [scene], makeSlicer(8), () => contextLost || disposed); } catch { /* drawn on first use instead */ }
             compiled = true;
           });
         } else if (compiled && ++settledFrames >= 2) {
@@ -1720,10 +1723,14 @@ export function SolarSystemCanvas({
       stopLoop();
       delete window.__stellarOrrery;
       cancelRebuild?.();
-      // Pending compile polls settle now rather than read freed materials.
+      // Pending compile polls settle now; the GPU side goes once they have
+      // (a tick later), since three's poll reads each material's program and
+      // a freed one throws. With nothing compiling it goes at once, before
+      // the next scene is built.
+      disposed = true;
       releaseCompilePolls(renderer);
+      const pending = compiling > 0;
       compiling = 0;
-      for (const m of retired.splice(0)) disposeMat(m);
       renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('resize', onResize);
@@ -1739,7 +1746,12 @@ export function SolarSystemCanvas({
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchEnd);
-
+      if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
+      if (pending) void lastCompile.then(freeGpu, freeGpu);
+      else freeGpu();
+    };
+    function freeGpu() {
+      for (const m of retired.splice(0)) disposeMat(m);
       teardownShip();
       fleet.dispose();
       textureLoadsCancelled = true;
@@ -1834,10 +1846,7 @@ export function SolarSystemCanvas({
       // (A context the GPU already took has nothing to give back, and asking
       // for its extension only logs a warning.)
       if (!contextLost) renderer.forceContextLoss();
-      if (renderer.domElement.parentNode === mount) {
-        mount.removeChild(renderer.domElement);
-      }
-    };
+    }
   }, [scaleMode, includePluto, glGeneration]);
 
   useEffect(() => {
