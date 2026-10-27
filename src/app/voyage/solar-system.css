@@ -2200,7 +2200,11 @@
   .moon-hud__impact { top: calc(var(--edge-top) + 310px); }
 }
 @media (max-height: 460px) {
-  .moon-hud__objective { display: none; }
+  /* A phone on its side has no room for the card: the objective is one
+     ellipsised line, still a key that opens the log. */
+  .moon-hud__objective { align-content: center; min-height: 32px; max-width: min(260px, 44vw); }
+  .moon-hud__objective :is(.moon-hud__objective-tag, .moon-hud__objective-range, .moon-hud__objective-job) { display: none; }
+  .moon-hud__objective .moon-hud__objective-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .moon-hud__suit { padding: 4px 8px; }
 }
 
