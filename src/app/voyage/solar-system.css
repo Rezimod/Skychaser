@@ -3017,7 +3017,9 @@
   /* Every blurred layer resamples the live canvas each frame; on a phone
      GPU that is time the scene needs. A deeper glass reads the same. */
   .flight-hud button, .flight-hud .flight-hud__card, .flight-hud__console, .flight-hud .game-stick,
-  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help {
+  .moon-hud button, .moon-hud__head, .moon-hud__compass, .flight-hud__help,
+  .flight-hud__comms, .flight-hud__toast, .flight-hud__callout, .flight-hud__menu, .flight-drive__menu,
+  .moon-surface .moon-hud__basekey, .moon-hud__menu, .moon-hud__help, .moon-hud__log {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
