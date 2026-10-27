@@ -360,7 +360,7 @@ class Ad:
                 m = np.concatenate([a_[:-X], a_[-X:] * (1 - fx) + b_[:X] * fx, b_[X:]])
             else: m = m[st:]
             m = m[:n]; mus[:len(m)] = m * (10 ** (mu.get('gain_db', 0) / 20))
-            if len(m) < n: log('note: music is shorter than the video; the end will be silent')
+            if len(m) < n - SR // 2: log(f'note: music ends {(n - len(m)) / SR:.1f}s before the video; the end will be silent')
         rng = np.random.default_rng(3); sfx = np.zeros_like(mus)
         def put(sig, t, g):
             i = int(t * SR); j = min(n, i + len(sig))
