@@ -1,5 +1,6 @@
 'use client';
 
+import { BuildAborted, makeSlicer } from '@/game/slice';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronsDown, ChevronsUp, Flame, Flashlight, Hand, HelpCircle, Menu, Rocket, RotateCcw, Trophy, Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -58,6 +59,9 @@ const PPD = 3.1;
 /** The back-to-base key shows once the crew are this far from the ship, m. */
 const BASE_KEY_M = 40;
 const TURNS = 3;
+
+/** Main-thread time a surface build takes before it gives a frame back, ms. */
+const BUILD_SLICE_MS = 8;
 
 export function WorldSurface({ world, onReturn, room, paused, standby, startAt, onProgress, onPauseRequest, shipKind }: WorldSurfaceProps) {
   const t = useTranslations('solarSystem.moon');
@@ -228,9 +232,276 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
     const tt = (key: string, values?: Record<string, string | number>) => tRef.current(key, values);
     const ttw = (key: string, values?: Record<string, string | number>) => twRef.current(key, values);
     onProgressRef.current?.('build');
-    let handle: WorldSurfaceHandle;
-    try {
-      handle = makeWorldSurface(mount, world, {
+    const ac = new AbortController();
+    let stop: (() => void) | null = null;
+    let cancelFailed: (() => void) | null = null;
+    const run = (handle: WorldSurfaceHandle): (() => void) => {
+      handleRef.current = handle;
+      beginEntry();
+      onProgressRef.current?.('compile');
+      let readyReported = false;
+      const controls = attachSurfaceControls({
+        mount, input: handle.input, touch: touchRef.current,
+        paused: () => pausedRef.current,
+        wake: handle.startAudio,
+        onCrouch: setCrouch,
+        flying: () => !!handleRef.current?.telemetry.flying,
+        onPauseRequest: () => onPauseRequestRef.current?.(),
+        selectable: '.moon-hud__help, .moon-hud__menu, .moon-hud__log',
+      });
+      controlsRef.current = controls;
+
+      const tel = handle.telemetry;
+      const text = (el: HTMLElement | null, v: string) => { if (el && el.textContent !== v) el.textContent = v; };
+      const show = (el: HTMLElement | null, on: boolean) => { if (el && el.hidden === on) el.hidden = !on; };
+      let eyepieceOpen = false;
+      let raf = 0;
+      let lastPaint = 0;
+      const isTouch = window.matchMedia('(pointer: coarse)').matches;
+      root.dataset.touch = String(isTouch);
+      let lastPoll = performance.now();
+      const paint = (now: number) => {
+        raf = requestAnimationFrame(paint);
+        controls.poll(Math.min(0.1, (now - lastPoll) / 1000));
+        lastPoll = now;
+        if (now - lastPaint < 33) return;
+        lastPaint = now;
+        root.dataset.ready = String(tel.ready);
+        if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
+        root.dataset.phase = tel.phase;
+        root.dataset.view = tel.view;
+        // The landing computer's key while it can still be handed the ship,
+        // and the way back to base once the crew are out of sight of it.
+        root.dataset.autoland = String(tel.autoland);
+        root.dataset.far = String(tel.baseDistance > BASE_KEY_M);
+        // In flight the jump key is the way down (suit-jet.css swaps its face).
+        root.dataset.jetFlying = String(tel.flying);
+
+        if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
+        // Story mode hears what this world is doing (game/story.ts; nothing in the other modes).
+        story.observe({ world, landed: tel.phase === 'touchdown' || tel.phase === 'surface', outside: tel.phase === 'surface', readout: tel.readout, altitude: tel.altitude, distance: tel.distanceM });
+        // From orbit, and back up to it: the flight panel, the heat at the
+        // edges of the glass and the glass shaking with the air (--heat,
+        // --shake), and the world's name over the orbit.
+        const ob = tel.orbital;
+        const flying = !!ob && (tel.phase === 'orbit' || tel.phase === 'ascent');
+        root.dataset.flight = String(flying);
+        show(orbRef.current, flying);
+        root.style.setProperty('--heat', flying && ob ? ob.heat.toFixed(3) : '0');
+        root.style.setProperty('--shake', flying && ob ? Math.min(1, ob.turbulence + ob.burn * 0.06).toFixed(3) : '0');
+        orbTitleRef.current?.style.setProperty('--title', ob && tel.phase === 'orbit' ? orbitTitle(ob).toFixed(3) : '0');
+        if (flying && ob) {
+          const down = tel.phase === 'orbit';
+          text(orbPhaseRef.current, tt(`landing.orbital.phases.${ob.phase}`));
+          text(orbAltRef.current, formatAltitude(ob.altitude));
+          text(orbSpeedRef.current, formatSpeed(ob.speed));
+          text(orbVsRef.current, formatVertical(ob.vertical));
+          text(orbSiteLabelRef.current, tt(down ? 'landing.orbital.toSite' : 'landing.orbital.downrange'));
+          text(orbSiteRef.current, formatRange(ob.downrangeKm));
+          if (orbHeatRef.current) orbHeatRef.current.style.transform = `scaleX(${Math.min(1, ob.heat).toFixed(3)})`;
+          const warp = ob.timeWarp > 1.05;
+          text(orbWarpRef.current, warp ? tt('landing.orbital.warp', { n: ob.timeWarp < 10 ? ob.timeWarp.toFixed(1) : Math.round(ob.timeWarp) }) : tt('landing.orbital.realTime'));
+          if (orbWarpRef.current) orbWarpRef.current.dataset.warp = String(warp);
+          // The speed of sound, once there is air enough to have one.
+          show(orbMachRef.current, ob.mach > 0.05);
+          if (ob.mach > 0.05) text(orbMachRef.current, tt('landing.orbital.mach', { n: ob.mach.toFixed(ob.mach < 3 ? 2 : 1) }));
+          show(orbSkipRef.current, down);
+          if (orbRef.current) orbRef.current.dataset.leg = ob.phase;
+        }
+        if (tel.phase !== 'surface') {
+          const l = tel.landing;
+          text(landTitleRef.current, tel.phase === 'ascent' ? tt('landing.ascent') : tt('landing.title'));
+          text(landAltRef.current, `${l.altitude.toFixed(l.altitude < 10 ? 1 : 0)} m`);
+          text(landRateRef.current, `${Math.abs(l.descent).toFixed(1)} m/s`);
+          text(landOffRef.current, `${Math.round(l.offset)} m`);
+          text(landDriftRef.current, `${l.drift.toFixed(1)} m/s`);
+          if (landFuelRef.current) landFuelRef.current.style.width = `${Math.round(l.fuel * 100)}%`;
+          if (landThrRef.current) landThrRef.current.style.height = `${Math.round(l.throttle * 100)}%`;
+          show(assistRef.current, l.assist);
+          show(plaqueRef.current, tel.phase === 'touchdown');
+          if (tel.phase === 'touchdown') {
+            text(plaqueGradeRef.current, tt(`grades.${tel.grade || 'good'}`));
+            text(plaqueSpeedRef.current, tt('landing.touchdown', { n: l.touchdown.toFixed(2) }));
+            show(plaqueExitRef.current, tel.exitReady);
+          }
+          return;
+        }
+
+        if (stripRef.current) stripRef.current.style.transform = `translateX(${-(tel.heading + 360) * PPD}px)`;
+
+        // ── Speed and height, while there is motion to read. ──
+        const motion = motionShown({ driving: tel.driving, speed: tel.speed, airborne: tel.altitude > 0.4, altitude: tel.altitude });
+        show(motionRef.current, motion.speed || motion.altitude);
+        show(speedRowRef.current, motion.speed);
+        show(altRowRef.current, motion.altitude);
+        if (motion.speed) text(speedRef.current, tel.driving ? `${Math.round(tel.speed * 3.6)} km/h` : `${tel.speed.toFixed(1)} m/s`);
+        if (motion.altitude) text(altRef.current, `${tel.altitude.toFixed(1)} m`);
+
+        // ── The suit, on a world that needs one, when it is low or in front of
+        // the crew. There is no suit power out here, so the oxygen decides. ──
+        // The pack never runs dry, so it has no meter: the suit block keeps to the life support.
+        const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet' };
+        const suit = suitRef.current;
+        const suitOn = !breathable && suitShown(glance);
+        show(suit, suitOn);
+        if (suit && suitOn) {
+          suit.dataset.level = suitLevel(glance);
+          text(o2Ref.current, `${tel.o2.toFixed(1)}%`);
+          if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
+          text(tempRef.current, `${tel.suitTemp.toFixed(1)}°`);
+        }
+        show(lampRef.current, tel.headlamp);
+        // The gem tally, and a line on the glass for each one picked up (GemHud).
+        gemHudRef.current?.paint(tel);
+        // The rest are read rather than watched: these refs are only mounted
+        // while the log is open.
+        text(gravRef.current, `${handle.profile.gravity.toFixed(2)} m/s²`);
+        text(hrRef.current, `${Math.round(tel.heartRate)}`);
+        text(outRef.current, tel.earth && tel.earth.outsideC === null ? '—' : `${tel.outsideC}°`);
+        text(evaRef.current, fmtTime(tel.evaSeconds));
+        text(distRef.current, fmtRange(tel.distanceM));
+
+        const p = tel.prompt;
+        const label = p.active ? ttw(`act.${p.label}`) : '';
+        const action = actionRef.current;
+        if (action) {
+          show(action, p.active);
+          if (p.active) text(actionTextRef.current, label);
+        }
+        const prompt = promptRef.current;
+        if (prompt) {
+          show(prompt, p.active);
+          if (p.active) {
+            text(promptTextRef.current, label);
+            show(promptHoldRef.current, p.kind === 'hold');
+          }
+        }
+        // The prompt carries its own hold progress, as the Moon's does.
+        const promptWork = promptWorkRef.current;
+        if (promptWork) {
+          const busy = p.active && p.progress > 0.001;
+          show(promptWork, busy);
+          if (busy) promptWork.style.setProperty('--work', Math.min(1, p.progress).toFixed(3));
+        }
+        const stance = stanceRef.current;
+        if (stance) {
+          const s = tel.stumbling ? tt('stance.stumble') : tel.sliding ? tt('stance.slide') : tel.crouched ? tt('stance.crouch') : '';
+          show(stance, s !== '');
+          text(stance, s);
+        }
+        const poi = poiRef.current;
+        if (poi) {
+          const on = !!tel.poiId && !p.active;
+          show(poi, on);
+          if (on) text(poi, ttw(`pois.${tel.poiId}`));
+        }
+        const hintKey = tel.hint ? (isTouch ? `hints.${tel.hint}Touch` : `hints.${tel.hint}`) : '';
+        const hint = hintRef.current;
+        if (hint) {
+          show(hint, !!hintKey && !p.active);
+          // The flying lesson is the same everywhere there is a pack: it is the Moon's line.
+          if (hintKey) text(hint, tel.hint === 'fly' ? tt(hintKey) : ttw(hintKey));
+        }
+        const banner = bannerRef.current;
+        if (banner) {
+          show(banner, tel.banner !== '');
+          if (tel.banner) text(banner.firstElementChild as HTMLElement, ttw(`banner.${tel.banner}`));
+        }
+        // The story's objective, while its chapter is on this world: it has the card.
+        const sl = storyMode ? storyLine(story.get(), world) : null;
+        const storyCard = !!sl;
+        if (objRef.current) {
+          objRef.current.dataset.story = String(storyCard);
+          if (sl) {
+            show(objRef.current, true);
+            text(objTagRef.current, tsRef.current('chapterTag', { n: sl.index, name: tsRef.current(`chapters.${sl.chapter}.name`) }));
+            text(objTextRef.current, tsRef.current(sl.key));
+            text(objRangeRef.current, sl.progress);
+          } else if (!isEarth) show(objRef.current, false);
+        }
+        const ea = tel.earth;
+        if (ea) {
+          const ex = ea.expedition;
+          text(clockRef.current, ea.clock);
+          const obj = objRef.current;
+          if (obj && !storyCard) {
+            const on = storyMode && !!ex.objective;
+            show(obj, on);
+            if (on) {
+              text(objTagRef.current, ttw('expedition.title'));
+              text(objTextRef.current, ttw(`expedition.obj.${ex.objective}`));
+              const range = ex.stage === 'overlook'
+                ? ttw('expedition.found', { n: ex.found.length })
+                : ex.distance >= 0 && ex.distance > 6 ? fmtRange(ex.distance) : '';
+              text(objRangeRef.current, range);
+            }
+          }
+          const pip = pipRef.current;
+          if (pip) {
+            const on = storyMode && ex.bearing >= 0 && ex.distance > 6;
+            show(pip, on);
+            if (on) {
+              let rel = ((ex.bearing - tel.heading + 540) % 360) - 180;
+              pip.dataset.edge = String(Math.abs(rel) > 58);
+              rel = Math.max(-58, Math.min(58, rel));
+              pip.style.transform = `translateX(calc(-50% + ${rel * PPD}px))`;
+            }
+          }
+          const meter = meterRef.current;
+          if (meter) {
+            const spotting = storyMode && ex.stage === 'overlook' && !!ex.spotting;
+            const working = storyMode && ex.work > 0 && !spotting;
+            show(meter, spotting || working);
+            if (spotting) {
+              meter.style.setProperty('--v', ex.spotWork.toFixed(3));
+              text(meterLabelRef.current, ttw('expedition.spot', { name: ttw(`expedition.names.${ex.spotting}`) }));
+            } else if (working) {
+              meter.style.setProperty('--v', ex.work.toFixed(3));
+              text(meterLabelRef.current, label || ttw(`expedition.obj.${ex.objective}`));
+            }
+          }
+          if (ex.eyepiece !== eyepieceOpen) {
+            eyepieceOpen = ex.eyepiece;
+            setEyepiece(ex.eyepiece && ea.target ? { target: ea.target, date: new Date(ea.date) } : null);
+          }
+          if (!tel.banner && ex.banner && storyMode) {
+            const bannerEl = bannerRef.current;
+            if (bannerEl) {
+              show(bannerEl, true);
+              text(bannerEl.firstElementChild as HTMLElement, ttw(`banner.${ex.banner}`));
+            }
+          }
+        }
+        const readout = readoutRef.current;
+        if (readout) {
+          show(readout, !!tel.readout);
+          if (tel.readout) text(readout, ttw(`readout.${tel.readout}`));
+        }
+        const dialog = dialogRef.current;
+        if (dialog) {
+          const al = tel.aliens;
+          const on = !!al && al.phrase !== '';
+          show(dialog, on);
+          if (on && al) {
+            text(dialogWhoRef.current, ttw('dialog.who', { n: al.speaker + 1 }));
+            text(dialogTextRef.current, ttw(`dialog.${al.phrase}`));
+          }
+        }
+      };
+      raf = requestAnimationFrame(paint);
+      return () => {
+        cancelAnimationFrame(raf);
+        cancelRebuild?.();
+        controls.detach();
+        controlsRef.current = null;
+        handle.dispose();
+        handleRef.current = null;
+      };
+    };
+    // Built in steps that hand the frame back (game/slice), so the scene
+    // being left keeps drawing; unmounted mid-build, the build stops.
+    makeWorldSurface(mount, world, {
+      slice: makeSlicer(BUILD_SLICE_MS, ac.signal),
       room,
       earth: earthData ?? undefined,
       shipKind: shipKindRef.current,
@@ -244,282 +515,24 @@ export function WorldSurface({ world, onReturn, room, paused, standby, startAt, 
           setGlGeneration((g) => g + 1);
         }, noteContextLoss());
       },
-    });
-    } catch (e) {
+    }).then((handle) => {
+      if (ac.signal.aborted) { handle.dispose(); return; }
+      stop = run(handle);
+    }, (e: unknown) => {
+      if (ac.signal.aborted || e instanceof BuildAborted) return;
       // No context to be had (the browser is out of them, or the GPU is
       // still coming back): the loader says so, the way back to orbit is
       // offered, and the build is tried again in a moment.
       console.error(e);
       setGpuLost(true);
       onProgressRef.current?.('ready');
-      const cancel = rebuildWhenVisible(() => {
+      cancelFailed = rebuildWhenVisible(() => {
           resumeRef.current = true;
           setGpuLost(false);
           setGlGeneration((g) => g + 1);
       }, noteContextLoss());
-      return cancel;
-    }
-    handleRef.current = handle;
-    beginEntry();
-    onProgressRef.current?.('compile');
-    let readyReported = false;
-    const controls = attachSurfaceControls({
-      mount, input: handle.input, touch: touchRef.current,
-      paused: () => pausedRef.current,
-      wake: handle.startAudio,
-      onCrouch: setCrouch,
-      flying: () => !!handleRef.current?.telemetry.flying,
-      onPauseRequest: () => onPauseRequestRef.current?.(),
-      selectable: '.moon-hud__help, .moon-hud__menu, .moon-hud__log',
     });
-    controlsRef.current = controls;
-
-    const tel = handle.telemetry;
-    const text = (el: HTMLElement | null, v: string) => { if (el && el.textContent !== v) el.textContent = v; };
-    const show = (el: HTMLElement | null, on: boolean) => { if (el && el.hidden === on) el.hidden = !on; };
-    let eyepieceOpen = false;
-    let raf = 0;
-    let lastPaint = 0;
-    const isTouch = window.matchMedia('(pointer: coarse)').matches;
-    root.dataset.touch = String(isTouch);
-    let lastPoll = performance.now();
-    const paint = (now: number) => {
-      raf = requestAnimationFrame(paint);
-      controls.poll(Math.min(0.1, (now - lastPoll) / 1000));
-      lastPoll = now;
-      if (now - lastPaint < 33) return;
-      lastPaint = now;
-      root.dataset.ready = String(tel.ready);
-      if (tel.ready && !readyReported) { readyReported = true; onProgressRef.current?.('ready'); }
-      root.dataset.phase = tel.phase;
-      root.dataset.view = tel.view;
-      // The landing computer's key while it can still be handed the ship,
-      // and the way back to base once the crew are out of sight of it.
-      root.dataset.autoland = String(tel.autoland);
-      root.dataset.far = String(tel.baseDistance > BASE_KEY_M);
-      // In flight the jump key is the way down (suit-jet.css swaps its face).
-      root.dataset.jetFlying = String(tel.flying);
-
-      if (tel.ascended) { tel.ascended = false; onReturnRef.current(); return; }
-      // Story mode hears what this world is doing (game/story.ts; nothing in the other modes).
-      story.observe({ world, landed: tel.phase === 'touchdown' || tel.phase === 'surface', outside: tel.phase === 'surface', readout: tel.readout, altitude: tel.altitude, distance: tel.distanceM });
-      // From orbit, and back up to it: the flight panel, the heat at the
-      // edges of the glass and the glass shaking with the air (--heat,
-      // --shake), and the world's name over the orbit.
-      const ob = tel.orbital;
-      const flying = !!ob && (tel.phase === 'orbit' || tel.phase === 'ascent');
-      root.dataset.flight = String(flying);
-      show(orbRef.current, flying);
-      root.style.setProperty('--heat', flying && ob ? ob.heat.toFixed(3) : '0');
-      root.style.setProperty('--shake', flying && ob ? Math.min(1, ob.turbulence + ob.burn * 0.06).toFixed(3) : '0');
-      orbTitleRef.current?.style.setProperty('--title', ob && tel.phase === 'orbit' ? orbitTitle(ob).toFixed(3) : '0');
-      if (flying && ob) {
-        const down = tel.phase === 'orbit';
-        text(orbPhaseRef.current, tt(`landing.orbital.phases.${ob.phase}`));
-        text(orbAltRef.current, formatAltitude(ob.altitude));
-        text(orbSpeedRef.current, formatSpeed(ob.speed));
-        text(orbVsRef.current, formatVertical(ob.vertical));
-        text(orbSiteLabelRef.current, tt(down ? 'landing.orbital.toSite' : 'landing.orbital.downrange'));
-        text(orbSiteRef.current, formatRange(ob.downrangeKm));
-        if (orbHeatRef.current) orbHeatRef.current.style.transform = `scaleX(${Math.min(1, ob.heat).toFixed(3)})`;
-        const warp = ob.timeWarp > 1.05;
-        text(orbWarpRef.current, warp ? tt('landing.orbital.warp', { n: ob.timeWarp < 10 ? ob.timeWarp.toFixed(1) : Math.round(ob.timeWarp) }) : tt('landing.orbital.realTime'));
-        if (orbWarpRef.current) orbWarpRef.current.dataset.warp = String(warp);
-        // The speed of sound, once there is air enough to have one.
-        show(orbMachRef.current, ob.mach > 0.05);
-        if (ob.mach > 0.05) text(orbMachRef.current, tt('landing.orbital.mach', { n: ob.mach.toFixed(ob.mach < 3 ? 2 : 1) }));
-        show(orbSkipRef.current, down);
-        if (orbRef.current) orbRef.current.dataset.leg = ob.phase;
-      }
-      if (tel.phase !== 'surface') {
-        const l = tel.landing;
-        text(landTitleRef.current, tel.phase === 'ascent' ? tt('landing.ascent') : tt('landing.title'));
-        text(landAltRef.current, `${l.altitude.toFixed(l.altitude < 10 ? 1 : 0)} m`);
-        text(landRateRef.current, `${Math.abs(l.descent).toFixed(1)} m/s`);
-        text(landOffRef.current, `${Math.round(l.offset)} m`);
-        text(landDriftRef.current, `${l.drift.toFixed(1)} m/s`);
-        if (landFuelRef.current) landFuelRef.current.style.width = `${Math.round(l.fuel * 100)}%`;
-        if (landThrRef.current) landThrRef.current.style.height = `${Math.round(l.throttle * 100)}%`;
-        show(assistRef.current, l.assist);
-        show(plaqueRef.current, tel.phase === 'touchdown');
-        if (tel.phase === 'touchdown') {
-          text(plaqueGradeRef.current, tt(`grades.${tel.grade || 'good'}`));
-          text(plaqueSpeedRef.current, tt('landing.touchdown', { n: l.touchdown.toFixed(2) }));
-          show(plaqueExitRef.current, tel.exitReady);
-        }
-        return;
-      }
-
-      if (stripRef.current) stripRef.current.style.transform = `translateX(${-(tel.heading + 360) * PPD}px)`;
-
-      // ── Speed and height, while there is motion to read. ──
-      const motion = motionShown({ driving: tel.driving, speed: tel.speed, airborne: tel.altitude > 0.4, altitude: tel.altitude });
-      show(motionRef.current, motion.speed || motion.altitude);
-      show(speedRowRef.current, motion.speed);
-      show(altRowRef.current, motion.altitude);
-      if (motion.speed) text(speedRef.current, tel.driving ? `${Math.round(tel.speed * 3.6)} km/h` : `${tel.speed.toFixed(1)} m/s`);
-      if (motion.altitude) text(altRef.current, `${tel.altitude.toFixed(1)} m`);
-
-      // ── The suit, on a world that needs one, when it is low or in front of
-      // the crew. There is no suit power out here, so the oxygen decides. ──
-      // The pack never runs dry, so it has no meter: the suit block keeps to the life support.
-      const glance = { o2: tel.o2, power: 100, sinceChange: 99, firstPerson: tel.view === 'helmet' };
-      const suit = suitRef.current;
-      const suitOn = !breathable && suitShown(glance);
-      show(suit, suitOn);
-      if (suit && suitOn) {
-        suit.dataset.level = suitLevel(glance);
-        text(o2Ref.current, `${tel.o2.toFixed(1)}%`);
-        if (o2BarRef.current) o2BarRef.current.style.width = `${Math.max(0, Math.min(100, tel.o2))}%`;
-        text(tempRef.current, `${tel.suitTemp.toFixed(1)}°`);
-      }
-      show(lampRef.current, tel.headlamp);
-      // The gem tally, and a line on the glass for each one picked up (GemHud).
-      gemHudRef.current?.paint(tel);
-      // The rest are read rather than watched: these refs are only mounted
-      // while the log is open.
-      text(gravRef.current, `${handle.profile.gravity.toFixed(2)} m/s²`);
-      text(hrRef.current, `${Math.round(tel.heartRate)}`);
-      text(outRef.current, tel.earth && tel.earth.outsideC === null ? '—' : `${tel.outsideC}°`);
-      text(evaRef.current, fmtTime(tel.evaSeconds));
-      text(distRef.current, fmtRange(tel.distanceM));
-
-      const p = tel.prompt;
-      const label = p.active ? ttw(`act.${p.label}`) : '';
-      const action = actionRef.current;
-      if (action) {
-        show(action, p.active);
-        if (p.active) text(actionTextRef.current, label);
-      }
-      const prompt = promptRef.current;
-      if (prompt) {
-        show(prompt, p.active);
-        if (p.active) {
-          text(promptTextRef.current, label);
-          show(promptHoldRef.current, p.kind === 'hold');
-        }
-      }
-      // The prompt carries its own hold progress, as the Moon's does.
-      const promptWork = promptWorkRef.current;
-      if (promptWork) {
-        const busy = p.active && p.progress > 0.001;
-        show(promptWork, busy);
-        if (busy) promptWork.style.setProperty('--work', Math.min(1, p.progress).toFixed(3));
-      }
-      const stance = stanceRef.current;
-      if (stance) {
-        const s = tel.stumbling ? tt('stance.stumble') : tel.sliding ? tt('stance.slide') : tel.crouched ? tt('stance.crouch') : '';
-        show(stance, s !== '');
-        text(stance, s);
-      }
-      const poi = poiRef.current;
-      if (poi) {
-        const on = !!tel.poiId && !p.active;
-        show(poi, on);
-        if (on) text(poi, ttw(`pois.${tel.poiId}`));
-      }
-      const hintKey = tel.hint ? (isTouch ? `hints.${tel.hint}Touch` : `hints.${tel.hint}`) : '';
-      const hint = hintRef.current;
-      if (hint) {
-        show(hint, !!hintKey && !p.active);
-        // The flying lesson is the same everywhere there is a pack: it is the Moon's line.
-        if (hintKey) text(hint, tel.hint === 'fly' ? tt(hintKey) : ttw(hintKey));
-      }
-      const banner = bannerRef.current;
-      if (banner) {
-        show(banner, tel.banner !== '');
-        if (tel.banner) text(banner.firstElementChild as HTMLElement, ttw(`banner.${tel.banner}`));
-      }
-      // The story's objective, while its chapter is on this world: it has the card.
-      const sl = storyMode ? storyLine(story.get(), world) : null;
-      const storyCard = !!sl;
-      if (objRef.current) {
-        objRef.current.dataset.story = String(storyCard);
-        if (sl) {
-          show(objRef.current, true);
-          text(objTagRef.current, tsRef.current('chapterTag', { n: sl.index, name: tsRef.current(`chapters.${sl.chapter}.name`) }));
-          text(objTextRef.current, tsRef.current(sl.key));
-          text(objRangeRef.current, sl.progress);
-        } else if (!isEarth) show(objRef.current, false);
-      }
-      const ea = tel.earth;
-      if (ea) {
-        const ex = ea.expedition;
-        text(clockRef.current, ea.clock);
-        const obj = objRef.current;
-        if (obj && !storyCard) {
-          const on = storyMode && !!ex.objective;
-          show(obj, on);
-          if (on) {
-            text(objTagRef.current, ttw('expedition.title'));
-            text(objTextRef.current, ttw(`expedition.obj.${ex.objective}`));
-            const range = ex.stage === 'overlook'
-              ? ttw('expedition.found', { n: ex.found.length })
-              : ex.distance >= 0 && ex.distance > 6 ? fmtRange(ex.distance) : '';
-            text(objRangeRef.current, range);
-          }
-        }
-        const pip = pipRef.current;
-        if (pip) {
-          const on = storyMode && ex.bearing >= 0 && ex.distance > 6;
-          show(pip, on);
-          if (on) {
-            let rel = ((ex.bearing - tel.heading + 540) % 360) - 180;
-            pip.dataset.edge = String(Math.abs(rel) > 58);
-            rel = Math.max(-58, Math.min(58, rel));
-            pip.style.transform = `translateX(calc(-50% + ${rel * PPD}px))`;
-          }
-        }
-        const meter = meterRef.current;
-        if (meter) {
-          const spotting = storyMode && ex.stage === 'overlook' && !!ex.spotting;
-          const working = storyMode && ex.work > 0 && !spotting;
-          show(meter, spotting || working);
-          if (spotting) {
-            meter.style.setProperty('--v', ex.spotWork.toFixed(3));
-            text(meterLabelRef.current, ttw('expedition.spot', { name: ttw(`expedition.names.${ex.spotting}`) }));
-          } else if (working) {
-            meter.style.setProperty('--v', ex.work.toFixed(3));
-            text(meterLabelRef.current, label || ttw(`expedition.obj.${ex.objective}`));
-          }
-        }
-        if (ex.eyepiece !== eyepieceOpen) {
-          eyepieceOpen = ex.eyepiece;
-          setEyepiece(ex.eyepiece && ea.target ? { target: ea.target, date: new Date(ea.date) } : null);
-        }
-        if (!tel.banner && ex.banner && storyMode) {
-          const bannerEl = bannerRef.current;
-          if (bannerEl) {
-            show(bannerEl, true);
-            text(bannerEl.firstElementChild as HTMLElement, ttw(`banner.${ex.banner}`));
-          }
-        }
-      }
-      const readout = readoutRef.current;
-      if (readout) {
-        show(readout, !!tel.readout);
-        if (tel.readout) text(readout, ttw(`readout.${tel.readout}`));
-      }
-      const dialog = dialogRef.current;
-      if (dialog) {
-        const al = tel.aliens;
-        const on = !!al && al.phrase !== '';
-        show(dialog, on);
-        if (on && al) {
-          text(dialogWhoRef.current, ttw('dialog.who', { n: al.speaker + 1 }));
-          text(dialogTextRef.current, ttw(`dialog.${al.phrase}`));
-        }
-      }
-    };
-    raf = requestAnimationFrame(paint);
-    return () => {
-      cancelAnimationFrame(raf);
-      cancelRebuild?.();
-      controls.detach();
-      controlsRef.current = null;
-      handle.dispose();
-      handleRef.current = null;
-    };
+    return () => { ac.abort(); stop?.(); cancelFailed?.(); cancelRebuild?.(); };
   }, [world, glGeneration, isEarth, earthData, room]);
   // Begin at the entry once the surface is on screen (it may have been built
   // hidden first); only once, so a GPU rebuild resumes where it was.

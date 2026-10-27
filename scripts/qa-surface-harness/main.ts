@@ -50,8 +50,8 @@ async function build(startOnSurface: boolean) {
       void harness.remount(true);
     }, 1200);
   };
-  if (world === 'moon') handle = makeMoonSurface(mount, { startOnSurface, onContextLost, shipKind });
-  else handle = makeWorldSurface(mount, world as WorldId, { startOnSurface, onContextLost, shipKind, earth: earthData ? await earthData : undefined });
+  if (world === 'moon') handle = await makeMoonSurface(mount, { startOnSurface, onContextLost, shipKind });
+  else handle = await makeWorldSurface(mount, world as WorldId, { startOnSurface, onContextLost, shipKind, earth: earthData ? await earthData : undefined });
   harness.disposed = false;
   // The game's return to orbit: once the ship is back up, the scene goes.
   window.clearInterval(watch);

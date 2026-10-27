@@ -34,6 +34,8 @@ import type { Collider } from '@/lib/solar-system/moon-cosmonaut';
 import type { PointOfInterest } from '@/lib/solar-system/moon-base';
 import { DECK_APRON, makeWorldTerrain } from '@/lib/solar-system/world-terrain';
 import { deckCameraFloor, flightEnvelope } from '@/lib/solar-system/suit-jetpack';
+import type { Slice } from '@/game/slice';
+import { releaseScene } from '@/lib/solar-system/gpu-warm';
 import { makeWorldSky } from '@/lib/solar-system/world-sky';
 import { setGroundSun } from '@/lib/solar-system/world-terrain';
 import { formationColliders, makeFormations } from '@/lib/solar-system/world-formations';
@@ -96,6 +98,8 @@ export interface WorldInput {
 }
 
 export interface WorldOptions {
+  /** Awaited between the build's steps, so a long build hands the frame back (game/slice). */
+  slice?: Slice;
   startOnSurface?: boolean;
   onContextLost?: () => void;
   /** Earth only: the baked Tbilisi data, loaded before the scene is built. */
@@ -232,7 +236,7 @@ export function yawForHeading(headingDeg: number): number {
   return Math.atan2(-Math.sin(h), Math.cos(h));
 }
 
-export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: WorldOptions = {}): WorldSurfaceHandle {
+export async function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: WorldOptions = {}): Promise<WorldSurfaceHandle> {
   const profile = WORLDS[world];
   /** The giants: the floor is a deck over the clouds. */
   const deck = profile.deck ?? null;
@@ -244,7 +248,14 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     near: isEarth ? 0.1 : 0.05, far: isEarth ? 30000 : 4000, onContextLost: opts.onContextLost,
   });
   const { renderer, scene, camera, sun, lightPool, post, perf, lite, quality } = host;
+  // Between steps the frame goes back to the browser; a build abandoned
+  // there lets go of the context and of what it had made so far.
+  const step = async () => {
+    try { await opts.slice?.(); } catch (e) { host.dispose(() => releaseScene(scene)); throw e; }
+  };
+  await step();
   const earth = isEarth && opts.earth ? makeEarthWorld(renderer, opts.earth, lite) : null;
+  await step();
   // The air. Earth's is in its own materials (world-earth-haze), out to the
   // Caucasus. Mars and Proxima b use the same hook — exp(−β·d), the colour
   // of the air warmer toward the star — on the ground, the rocks, the
@@ -272,6 +283,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
 
   const cloudLevel = (quality as { clouds?: number }).clouds ?? (lite ? 0 : 1);
   const sky = earth ? null : makeWorldSky(renderer, profile, lite, cloudLevel);
+  await step();
   if (sky) {
     scene.add(sky.group);
     scene.environment = sky.environment;
@@ -279,6 +291,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   scene.environmentIntensity = 0.5;
 
   const terrain = earth ? null : makeWorldTerrain(profile, lite, quality.propDensity);
+  await step();
   if (terrain) scene.add(terrain.mesh, terrain.rocks, terrain.horizon);
   // Earth's environment must be in place before the compile, or every
   // material takes a second program on the first frame.
@@ -293,6 +306,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   scene.add(prints.mesh);
   const unsubQuality = onQualityChange((q) => { dust.setCap(Math.min(1300, q.dustMax)); prints.setCap(q.printsMax); });
   const kit = makeKit(lite);
+  await step();
 
   const colliders: Collider[] = [];
   const pois: PointOfInterest[] = [];
@@ -302,6 +316,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
 
   const base = world === 'mars' ? makeMarsBase(kit, heightAt, lite, telemetryReadout)
     : hasOutpost(world) ? makeOutpost(world, profile, kit, heightAt, lite, telemetryReadout) : null;
+  await step();
   if (base) {
     scene.add(base.group);
     colliders.push(...base.colliders);
@@ -324,6 +339,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
       }
     },
   }) : null;
+  await step();
   if (flora && aliens) {
     scene.add(flora.group, aliens.group);
     colliders.push(...flora.colliders);
@@ -337,6 +353,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     ...(flora ? [{ x: flora.village.x, z: flora.village.z, r: flora.village.r + 12 }] : []),
     ...(build ? [{ x: BUILD_SITES.mars.colony.x, z: BUILD_SITES.mars.colony.z, r: BUILD_SITES.mars.colony.r + 6 }] : []),
   ];
+  await step();
   const formations = terrain ? makeFormations(profile, terrain, { density: quality.propDensity, lite, keepOut, walkRadius: profile.walkRadius }) : null;
   if (formations) {
     scene.add(formations.group);
@@ -362,6 +379,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
     },
   });
   scene.add(gems.group);
+  await step();
 
   if (earth) {
     colliders.push(...earth.colliders);
@@ -383,6 +401,7 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   // (planet-globe-rings); the sky's arch stands in only where there is no globe.
   if (orbit && world === 'saturn' && sky?.rings) sky.rings.visible = false;
 
+  await step();
   // Earth's air: no pressure suit, so an ordinary gait, and no helmet.
   const cosmonaut = makeCosmonaut(dust, lite, profile.gravity, !profile.breathable, !!profile.breathable);
   cosmonaut.onStep = (e) => { if (!deck) prints.stamp(e.x, e.y, e.z, e.yaw, e.side); audio.step(e.hard); cam.footfall(e.hard, cosmonaut.state.gait === 'run' || cosmonaut.state.gait === 'sprint' ? 1 : 0.25); };
@@ -392,7 +411,9 @@ export function makeWorldSurface(mount: HTMLElement, world: WorldId, opts: World
   const crowd = opts.room ? makeRemoteCrew(scene, world, lite, !!profile.breathable) : null;
   const { x: padX, z: padZ } = landingPad(profile);
   // The crew's own ship comes down; the lander only when no hull is named.
+  await step();
   const lander = makeLander(padX, padZ, heightAt, dust, lite, lightPool, profile.gravity, earth ? EARTH_DESCENT : undefined, { kind: opts.shipKind });
+  await step();
   scene.add(lander.group);
   // The globe worlds: the ship comes down from orbit in this scene — the
   // retro burn, the entry and the glide (surface-flight) — to where the

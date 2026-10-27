@@ -59,7 +59,8 @@ import { makeSunSurface } from '@/lib/solar-system/sun-surface';
 import { makePostFx } from '@/lib/solar-system/post-processing';
 import { projectSunPoint, type SunScreen } from '@/lib/solar-system/post-flare';
 import { currentQuality, onQualityChange, pixelRatioFor } from '@/game/quality';
-import { compileFor, releaseCompilePolls, settleWithin, uploadSceneTextures } from '@/lib/solar-system/gpu-warm';
+import { compileFor, releaseCompilePolls, settleWithin, skipShaderChecks, uploadSceneTexturesSliced } from '@/lib/solar-system/gpu-warm';
+import { makeSlicer } from '@/game/slice';
 import { makeLoopGuard, noteContextLoss, rebuildWhenVisible } from '@/game/gpu-recovery';
 import { serviceStill } from '@/game/frame-tap';
 import { probeCalls } from '@/lib/solar-system/moon-perf';
@@ -277,6 +278,7 @@ export function SolarSystemCanvas({
         // dual-GPU laptops (macOS), which keeps the machine hot/slow.
         powerPreference: 'default',
       });
+      skipShaderChecks(renderer);
     } catch {
       // No WebGL (disabled, or the browser is out of contexts): let the
       // loading screen go rather than leave it up, and draw nothing. After a
@@ -1682,9 +1684,10 @@ export function SolarSystemCanvas({
           // thread where the driver allows, then every texture uploaded,
           // before the loader goes. Then a couple of frames to show it holds.
           warmed = true;
-          void compileScene().then(() => {
+          void compileScene().then(async () => {
             if (contextLost) return;
-            try { uploadSceneTextures(renderer, scene); } catch { /* drawn on first use instead */ }
+            // A texture at a time, the frame handed back between.
+            try { await uploadSceneTexturesSliced(renderer, [scene], makeSlicer(8), () => contextLost); } catch { /* drawn on first use instead */ }
             compiled = true;
           });
         } else if (compiled && ++settledFrames >= 2) {
