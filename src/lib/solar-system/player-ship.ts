@@ -20,7 +20,7 @@ import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { makeCrashFx } from '@/lib/solar-system/crash-fx';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
 import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
-import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
+import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, PLUME_TIME, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
 import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
@@ -2158,6 +2158,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         const gs = (1.0 + 0.4 * (pulse - 0.8)) * glowBase;
         live.glowSprites[i].scale.set(gs, gs, 1);
       }
+      PLUME_TIME.value = timeSec;
       if (live.plumeMat) {
         live.plumeMat.opacity = Math.min(0.85, 0.14 + 0.34 * (pulse - 0.8));
         const stretch = 0.35 + 0.85 * Math.min(1.6, pulse - 0.75);
