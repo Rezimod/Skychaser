@@ -447,6 +447,14 @@ export interface FlightSession {
   telemetry: FlightTelemetry;
 }
 
+/** How far the ground is from a body's centre along unit direction `dir`:
+ *  the radius, or on a flattened giant the spheroid's. */
+export function surfaceRadius(b: FlightBody, dir: THREE.Vector3): number {
+  if (!b.oblate || !b.pole) return b.radius;
+  const c = dir.dot(b.pole);
+  return b.radius / Math.sqrt(1 - c * c + (c * c) / (b.oblate * b.oblate));
+}
+
 /** A solid body the ship can orbit, burn up in, or hit. */
 export interface FlightBody {
   id: string;
@@ -460,6 +468,9 @@ export interface FlightBody {
   atmosphere: number;
   /** Stations can be shot down or rammed; the scene hides them while set. */
   destroyed?: boolean;
+  /** Polar radius over equatorial (the giants are flattened), about `pole`. */
+  oblate?: number;
+  pole?: THREE.Vector3;
   hp?: number;
   /** An inhabited world: it opens a channel and resupplies ships that come near. */
   hails?: boolean;
@@ -2035,13 +2046,15 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           const t = segLen2 > 0 ? THREE.MathUtils.clamp(tmp.dot(seg) / segLen2, 0, 1) : 0;
           tmp2.copy(prevPos).addScaledVector(seg, t).sub(b.position);
           const d = tmp2.length();
+          const ground = d > 1e-9 ? surfaceRadius(b, tmp2.divideScalar(d)) : b.radius;
+          tmp2.multiplyScalar(d);
           // The arrival is flown by the profile down to just over the ground,
           // closer than the hull's own sphere on a small world: it cannot crash.
-          if (d < b.radius + hr && !arrival) {
+          if (d < ground + hr && !arrival) {
             // The normal where the path first meets the body, not at the
             // path's closest point: head-on through the centre that point is
             // the centre itself, and a zero normal let the ship through.
-            const R = b.radius + hr;
+            const R = ground + hr;
             tmp.copy(prevPos).sub(b.position);
             const c = tmp.lengthSq() - R * R;
             if (c > 0 && segLen2 > 0) {
@@ -2052,7 +2065,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
             if (tmp2.lengthSq() < 1e-18) tmp2.copy(seg).negate();
             if (tmp2.lengthSq() < 1e-18) tmp2.set(0, 1, 0);
             tmp2.normalize();
-            tmp.copy(b.position).addScaledVector(tmp2, b.radius);
+            tmp.copy(b.position).addScaledVector(tmp2, ground);
             if (b.kind === 'station' && speed <= DOCK_SPEED && pilot === 'ship') {
               dock(b, tmp2);
               break;
@@ -2069,7 +2082,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
             if (b.kind === 'station') destroyStation(b, prevPos);
             autodock = null;
             // The wreck stays where it struck, outside the body, however far the frame carried it.
-            me.position.copy(b.position).addScaledVector(tmp2, b.radius + hr);
+            me.position.copy(b.position).addScaledVector(tmp2, ground + hr);
             doCrash(tmp, tmp2, b);
             break;
           }

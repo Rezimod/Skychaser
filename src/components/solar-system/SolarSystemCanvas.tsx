@@ -770,6 +770,7 @@ export function SolarSystemCanvas({
         : createPlanetMaterial(id, lite, textureById.get(id) ?? null);
       const mesh = new THREE.Mesh(geom, mat);
       mesh.userData.bodyId = id;
+      mesh.userData.oblate = oblate;
       // Real axial tilt. Euler order ZYX applies the tilt (Z) on top of the
       // per-frame spin (Y), so each body rotates around its own tilted pole —
       // Uranus rolls on its side, Earth leans its true 23.4°.
@@ -1338,6 +1339,13 @@ export function SolarSystemCanvas({
       for (const [id, mesh] of meshById) {
         const b = bodyFor(id, id === 'sun' ? 'star' : 'planet', worldRadiusForBody(id), MEAN_RADIUS_KM[id], SURFACE_G[id], ATMOSPHERE[id]);
         b.position.copy(mesh.position);
+        // The giants are flattened at the poles: the ground the ship meets is
+        // the drawn one, not the equator's sphere.
+        const oblate = (mesh.userData.oblate as number | undefined) ?? 1;
+        if (oblate !== 1) {
+          b.oblate = oblate;
+          b.pole = (b.pole ?? new THREE.Vector3()).set(0, 1, 0).applyQuaternion(mesh.quaternion);
+        }
         // A world taken apart under a standing order stays gone.
         if (b.destroyed) mesh.visible = false;
         world.bodies.push(b);
