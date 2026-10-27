@@ -385,8 +385,11 @@ export async function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions =
   const { renderer, scene, camera, lightPool, post, perf, lite, quality } = host;
   // Between steps the frame goes back to the browser; a build abandoned
   // there lets go of the context and of what it had made so far.
+  // What a build abandoned half-way has to take back besides the scene:
+  // subscriptions and sound made before the step it stopped at.
+  const undo: (() => void)[] = [];
   const step = async () => {
-    try { await opts.slice?.(); } catch (e) { host.dispose(() => releaseScene(scene)); throw e; }
+    try { await opts.slice?.(); } catch (e) { for (const u of undo.splice(0)) u(); host.dispose(() => releaseScene(scene)); throw e; }
   };
   await step();
   const envTarget = makeEnvironment(renderer);
@@ -431,6 +434,7 @@ export async function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions =
   const history = makePrints(1200, quality.historyMax);
   scene.add(history.mesh);
   const unsubQuality = onQualityChange((q) => { dust.setCap(q.dustMax); prints.setCap(q.printsMax); history.setCap(q.historyMax); });
+  undo.push(unsubQuality);
   {
     let side = 1;
     for (const path of base.zones.paths) {
@@ -489,7 +493,9 @@ export async function makeMoonSurface(mount: HTMLElement, opts: SurfaceOptions =
   base.colliders.push(...sinkhole.roverColliders, ...sinkhole.walkColliders);
   base.walkColliders.push(...sinkhole.walkColliders);
   const audio = makeSuitAudio();
+  undo.push(() => audio.dispose());
   const brAudio = makeBackroomsAudio();
+  undo.push(() => brAudio.dispose());
   cosmonaut.onStep = (e) => {
     if (!base.inside) prints.stamp(e.x, e.y, e.z, e.yaw, e.side);
     audio.step(e.hard);
