@@ -238,12 +238,10 @@ export function isLandable(id: string): boolean {
   return id in SITE_ATMOSPHERE;
 }
 
-/** Closing on a world you can land on, the ship slows by itself: the most it
- *  may fly, in the world's own radii per second, at this height (radii).
- *  Far out it is more than any drive's ceiling near a world, so nothing
- *  changes; it falls with the height, so the last of the approach — the
- *  world filling the screen, the dive into its air — is a steady glide, at
- *  about a fiftieth of a radius a second by the top of the air. */
-export function approachSpeedCap(altRadii: number): number {
-  return Math.max(0.02, 0.1 * Math.max(0, altRadii));
+/** Where the dive begins, from the world's centre in its own radii: the top
+ *  of its air, or over an airless world the low pass. 0 where there is no way down. */
+export function entryShellRadii(id: string): number {
+  if (!isLandable(id)) return 0;
+  const r = siteRadiusKm(id);
+  return r > 0 ? 1 + entryAltitudeKm(id) / r : 0;
 }

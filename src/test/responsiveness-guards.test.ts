@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { game } from '@/game/state';
 import { contextLosses, makeLoopGuard, noteContextLoss, rebuildWhenVisible, resetContextLosses } from '@/game/gpu-recovery';
 import { settleWithin } from '@/lib/solar-system/gpu-warm';
-import { approachSpeedCap, isLandable } from '@/lib/solar-system/flight-approach';
+import { entryShellRadii, isLandable } from '@/lib/solar-system/flight-approach';
 import { retryImport } from '@/game/retry-import';
 
 describe('loads that can always be left', () => {
@@ -152,17 +152,19 @@ describe('frame loops and compiles', () => {
   });
 });
 
-describe('the approach slows the ship', () => {
+describe('the dive', () => {
   it('only over the worlds there is a way down to', () => {
     for (const id of ['earth', 'moon', 'mars', 'jupiter', 'neptune']) expect(isLandable(id)).toBe(true);
     expect(isLandable('sun')).toBe(false);
     expect(isLandable('pluto')).toBe(false);
   });
 
-  it('falls with the height and keeps a floor, so the dive is a glide', () => {
-    expect(approachSpeedCap(1.2)).toBeCloseTo(0.12);
-    expect(approachSpeedCap(0.5)).toBeLessThan(approachSpeedCap(1));
-    expect(approachSpeedCap(0.05)).toBe(0.02);
-    expect(approachSpeedCap(-1)).toBe(0.02);
+  it('begins at the top of the air, just over the ground, on every world with a way down', () => {
+    for (const id of ['earth', 'moon', 'mars', 'jupiter', 'neptune']) {
+      expect(entryShellRadii(id), id).toBeGreaterThan(1);
+      expect(entryShellRadii(id), id).toBeLessThan(1.5);
+    }
+    expect(entryShellRadii('sun')).toBe(0);
+    expect(entryShellRadii('pluto')).toBe(0);
   });
 });

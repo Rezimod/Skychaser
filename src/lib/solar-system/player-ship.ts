@@ -28,7 +28,7 @@ import {
   HULL_REGEN_DELAY, HULL_REGEN_PER_SEC, MAX_HULL, MAX_SHIELD, PLAYER_BOLT_DAMAGE, SHIELD_REGEN_DELAY, SHIELD_REGEN_PER_SEC,
   alienZone, type AlienZone, type ZoneOrbits,
 } from '@/lib/solar-system/combat-balance';
-import { approachPose, approachProfileFor, approachSpeedCap, APPROACH_SECONDS, descentBurn, entryHeat, isLandable, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
+import { approachPose, approachProfileFor, APPROACH_SECONDS, descentBurn, entryHeat, entryShellRadii, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
 export { zoomFlightCamera, clearFlightInput } from '@/lib/solar-system/flight-input';
@@ -52,13 +52,10 @@ export type FlightAlert =
   | ''
   | 'proximity'
   | 'entry'
-  | 'masslock'
-  | 'gravity'
   | 'solar'
   | 'horizon'
   | 'charging'
   | 'jump'
-  | 'jumpready'
   | 'arrived'
   | 'hostile'
   | 'contact'
@@ -224,15 +221,9 @@ const GRAVITY_REACH = 10;
 const NEAR_REACH = 24;
 /** The Sun's real 274 m/s² would pin the inner system; cap the wells. */
 const MAX_SURFACE_G = 30;
-/** Inside this many radii the fast drive is throttled by the well. */
-const WELL_RADII = 7;
 
 const JUMP_CHARGE = 2.4;
 const JUMP_TRAVEL = 4.6;
-/** Altitude (in radii) below which a body mass-locks the hyperdrive. */
-const MASS_LOCK_RADII = 3;
-/** How fast the approach takes the way off a ship closing on a world, per second. */
-const APPROACH_EASE = 2.2;
 const JUMP_FLOW = 40 * U;
 const RESPAWN_DELAY = 3.6;
 const DISCOVERY_HOLD = 6;
@@ -347,8 +338,8 @@ export interface FlightTelemetry {
   /** Nearest body ('' when nothing within reach) and altitude above its surface. */
   nearId: string;
   nearAltKm: number;
-  /** The approach to a world you can land on is slowing the ship. */
-  approachSlow: boolean;
+  /** The world whose air the ship has just dived into this frame ('' when none): the deck hands over to its surface. */
+  diveInto: string;
   /** A body has just come within sensor reach: named once, then cleared. */
   region: string;
   jumpPhase: JumpPhase;
@@ -532,7 +523,7 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
       alert: '',
       nearId: '',
       nearAltKm: 0,
-      approachSlow: false,
+      diveInto: '',
       region: '',
       jumpPhase: 'none',
       jumpT: 0,
@@ -1143,7 +1134,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let view: ViewMode = 'chase';
   let mode: SpeedMode = 'cruise';
   /** The ship's speed after last frame's approach ceiling (Infinity when none applied). */
-  let approachLast = Infinity;
   let assist = true;
   let commsLine = -1;
   let commsT = 0;
@@ -1193,7 +1183,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let calloutKey = '';
   let calloutHold = 0;
   const zoneOrbits: ZoneOrbits = { mars: NaN, jupiter: NaN, neptune: NaN };
-  let lockedFor = 0;
   let lowShieldWarned = false;
   let vibe = 0;
   /** The engine glow's terms, eased so a throttle, boost or regime step
@@ -1308,6 +1297,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     dockedTo = null;
     autodock = null;
     arrival = null;
+    tel.diveInto = '';
     tel.approachPhase = '';
     tel.approachId = '';
     tel.approachT = tel.approachLegT = 0;
@@ -1929,44 +1919,27 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       eff.accel += (regime.accel - eff.accel) * bk;
       eff.turn += (regime.turn - eff.turn) * bk;
 
-      // ── Mass lock: inside a few radii of anything massive the drive is
-      // locked; the HUD carries the state and the request is refused. ──
-      let locked = false;
-      for (const b of world.bodies) {
-        if (!b.destroyed && b.kind !== 'station' && me.position.distanceTo(b.position) < b.radius * (1 + MASS_LOCK_RADII)) {
-          locked = true;
-          break;
-        }
-      }
-      const wasLocked = lockedFor > 0;
-      lockedFor = locked ? lockedFor + dt : 0;
-      tel.driveReady = !locked && pilot === 'ship' && jumpPhase === 'none';
-      if (wasLocked && !locked && isDrive(mode) && pilot === 'ship') {
-        setAlert('jumpready', 2.2);
-      }
+      // The jump drive works anywhere: no mass lock.
+      tel.driveReady = pilot === 'ship' && jumpPhase === 'none';
 
       const req = input.modeRequest;
       input.modeRequest = null;
       if (req && jumpPhase === 'none' && pilot === 'ship') {
         if (req === 'jump') {
-          if (locked) {
-            setAlert('masslock', 1.8);
-          } else {
-            // Let go of the berth and of the docking computer: neither
-            // means anything in the system the drive is about to reach.
-            autodock = null;
-            dockedTo = null;
-            mode = 'jump';
-            jumpPhase = 'charge';
-            jumpT = 0;
-            audio.charge(JUMP_CHARGE);
-            foilsForced = null;
-            jumpTarget.position.copy(world.jump.position);
-            jumpTarget.lookAt.copy(world.jump.lookAt);
-            jumpTarget.yaw = world.jump.yaw;
-            jumpName = world.jump.name;
-            jumpOrigin = world.systemName;
-          }
+          // Let go of the berth and of the docking computer: neither
+          // means anything in the system the drive is about to reach.
+          autodock = null;
+          dockedTo = null;
+          mode = 'jump';
+          jumpPhase = 'charge';
+          jumpT = 0;
+          audio.charge(JUMP_CHARGE);
+          foilsForced = null;
+          jumpTarget.position.copy(world.jump.position);
+          jumpTarget.lookAt.copy(world.jump.lookAt);
+          jumpTarget.yaw = world.jump.yaw;
+          jumpName = world.jump.name;
+          jumpOrigin = world.systemName;
         } else {
           mode = req;
           regime = regimes[req];
@@ -1984,8 +1957,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       let rcsPitch = 0;
       let rcsRoll = 0;
       let rcsBrake = 0;
-      let wellK = 1;
-      let approachCap = Infinity;
       if (jumpPhase !== 'none') tel.boost = false;
       if (jumpPhase === 'charge') {
         jumpT += dt;
@@ -2158,16 +2129,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           tmp.copy(b.position).sub(me.position);
           const d = tmp.length();
           if (d < 1e-9) continue;
-          // The well throttles the interplanetary drives: a tenth of c
-          // and up is for the space between worlds, not around one.
-          const wk = THREE.MathUtils.clamp((d / b.radius - 1) / WELL_RADII, 0.1, 1);
-          if (wk < wellK) wellK = wk;
-          // A world to land on, and the ship closing on it: the approach
-          // slows it, so the dive into the air is flown, not overshot.
-          if (pilot === 'ship' && (b.kind === 'planet' || b.kind === 'moon') && isLandable(b.id) && vel.dot(tmp) > 0.3 * vel.length() * d) {
-            const cap = approachSpeedCap(d / b.radius - 1) * b.radius;
-            if (cap < approachCap) approachCap = cap;
-          }
           const reach = b.radius * GRAVITY_REACH;
           if (d >= reach) continue;
           const g = (Math.min(MAX_SURFACE_G, b.surfaceG) / 9.81) * ONE_G;
@@ -2190,23 +2151,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         }
         if (arrival) stepApproach(dt);
         let max = boost ? eff.boost : eff.max;
-        if (isDrive(mode) && pilot === 'ship') max = Math.max(regimes.cruise.max, max * wellK);
         speed = vel.length();
-        // The approach eases the ship down to its pace rather than snapping
-        // it there: the ceiling falls from the speed the ship had by a fixed
-        // rate each second, so no throttle (and no well) can push through it,
-        // and it settles on the approach's own pace.
-        tel.approachSlow = false;
-        if (approachCap < max && !arrival && !autodock) {
-          const ceiling = Math.max(approachCap, Math.min(approachLast, max) * Math.exp(-dt * APPROACH_EASE));
-          max = Math.min(max, ceiling);
-          tel.approachSlow = speed > approachCap * 1.05;
-          if (speed > ceiling) {
-            vel.multiplyScalar(ceiling / speed);
-            speed = ceiling;
-          }
-          approachLast = speed;
-        } else approachLast = Infinity;
         if (speed > max && !arrival) {
           vel.multiplyScalar(max / speed);
           speed = max;
@@ -2238,6 +2183,44 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           }
         }
 
+        // ── The dive: closing on a world there is a way down to, the ship
+        // that crosses into its air (an airless world: comes down low over
+        // it) is handed to its surface, however fast it came. Swept, like the
+        // crash test below, so no speed carries it through the air and into
+        // the ground between two frames: it stops at the top of the air until
+        // the deck takes it. The deck reads `diveInto` and clears it. ──
+        if (pilot === 'ship' && !arrival && !autodock && !dockedTo) {
+          seg.copy(me.position).sub(prevPos);
+          const a = seg.lengthSq();
+          for (const b of world.bodies) {
+            if (b.destroyed || (b.kind !== 'planet' && b.kind !== 'moon')) continue;
+            const shell = entryShellRadii(b.id);
+            if (!shell) continue;
+            const R = b.radius * shell;
+            tmp.copy(prevPos).sub(b.position);
+            const c = tmp.lengthSq() - R * R;
+            if (c <= 0) {
+              // Already inside the air: diving on in starts the way down.
+              tmp2.copy(b.position).sub(me.position);
+              if (vel.dot(tmp2) > 0) { tel.diveInto = b.id; break; }
+              continue;
+            }
+            const bq = tmp.dot(seg);
+            const disc = bq * bq - a * c;
+            if (a <= 0 || bq >= 0 || disc < 0) continue;
+            const t = (-bq - Math.sqrt(disc)) / a;
+            if (t > 1) continue;
+            me.position.copy(prevPos).addScaledVector(seg, t);
+            // Resting on the top of the air: the way in is taken off.
+            tmp2.copy(me.position).sub(b.position).normalize();
+            const inward = vel.dot(tmp2);
+            if (inward < 0) vel.addScaledVector(tmp2, -inward);
+            speed = vel.length();
+            tel.diveInto = b.id;
+            break;
+          }
+        }
+
         // ── Solid bodies: swept sphere test, so a tenth of c cannot tunnel
         // through a planet between two frames. ──
         seg.copy(me.position).sub(prevPos);
@@ -2252,7 +2235,20 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           // The arrival is flown by the profile down to just over the ground,
           // closer than the hull's own sphere on a small world: it cannot crash.
           if (d < b.radius + hr && !arrival) {
-            tmp2.divideScalar(Math.max(d, 1e-9));
+            // The normal where the path first meets the body, not at the
+            // path's closest point: head-on through the centre that point is
+            // the centre itself, and a zero normal let the ship through.
+            const R = b.radius + hr;
+            tmp.copy(prevPos).sub(b.position);
+            const c = tmp.lengthSq() - R * R;
+            if (c > 0 && segLen2 > 0) {
+              const bq = tmp.dot(seg);
+              const th = (-bq - Math.sqrt(Math.max(0, bq * bq - segLen2 * c))) / segLen2;
+              tmp2.copy(tmp).addScaledVector(seg, THREE.MathUtils.clamp(th, 0, 1));
+            } else if (d < 1e-9) tmp2.copy(tmp);
+            if (tmp2.lengthSq() < 1e-18) tmp2.copy(seg).negate();
+            if (tmp2.lengthSq() < 1e-18) tmp2.set(0, 1, 0);
+            tmp2.normalize();
             tmp.copy(b.position).addScaledVector(tmp2, b.radius);
             if (b.kind === 'station' && speed <= DOCK_SPEED && pilot === 'ship') {
               dock(b, tmp2);
@@ -2286,6 +2282,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
             }
             if (b.kind === 'station') destroyStation(b, prevPos);
             autodock = null;
+            // The wreck stays where it struck, outside the body, however far the frame carried it.
+            me.position.copy(b.position).addScaledVector(tmp2, b.radius + hr);
             doCrash(tmp, tmp2, b);
             break;
           }
@@ -2393,7 +2391,6 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           return;
         }
       }
-      if (!alert && isDrive(mode) && wellK < 0.6 && jumpPhase === 'none' && pilot === 'ship') alert = 'gravity';
       const live = parts();
       live.plasmaMat.opacity = Math.min(1, heat * 1.4);
       const plasmaBase = pilot === 'ship' ? H : E;
