@@ -1410,7 +1410,7 @@
       "help": "Controls",
       "keys": {
         "r1": "W / S — thrust and brake",
-        "r2": "A / D — turn left and right",
+        "r2": "A / D — turn left and right · tap twice quickly to dodge sideways on the thrusters",
         "r3": "Mouse — steer",
         "r4": "Q / E — roll",
         "r5": "Shift — boost · Space — fire",
@@ -1418,7 +1418,7 @@
         "r6": "1 / 2 / 3 — cruise, fast, ultra · or the gear key on the deck",
         "r7": "T — next target · G — hold to align",
         "r8": "F — wings · C — cockpit · Esc — pause",
-        "t1": "Left stick — thrust and turn; release to coast",
+        "t1": "Left stick — thrust and turn; release to coast · flick it twice to one side to dodge",
         "t16": "Fire key — shoot raiders, drones, mines and wrecks; green crystals repair the ship",
         "t2": "Right of the screen — drag anywhere to look and steer, like a mouse",
         "t3": "Gear key — cruise → fast → ultra, then round again",

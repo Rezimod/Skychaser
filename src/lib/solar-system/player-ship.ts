@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import type { AlienHandle } from '@/lib/solar-system/aliens';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { makeCrashFx } from '@/lib/solar-system/crash-fx';
+import { makeShipFx } from '@/lib/solar-system/ship-fx';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
 import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
 import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, PLUME_TIME, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
@@ -194,6 +195,12 @@ const ENERGY_PER_SHOT = 0.045;
 const ENERGY_REGEN = 0.17;
 /** Boost reservoir: burns while the throttle is firewalled, refills after. */
 const BOOST_DRAIN = 0.12;
+/** Dodge: the sideways kick (scene units/s), its cost from the boost
+ *  reservoir, the wait before the next, and how long the airframe flicks. */
+const DODGE_DV = 0.9 * U;
+const DODGE_COST = 0.12;
+const DODGE_COOL = 0.8;
+const DODGE_FLICK = 0.4;
 const BOOST_REGEN = 0.09;
 const BOOST_REGEN_DELAY = 1.2;
 /** Below this the reservoir is spent and the boost cuts out. */
@@ -263,6 +270,8 @@ export interface FlightInput {
   dockRequest: boolean;
   /** One-shot for the deck: take the ship down to the surface below. */
   landRequest: boolean;
+  /** One-shot: kick sideways on the thrusters, -1 to port, 1 to starboard. */
+  dodge: number;
   /** One-shot: fly the arrival — the ship takes itself in to the world named here. */
   approachRequest: string | null;
   /** One-shot: the crew have seen it; put the ship where the arrival ends. */
@@ -485,7 +494,7 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
     input: {
       thrust: 0, yaw: 0, lookYaw: 0, pitch: 0, roll: 0,
       boost: false, fire: false, align: false, mouseDX: 0, mouseDY: 0,
-      modeRequest: null, foilsToggle: false, eject: false, viewToggle: false, assistToggle: false, hudToggle: false, dockRequest: false, landRequest: false,
+      modeRequest: null, foilsToggle: false, eject: false, viewToggle: false, assistToggle: false, hudToggle: false, dockRequest: false, landRequest: false, dodge: 0,
       approachRequest: null, approachSkip: false, fromHome: true, relaunch: false, relaunchAt: '',
       targetStep: 0, targetClear: false, targetRequest: null, targetKind: null,
       camZoom: 1, orbiting: false, orbitYaw: 0, orbitPitch: 0,
@@ -591,7 +600,7 @@ export interface PlayerShipHandle {
   /** The hull's animated parts — plumes, plasma, streaks — as the flight model drives them. */
   parts: ShipParts;
   spawn: (anchor: FlightAnchor) => void;
-  takeDamage: (amount: number) => void;
+  takeDamage: (amount: number, from?: THREE.Vector3) => void;
   /** A gift or salvage reached the ship: top the hull and shields up. */
   repair: (hull: number, shield: number) => void;
   /** Told of each bolt as it leaves (where from, its velocity): a room sends it on. */
@@ -657,6 +666,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   // A world or station going up has its own burst: the ship's crash must
   // not cut short an eight-second planet explosion still playing.
   const blast = makeCrashFx(H, ONE_G);
+  // Engine trails, the shield's flare, smoke off a hurt hull.
+  const shipFx = makeShipFx(H, shipParts.length);
+  const driveColor = shipParts.plumeMat?.color.clone() ?? new THREE.Color(0x9fd8ff);
   const rig = makeCameraRig();
   const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
@@ -673,6 +685,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   fxGroup.name = 'playerFx';
   fxGroup.add(crash.group);
   fxGroup.add(blast.group);
+  fxGroup.add(shipFx.group);
   fxGroup.add(evaG);
 
   // Pooled bolts — HDR amber so the bloom pass lights them up, and long
@@ -906,6 +919,9 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   /** The eased steering the model actually flies on. */
   const eased = { yaw: 0, pitch: 0 };
   let bank = 0;
+  let dodgeCool = 0;
+  let dodgeT = 99;
+  let dodgeSide = 0;
   /** Visual-only nose attitude under thrust (rad): the hull squats nose-up
    *  as the drive bites and settles as the speed comes up. */
   let noseLift = 0;
@@ -1061,6 +1077,10 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     foilsForced = null;
     lowShieldWarned = false;
     group.visible = true;
+    shipFx.clear();
+    input.dodge = 0;
+    dodgeCool = 0;
+    dodgeT = 99;
     // Back at the cruise distance, or the camera snaps to the old regime's
     // and then visibly zooms in for a second after every respawn.
     camBack = Math.max(MIN_CAM_BACK, regimes.cruise.camBack * THREE.MathUtils.clamp(input.camZoom || 1, CAM_ZOOM_MIN, CAM_ZOOM_MAX));
@@ -1145,6 +1165,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       audio.stopCharge();
     }
     holeFall.reset();
+    shipFx.clear();
     crash.trigger(at, normal, body, vel);
     crashLook.copy(at);
     vel.set(0, 0, 0);
@@ -1168,7 +1189,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   };
 
   /** Shields take the hit first; whatever is left reaches the hull. */
-  const damage = (amount: number, fromHeat: boolean) => {
+  const damage = (amount: number, fromHeat: boolean, from?: THREE.Vector3) => {
     if (crashT >= 0 || jumpPhase === 'travel') return;
     sinceHit = 0;
     const hadShield = shield > 0;
@@ -1179,6 +1200,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     tel.shield = shield;
     tel.hp = hull;
     if (!fromHeat) {
+      if (toShield > 0) shipFx.shieldHit(from ?? null, toShield / 30);
       tel.hitFlash = 1;
       rig.kick(rest > 0 ? 0.5 : 0.25);
       audio.hit(rest > 0);
@@ -1511,8 +1533,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     eva: evaG,
     parts: shipParts,
     spawn,
-    takeDamage(amount) {
-      damage(amount, false);
+    takeDamage(amount, from) {
+      damage(amount, false, from);
     },
     repair(h, s) {
       if (crashT >= 0) return;
@@ -1543,6 +1565,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         input.mouseDX = input.mouseDY = 0;
         input.boost = input.fire = input.align = false;
         input.dockRequest = input.landRequest = input.eject = input.foilsToggle = false;
+        input.dodge = 0;
         input.modeRequest = null;
       }
       if (input.relaunch) {
@@ -1858,12 +1881,16 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         rcsYaw = THREE.MathUtils.clamp(yawIn - dYaw * 25, -1, 1);
         rcsPitch = THREE.MathUtils.clamp(input.pitch - dPitch * 25, -1, 1);
         rcsRoll = input.roll;
+        // A dodge: the side jets fire hard, and the airframe flicks into it.
+        dodgeT += dt;
+        const flick = dodgeT < DODGE_FLICK ? dodgeSide * 0.65 * Math.sin(Math.PI * dodgeT / DODGE_FLICK) : 0;
+        if (dodgeT < 0.25) rcsYaw = -dodgeSide;
         // The airframe banks into the turn; the physics frame does not.
         // Forward is +Z with the port wing on +X, so a turn to starboard is a
         // negative yaw rate and dropping the starboard wing is a positive roll.
         const bankTarget = yawIn * 0.32 - dYaw * 5 - angVel.y * 0.1;
         bank += (THREE.MathUtils.clamp(bankTarget, -0.55, 0.55) - bank) * (1 - Math.exp(-dt * 3.4));
-        parts().hull.rotation.z = pilot === 'ship' ? bank : bank * 0.3;
+        parts().hull.rotation.z = pilot === 'ship' ? bank + flick : bank * 0.3;
         // Weight: the nose lags the pitch rate a touch, and squats up as
         // the drive bites — most at a standstill, gone at the ceiling.
         const pushing = input.thrust > 0 && !autodock ? input.thrust * (input.boost && boostCharge > BOOST_FLOOR ? 1.7 : 1) : 0;
@@ -1917,6 +1944,26 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
         const damping = Math.exp(-decay * dt);
         vel.multiplyScalar(damping);
         if (!autodock && !arrival) vel.addScaledVector(fwd, input.thrust * eff.accel * (boost ? 2 : 1) * (1 - damping) / decay);
+        // ── Dodge: a sideways kick on the thrusters, paid for from the boost
+        // reservoir. With assist on the drag takes it off again in a beat,
+        // about half a hull-length aside; with assist off it carries on. ──
+        dodgeCool = Math.max(0, dodgeCool - dt);
+        if (input.dodge !== 0) {
+          const side = Math.sign(input.dodge);
+          input.dodge = 0;
+          if (pilot === 'ship' && !autodock && !dockedTo && !arrival && dodgeCool <= 0 && boostCharge >= DODGE_COST) {
+            // Starboard is -X: the port wing is on +X.
+            right.set(-side, 0, 0).applyQuaternion(me.quaternion);
+            vel.addScaledVector(right, Math.max(DODGE_DV, 0.05 * eff.max));
+            boostCharge -= DODGE_COST;
+            sinceBoost = 0;
+            dodgeCool = DODGE_COOL;
+            dodgeT = 0;
+            dodgeSide = side;
+            rig.kick(0.25);
+            audio.thrusters();
+          }
+        }
         rcsBrake = input.thrust < 0 ? -input.thrust : 0;
         for (const b of world.bodies) {
           if (b.destroyed || b.kind === 'station') continue;
@@ -2253,6 +2300,16 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       const beacon = 1.45 + 0.25 * (0.5 + 0.5 * Math.sin(timeSec * 2.4));
       for (const m of shipParts.navMats) m.color.setHex(m.userData.base as number).multiplyScalar(beacon);
       group.visible = crashT < 0 && !(view === 'cockpit' && pilot === 'ship');
+      shipFx.update(dt, {
+        emitters: shipParts.glowSprites,
+        hull: shipParts.hull,
+        camera,
+        throttle: thrusting ? throttle : 0,
+        boost: tel.boost,
+        color: driveColor,
+        hullFrac: hull / MAX_HULL,
+        visible: crashT < 0 && pilot === 'ship' && jumpPhase === 'none',
+      });
       const speedFrac = eff.max > 0 ? speed / eff.max : 0;
 
       // ── Radio. ──
@@ -2595,6 +2652,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       audio.dispose();
       crash.dispose();
       blast.dispose();
+      shipFx.dispose();
       boltGeom.dispose();
       boltMat.dispose();
       dustGeom.dispose();

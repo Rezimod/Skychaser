@@ -247,6 +247,25 @@ describe('hyperdrive', () => {
     expect(Math.abs(fast - slow)).toBeLessThanOrEqual(1);
   });
 
+  it('dodges sideways on the thrusters, paid from boost, then waits before the next', () => {
+    faceAway();
+    seconds(0.2);
+    const start = ship.group.position.clone();
+    const right = new THREE.Vector3(-1, 0, 0).applyQuaternion(ship.group.quaternion);
+    session.input.dodge = 1;
+    step(1);
+    expect(session.telemetry.boostCharge).toBeLessThan(0.95);
+    seconds(0.6);
+    const aside = ship.group.position.clone().sub(start).dot(right);
+    expect(aside).toBeGreaterThan(0.1 * U);
+    // Too soon: nothing happens.
+    const charge = session.telemetry.boostCharge;
+    session.input.dodge = -1;
+    step(1);
+    expect(session.telemetry.boostCharge).toBeGreaterThanOrEqual(charge - 1e-9);
+    expect(session.input.dodge).toBe(0);
+  });
+
   it('ignores regime requests while jumping', () => {
     session.input.modeRequest = 'jump';
     step(1);
