@@ -773,8 +773,19 @@ body[data-solar-immersive] .sd-backdrop { display: none; }
 .story-chip__text { grid-column: 1; font: 500 13px/1.35 var(--font-body, system-ui), sans-serif; }
 .story-chip__count { grid-column: 2; grid-row: 1 / span 2; font: 600 13px/1 var(--font-mono, ui-monospace), monospace; color: #ffb347; }
 @keyframes story-in { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+/* On a phone the deck's right edge is a column of round keys (menu, then the
+   jump key at about +106..150): the chip keeps to their left, never over them. */
+@keyframes story-in-edge { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 @media (max-width: 599px) {
-  .story-comms, .story-chip { top: calc(max(10px, env(safe-area-inset-top)) + 112px); width: calc(100% - 24px); max-width: none; }
+  .story-comms, .story-chip {
+    top: calc(max(10px, env(safe-area-inset-top)) + 112px);
+    left: max(12px, env(safe-area-inset-left));
+    right: calc(max(10px, env(safe-area-inset-right)) + 54px);
+    width: auto;
+    max-width: none;
+    transform: none;
+    animation-name: story-in-edge;
+  }
 }
 @media (max-height: 500px) and (orientation: landscape) {
   .story-comms, .story-chip { top: calc(max(8px, env(safe-area-inset-top)) + 4px); width: min(420px, 44vw); }
