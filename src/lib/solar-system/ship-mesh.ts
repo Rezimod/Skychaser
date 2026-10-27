@@ -295,9 +295,13 @@ function engine(b: Builder, x: number, y: number, z: number, r: number, plumeLen
   core.rotation.x = Math.PI / 2;
   const plume = mesh(b, plumeCone(r * 0.78, plumeLen), b.pal.plumeMat, x, y, z - 0.3 * H, parent);
   plume.rotation.x = -Math.PI / 2;
+  // After the transparent scenery (Saturn's rings draw at 1), or a ring
+  // behind the ship blends over the flame and it vanishes.
+  plume.renderOrder = 3;
   b.plumes.push(plume);
   const plumeCore = mesh(b, plumeCone(r * 0.42, plumeLen * 1.35), b.pal.plumeCoreMat, x, y, z - 0.3 * H, parent);
   plumeCore.rotation.x = -Math.PI / 2;
+  plumeCore.renderOrder = 3;
   b.plumeCores.push(plumeCore);
   const mat = new THREE.SpriteMaterial({
     map: b.glowTex, color: b.pal.plumeMat.color, transparent: true, opacity: 0.7,
@@ -690,12 +694,14 @@ function modelEngine(parts: ShipParts, add: (o: THREE.Object3D) => THREE.Object3
     const plume = new THREE.Mesh(plumeCone(r * 0.85, r * 8), parts.plumeMat);
     plume.rotation.x = -Math.PI / 2;
     plume.position.set(at.x, at.y, at.z - 1.2 * r);
+    plume.renderOrder = 3;
     add(plume);
     parts.plumes.push(plume);
     if (parts.plumeCoreMat) {
       const core = new THREE.Mesh(plumeCone(r * 0.42, r * 13), parts.plumeCoreMat);
       core.rotation.x = -Math.PI / 2;
       core.position.set(at.x, at.y, at.z - 1.1 * r);
+      core.renderOrder = 3;
       add(core);
       parts.plumeCores.push(core);
     }
