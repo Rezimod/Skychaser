@@ -250,8 +250,11 @@ export async function makeWorldSurface(mount: HTMLElement, world: WorldId, opts:
   const { renderer, scene, camera, sun, lightPool, post, perf, lite, quality } = host;
   // Between steps the frame goes back to the browser; a build abandoned
   // there lets go of the context and of what it had made so far.
+  // What a build abandoned half-way has to take back besides the scene:
+  // subscriptions and sound made before the step it stopped at.
+  const undo: (() => void)[] = [];
   const step = async () => {
-    try { await opts.slice?.(); } catch (e) { host.dispose(() => releaseScene(scene)); throw e; }
+    try { await opts.slice?.(); } catch (e) { for (const u of undo.splice(0)) u(); host.dispose(() => releaseScene(scene)); throw e; }
   };
   await step();
   const earth = isEarth && opts.earth ? makeEarthWorld(renderer, opts.earth, lite) : null;
@@ -305,6 +308,7 @@ export async function makeWorldSurface(mount: HTMLElement, world: WorldId, opts:
   prints.mesh.visible = !deck;
   scene.add(prints.mesh);
   const unsubQuality = onQualityChange((q) => { dust.setCap(Math.min(1300, q.dustMax)); prints.setCap(q.printsMax); });
+  undo.push(unsubQuality);
   const kit = makeKit(lite);
   await step();
 
@@ -312,6 +316,7 @@ export async function makeWorldSurface(mount: HTMLElement, world: WorldId, opts:
   const pois: PointOfInterest[] = [];
   const interactions = makeInteractions();
   const audio = makeSuitAudio(!!profile.breathable);
+  undo.push(() => audio.dispose());
   const telemetryReadout = (key: string) => { telemetry.readout = key; telemetry.readoutHold = 7; audio.bleep(); };
 
   const base = world === 'mars' ? makeMarsBase(kit, heightAt, lite, telemetryReadout)
@@ -363,6 +368,7 @@ export async function makeWorldSurface(mount: HTMLElement, world: WorldId, opts:
   // on foot or flying. Ground gems step off anything solid; the high ones
   // out on Mars and Proxima b sit on the spires and hoodoos where there are any. ──
   const gemChime = makeGemChime();
+  undo.push(() => gemChime.dispose());
   const gems = makeGems({
     world, floorAt, lite, haze: true, far: earth ? 1400 : deck ? 400 : 700,
     colliders: earth ? undefined : colliders,
