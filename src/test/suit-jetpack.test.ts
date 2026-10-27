@@ -100,19 +100,24 @@ describe('flight on every world', () => {
       expect(f.b.vy, id).toBeGreaterThan(T.climb * 0.9);
       expect(f.b.vy, id).toBeLessThan(T.climb * 1.05);
       expect(f.jet.state.jetting, id).toBe(true);
-      // Let go: the flame is out at once, nothing pushes up, and gravity has them.
+      // Let go: the flame is out on that very step, nothing pushes up, the
+      // climb is gone in a moment rather than coasting on, and gravity has them.
       const vy0 = f.b.vy;
-      let lastVy = vy0; let rising = 0;
+      let lastVy = vy0; let rising = 0; let steps = 0; let stoppedAt = -1;
       f.run(1, ctl(), () => {
         expect(f.jet.state.jetting, id).toBe(false);
         expect(f.jet.state.thrust, id).toBe(0);
+        expect(f.jet.state.throttle, id).toBe(0);
         if (f.b.vy >= lastVy) rising += 1;
         lastVy = f.b.vy;
+        steps += 1;
+        if (stoppedAt < 0 && f.b.vy <= 0) stoppedAt = steps * DT;
       });
       expect(rising, id).toBe(0);
-      expect(f.b.vy, id).toBeCloseTo(vy0 - g, 1);
+      expect(stoppedAt, id).toBeGreaterThan(0);
+      expect(stoppedAt, id).toBeLessThan(0.25);
+      expect(f.b.vy, id).toBeLessThan(-g * 0.7);
       expect(f.jet.state.flying, id).toBe(true);
-      expect(f.jet.state.throttle, id).toBeLessThan(0.01);
       // Pressed again in the air: lit on the very step, and climbing again soon after.
       const push = { x: 0, y: 0, z: 0 };
       f.jet.fly(DT, ctl({ climb: true }), f.b, 0, OPEN_SKY, push);
