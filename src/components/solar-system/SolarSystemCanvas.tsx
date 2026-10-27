@@ -58,12 +58,12 @@ import {
 import { makeSunSurface } from '@/lib/solar-system/sun-surface';
 import { makePostFx } from '@/lib/solar-system/post-processing';
 import { projectSunPoint, type SunScreen } from '@/lib/solar-system/post-flare';
-import { currentQuality, onQualityChange, pixelRatioFor } from '@/game/quality';
+import { currentQuality, onQualityChange, pixelRatioFor, stepQualityDown } from '@/game/quality';
 import { compileFor, releaseCompilePolls, settleWithin, skipShaderChecks, uploadSceneTexturesSliced } from '@/lib/solar-system/gpu-warm';
 import { makeSlicer } from '@/game/slice';
 import { makeLoopGuard, noteContextLoss, rebuildWhenVisible } from '@/game/gpu-recovery';
 import { serviceStill } from '@/game/frame-tap';
-import { probeCalls } from '@/lib/solar-system/moon-perf';
+import { makeMoonPerf, probeCalls } from '@/lib/solar-system/moon-perf';
 import {
   createPlayerShip,
   FLIGHT_FAR,
@@ -1170,10 +1170,11 @@ export function SolarSystemCanvas({
       const h = mount.clientHeight;
       const r = ratioFor();
       if (!force && w === sizedW && h === sizedH && r === sizedRatio) return;
+      if (r !== sizedRatio) flightPerf.setRatioBounds(Math.min(1, r), r);
       sizedW = w; sizedH = h; sizedRatio = r;
       camera.aspect = Math.max(1, mount.clientWidth) / Math.max(1, mount.clientHeight);
       camera.updateProjectionMatrix();
-      renderer.setPixelRatio(ratioFor());
+      renderer.setPixelRatio(flightPerf.sample().pixelRatio);
       renderer.setSize(mount.clientWidth, mount.clientHeight);
       postFx.setSize(mount.clientWidth, mount.clientHeight);
     };
@@ -1186,6 +1187,15 @@ export function SolarSystemCanvas({
     // was decided when the scene was built — the star and belt counts —
     // follows on the next build, as it does on the surfaces.
     const offQuality = onQualityChange((q) => { postFx.setQuality(q); applySize(true); });
+    // The flight's frame governor, the surfaces' own (surface-host.ts): the
+    // pixel ratio comes down in quarter steps to 1 when the frame is over
+    // budget, and once it has nothing left the preset steps down a level.
+    const flightPerf = makeMoonPerf(renderer, mount, {
+      minRatio: Math.min(1, ratioFor()),
+      maxRatio: ratioFor(),
+      onPixelRatio: (r) => { renderer.setPixelRatio(r); postFx.setSize(mount.clientWidth, mount.clientHeight); },
+      onOverBudget: () => { stepQualityDown(); },
+    });
 
     // How much of the glass a sunlit world is filling, eased: see worldGlare().
     let bodyGlare = 0;
@@ -1439,6 +1449,7 @@ export function SolarSystemCanvas({
     const startLoop = () => {
       if (raf || !docVisible) return;
       lastFrame = performance.now();
+      flightPerf.resume();
       raf = requestAnimationFrame(loop);
     };
 
@@ -1472,7 +1483,7 @@ export function SolarSystemCanvas({
       const now = performance.now();
       const dtSec = Math.min(0.1, (now - lastFrame) / 1000);
       lastFrame = now;
-      if (pausedRef.current && readyFired) return;
+      if (pausedRef.current && readyFired) { flightPerf.resume(); return; }
       // Wall-clock seconds for shader animation (convection, cloud bands).
       const sceneTime = reduceMotion ? 0 : (now - t0) / 1000;
       const epochNow = epochRef.current.current;
@@ -1673,7 +1684,10 @@ export function SolarSystemCanvas({
       // frame drawn with half-built programs waits for them on the main
       // thread, and the loader's own animation freezes with it.
       if (readyFired || compiled) {
+        // Only a running scene is governed: the loader's frames wait on compiles.
+        if (readyFired) { flightPerf.begin(now); flightPerf.mark(); } else flightPerf.resume();
         postFx.render(dtSec);
+        if (readyFired) flightPerf.end();
         // A handover asked for this frame as a picture (game/frame-tap).
         serviceStill(renderer.domElement);
       }
@@ -1730,6 +1744,7 @@ export function SolarSystemCanvas({
       sizeObserver?.disconnect();
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       offQuality();
+      flightPerf.dispose();
       el.removeEventListener('pointerdown', onPointerDown);
       el.removeEventListener('pointermove', onPointerMove);
       el.removeEventListener('pointerup', onPointerUp);
