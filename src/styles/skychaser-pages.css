@@ -329,7 +329,7 @@
 /* One layer per card: `translate` carries it across, `transform` carries it
    in depth — two eased loops a quarter turn apart make the ellipse. */
 .sd-orbit__body {
-  position: absolute; left: 50%; top: 50%; width: var(--w); margin: calc(var(--w) * -0.7) 0 0 calc(var(--w) / -2);
+  position: absolute; left: 50%; top: 50%; width: var(--w); margin: calc(var(--w) / -2) 0 0 calc(var(--w) / -2);
   will-change: transform, translate, opacity; backface-visibility: hidden;
   --phase: calc(var(--k) * var(--T) / var(--n) * -1);
   animation:
@@ -337,7 +337,7 @@
     sd-orbit-depth calc(var(--T) / 2) var(--sd-ease-inout) calc(var(--phase) - var(--T) / 4) infinite alternate,
     sd-orbit-z calc(var(--T) / 2) linear calc(var(--phase) - var(--T) / 4) infinite alternate;
 }
-.sd-orbit__body .sd-thumb { box-shadow: none; outline: 1px solid rgba(255, 255, 255, 0.14); outline-offset: -1px; }
+.sd-orbit__body img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; -webkit-mask: radial-gradient(closest-side, #000 72%, transparent 100%); mask: radial-gradient(closest-side, #000 72%, transparent 100%); }
 @keyframes sd-orbit-x {
   from { translate: calc(var(--R) * -1) 0; }
   to { translate: var(--R) 0; }
@@ -522,13 +522,18 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 .sd-odds__tier[aria-selected='true'] { background: rgba(241, 230, 207, 0.1); color: var(--sd-ink); }
 .sd-odds__tier:focus-visible { outline: 2px solid var(--sd-accent-ink); outline-offset: 2px; }
 
-.sd-odds__deck { list-style: none; width: 100%; max-width: 920px; margin: 52px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; align-items: end; }
+.sd-odds__deck { list-style: none; width: 100%; max-width: 760px; margin: 52px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; align-items: center; }
 .sd-odds__deck li { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.sd-odds__card { width: 100%; margin-bottom: 18px; text-align: left; transition: translate .4s var(--sd-ease-out, ease-out); }
-.sd-odds__deck li[data-rarity='legendary'] .sd-odds__card { translate: 0 -18px; }
-.sd-odds__deck li:hover .sd-odds__card { translate: 0 -8px; }
-.sd-odds__deck li[data-rarity='legendary']:hover .sd-odds__card { translate: 0 -26px; }
-.sd-odds__card .sd-thumb { pointer-events: none; }
+.sd-odds__deck li { --s: 26px; --g: 18px; }
+.sd-odds__deck li[data-rarity='rare'] { --s: 36px; --g: 34px; }
+.sd-odds__deck li[data-rarity='epic'] { --s: 48px; --g: 54px; }
+.sd-odds__deck li[data-rarity='legendary'] { --s: 62px; --g: 80px; }
+.sd-odds__star { position: relative; display: grid; place-items: center; width: 150px; height: 150px; margin-bottom: 14px; }
+.sd-odds__star::before { content: ''; width: var(--s); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, color-mix(in srgb, var(--rarity) 85%, #fff) 40%, var(--rarity) 70%, transparent 100%); box-shadow: 0 0 var(--g) calc(var(--g) / 4) color-mix(in srgb, var(--rarity) 55%, transparent); transition: scale .4s var(--sd-ease-out, ease-out); }
+.sd-odds__star::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rarity) 60%, transparent) 50%, transparent) center / 100% 1px no-repeat, linear-gradient(0deg, transparent, color-mix(in srgb, var(--rarity) 60%, transparent) 50%, transparent) center / 1px 100% no-repeat; opacity: calc(var(--s) / 62px); }
+.sd-odds__deck li:hover .sd-odds__star::before { scale: 1.12; }
+@media (prefers-reduced-motion: no-preference) { .sd-odds__deck li[data-rarity='legendary'] .sd-odds__star::before { animation: sd-odds-twinkle 3.2s ease-in-out infinite; } }
+@keyframes sd-odds-twinkle { 50% { scale: 1.08; filter: brightness(1.15); } }
 .sd-odds__name { font: 500 12px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--rarity); }
 .sd-odds__pct { font: 300 24px var(--sd-sans); color: var(--sd-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
@@ -536,8 +541,14 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 .sd-odds__log:hover { color: var(--sd-ink); border-color: var(--sd-ink-2); }
 
 @media (max-width: 720px) {
-  .sd-odds__deck { grid-template-columns: repeat(2, 1fr); gap: 28px 16px; max-width: 420px; }
-  .sd-odds__deck li[data-rarity='legendary'] .sd-odds__card { translate: none; }
+  .sd-odds__deck { gap: 4px; margin-top: 36px; }
+  .sd-odds__deck li { --s: 14px; --g: 10px; }
+  .sd-odds__deck li[data-rarity='rare'] { --s: 20px; --g: 18px; }
+  .sd-odds__deck li[data-rarity='epic'] { --s: 27px; --g: 28px; }
+  .sd-odds__deck li[data-rarity='legendary'] { --s: 36px; --g: 42px; }
+  .sd-odds__star { width: 72px; height: 72px; margin-bottom: 6px; }
+  .sd-odds__name { font-size: 10px; letter-spacing: .12em; }
+  .sd-odds__pct { font-size: 18px; }
   .sd-odds__tier { padding: 8px 12px; font-size: 13px; }
   .sd-odds__pct { font-size: 20px; }
 }
@@ -564,11 +575,8 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
 .sd-bento__text strong, .sd-bento__seeker strong { font: 400 clamp(22px, 2.2vw, 30px)/1.05 var(--sd-display); letter-spacing: .01em; text-transform: uppercase; }
 .sd-bento__text > span:not(.sd-bento__kicker):not(.sd-btn), .sd-bento__seeker > span:last-child { font-size: 14px; line-height: 1.45; color: var(--sd-ink-2); max-width: 34ch; }
 
-.sd-bento__tonight { grid-area: tonight; flex-direction: column; align-items: center; gap: 22px; min-height: 480px; background: radial-gradient(70% 55% at 50% 35%, rgba(226, 184, 90, 0.12), transparent 70%), #121010; }
-.sd-bento__tonight::after { display: none; }
-.sd-bento__card { width: min(220px, 60%); margin-top: 8px; rotate: -3deg; transition: rotate .4s var(--sd-ease-out, ease-out); }
-.sd-bento__tonight:hover .sd-bento__card { rotate: 0deg; }
-.sd-bento__tonight .sd-bento__text { align-self: stretch; }
+.sd-bento__tonight { grid-area: tonight; min-height: 480px; }
+.sd-bento__tonight > img { opacity: .85; }
 .sd-bento__open { grid-area: open; }
 .sd-bento__open > img { left: auto; width: 55%; object-fit: contain; object-position: right center; opacity: .9; }
 .sd-bento__open::after { background: linear-gradient(90deg, #121010 40%, transparent 85%); }

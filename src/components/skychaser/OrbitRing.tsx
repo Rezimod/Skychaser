@@ -1,7 +1,5 @@
-import CardThumb from './CardThumb';
-
 /**
- * Cards of the set orbiting the Sun, passing behind it on the far side. Only
+ * Worlds of the set orbiting the Sun, passing behind it on the far side. Only
  * translate, transform and opacity animate, so the compositor does the work.
  */
 export default function OrbitRing({ designations }: { designations: string[] }) {
@@ -15,7 +13,7 @@ export default function OrbitRing({ designations }: { designations: string[] }) 
       <ul className="sd-orbit__ring" style={{ '--n': designations.length } as React.CSSProperties}>
         {designations.map((d, i) => (
           <li key={d} className="sd-orbit__body" style={{ '--k': i } as React.CSSProperties}>
-            <CardThumb designation={d} small />
+            <img src={`/cards/art/sm/${d}.webp`} alt="" width={440} height={584} loading="lazy" decoding="async" />
           </li>
         ))}
       </ul>

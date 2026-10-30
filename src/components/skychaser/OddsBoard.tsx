@@ -1,12 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
-import { rarityInfo, type Rarity } from '@/lib/rarity';
+import { useState } from 'react';
+import { RARITIES, rarityInfo } from '@/lib/rarity';
 import { TIERS, formatOdds } from '@/lib/skychaser/tiers';
 
-/** The odds told with the cards themselves: one of each rarity, its chance beneath, per capsule. */
-export default function OddsBoard({ cards }: { cards: { rarity: Rarity; face: ReactNode }[] }) {
+/** The odds as four stars, each brighter and rarer than the last, its chance beneath, per capsule. */
+export default function OddsBoard() {
   const [key, setKey] = useState(TIERS[0].key);
   const tier = TIERS.find((t) => t.key === key)!;
 
@@ -23,9 +23,9 @@ export default function OddsBoard({ cards }: { cards: { rarity: Rarity; face: Re
       </div>
 
       <ol className="sd-odds__deck" role="tabpanel" aria-label={`${tier.name} capsule odds, per card`}>
-        {cards.map(({ rarity, face }) => (
+        {RARITIES.map((rarity) => (
           <li key={rarity} data-rarity={rarity}>
-            <div className="sd-odds__card" aria-hidden="true">{face}</div>
+            <span className="sd-odds__star" aria-hidden="true" />
             <span className="sd-odds__name">{rarityInfo(rarity).label}</span>
             <span className="sd-odds__pct">{tier.oddsBps[rarity] === 0 ? '—' : formatOdds(tier.oddsBps[rarity])}</span>
           </li>

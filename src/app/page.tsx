@@ -15,8 +15,6 @@ import { card } from '@/lib/schema';
 import { SET_GROUPS } from '@/lib/sets/groups';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
 import { TIERS } from '@/lib/skychaser/tiers';
-import { cardPriceUsd } from '@/lib/skychaser/economics';
-import type { Rarity } from '@/lib/rarity';
 import { nightRow } from '@/lib/skychaser/night';
 import { siteNightDate } from '@/lib/skychaser/target';
 
@@ -31,14 +29,8 @@ export const metadata: Metadata = {
 /** Six cards from across the set, one shelf of it. */
 const SHOWCASE = ['BETELGEUSE', 'M51', 'ROADSTER', 'CARINA', 'TYCHO', 'CANYON-DIABLO'];
 
-/** The phone hero's three cards. */
-const HERO = ['SATURN', 'M16', 'SUN'];
-
-/** The cards turning round the sun in the orbit section. */
-const ORBIT = ['FIRST-LIGHT', 'EARTHRISE', 'M1', 'TON-618', 'HALLEY', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'M104', 'PLUTO', 'TARANTULA', 'IMILAC'];
-
-/** One card of each rarity, commonest first, shown with its odds. */
-const ODDS_CARDS = ['HELIX', 'POLARIS', 'PHOBOS', 'GIBEON'];
+/** The worlds turning round the sun in the orbit section. */
+const ORBIT = ['MERCURY', 'VENUS', 'EARTH', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'];
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
@@ -81,28 +73,16 @@ export default async function HomePage() {
               Browse the cards
             </Link>
           </div>
-          {/* A phone has no hidden sky: three cards from the set stand in for it. */}
-          <ul className="sd-hero3__cards" aria-label="Three cards from the set">
-            {HERO.map((d) => (
-              <li key={d}>
-                <Link href={`/card/${d}`} aria-label={SET_001_CARD_BY_DESIGNATION.get(d)?.seed.name ?? d} data-zoom={d}>
-                  <CardThumb designation={d} eager small />
-                </Link>
-              </li>
-            ))}
-          </ul>
         </div>
       </section>
 
       <section className="sd-container sd-home-sec sd-bento" id="how" aria-label="Skychaser tonight">
         <Link href={`/card/${tonightCard?.seed.designation ?? 'HUNTERS-MOON'}`} className="sd-bento__tile sd-bento__tonight">
-          <span className="sd-bento__card">
-            <CardThumb designation={tonightCard?.seed.designation ?? 'HUNTERS-MOON'} small />
-          </span>
+          <img src={`/cards/art/sm/${tonightCard?.seed.designation ?? 'HUNTERS-MOON'}.webp`} alt="" width={440} height={584} loading="lazy" />
           <span className="sd-bento__text">
             <span className="sd-bento__kicker">{tonightCard ? 'Tonight over Tbilisi' : 'In the set'}</span>
             <strong>{tonightCard?.seed.name ?? "The Hunter's Moon"}</strong>
-            <span>The card the telescope is pointed at tonight.</span>
+            <span>Where the telescope points tonight.</span>
           </span>
         </Link>
         <Link href="/capsules" className="sd-bento__tile sd-bento__open">
@@ -141,12 +121,7 @@ export default async function HomePage() {
         <h2 className="sd-home-sec__title" id="odds-title">
           The odds are published
         </h2>
-        <OddsBoard
-          cards={ODDS_CARDS.map((d) => {
-            const rarity = SET_001_CARD_BY_DESIGNATION.get(d)!.seed.rarity as Rarity;
-            return { rarity, face: <CardThumb designation={d} price={`$${cardPriceUsd(d, rarity)}`} /> };
-          })}
-        />
+        <OddsBoard />
       </section>
 
       <section className="sd-container sd-home-sec sd-showcase2" aria-labelledby="set-title">
@@ -180,10 +155,10 @@ export default async function HomePage() {
       <section className="sd-home-sec sd-orbit" aria-labelledby="orbit-title">
         <div className="sd-container sd-orbit__copy">
           <h2 className="sd-home-sec__title" id="orbit-title">
-            Every card turns with the sky
+            Every world turns with the sky
           </h2>
           <p className="sd-home-sec__lede">
-            From the craters of the Moon to the black hole at the centre of the galaxy — each one real, issued once and numbered.
+            From Mercury out to Pluto — each world in the set, issued once and numbered.
           </p>
         </div>
         <OrbitRing designations={ORBIT} />
