@@ -16,6 +16,8 @@ import { card } from '@/lib/schema';
 import { SET_GROUPS } from '@/lib/sets/groups';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
 import { CARDS_PER_TIER, TIERS } from '@/lib/skychaser/tiers';
+import { cardPriceUsd } from '@/lib/skychaser/economics';
+import type { Rarity } from '@/lib/rarity';
 import { nightRow } from '@/lib/skychaser/night';
 import { siteNightDate } from '@/lib/skychaser/target';
 
@@ -32,6 +34,9 @@ const SHOWCASE = ['JUPITER', 'BETELGEUSE', 'M42', 'M31', 'SGR-A', 'VOYAGER-1'];
 
 /** The cards turning round the sun in the orbit section. */
 const ORBIT = ['FIRST-LIGHT', 'SATURN', 'M42', 'M1', 'SGR-A', 'HALLEY', 'M45', 'TYCHO', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'IMILAC'];
+
+/** One card of each rarity, commonest first, shown with its odds. */
+const ODDS_CARDS = ['FIRST-LIGHT', 'MOON', 'EARTH', 'IMILAC'];
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
@@ -105,7 +110,12 @@ export default async function HomePage() {
         <h2 className="sd-home-sec__title" id="odds-title">
           The odds are published
         </h2>
-        <OddsBoard />
+        <OddsBoard
+          cards={ODDS_CARDS.map((d) => {
+            const rarity = SET_001_CARD_BY_DESIGNATION.get(d)!.seed.rarity as Rarity;
+            return { rarity, face: <CardThumb designation={d} price={`$${cardPriceUsd(d, rarity)}`} /> };
+          })}
+        />
       </section>
 
       <section className="sd-container sd-home-sec sd-showcase2" aria-labelledby="set-title">
