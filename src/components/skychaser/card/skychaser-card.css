@@ -103,3 +103,39 @@
   .sdc-flip, .sdc-face, .sdc-tilt { transition: none; }
   .sdc-stage.is-live .sdc-tilt { transform: none; }
 }
+
+/* Rarity frames: common keeps the object-coloured edge; scarcer cards get a thicker
+   frame in their rarity colour, an outer glow, and from epic up a moving sheen. */
+.sdc-card[data-rarity='rare'] { box-shadow: 0 0 0 1px color-mix(in srgb, var(--rarity) 55%, transparent), 0 0 4cqw -1cqw color-mix(in srgb, var(--rarity) 55%, transparent); }
+.sdc-card[data-rarity='rare']::after { padding: max(2px, .9cqw); background: linear-gradient(155deg, #fff8e0 0%, var(--rarity) 25%, color-mix(in srgb, var(--rarity) 50%, #000) 50%, var(--rarity) 75%, #fff8e0 100%); }
+.sdc-card[data-rarity='rare']::before { box-shadow: inset 0 0 6cqw -1.5cqw color-mix(in srgb, var(--rarity) 50%, transparent); }
+
+.sdc-card[data-rarity='epic'] { box-shadow: 0 0 0 1px color-mix(in srgb, var(--rarity) 70%, transparent), 0 0 7cqw -1cqw color-mix(in srgb, var(--rarity) 70%, transparent); }
+.sdc-card[data-rarity='epic']::after { padding: max(3px, 1.8cqw); background: conic-gradient(from var(--sdc-spin, 0deg), #ffffff, var(--rarity), color-mix(in srgb, var(--rarity) 45%, #000), var(--rarity), #ffffff, var(--rarity), color-mix(in srgb, var(--rarity) 45%, #000), var(--rarity), #ffffff); }
+.sdc-card[data-rarity='epic']::before { box-shadow: inset 0 0 8cqw -1.5cqw color-mix(in srgb, var(--rarity) 60%, transparent); }
+
+.sdc-card[data-rarity='legendary'] { box-shadow: 0 0 0 1px #c9d4ff, 0 0 10cqw -1cqw color-mix(in srgb, var(--rarity) 90%, transparent), 0 0 3cqw -.5cqw #ffd77a99; }
+.sdc-card[data-rarity='legendary']::after { padding: max(4px, 2.4cqw); background: conic-gradient(from var(--sdc-spin, 0deg), #ffe6a0, #ffffff, var(--rarity), #2a2f8f, var(--rarity), #ffffff, #ffe6a0, #ffffff, var(--rarity), #2a2f8f, var(--rarity), #ffffff, #ffe6a0); }
+.sdc-card[data-rarity='legendary']::before { box-shadow: inset 0 0 10cqw -1.5cqw color-mix(in srgb, var(--rarity) 75%, transparent), inset 0 0 2cqw -.5cqw #ffe6a0aa; }
+
+/* Corner jewel: epic and legendary carry a glyph badge on the art. */
+.sdc-card[data-rarity='epic'] .sdc-panel::after,
+.sdc-card[data-rarity='legendary'] .sdc-panel::after {
+  position: absolute; top: 2.5cqw; right: 2.5cqw; z-index: 3; display: grid; place-items: center;
+  width: 9cqw; height: 9cqw; border-radius: 50%; font-size: 5cqw; line-height: 1; color: #fff;
+  background: radial-gradient(circle at 35% 30%, #ffffff, var(--rarity) 45%, color-mix(in srgb, var(--rarity) 40%, #000));
+  box-shadow: 0 0 0 .5cqw #0009, 0 0 4cqw var(--rarity); text-shadow: 0 0 1cqw #000a;
+}
+.sdc-card[data-rarity='epic'] .sdc-panel::after { content: '\25C6'; }
+.sdc-card[data-rarity='legendary'] .sdc-panel::after { content: '\2726'; background: radial-gradient(circle at 35% 30%, #fff8dc, #ffd36b 40%, var(--rarity) 75%); }
+
+@property --sdc-spin { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+@keyframes sdc-spin { to { --sdc-spin: 360deg; } }
+@media (prefers-reduced-motion: no-preference) {
+  .sdc-card[data-rarity='epic']::after { animation: sdc-spin 9s linear infinite; }
+  .sdc-card[data-rarity='legendary']::after { animation: sdc-spin 6s linear infinite; }
+}
+.sdc-card[data-rarity='epic'] .sdc-panel { border-color: color-mix(in srgb, var(--rarity) 60%, transparent); }
+.sdc-card[data-rarity='legendary'] .sdc-panel { border-color: #ffd36bb3; box-shadow: inset 0 0 0 1px #0009, 0 0 3cqw -1cqw #ffd36b; }
+.skychaser .sd-tile[data-rarity='epic'] .sd-thumb { box-shadow: 0 22px 40px -22px #000, 0 0 46px -10px color-mix(in srgb, var(--rarity) 70%, transparent); }
+.skychaser .sd-tile[data-rarity='legendary'] .sd-thumb { box-shadow: 0 22px 40px -22px #000, 0 0 60px -6px color-mix(in srgb, var(--rarity) 85%, transparent), 0 0 24px -8px #ffd36b; }
