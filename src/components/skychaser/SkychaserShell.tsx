@@ -15,24 +15,10 @@ const PARTNERS = [
   { src: '/brand-partners/levenhuk.svg', alt: 'Levenhuk', width: 300, height: 60 },
 ];
 
-const RECOGNITION = [
-  {
-    href: 'https://superteam.fun/earn/listing/tether-frontier-hackathon-track',
-    logo: '/brand-partners/qvac.svg', logoAlt: 'QVAC by Tether', logoWidth: 218, logoHeight: 24,
-    label: 'Tether Frontier', rank: '1st place',
-  },
-  {
-    href: 'https://superteam.fun/earn/grants/solana-foundation-georgia-grants',
-    logo: '/brand-partners/superteam-mark.png', logoAlt: 'Superteam', logoWidth: 160, logoHeight: 48,
-    label: 'Superteam', rank: 'Grant',
-  },
-];
-
 const EXPLORE = [
   { href: '/node', label: 'Observatory' },
   { href: '/vote', label: 'Vote' },
   { href: '/voyage', label: 'Voyage' },
-  { href: '/invite', label: 'Invite' },
 ];
 
 const LEGAL = [
@@ -101,23 +87,11 @@ export default function SkychaserShell({
               <div className="sd-foot__brand">
                 <Wordmark href="/" />
               </div>
-              <div className="sd-foot__trust" aria-label="Partner brands and recognition" role="group">
+              <div className="sd-foot__trust" aria-label="Partner brands" role="group">
                 <ul className="sd-partners">
                   {PARTNERS.map((p) => (
                     <li key={p.alt}>
                       <img src={p.src} alt={p.alt} width={p.width} height={p.height} loading="lazy" />
-                    </li>
-                  ))}
-                </ul>
-                <ul className="sd-recog">
-                  {RECOGNITION.map((r) => (
-                    <li key={r.label}>
-                      <a href={r.href} target="_blank" rel="noopener noreferrer" className="sd-recog__item">
-                        <img src={r.logo} alt={r.logoAlt} width={r.logoWidth} height={r.logoHeight} loading="lazy" />
-                        <span className="sd-recog__cap">
-                          {r.label} · <b>{r.rank}</b>
-                        </span>
-                      </a>
                     </li>
                   ))}
                 </ul>
@@ -138,6 +112,10 @@ export default function SkychaserShell({
                   </Link>
                 ))}
               </nav>
+              <a href="https://x.com/skychaserio" target="_blank" rel="noopener noreferrer" className="sd-foot__x" aria-label="Skychaser on X">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                @skychaserio
+              </a>
               <span>© {new Date().getFullYear()} Skychaser</span>
             </div>
           </div>

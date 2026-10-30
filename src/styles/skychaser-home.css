@@ -42,18 +42,9 @@
 @media (min-width: 860px) { .skychaser .sd-foot__trust { justify-items: end; } }
 .skychaser .sd-foot .sd-partners { margin: 0; max-width: 680px; width: 100%; }
 .skychaser .sd-foot .sd-partners li { height: 56px; padding: 0 14px; }
-.skychaser .sd-foot .sd-recog { margin: 0; max-width: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 28px; }
-.skychaser .sd-foot .sd-recog__item { padding: 6px 0; }
 .skychaser .sd-partners img { filter: brightness(0) invert(0.93) sepia(0.28); opacity: 0.55; height: 24px; max-height: none; width: auto; object-fit: contain; }
 .skychaser .sd-partners li:hover img { opacity: 0.85; }
-.skychaser .sd-recog__item { flex-direction: row; gap: 14px; justify-content: center; }
-.skychaser .sd-recog__item img, .skychaser .sd-recog__item:hover img { filter: brightness(0) invert(0.93) sepia(0.28); }
-.skychaser .sd-recog__item img { opacity: 0.55; height: 24px; }
 /* Superteam's mark is a picture on a tile: the cream filter would flatten it to a block, so it keeps a grey one at the same height. */
-.skychaser .sd-recog__item img[src$='.webp'], .skychaser .sd-recog__item:hover img[src$='.webp'] { height: 24px; filter: grayscale(1) sepia(0.3) brightness(1.5); }
-.skychaser .sd-recog__item:hover img { opacity: 0.85; }
-.skychaser .sd-recog__cap { font: 500 12px var(--sd-spaced); letter-spacing: 0.16em; text-transform: uppercase; color: rgba(244, 232, 204, 0.62); }
-.skychaser .sd-recog__cap b { color: var(--sd-gold); font-weight: 500; }
 
 /* ── What a card opens: four plain steps; the live one in red, the rest coming soon ── */
 .skychaser .sd-flight { margin: 36px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
@@ -141,7 +132,6 @@
   .skychaser .sd-hero2__sub { font-size: 16px; }
   .skychaser .sd-hero2__cta { justify-content: center; }
   .skychaser .sd-foot .sd-partners li { height: 48px; }
-  .skychaser .sd-recog__item { flex-direction: column; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
 }

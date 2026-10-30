@@ -85,7 +85,7 @@
 body .skychaser :is(
   .sd-counter__label, .sd-counter__foot,
   .sd-gives__line, .sd-gives__what em, .sd-fl__meta, .sd-filter__chip:not([aria-pressed='true'], :hover), .sd-tile__num,
-  .sd-recog__cap, .sd-foot a:not(:hover), .sd-foot__base, .sd-hero2__stats dt, .sd-data, .sd-chapter__aside, .sd-caption,
+  .sd-foot a:not(:hover), .sd-foot__base, .sd-hero2__stats dt, .sd-data, .sd-chapter__aside, .sd-caption,
   .sd-buybar__meta, .sd-section__title, .sd-label, .sd-tab:not([aria-current])
 ) { color: var(--sd-ink-small); }
 

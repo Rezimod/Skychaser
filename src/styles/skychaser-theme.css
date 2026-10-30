@@ -226,10 +226,10 @@
   background: var(--sd-bar-bg);
   border-bottom: 1px solid var(--sd-rule);
 }
-.sd-bar__inner { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "mark links account"; align-items: center; column-gap: 32px; min-height: var(--sd-bar-h); }
+.sd-bar__inner { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-areas: "mark links account"; align-items: center; column-gap: 32px; min-height: var(--sd-bar-h); }
 .sd-bar__mark { grid-area: mark; }
 .sd-bar__account { grid-area: account; justify-self: end; }
-.sd-bar__links { grid-area: links; display: flex; gap: 28px; margin: 0; padding: 0; list-style: none; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.sd-bar__links { grid-area: links; justify-self: center; display: flex; gap: 28px; margin: 0; padding: 0; list-style: none; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .sd-navlink { position: relative; font-family: var(--sd-sans); font-weight: 500; font-size: 14px; color: var(--sd-ink-3); text-decoration: none; padding-block: 10px; white-space: nowrap; transition: color var(--sd-dur-fast) var(--sd-ease); }
 .sd-navlink::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 4px; height: 1px;
