@@ -79,6 +79,14 @@ const SHARDS: [number, number, number, number][] = Array.from({ length: 14 }, (_
  * out. It plays over the whole screen, lifted to the page's own .skychaser
  * root; closing it without an onClose leaves the card in the page.
  */
+/** What the cosmonaut says when a card comes out of its capsule. */
+const CHEER: Record<Rarity, string> = {
+  common: 'Nice catch.',
+  rare: 'Ooh, a rare one!',
+  epic: 'Epic find!',
+  legendary: 'LEGENDARY!',
+};
+
 export default function SkychaserReveal({
   draw,
   onClose,
@@ -319,11 +327,19 @@ export default function SkychaserReveal({
     </p>
   );
 
+  const mascot = done && (
+    <div className="sn-mascot" data-rarity={rarity} aria-hidden="true">
+      <img src="/mascot/cosmonaut.webp" alt="" width={93} height={240} />
+      <span className="sn-mascot__say">{CHEER[rarity]}</span>
+    </div>
+  );
+
   if (!staged) {
     return (
       <div className="sn-inpage" data-rarity={rarity} style={{ '--sn-tone': info.color } as CSSProperties}>
         <CardPlate designation={flown.designation} edition={flown.editionNumber} href={`/card/${flown.designation}`} />
         {tag}
+        {mascot}
         {after}
       </div>
     );
@@ -434,6 +450,7 @@ export default function SkychaserReveal({
           <span className="sn-pre__sub">One card · Genesis</span>
         </div>
         {tag}
+        {mascot}
         {after}
       </div>
 

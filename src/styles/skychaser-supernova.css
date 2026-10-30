@@ -231,3 +231,18 @@
   .sn.is-done .sn-provenance { justify-content: flex-start; font-size: 13px; }
   .sn.is-done .sn-after .sd-pay__actions { width: 100%; }
 }
+
+/* The cosmonaut: floats in once the card is out, says one line, and jumps for the rare ones. */
+.sn-mascot { position: absolute; right: -150px; top: -10px; z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; animation: sn-mascot-in .7s cubic-bezier(.2, .9, .25, 1.2) .5s both; }
+.sn-inpage .sn-mascot { position: relative; right: auto; top: auto; left: auto; justify-content: center; margin-top: 14px; }
+.sn-mascot img { width: 64px; height: auto; filter: drop-shadow(0 10px 18px #000a); animation: sn-float 4s ease-in-out 1.2s infinite; }
+.sn-mascot__say { order: -1; padding: 8px 12px; border-radius: 14px; background: #f4f0e6; color: #14100c; font: 600 13px var(--sd-sans, sans-serif); white-space: nowrap; box-shadow: 0 8px 20px -8px #000; }
+.sn-mascot[data-rarity='epic'] img { animation: sn-hop .6s ease-out 1.2s 3, sn-float 4s ease-in-out 3s infinite; }
+.sn-mascot[data-rarity='legendary'] img { animation: sn-hop .5s ease-out 1.2s 5, sn-float 4s ease-in-out 3.7s infinite; }
+.sn-mascot[data-rarity='legendary'] .sn-mascot__say { background: linear-gradient(135deg, #fff4cf, #ffd36b); letter-spacing: .06em; }
+@keyframes sn-mascot-in { from { opacity: 0; translate: 40px 30px; rotate: 12deg; } }
+@keyframes sn-float { 50% { translate: 0 -8px; rotate: -4deg; } }
+@keyframes sn-hop { 40% { translate: 0 -26px; rotate: -10deg; } }
+@media (prefers-reduced-motion: reduce) { .sn-mascot, .sn-mascot img { animation: none; } }
+@media (max-width: 1100px) { .sn-mascot { right: -92px; } .sn-mascot img { width: 44px; } .sn-mascot__say { font-size: 11px; padding: 6px 9px; } }
+@media (max-width: 900px) { .sn-mascot { position: fixed; top: 70px; right: auto; left: 6px; gap: 4px; } .sn-mascot img { width: 36px; } .sn-mascot__say { padding: 5px 8px; font-size: 10px; } }

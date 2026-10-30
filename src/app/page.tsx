@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import CardThumb from '@/components/skychaser/CardThumb';
-import FlightPlan, { type FlightStep } from '@/components/skychaser/FlightPlan';
 import OddsBoard from '@/components/skychaser/OddsBoard';
 import OrbitRing from '@/components/skychaser/OrbitRing';
 import SkyReveal from '@/components/skychaser/SkyReveal';
@@ -15,7 +14,7 @@ import { getNode } from '@/lib/observatory/nodes';
 import { card } from '@/lib/schema';
 import { SET_GROUPS } from '@/lib/sets/groups';
 import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
-import { CARDS_PER_TIER, TIERS } from '@/lib/skychaser/tiers';
+import { TIERS } from '@/lib/skychaser/tiers';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import type { Rarity } from '@/lib/rarity';
 import { nightRow } from '@/lib/skychaser/night';
@@ -39,13 +38,6 @@ const ORBIT = ['FIRST-LIGHT', 'SATURN', 'M42', 'M1', 'SGR-A', 'HALLEY', 'M45', '
 const ODDS_CARDS = ['FIRST-LIGHT', 'MOON', 'EARTH', 'IMILAC'];
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
-
-const PLAN: FlightStep[] = [
-  { title: 'Open', text: `${CARDS_PER_TIER === 1 ? 'One sealed card' : `${CARDS_PER_TIER} sealed cards`} in every capsule.`, tag: `Open now · from $${FROM_USD}`, live: true, href: '/genesis' },
-  { title: 'Vote', text: 'Holders choose what the telescope observes each week.', live: false },
-  { title: 'Watch', text: 'Holders of the chosen card watch the telescope live.', live: false },
-  { title: 'Claim', text: 'Legendary cards come with a real meteorite you can hold.', live: false },
-];
 
 export default async function HomePage() {
   const node = getNode('tbilisi-01')!;
@@ -99,11 +91,47 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="sd-container sd-home-sec" id="how" aria-labelledby="how-title">
-        <h2 className="sd-home-sec__title" id="how-title">
-          What a card opens
-        </h2>
-        <FlightPlan steps={PLAN} />
+      <section className="sd-container sd-home-sec sd-bento" id="how" aria-label="Skychaser tonight">
+        <Link href={`/card/${tonightCard?.seed.designation ?? 'MOON'}`} className="sd-bento__tile sd-bento__tonight">
+          <span className="sd-bento__card">
+            <CardThumb designation={tonightCard?.seed.designation ?? 'MOON'} small />
+          </span>
+          <span className="sd-bento__text">
+            <span className="sd-bento__kicker">{tonightCard ? 'Tonight over Tbilisi' : 'In the set'}</span>
+            <strong>{tonightCard?.seed.name ?? 'The Moon'}</strong>
+            <span>The card the telescope is pointed at tonight.</span>
+          </span>
+        </Link>
+        <Link href="/capsules" className="sd-bento__tile sd-bento__open">
+          <img src="/cards/capsule.webp" alt="" width={695} height={720} loading="lazy" />
+          <span className="sd-bento__text">
+            <span className="sd-bento__kicker">Capsules</span>
+            <strong>One sealed card, from ${FROM_USD}</strong>
+            <span>Every draw is fixed before sale and opened in public.</span>
+            <span className="sd-btn sd-btn--light sd-bento__btn">Open a capsule</span>
+          </span>
+        </Link>
+        <Link href="/voyage" className="sd-bento__tile sd-bento__voyage">
+          <img src="/cards/art/sm/SATURN.webp" alt="" width={440} height={584} loading="lazy" />
+          <span className="sd-bento__text">
+            <span className="sd-bento__kicker">Voyage</span>
+            <strong>Fly the Kestrel</strong>
+            <span>A game across the solar system.</span>
+          </span>
+        </Link>
+        <Link href="/vote" className="sd-bento__tile sd-bento__vote">
+          <img src="/cards/art/sm/M42.webp" alt="" width={440} height={584} loading="lazy" />
+          <span className="sd-bento__text">
+            <span className="sd-bento__kicker">Weekly vote</span>
+            <strong>Choose what we observe</strong>
+            <span>Holders pick the telescope&apos;s target.</span>
+          </span>
+        </Link>
+        <div className="sd-bento__tile sd-bento__seeker">
+          <span className="sd-bento__kicker">Solana Seeker</span>
+          <strong>Skychaser is coming to the Seeker dApp Store.</strong>
+          <span>Seeker owners get a badge on their account.</span>
+        </div>
       </section>
 
       <section className="sd-container sd-home-sec sd-oddsec" aria-labelledby="odds-title">

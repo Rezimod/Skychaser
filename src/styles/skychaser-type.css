@@ -20,7 +20,7 @@
   .sd-counter__price span, .sd-counter__foot, .sd-fl__meta, .sd-menu__big small) {
   font-family: var(--sd-spaced); font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase;
 }
-.skychaser .sd-kicker, .skychaser .sd-eyebrow { color: var(--sd-accent); }
+.skychaser .sd-kicker, .skychaser .sd-eyebrow { color: var(--sd-gold); }
 .skychaser :is(.sd-spaced, .sd-cardhero__epithet) { font-weight: 400; letter-spacing: 0.3em; }
 .skychaser .sd-counter__foot { font: 500 12px var(--sd-spaced); letter-spacing: 0.06em; gap: 10px; }
 .skychaser .sd-counter__foot > span { min-width: 0; line-height: 1.4; }

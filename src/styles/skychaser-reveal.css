@@ -415,7 +415,7 @@
   padding: 12px 20px; border: 1px solid var(--sd-rule); border-radius: 999px;
   background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(8px); color: var(--sd-ink-3);
 }
-.sd-reveal__provenance a { color: var(--sd-accent-ink); }
+.sd-reveal__provenance a { color: var(--sd-ink); }
 .sd-reveal__after .sd-pay__actions { justify-content: center; animation: sd-fade-in 500ms ease-out calc(var(--sd-end) + 250ms) both; }
 
 /* ── Keyframes ────────────────────────────────────────────────── */

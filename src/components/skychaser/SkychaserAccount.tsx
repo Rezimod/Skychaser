@@ -41,6 +41,7 @@ export default function SkychaserAccount() {
   const [cards, setCards] = useState<number | null>(null);
   const [usdc, setUsdc] = useState<number | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [seeker, setSeeker] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [topUp, setTopUp] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,11 @@ export default function SkychaserAccount() {
       .then((bearer) => fetch('/api/skychaser/booking/mine', { headers: bearer ? { Authorization: `Bearer ${bearer}` } : {} }))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => live && d && setCredits(Number(d.balance)))
+      .catch(() => {});
+    getAccessToken()
+      .then((bearer) => fetch('/api/skychaser/seeker', { headers: bearer ? { Authorization: `Bearer ${bearer}` } : {} }))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => live && d?.seeker && setSeeker(d.memberNumber))
       .catch(() => {});
     fetch(RPC, {
       method: 'POST',
@@ -170,6 +176,7 @@ export default function SkychaserAccount() {
             </span>
           </div>
           <p className="sd-menu__note">Every card you own is a numbered edition, yours alone.</p>
+          {seeker !== null && <p className="sd-menu__seeker">Seeker owner · #{seeker}</p>}
           <div className="sd-menu__id">
             <span className="sd-label">Wallet</span>
             <code className="sd-menu__short">{short}</code>
