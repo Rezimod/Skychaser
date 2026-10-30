@@ -522,33 +522,29 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 .sd-odds__tier[aria-selected='true'] { background: rgba(241, 230, 207, 0.1); color: var(--sd-ink); }
 .sd-odds__tier:focus-visible { outline: 2px solid var(--sd-accent-ink); outline-offset: 2px; }
 
-.sd-odds__deck { list-style: none; width: 100%; max-width: 760px; margin: 52px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; align-items: center; }
-.sd-odds__deck li { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.sd-odds__deck li { --s: 26px; --g: 18px; }
-.sd-odds__deck li[data-rarity='rare'] { --s: 36px; --g: 34px; }
-.sd-odds__deck li[data-rarity='epic'] { --s: 48px; --g: 54px; }
-.sd-odds__deck li[data-rarity='legendary'] { --s: 62px; --g: 80px; }
-.sd-odds__star { position: relative; display: grid; place-items: center; width: 150px; height: 150px; margin-bottom: 14px; }
-.sd-odds__star::before { content: ''; width: var(--s); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #fff 0 18%, color-mix(in srgb, var(--rarity) 85%, #fff) 40%, var(--rarity) 70%, transparent 100%); box-shadow: 0 0 var(--g) calc(var(--g) / 4) color-mix(in srgb, var(--rarity) 55%, transparent); transition: scale .4s var(--sd-ease-out, ease-out); }
-.sd-odds__star::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rarity) 60%, transparent) 50%, transparent) center / 100% 1px no-repeat, linear-gradient(0deg, transparent, color-mix(in srgb, var(--rarity) 60%, transparent) 50%, transparent) center / 1px 100% no-repeat; opacity: calc(var(--s) / 62px); }
-.sd-odds__deck li:hover .sd-odds__star::before { scale: 1.12; }
-@media (prefers-reduced-motion: no-preference) { .sd-odds__deck li[data-rarity='legendary'] .sd-odds__star::before { animation: sd-odds-twinkle 3.2s ease-in-out infinite; } }
-@keyframes sd-odds-twinkle { 50% { scale: 1.08; filter: brightness(1.15); } }
-.sd-odds__name { font: 500 12px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--rarity); }
-.sd-odds__pct { font: 300 24px var(--sd-sans); color: var(--sd-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.sd-odds__sky { width: 100%; max-width: 1040px; margin: 40px 0 0; }
+.sd-odds__sky svg { display: block; width: 100%; height: auto; }
+.sd-odds__sky svg { animation: sd-sky-in .9s var(--sd-ease-out, ease-out) both; }
+@keyframes sd-sky-in { from { opacity: 0; filter: blur(4px); } }
+@media (prefers-reduced-motion: no-preference) {
+  .sd-odds__tw { animation: sd-tw 4s ease-in-out infinite; }
+  .sd-odds__legend { animation: sd-legend 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+}
+@keyframes sd-tw { 50% { opacity: .45; } }
+@keyframes sd-legend { 50% { opacity: .82; scale: .94; } }
+.sd-odds__key { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 36px; }
+.sd-odds__key li { display: inline-flex; align-items: center; gap: 10px; }
+.sd-odds__key i { width: 8px; height: 8px; border-radius: 50%; background: var(--rarity); box-shadow: 0 0 10px var(--rarity); }
+.sd-odds__key span { font: 500 11px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--sd-ink-2); }
+.sd-odds__key b { font: 400 17px var(--sd-sans); color: var(--sd-ink); font-variant-numeric: tabular-nums; }
 
 .sd-odds__log { margin-top: 44px; color: var(--sd-ink-2); font-size: 14px; text-decoration: none; border-bottom: 1px solid var(--sd-rule-strong); padding-bottom: 2px; }
 .sd-odds__log:hover { color: var(--sd-ink); border-color: var(--sd-ink-2); }
 
 @media (max-width: 720px) {
-  .sd-odds__deck { gap: 4px; margin-top: 36px; }
-  .sd-odds__deck li { --s: 14px; --g: 10px; }
-  .sd-odds__deck li[data-rarity='rare'] { --s: 20px; --g: 18px; }
-  .sd-odds__deck li[data-rarity='epic'] { --s: 27px; --g: 28px; }
-  .sd-odds__deck li[data-rarity='legendary'] { --s: 36px; --g: 42px; }
-  .sd-odds__star { width: 72px; height: 72px; margin-bottom: 6px; }
-  .sd-odds__name { font-size: 10px; letter-spacing: .12em; }
-  .sd-odds__pct { font-size: 18px; }
+  .sd-odds__key { gap: 10px 20px; }
+  .sd-odds__key b { font-size: 15px; }
+  .sd-odds__sky { margin-top: 28px; }
   .sd-odds__tier { padding: 8px 12px; font-size: 13px; }
   .sd-odds__pct { font-size: 20px; }
 }
