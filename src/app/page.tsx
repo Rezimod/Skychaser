@@ -12,10 +12,9 @@ import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
 import { getDb } from '@/lib/db';
 import { getNode } from '@/lib/observatory/nodes';
-import { RARITIES } from '@/lib/rarity';
 import { card } from '@/lib/schema';
 import { SET_GROUPS } from '@/lib/sets/groups';
-import { SET_001_CARDS, SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
+import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
 import { CARDS_PER_TIER, TIERS } from '@/lib/skychaser/tiers';
 import { nightRow } from '@/lib/skychaser/night';
 import { siteNightDate } from '@/lib/skychaser/target';
@@ -34,13 +33,6 @@ const SHOWCASE = ['JUPITER', 'BETELGEUSE', 'M42', 'M31', 'SGR-A', 'VOYAGER-1'];
 /** The cards turning round the sun in the orbit section. */
 const ORBIT = ['FIRST-LIGHT', 'SATURN', 'M42', 'M1', 'SGR-A', 'HALLEY', 'M45', 'TYCHO', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'IMILAC'];
 
-const SUPPLY = Object.fromEntries(
-  RARITIES.map((r) => {
-    const cards = SET_001_CARDS.filter((c) => c.seed.rarity === r);
-    return [r, { cards: cards.length, editions: cards.reduce((sum, c) => sum + c.seed.editionSize, 0) }];
-  }),
-) as Record<(typeof RARITIES)[number], { cards: number; editions: number }>;
-
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
 const PLAN: FlightStep[] = [
@@ -48,24 +40,6 @@ const PLAN: FlightStep[] = [
   { title: 'Vote', text: 'Holders choose what the telescope observes each week.', live: false },
   { title: 'Watch', text: 'Holders of the chosen card watch the telescope live.', live: false },
   { title: 'Claim', text: 'Legendary cards come with a real meteorite you can hold.', live: false },
-];
-
-const GUARANTEES = [
-  {
-    title: 'Sealed before sale',
-    text: 'Each draw is fixed and its hash published before listing.',
-    icon: <><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
-  },
-  {
-    title: 'Numbered editions',
-    text: 'Each card a fixed run, never reissued.',
-    icon: <><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16" /></>,
-  },
-  {
-    title: 'A public log',
-    text: 'Every listing and opening, on record for anyone.',
-    icon: <><path d="M6 4h9l3 3v13H6z" /><path d="M9 11h6M9 15h6" /></>,
-  },
 ];
 
 export default async function HomePage() {
@@ -131,7 +105,7 @@ export default async function HomePage() {
         <h2 className="sd-home-sec__title" id="odds-title">
           The odds are published
         </h2>
-        <OddsBoard supply={SUPPLY} guarantees={GUARANTEES} />
+        <OddsBoard />
       </section>
 
       <section className="sd-container sd-home-sec sd-showcase2" aria-labelledby="set-title">
