@@ -29,13 +29,16 @@ export const metadata: Metadata = {
 };
 
 /** Six cards from across the set, one shelf of it. */
-const SHOWCASE = ['JUPITER', 'BETELGEUSE', 'M42', 'M31', 'SGR-A', 'VOYAGER-1'];
+const SHOWCASE = ['BETELGEUSE', 'M51', 'ROADSTER', 'CARINA', 'TYCHO', 'CANYON-DIABLO'];
+
+/** The phone hero's three cards. */
+const HERO = ['SATURN', 'M16', 'SUN'];
 
 /** The cards turning round the sun in the orbit section. */
-const ORBIT = ['FIRST-LIGHT', 'SATURN', 'M42', 'M1', 'SGR-A', 'HALLEY', 'M45', 'TYCHO', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'IMILAC'];
+const ORBIT = ['FIRST-LIGHT', 'EARTHRISE', 'M1', 'TON-618', 'HALLEY', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'M104', 'PLUTO', 'TARANTULA', 'IMILAC'];
 
 /** One card of each rarity, commonest first, shown with its odds. */
-const ODDS_CARDS = ['FIRST-LIGHT', 'MOON', 'EARTH', 'IMILAC'];
+const ODDS_CARDS = ['HELIX', 'POLARIS', 'PHOBOS', 'GIBEON'];
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
@@ -80,7 +83,7 @@ export default async function HomePage() {
           </div>
           {/* A phone has no hidden sky: three cards from the set stand in for it. */}
           <ul className="sd-hero3__cards" aria-label="Three cards from the set">
-            {SHOWCASE.slice(0, 3).map((d) => (
+            {HERO.map((d) => (
               <li key={d}>
                 <Link href={`/card/${d}`} aria-label={SET_001_CARD_BY_DESIGNATION.get(d)?.seed.name ?? d} data-zoom={d}>
                   <CardThumb designation={d} eager small />
@@ -92,13 +95,13 @@ export default async function HomePage() {
       </section>
 
       <section className="sd-container sd-home-sec sd-bento" id="how" aria-label="Skychaser tonight">
-        <Link href={`/card/${tonightCard?.seed.designation ?? 'MOON'}`} className="sd-bento__tile sd-bento__tonight">
+        <Link href={`/card/${tonightCard?.seed.designation ?? 'HUNTERS-MOON'}`} className="sd-bento__tile sd-bento__tonight">
           <span className="sd-bento__card">
-            <CardThumb designation={tonightCard?.seed.designation ?? 'MOON'} small />
+            <CardThumb designation={tonightCard?.seed.designation ?? 'HUNTERS-MOON'} small />
           </span>
           <span className="sd-bento__text">
             <span className="sd-bento__kicker">{tonightCard ? 'Tonight over Tbilisi' : 'In the set'}</span>
-            <strong>{tonightCard?.seed.name ?? 'The Moon'}</strong>
+            <strong>{tonightCard?.seed.name ?? "The Hunter's Moon"}</strong>
             <span>The card the telescope is pointed at tonight.</span>
           </span>
         </Link>
@@ -112,7 +115,7 @@ export default async function HomePage() {
           </span>
         </Link>
         <Link href="/voyage" className="sd-bento__tile sd-bento__voyage">
-          <img src="/cards/art/sm/SATURN.webp" alt="" width={440} height={584} loading="lazy" />
+          <img src="/cards/art/sm/TITAN.webp" alt="" width={440} height={584} loading="lazy" />
           <span className="sd-bento__text">
             <span className="sd-bento__kicker">Voyage</span>
             <strong>Fly the Kestrel</strong>
@@ -120,7 +123,7 @@ export default async function HomePage() {
           </span>
         </Link>
         <Link href="/vote" className="sd-bento__tile sd-bento__vote">
-          <img src="/cards/art/sm/M42.webp" alt="" width={440} height={584} loading="lazy" />
+          <img src="/cards/art/sm/HORSEHEAD.webp" alt="" width={440} height={584} loading="lazy" />
           <span className="sd-bento__text">
             <span className="sd-bento__kicker">Weekly vote</span>
             <strong>Choose what we observe</strong>
