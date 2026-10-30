@@ -1,0 +1,14 @@
+{
+  "fallbackType": "webview",
+  "generatorApp": "solana-mobile",
+  "host": "skychaser.io",
+  "launcherName": "Skychaser",
+  "name": "Skychaser",
+  "packageId": "io.skychaser.app",
+  "startUrl": "/",
+  "webManifestUrl": "https://skychaser.io/manifest.json",
+  "signingKey": {
+    "alias": "skychaser",
+    "path": "/Users/nika/Desktop/Skychaser/Private/seeker-signing/skychaser-dappstore.keystore"
+  }
+}

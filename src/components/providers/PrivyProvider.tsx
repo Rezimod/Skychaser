@@ -3,6 +3,12 @@
 import { PrivyProvider } from '@privy-io/react-auth';
 import { toSolanaWalletConnectors } from '@privy-io/react-auth/solana';
 import { createSolanaRpc, createSolanaRpcSubscriptions } from '@solana/kit';
+import {
+  createDefaultAuthorizationCache,
+  createDefaultChainSelector,
+  createDefaultWalletNotFoundHandler,
+  registerMwa,
+} from '@solana-mobile/wallet-standard-mobile';
 import type { ReactNode } from 'react';
 import { useUserSync } from '@/hooks/useUserSync';
 
@@ -36,6 +42,18 @@ const BLOCK_EXPLORER_URL = IS_MAINNET
   ? 'https://explorer.solana.com'
   : 'https://explorer.solana.com?cluster=devnet';
 
+// Seeker (and any Android phone with a Mobile Wallet Adapter wallet) shows up in Privy's
+// detected wallets. registerMwa is a no-op on desktop browsers.
+if (typeof window !== 'undefined') {
+  registerMwa({
+    appIdentity: { name: 'Skychaser', uri: window.location.origin, icon: '/icon-192.png' },
+    authorizationCache: createDefaultAuthorizationCache(),
+    chains: [PRIVY_CHAIN],
+    chainSelector: createDefaultChainSelector(),
+    onWalletNotFound: createDefaultWalletNotFoundHandler(),
+  });
+}
+
 function UserSyncWrapper({ children }: { children: ReactNode }) {
   useUserSync();
   return <>{children}</>;
@@ -56,7 +74,7 @@ export function SolanaWalletProvider({ children }: { children: ReactNode }) {
           loginMessage: 'Log in to Skychaser',
           showWalletLoginFirst: false,
           walletChainType: 'solana-only',
-          walletList: ['phantom', 'solflare', 'backpack', 'detected_solana_wallets'],
+          walletList: ['detected_solana_wallets', 'phantom', 'solflare', 'backpack'],
         },
         embeddedWallets: {
           ethereum: { createOnLogin: 'off' },
