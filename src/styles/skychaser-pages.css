@@ -248,7 +248,7 @@
   --rarity: #a3a3a3; --badge: clamp(8px, 3.7cqw, 13px);
   position: absolute; top: 3.2%; left: 4%; z-index: 3; display: inline-flex; align-items: center; gap: .55em;
   padding: .62em 1em .56em; border-radius: 999px; rotate: -3deg; transform-origin: left center; overflow: hidden; isolation: isolate;
-  color: #141210; font: 700 var(--badge)/1 var(--font-orbitron), var(--font-geist), sans-serif; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; pointer-events: none;
+  color: #141210; font: 700 var(--badge)/1 var(--font-geist), sans-serif; letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; pointer-events: none;
   background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 72%, #fff), var(--rarity) 48%, color-mix(in srgb, var(--rarity) 74%, #000));
   box-shadow: inset 0 1px 0 #ffffff80, inset 0 -1px 0 #00000059, 0 .45em 1em -.3em #000d, 0 0 0 1px #000000a6;
 }

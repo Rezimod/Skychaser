@@ -72,7 +72,7 @@
   --sd-mono: var(--font-mono), ui-monospace, 'SFMono-Regular', monospace;
   --sd-display: var(--font-anton), Impact, var(--font-geist), sans-serif;
   --sd-title: var(--font-anton), Impact, sans-serif;
-  --sd-spaced: var(--font-oswald), var(--font-geist), sans-serif;
+  --sd-spaced: var(--font-geist), system-ui, sans-serif;
 
   --sd-gutter: 16px;
   --sd-max: 1200px;

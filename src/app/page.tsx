@@ -100,8 +100,11 @@ export default async function HomePage() {
             Real objects, numbered editions. A card is a seat at the telescope — and, for some, an object you can hold.
           </p>
           <div className="sd-hero3__cta">
-            <Link href={APP_URL} className="sd-btn sd-btn--light">
-              Launch
+            <Link href="/capsules" className="sd-btn sd-btn--light">
+              Open a capsule · ${TIERS[0].priceUsd}
+            </Link>
+            <Link href={APP_URL} className="sd-btn">
+              Browse the cards
             </Link>
           </div>
           {/* A phone has no hidden sky: three cards from the set stand in for it. */}
@@ -178,8 +181,8 @@ export default async function HomePage() {
         </h2>
         <p className="sd-home-sec__lede">Sealed before sale. Published after opening.</p>
         <div className="sd-hero2__cta">
-          <Link href={APP_URL} className="sd-btn sd-btn--light">
-            Launch
+          <Link href="/capsules" className="sd-btn sd-btn--light">
+            Open a capsule · ${TIERS[0].priceUsd}
           </Link>
           <Link href="/capsules/log" className="sd-btn">
             Public log

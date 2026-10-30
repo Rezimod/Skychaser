@@ -6,7 +6,7 @@
 .skychaser {
   --sd-display: var(--font-anton), Impact, sans-serif;
   --sd-title: var(--font-anton), Impact, sans-serif;
-  --sd-spaced: var(--font-oswald), var(--font-geist), sans-serif;
+  --sd-spaced: var(--font-geist), system-ui, sans-serif;
 
   --sd-gd-hi: #ee6a3c;
   --sd-gd: #d9442a;
@@ -22,8 +22,9 @@
 }
 .skychaser .sd-kicker, .skychaser .sd-eyebrow { color: var(--sd-accent); }
 .skychaser :is(.sd-spaced, .sd-cardhero__epithet) { font-weight: 400; letter-spacing: 0.3em; }
-.skychaser .sd-counter__foot { font: 500 12px var(--sd-spaced); letter-spacing: 0.1em; white-space: nowrap; }
-.skychaser .sd-counter__foot .sd-counter__fair { font: 600 12px var(--sd-spaced); letter-spacing: 0.06em; }
+.skychaser .sd-counter__foot { font: 500 12px var(--sd-spaced); letter-spacing: 0.06em; gap: 10px; }
+.skychaser .sd-counter__foot > span { min-width: 0; line-height: 1.4; }
+.skychaser .sd-counter__foot .sd-counter__fair { font: 600 11px var(--sd-spaced); letter-spacing: 0.04em; flex: none; }
 .skychaser .sd-hero2__copy { position: relative; z-index: 2; min-width: 0; }
 /* The figures: three columns of equal width, a hairline between each, number over its label. */
 .skychaser .sd-hero2__stats { display: grid; grid-template-columns: repeat(3, auto); justify-content: start; column-gap: 0; }
