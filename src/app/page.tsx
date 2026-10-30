@@ -124,33 +124,11 @@ export default async function HomePage() {
         <FlightPlan steps={PLAN} />
       </section>
 
-      <section className="sd-container sd-home-sec sd-pub" aria-labelledby="odds-title">
+      <section className="sd-container sd-home-sec sd-oddsec" aria-labelledby="odds-title">
         <h2 className="sd-home-sec__title" id="odds-title">
           The odds are published
         </h2>
-        <div className="sd-pub__grid">
-          <ul className="sd-pub__list">
-            {GUARANTEES.map((g) => (
-              <li key={g.title}>
-                <span className="sd-pub__icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                    {g.icon}
-                  </svg>
-                </span>
-                <div>
-                  <p className="sd-pub__t">{g.title}</p>
-                  <p className="sd-pub__d">{g.text}</p>
-                </div>
-              </li>
-            ))}
-            <li className="sd-pub__logline">
-              <Link href="/capsules/log" className="sd-link">
-                Read the public log
-              </Link>
-            </li>
-          </ul>
-          <OddsBoard supply={SUPPLY} />
-        </div>
+        <OddsBoard supply={SUPPLY} guarantees={GUARANTEES} />
       </section>
 
       <section className="sd-container sd-home-sec sd-showcase2" aria-labelledby="set-title">

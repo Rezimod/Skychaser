@@ -99,7 +99,7 @@ function SkychaserCard({ designation, edition, capture, commitment, hero = false
             </div>
             {hero && (
               <div className="sdc-face sdc-face--back" aria-hidden={!over}>
-                <CardBack plate={plate} edition={edition} commitment={commitment} priority={priority} u={u} />
+                <CardBack plate={plate} edition={edition} commitment={commitment} u={u} />
               </div>
             )}
           </div>

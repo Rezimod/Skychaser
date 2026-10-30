@@ -69,7 +69,7 @@
 .skychaser .sd-btn:not(.sd-btn--primary, .sd-btn--light, .sdc-turn):hover { border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.06); }
 
 /* ── Monolith panels ──────────────────────────────────────────── */
-.skychaser :is(.sd-counter, .sd-pub__board, .sd-cardhero .sd-perk, .sd-zoom__panel .sd-perk) {
+.skychaser :is(.sd-counter, .sd-cardhero .sd-perk, .sd-zoom__panel .sd-perk) {
   border: 1px solid var(--sd-line); border-radius: 12px;
   background: var(--sd-ticks), linear-gradient(180deg, rgba(18, 18, 24, 0.9), rgba(6, 6, 9, 0.94));
 }

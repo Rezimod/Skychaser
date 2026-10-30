@@ -17,7 +17,7 @@
 
 .skychaser .sd-btn { font-family: var(--sd-spaced); font-weight: 600; font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; }
 .skychaser :is(.sd-eyebrow, .sd-kicker, .sd-label, .sd-hero2__stats dt, .sd-counter__label,
-  .sd-counter__price span, .sd-counter__foot, .sd-fl__meta, .sd-pub__per, .sd-menu__big small) {
+  .sd-counter__price span, .sd-counter__foot, .sd-fl__meta, .sd-menu__big small) {
   font-family: var(--sd-spaced); font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase;
 }
 .skychaser .sd-kicker, .skychaser .sd-eyebrow { color: var(--sd-accent); }
@@ -66,8 +66,6 @@
   box-shadow: 0 3px 0 var(--sd-gd-deep), inset 0 1px 0 rgba(255, 236, 200, 0.4), 0 10px 40px rgba(217, 68, 42, 0.4);
 }
 
-/* The odds board's selected tier, the same red. */
-.skychaser .sd-pub__tab[aria-selected='true'] { color: var(--sd-gd-ink); background: linear-gradient(180deg, var(--sd-gd-hi), var(--sd-gd-mid)); box-shadow: 0 2px 0 var(--sd-gd-deep), inset 0 1px 0 rgba(255, 236, 200, 0.4); }
 
 /* The wordmark and nav, the poster's cream and mustard. */
 .skychaser .sd-navlink { font-family: var(--sd-spaced); font-weight: 500; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -85,12 +83,11 @@
 
 /* Text under 14px never drops below --sd-ink-small on the dark ground. States keep their own colour. */
 body .skychaser :is(
-  .sd-pub__per, .sd-pub__price, .sd-pub__supply, .sd-counter__label, .sd-counter__foot,
+  .sd-counter__label, .sd-counter__foot,
   .sd-gives__line, .sd-gives__what em, .sd-fl__meta, .sd-filter__chip:not([aria-pressed='true'], :hover), .sd-tile__num,
   .sd-recog__cap, .sd-foot a:not(:hover), .sd-foot__base, .sd-hero2__stats dt, .sd-data, .sd-chapter__aside, .sd-caption,
   .sd-buybar__meta, .sd-section__title, .sd-label, .sd-tab:not([aria-current])
 ) { color: var(--sd-ink-small); }
-body .skychaser .sd-pub__price { opacity: 1; }
 
 .skychaser :is(.sd-counter, .sd-zoom, .sd-cardhero) .sd-btn--light,
 .skychaser :is(.sd-cardhero, .sd-buybar) .sd-btn--primary {
