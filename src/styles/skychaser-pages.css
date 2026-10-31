@@ -329,7 +329,7 @@
 /* One layer per card: `translate` carries it across, `transform` carries it
    in depth — two eased loops a quarter turn apart make the ellipse. */
 .sd-orbit__body {
-  position: absolute; left: 50%; top: 50%; width: var(--w); margin: calc(var(--w) / -2) 0 0 calc(var(--w) / -2);
+  position: absolute; left: 50%; top: 50%; width: var(--w); margin: calc(var(--w) * -0.7) 0 0 calc(var(--w) / -2);
   will-change: transform, translate, opacity; backface-visibility: hidden;
   --phase: calc(var(--k) * var(--T) / var(--n) * -1);
   animation:
@@ -337,7 +337,7 @@
     sd-orbit-depth calc(var(--T) / 2) var(--sd-ease-inout) calc(var(--phase) - var(--T) / 4) infinite alternate,
     sd-orbit-z calc(var(--T) / 2) linear calc(var(--phase) - var(--T) / 4) infinite alternate;
 }
-.sd-orbit__body img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 50%; -webkit-mask: radial-gradient(closest-side, #000 72%, transparent 100%); mask: radial-gradient(closest-side, #000 72%, transparent 100%); }
+.sd-orbit__body .sd-thumb { box-shadow: none; outline: 1px solid rgba(255, 255, 255, 0.14); outline-offset: -1px; }
 @keyframes sd-orbit-x {
   from { translate: calc(var(--R) * -1) 0; }
   to { translate: var(--R) 0; }
@@ -522,7 +522,9 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 .sd-odds__tier[aria-selected='true'] { background: rgba(241, 230, 207, 0.1); color: var(--sd-ink); }
 .sd-odds__tier:focus-visible { outline: 2px solid var(--sd-accent-ink); outline-offset: 2px; }
 
-.sd-odds__sky { width: 100%; max-width: 1040px; margin: 40px 0 0; }
+.sd-odds__sky { position: relative; width: 100%; max-width: 1040px; margin: 40px 0 0; }
+.sd-odds__sky .sd-odds__dust { position: absolute; inset: 0; width: 100%; height: 100%; animation: none; mix-blend-mode: screen; }
+.sd-odds__sky svg:not(.sd-odds__dust) { position: relative; }
 .sd-odds__sky svg { display: block; width: 100%; height: auto; }
 .sd-odds__sky svg { animation: sd-sky-in .9s var(--sd-ease-out, ease-out) both; }
 @keyframes sd-sky-in { from { opacity: 0; filter: blur(4px); } }
@@ -599,7 +601,7 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
 .sd-tonight__head span { font-size: 13px; color: var(--sd-ink-3); font-variant-numeric: tabular-nums; }
 .sd-tonight__none { margin: 12px 0 0; font-size: 14px; color: var(--sd-ink-2); }
 .sd-tonight__chart { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
-.sd-tonight__grid { stroke: rgba(241, 230, 207, 0.07); stroke-dasharray: 2 6; }
+.sd-tonight__img { mix-blend-mode: screen; }
 .sd-tonight__axis { stroke: rgba(241, 230, 207, 0.22); }
 .sd-tonight__tick { fill: var(--sd-ink-3); font: 500 12px var(--sd-sans); font-variant-numeric: tabular-nums; }
 .sd-tonight__edge { fill: var(--sd-gold); font: 600 11px var(--sd-spaced); letter-spacing: .16em; text-transform: uppercase; }
@@ -613,7 +615,7 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
 .sd-tonight__list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 20px; }
 .sd-tonight__list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 10px; padding: 10px 0; border-top: 1px solid var(--sd-rule); }
 .sd-tonight__list i { width: 9px; height: 9px; border-radius: 50%; background: var(--p); box-shadow: 0 0 8px var(--p); }
-.sd-tonight__list strong { font: 600 14px var(--sd-sans); color: var(--sd-ink); }
+.sd-tonight__list strong { font: 700 15px var(--sd-sans); letter-spacing: -0.01em; color: var(--sd-ink); }
 .sd-tonight__list span { grid-column: 2 / 4; grid-row: 2; font-size: 13px; color: var(--sd-ink-2); font-variant-numeric: tabular-nums; }
 .sd-tonight__list em { font-style: normal; font: 500 10px var(--sd-spaced); letter-spacing: .14em; text-transform: uppercase; color: var(--sd-ink-3); }
 @media (max-width: 720px) {
@@ -626,5 +628,3 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
   .sd-tonight__list li { grid-template-columns: auto auto 1fr auto; padding: 8px 0; }
   .sd-tonight__list span { grid-column: auto; grid-row: auto; font-size: 12px; }
 }
-.sd-tonight__list span b { font-weight: inherit; }
-@media (max-width: 720px) { .sd-tonight__list span b { display: none; } }

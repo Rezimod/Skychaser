@@ -30,8 +30,8 @@ export const metadata: Metadata = {
 /** Six cards from across the set, one shelf of it. */
 const SHOWCASE = ['BETELGEUSE', 'M51', 'ROADSTER', 'CARINA', 'TYCHO', 'CANYON-DIABLO'];
 
-/** The worlds turning round the sun in the orbit section. */
-const ORBIT = ['MERCURY', 'VENUS', 'EARTH', 'MARS', 'JUPITER', 'SATURN', 'URANUS', 'NEPTUNE', 'PLUTO'];
+/** The cards turning round the sun in the orbit section. */
+const ORBIT = ['FIRST-LIGHT', 'EARTHRISE', 'M1', 'TON-618', 'HALLEY', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'M104', 'PLUTO', 'TARANTULA', 'IMILAC'];
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
@@ -158,10 +158,10 @@ export default async function HomePage() {
       <section className="sd-home-sec sd-orbit" aria-labelledby="orbit-title">
         <div className="sd-container sd-orbit__copy">
           <h2 className="sd-home-sec__title" id="orbit-title">
-            Every world turns with the sky
+            Every card turns with the sky
           </h2>
           <p className="sd-home-sec__lede">
-            From Mercury out to Pluto — each world in the set, issued once and numbered.
+            From the craters of the Moon to the black hole at the centre of the galaxy — each one real, issued once and numbered.
           </p>
         </div>
         <OrbitRing designations={ORBIT} />

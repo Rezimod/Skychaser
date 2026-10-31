@@ -32,8 +32,14 @@ const FIELD = (() => {
   return pts.map((p) => ({ ...p, score: p.rank * 0.55 + centre(p) })).sort((a, b) => a.score - b.score);
 })();
 
-function spikes(x: number, y: number, len: number, w: number) {
-  return `M${x} ${y - len}L${x + w} ${y}L${x} ${y + len}L${x - w} ${y}Z M${x - len} ${y}L${x} ${y - w}L${x + len} ${y}L${x} ${y + w}Z`;
+/** Thin diffraction glints, fading to nothing at the tips, as a telescope draws a bright star. */
+function Glints({ x, y, len, w, rot = 0, o = 1 }: { x: number; y: number; len: number; w: number; rot?: number; o?: number }) {
+  return (
+    <g transform={`rotate(${rot} ${x} ${y})`} opacity={o}>
+      <rect x={x - len} y={y - w / 2} width={len * 2} height={w} fill="url(#sd-glint-h)" />
+      <rect x={x - w / 2} y={y - len} width={w} height={len * 2} fill="url(#sd-glint-v)" />
+    </g>
+  );
 }
 
 /** The odds drawn as a sky: one star per capsule in a thousand, coloured by what it opens. */
@@ -65,40 +71,84 @@ export default function OddsBoard() {
       </div>
 
       <figure className="sd-odds__sky" role="tabpanel" aria-label={`${tier.name} capsule odds`}>
+        <svg className="sd-odds__dust" viewBox={`0 0 ${W} ${H}`} aria-hidden="true" preserveAspectRatio="none">
+          <defs>
+            <filter id="sd-dust" x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency=".004 .012" numOctaves="5" seed="11" />
+              <feColorMatrix values="0 0 0 0 .55  0 0 0 0 .42  0 0 0 0 .78  0 0 0 1.6 -.55" />
+            </filter>
+            <filter id="sd-lanes" x="0" y="0" width="100%" height="100%">
+              <feTurbulence type="fractalNoise" baseFrequency=".008 .03" numOctaves="4" seed="3" />
+              <feColorMatrix values="0 0 0 0 .04  0 0 0 0 .03  0 0 0 0 .05  0 0 0 2.2 -1.1" />
+            </filter>
+            <radialGradient id="sd-band-mask" cx=".5" cy=".5" r=".5">
+              <stop offset="0" stopColor="#fff" />
+              <stop offset=".55" stopColor="#fff" stopOpacity=".55" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </radialGradient>
+            <mask id="sd-band-m">
+              <ellipse cx={W / 2} cy={H / 2} rx={W * 0.5} ry={H * 0.34} fill="url(#sd-band-mask)" transform={`rotate(-7 ${W / 2} ${H / 2})`} />
+            </mask>
+            <radialGradient id="sd-core">
+              <stop offset="0" stopColor="#f3d9a8" stopOpacity=".22" />
+              <stop offset=".5" stopColor="#b98bd6" stopOpacity=".08" />
+              <stop offset="1" stopColor="#5b4aa8" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <g mask="url(#sd-band-m)">
+            <rect width={W} height={H} filter="url(#sd-dust)" opacity=".75" />
+            <ellipse cx={W / 2} cy={H / 2} rx={W * 0.3} ry={H * 0.22} fill="url(#sd-core)" transform={`rotate(-7 ${W / 2} ${H / 2})`} />
+            <rect width={W} height={H} filter="url(#sd-lanes)" opacity=".85" />
+          </g>
+        </svg>
         <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true" key={key}>
           <defs>
             {RARITIES.map((r) => (
               <radialGradient key={r} id={`sd-halo-${r}`}>
                 <stop offset="0" stopColor="#fff" stopOpacity="1" />
-                <stop offset=".18" stopColor={rarityInfo(r).color} stopOpacity=".9" />
-                <stop offset=".5" stopColor={rarityInfo(r).color} stopOpacity=".18" />
+                <stop offset=".08" stopColor="#fff" stopOpacity=".9" />
+                <stop offset=".22" stopColor={rarityInfo(r).color} stopOpacity=".45" />
+                <stop offset=".55" stopColor={rarityInfo(r).color} stopOpacity=".08" />
                 <stop offset="1" stopColor={rarityInfo(r).color} stopOpacity="0" />
               </radialGradient>
             ))}
-            <radialGradient id="sd-band">
-              <stop offset="0" stopColor="#8a7bd8" stopOpacity=".12" />
-              <stop offset="1" stopColor="#8a7bd8" stopOpacity="0" />
-            </radialGradient>
+            <linearGradient id="sd-glint-h">
+              <stop offset="0" stopColor="#fff" stopOpacity="0" />
+              <stop offset=".5" stopColor="#fff" stopOpacity=".95" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="sd-glint-v" x2="0" y2="1">
+              <stop offset="0" stopColor="#fff" stopOpacity="0" />
+              <stop offset=".5" stopColor="#fff" stopOpacity=".95" />
+              <stop offset="1" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
           </defs>
-          <ellipse cx={W / 2} cy={H / 2} rx={W * 0.48} ry={H * 0.26} fill="url(#sd-band)" transform={`rotate(-7 ${W / 2} ${H / 2})`} />
           {stars.map((s, i) => {
             const c = rarityInfo(s.rarity).color;
             const d = `${(s.tw * 4).toFixed(2)}s`;
-            if (s.rarity === 'common') return <circle key={i} cx={s.x} cy={s.y} r={0.9 + s.tw * 0.6} fill={c} opacity={0.35 + s.tw * 0.3} />;
-            if (s.rarity === 'rare') return <circle key={i} className="sd-odds__tw" style={{ animationDelay: d }} cx={s.x} cy={s.y} r={1.9} fill={c} />;
+            if (s.rarity === 'common') return <circle key={i} cx={s.x} cy={s.y} r={0.55 + s.tw * 0.55} fill={c} opacity={0.3 + s.tw * 0.35} />;
+            if (s.rarity === 'rare')
+              return (
+                <g key={i} className="sd-odds__tw" style={{ animationDelay: d }}>
+                  <circle cx={s.x} cy={s.y} r={5} fill="url(#sd-halo-rare)" />
+                  <circle cx={s.x} cy={s.y} r={0.9} fill="#fff" />
+                </g>
+              );
             if (s.rarity === 'epic')
               return (
                 <g key={i} className="sd-odds__tw" style={{ animationDelay: d }}>
-                  <circle cx={s.x} cy={s.y} r={9} fill="url(#sd-halo-epic)" />
-                  <path d={spikes(s.x, s.y, 9, 0.7)} fill="#e9faff" opacity=".8" />
+                  <circle cx={s.x} cy={s.y} r={14} fill="url(#sd-halo-epic)" />
+                  <Glints x={s.x} y={s.y} len={11} w={0.6} o={0.7} />
+                  <circle cx={s.x} cy={s.y} r={1.3} fill="#fff" />
                 </g>
               );
             return (
               <g key={i} className="sd-odds__legend">
-                <circle cx={s.x} cy={s.y} r={46} fill="url(#sd-halo-legendary)" />
-                <path d={spikes(s.x, s.y, 40, 1.6)} fill="#fff" opacity=".9" />
-                <path d={spikes(s.x, s.y, 14, 2.2)} fill="#fff" transform={`rotate(45 ${s.x} ${s.y})`} opacity=".6" />
-                <circle cx={s.x} cy={s.y} r={3.2} fill="#fff" />
+                <circle cx={s.x} cy={s.y} r={70} fill="url(#sd-halo-legendary)" />
+                <circle cx={s.x} cy={s.y} r={22} fill="none" stroke="#fff" strokeOpacity=".08" strokeWidth=".6" />
+                <Glints x={s.x} y={s.y} len={64} w={1.1} />
+                <Glints x={s.x} y={s.y} len={18} w={0.6} rot={45} o={0.45} />
+                <circle cx={s.x} cy={s.y} r={2.4} fill="#fff" />
               </g>
             );
           })}

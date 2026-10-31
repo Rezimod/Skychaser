@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import { planetsTonight, type TonightPlanet } from '@/lib/skychaser/planets-tonight';
 
 const time = (d: Date) => d.toLocaleTimeString('en-GB', { timeZone: 'Asia/Tbilisi', hour: '2-digit', minute: '2-digit' });
@@ -20,55 +20,22 @@ const COLORS: Record<string, [string, string]> = {
   Uranus: ['#d6fbfb', '#79c9d2'],
   Neptune: ['#8fb0ff', '#3550c8'],
 };
-const RADIUS: Record<string, number> = { Mercury: 8, Venus: 12, Mars: 11, Jupiter: 20, Saturn: 15, Uranus: 12, Neptune: 12 };
+const RADIUS: Record<string, number> = { Mercury: 12, Venus: 17, Mars: 16, Jupiter: 28, Saturn: 17, Uranus: 17, Neptune: 17 };
 
-/** One planet drawn flat and lit from the upper left, with its own markings. */
+/** One planet as photographed by NASA, its black sky screened away. */
 function Planet({ name, x, y }: { name: string; x: number; y: number }) {
-  const id = `sd-pl-${name.toLowerCase()}`;
   const r = RADIUS[name];
-  const disc = (marks?: ReactNode) => (
-    <>
-      <circle cx={x} cy={y} r={r * 2.6} fill={`url(#${id}-glow)`} />
-      <circle cx={x} cy={y} r={r} fill={`url(#${id})`} />
-      {marks && <g clipPath={`url(#${id}-clip)`}>{marks}</g>}
-      <circle cx={x} cy={y} r={r} fill="url(#sd-pl-shade)" />
-    </>
+  const src = `/sky/reveal/${name.toLowerCase()}.webp`;
+  return (
+    <g>
+      <circle cx={x} cy={y} r={r * 2.2} fill={`url(#sd-pl-${name.toLowerCase()}-glow)`} />
+      {name === 'Saturn' ? (
+        <image href={src} x={x - r * 2.9} y={y - r * 1.41} width={r * 5.8} height={r * 2.82} className="sd-tonight__img" />
+      ) : (
+        <image href={src} x={x - r * 1.06} y={y - r * 1.06} width={r * 2.12} height={r * 2.12} className="sd-tonight__img" style={{ clipPath: 'circle(47% at 50% 50%) fill-box' }} />
+      )}
+    </g>
   );
-  switch (name) {
-    case 'Saturn':
-      return (
-        <g transform={`rotate(-16 ${x} ${y})`}>
-          <path d={`M${x - 34} ${y}A34 9 0 0 1 ${x + 34} ${y}`} fill="none" stroke="#c9b27a" strokeWidth={5} opacity={0.6} />
-          {disc(<><rect x={x - r} y={y - 5} width={r * 2} height={3} fill="#b89a5c" opacity=".55" /><rect x={x - r} y={y + 4} width={r * 2} height={2} fill="#a88a4e" opacity=".45" /></>)}
-          <path d={`M${x - 34} ${y}A34 9 0 0 0 ${x + 34} ${y}`} fill="none" stroke="#efdeaa" strokeWidth={5} />
-          <path d={`M${x - 34} ${y}A34 9 0 0 0 ${x + 34} ${y}`} fill="none" stroke="#1a1410" strokeWidth={0.8} opacity=".6" />
-        </g>
-      );
-    case 'Jupiter':
-      return (
-        <g>
-          {disc(<>
-            {[-12, -5, 2, 9].map((o, i) => <rect key={o} x={x - r} y={y + o} width={r * 2} height={i % 2 ? 3 : 4} fill={i % 2 ? '#a26a45' : '#c48a5c'} opacity=".8" />)}
-            <ellipse cx={x + 7} cy={y + 6} rx={4} ry={2.4} fill="#b4513a" />
-          </>)}
-        </g>
-      );
-    case 'Mars':
-      return <g>{disc(<><path d={`M${x - r} ${y + 2}q6 -5 12 0t10 -2`} stroke="#7c2f1a" strokeWidth={3} fill="none" opacity=".6" /><ellipse cx={x} cy={y - r + 1} rx={5} ry={2} fill="#fff" opacity=".85" /></>)}</g>;
-    case 'Uranus':
-      return (
-        <g>
-          {disc()}
-          <ellipse cx={x} cy={y} rx={4} ry={21} fill="none" stroke="#bdeff2" strokeWidth={1.2} opacity={0.5} transform={`rotate(8 ${x} ${y})`} />
-        </g>
-      );
-    case 'Neptune':
-      return <g>{disc(<><path d={`M${x - r} ${y - 3}h${r * 2}`} stroke="#2c45b0" strokeWidth={2} opacity=".6" /><ellipse cx={x - 3} cy={y + 3} rx={3} ry={1.6} fill="#1c2b78" /></>)}</g>;
-    case 'Venus':
-      return <g>{disc(<path d={`M${x - r} ${y - 2}q8 -4 24 1`} stroke="#fff6d8" strokeWidth={3} fill="none" opacity=".5" />)}</g>;
-    default:
-      return <g>{disc(<><circle cx={x - 2} cy={y - 2} r={1.6} fill="#6d665e" /><circle cx={x + 3} cy={y + 2} r={1.1} fill="#6d665e" /></>)}</g>;
-  }
 }
 
 /** Which planets clear 10° in a dark sky over Tbilisi tonight, drawn on a chart of the night. */
@@ -100,7 +67,7 @@ export default function PlanetsTonight() {
   for (const p of [...planets].sort((a, b) => RADIUS[b.name] - RADIUS[a.name])) {
     const best = p.track.indexOf(Math.max(...p.track));
     const order = p.track.map((_, i) => i).filter((i) => p.track[i] >= 10).sort((a, b) => Math.abs(a - best) - Math.abs(b - best));
-    const r = RADIUS[p.name] + (p.name === 'Saturn' ? 14 : 0);
+    const r = RADIUS[p.name] + (p.name === 'Saturn' ? 30 : 0);
     const free = (i: number) => placed.every((q) => Math.hypot(at(i) - q.x, altY(p.track[i]) - q.y) > r + q.r + 46);
     const i = order.find(free) ?? best;
     placed.push({ name: p.name, x: at(i), y: altY(p.track[i]), r });
@@ -124,39 +91,21 @@ export default function PlanetsTonight() {
                 <stop offset="0" stopColor="#14163a" stopOpacity="0" />
                 <stop offset="1" stopColor="#2a2350" stopOpacity=".5" />
               </linearGradient>
-              <radialGradient id="sd-pl-shade" cx=".3" cy=".3" r=".9">
-                <stop offset=".45" stopColor="#000" stopOpacity="0" />
-                <stop offset="1" stopColor="#000" stopOpacity=".75" />
-              </radialGradient>
               {planets.map((p) => {
-                const [a, b] = COLORS[p.name];
+                const [a] = COLORS[p.name];
                 const id = `sd-pl-${p.name.toLowerCase()}`;
                 return (
                   <g key={id}>
-                    <radialGradient id={id} cx=".35" cy=".3" r=".8">
-                      <stop offset="0" stopColor="#fff" stopOpacity=".9" />
-                      <stop offset=".25" stopColor={a} />
-                      <stop offset="1" stopColor={b} />
-                    </radialGradient>
                     <radialGradient id={`${id}-glow`}>
                       <stop offset="0" stopColor={a} stopOpacity=".3" />
                       <stop offset="1" stopColor={a} stopOpacity="0" />
                     </radialGradient>
-                    <clipPath id={`${id}-clip`}>
-                      <circle cx={spot(p.name).x} cy={spot(p.name).y} r={RADIUS[p.name]} />
-                    </clipPath>
                   </g>
                 );
               })}
             </defs>
 
             <rect x={X0} y={20} width={X1 - X0} height={GROUND - 20} fill="url(#sd-tn-sky)" />
-            {[30, 60].map((a) => (
-              <g key={a}>
-                <line x1={X0} x2={X1} y1={altY(a)} y2={altY(a)} className="sd-tonight__grid" />
-                <text x={X0 - 8} y={altY(a) + 4} textAnchor="end" className="sd-tonight__tick">{a}°</text>
-              </g>
-            ))}
             {hours.map((t) => (
               <g key={t}>
                 <line x1={tx(t)} x2={tx(t)} y1={GROUND} y2={GROUND + 6} className="sd-tonight__axis" />
@@ -188,7 +137,7 @@ export default function PlanetsTonight() {
               <li key={p.name} style={{ '--p': COLORS[p.name][0] } as CSSProperties}>
                 <i aria-hidden="true" />
                 <strong>{p.name}</strong>
-                <span>{edge(p.from)}–{edge(p.to)}<b> · highest {p.alt}° {p.dir}</b></span>
+                <span>{edge(p.from)}–{edge(p.to)}</span>
                 <em>{p.scope ? 'Telescope' : 'Naked eye'}</em>
               </li>
             ))}
