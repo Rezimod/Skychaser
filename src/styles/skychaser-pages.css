@@ -522,31 +522,22 @@ img[data-fade][data-on] { opacity: 1; animation: none; }
 .sd-odds__tier[aria-selected='true'] { background: rgba(241, 230, 207, 0.1); color: var(--sd-ink); }
 .sd-odds__tier:focus-visible { outline: 2px solid var(--sd-accent-ink); outline-offset: 2px; }
 
-.sd-odds__sky { position: relative; width: 100%; max-width: 1040px; margin: 40px 0 0; }
-.sd-odds__sky .sd-odds__dust { position: absolute; inset: 0; width: 100%; height: 100%; animation: none; mix-blend-mode: screen; }
-.sd-odds__sky svg:not(.sd-odds__dust) { position: relative; }
-.sd-odds__sky svg { display: block; width: 100%; height: auto; }
-.sd-odds__sky svg { animation: sd-sky-in .9s var(--sd-ease-out, ease-out) both; }
-@keyframes sd-sky-in { from { opacity: 0; filter: blur(4px); } }
-@media (prefers-reduced-motion: no-preference) {
-  .sd-odds__tw { animation: sd-tw 4s ease-in-out infinite; }
-  .sd-odds__legend { animation: sd-legend 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
-}
-@keyframes sd-tw { 50% { opacity: .45; } }
-@keyframes sd-legend { 50% { opacity: .82; scale: .94; } }
-.sd-odds__key { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 36px; }
-.sd-odds__key li { display: inline-flex; align-items: center; gap: 10px; }
-.sd-odds__key i { width: 8px; height: 8px; border-radius: 50%; background: var(--rarity); box-shadow: 0 0 10px var(--rarity); }
-.sd-odds__key span { font: 500 11px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--sd-ink-2); }
-.sd-odds__key b { font: 400 17px var(--sd-sans); color: var(--sd-ink); font-variant-numeric: tabular-nums; }
+.sd-odds__deck { list-style: none; width: 100%; max-width: 920px; margin: 52px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; align-items: end; }
+.sd-odds__deck li { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sd-odds__card { width: 100%; margin-bottom: 18px; text-align: left; transition: translate .4s var(--sd-ease-out, ease-out); }
+.sd-odds__deck li[data-rarity='legendary'] .sd-odds__card { translate: 0 -18px; }
+.sd-odds__deck li:hover .sd-odds__card { translate: 0 -8px; }
+.sd-odds__deck li[data-rarity='legendary']:hover .sd-odds__card { translate: 0 -26px; }
+.sd-odds__card .sd-thumb { pointer-events: none; }
+.sd-odds__name { font: 500 12px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--rarity); }
+.sd-odds__pct { font: 300 24px var(--sd-sans); color: var(--sd-ink); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
 .sd-odds__log { margin-top: 44px; color: var(--sd-ink-2); font-size: 14px; text-decoration: none; border-bottom: 1px solid var(--sd-rule-strong); padding-bottom: 2px; }
 .sd-odds__log:hover { color: var(--sd-ink); border-color: var(--sd-ink-2); }
 
 @media (max-width: 720px) {
-  .sd-odds__key { gap: 10px 20px; }
-  .sd-odds__key b { font-size: 15px; }
-  .sd-odds__sky { margin-top: 28px; }
+  .sd-odds__deck { grid-template-columns: repeat(2, 1fr); gap: 28px 16px; max-width: 420px; }
+  .sd-odds__deck li[data-rarity='legendary'] .sd-odds__card { translate: none; }
   .sd-odds__tier { padding: 8px 12px; font-size: 13px; }
   .sd-odds__pct { font-size: 20px; }
 }
@@ -573,8 +564,11 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
 .sd-bento__text strong, .sd-bento__seeker strong { font: 400 clamp(22px, 2.2vw, 30px)/1.05 var(--sd-display); letter-spacing: .01em; text-transform: uppercase; }
 .sd-bento__text > span:not(.sd-bento__kicker):not(.sd-btn), .sd-bento__seeker > span:last-child { font-size: 14px; line-height: 1.45; color: var(--sd-ink-2); max-width: 34ch; }
 
-.sd-bento__tonight { grid-area: tonight; min-height: 480px; }
-.sd-bento__tonight > img { opacity: .85; }
+.sd-bento__tonight { grid-area: tonight; flex-direction: column; align-items: center; gap: 22px; min-height: 480px; background: radial-gradient(70% 55% at 50% 35%, rgba(226, 184, 90, 0.12), transparent 70%), #121010; }
+.sd-bento__tonight::after { display: none; }
+.sd-bento__card { width: min(220px, 60%); margin-top: 8px; rotate: -3deg; transition: rotate .4s var(--sd-ease-out, ease-out); }
+.sd-bento__tonight:hover .sd-bento__card { rotate: 0deg; }
+.sd-bento__tonight .sd-bento__text { align-self: stretch; }
 .sd-bento__open { grid-area: open; }
 .sd-bento__open > img { left: auto; width: 55%; object-fit: contain; object-position: right center; opacity: .9; }
 .sd-bento__open::after { background: linear-gradient(90deg, #121010 40%, transparent 85%); }
@@ -592,39 +586,4 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
 @media (max-width: 479px) {
   .sd-bento__open > img { width: 50%; opacity: .6; }
   .sd-bento__text strong { font-size: 22px; }
-}
-
-/* Planets tonight: a chart of the night, one drawn planet at each one's highest point. */
-.sd-tonight { margin-top: 28px; padding: 22px 24px 18px; border-radius: 22px; background: radial-gradient(90% 80% at 50% 0%, rgba(91, 124, 255, 0.10), transparent 70%), #0e0d12; box-shadow: inset 0 0 0 1px var(--sd-rule); }
-.sd-tonight__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.sd-tonight__head h2 { margin: 0; font: 400 clamp(22px, 2.4vw, 30px)/1 var(--sd-display); letter-spacing: .01em; text-transform: uppercase; color: var(--sd-ink); }
-.sd-tonight__head span { font-size: 13px; color: var(--sd-ink-3); font-variant-numeric: tabular-nums; }
-.sd-tonight__none { margin: 12px 0 0; font-size: 14px; color: var(--sd-ink-2); }
-.sd-tonight__chart { display: block; width: 100%; height: auto; margin-top: 10px; overflow: visible; }
-.sd-tonight__img { mix-blend-mode: screen; }
-.sd-tonight__axis { stroke: rgba(241, 230, 207, 0.22); }
-.sd-tonight__tick { fill: var(--sd-ink-3); font: 500 12px var(--sd-sans); font-variant-numeric: tabular-nums; }
-.sd-tonight__edge { fill: var(--sd-gold); font: 600 11px var(--sd-spaced); letter-spacing: .16em; text-transform: uppercase; }
-.sd-tonight__track { fill: none; stroke-width: 1.4; stroke-dasharray: 1 5; stroke-linecap: round; opacity: .55; }
-.sd-tonight__name { fill: var(--sd-ink); font: 400 17px var(--sd-display); letter-spacing: .04em; text-transform: uppercase; }
-@media (prefers-reduced-motion: no-preference) {
-  .sd-tonight__planet { animation: sd-tn-float 6s ease-in-out infinite; }
-  .sd-tonight__planet:nth-of-type(2n) { animation-delay: -3s; }
-}
-@keyframes sd-tn-float { 50% { translate: 0 -3px; } }
-.sd-tonight__list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0 20px; }
-.sd-tonight__list li { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 10px; padding: 10px 0; border-top: 1px solid var(--sd-rule); }
-.sd-tonight__list i { width: 9px; height: 9px; border-radius: 50%; background: var(--p); box-shadow: 0 0 8px var(--p); }
-.sd-tonight__list strong { font: 700 15px var(--sd-sans); letter-spacing: -0.01em; color: var(--sd-ink); }
-.sd-tonight__list span { grid-column: 2 / 4; grid-row: 2; font-size: 13px; color: var(--sd-ink-2); font-variant-numeric: tabular-nums; }
-.sd-tonight__list em { font-style: normal; font: 500 10px var(--sd-spaced); letter-spacing: .14em; text-transform: uppercase; color: var(--sd-ink-3); }
-@media (max-width: 720px) {
-  .sd-tonight { padding: 18px 14px 12px; }
-  .sd-tonight__chart { margin-inline: -6px; width: calc(100% + 12px); }
-  .sd-tonight__tick { font-size: 20px; }
-  .sd-tonight__edge { font-size: 18px; }
-  .sd-tonight__name { font-size: 26px; }
-  .sd-tonight__list { grid-template-columns: 1fr; }
-  .sd-tonight__list li { grid-template-columns: auto auto 1fr auto; padding: 8px 0; }
-  .sd-tonight__list span { grid-column: auto; grid-row: auto; font-size: 12px; }
 }
