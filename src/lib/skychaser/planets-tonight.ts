@@ -22,6 +22,8 @@ export type TonightPlanet = {
   mag: number;
   /** Needs a telescope or binoculars: fainter than the eye sees from a city. */
   scope: boolean;
+  /** Altitude through the night, one sample per step from dusk to dawn. */
+  track: number[];
 };
 
 /** The dark hours from now or this evening until dawn, over Tbilisi. */
@@ -37,9 +39,11 @@ export function planetsTonight(now = new Date()): { start: Date; end: Date; plan
   const planets: TonightPlanet[] = [];
   for (const [body, name] of PLANETS) {
     let from: Date | null = null, to: Date | null = null, best = start, top = -90, az = 0;
+    const track: number[] = [];
     for (let t = start.getTime(); t <= end.getTime(); t += STEP_MS) {
       const d = new Date(t);
       const p = bodyAzAlt(body, d);
+      track.push(p.alt);
       if (p.alt < MIN_ALT) continue;
       from ??= d;
       to = d;
@@ -47,7 +51,7 @@ export function planetsTonight(now = new Date()): { start: Date; end: Date; plan
     }
     if (!from || !to) continue;
     const mag = Illumination(body, best).mag;
-    planets.push({ name, from, to, best, alt: Math.round(top), dir: COMPASS[Math.round(az / 45) % 8], mag: Math.round(mag * 10) / 10, scope: mag > 5.5 });
+    planets.push({ name, from, to, best, alt: Math.round(top), dir: COMPASS[Math.round(az / 45) % 8], mag: Math.round(mag * 10) / 10, scope: mag > 5.5, track });
   }
   planets.sort((a, b) => a.best.getTime() - b.best.getTime());
   return { start, end, planets };
