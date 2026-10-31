@@ -591,3 +591,32 @@ a.sd-bento__tile:hover > img { scale: 1.04; }
   .sd-bento__open > img { width: 50%; opacity: .6; }
   .sd-bento__text strong { font-size: 22px; }
 }
+
+/* Planets tonight: a slim live strip under the hero. */
+.sd-tonight { margin-top: 28px; padding: 18px 22px; border-radius: 18px; background: linear-gradient(100deg, rgba(91, 124, 255, 0.08), transparent 60%), #110f10; box-shadow: inset 0 0 0 1px var(--sd-rule); }
+.sd-tonight__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.sd-tonight__head h2 { margin: 0; font: 600 11px var(--sd-spaced); letter-spacing: .18em; text-transform: uppercase; color: var(--sd-gold); }
+.sd-tonight__head span { font-size: 13px; color: var(--sd-ink-3); font-variant-numeric: tabular-nums; }
+.sd-tonight__none { margin: 12px 0 0; font-size: 14px; color: var(--sd-ink-2); }
+.sd-tonight__list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.sd-tonight__list li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px; align-items: center; padding: 12px 14px; border-radius: 12px; background: rgba(241, 230, 207, 0.03); box-shadow: inset 0 0 0 1px var(--sd-rule); --p: #d8c9a8; }
+.sd-tonight__list i { grid-row: span 4; align-self: start; margin-top: 4px; width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, var(--p) 55%, color-mix(in srgb, var(--p) 40%, #000)); box-shadow: 0 0 10px color-mix(in srgb, var(--p) 60%, transparent); }
+.sd-tonight__list strong { font: 400 20px/1 var(--sd-display); letter-spacing: .02em; text-transform: uppercase; color: var(--sd-ink); }
+.sd-tonight__list span { font-size: 13px; color: var(--sd-ink-2); font-variant-numeric: tabular-nums; }
+.sd-tonight__list em { font-style: normal; font: 500 10px var(--sd-spaced); letter-spacing: .14em; text-transform: uppercase; color: var(--sd-ink-3); margin-top: 4px; }
+.sd-tonight__list [data-planet='mercury'] { --p: #b9b2a8; }
+.sd-tonight__list [data-planet='venus'] { --p: #f3e2b4; }
+.sd-tonight__list [data-planet='mars'] { --p: #e0663f; }
+.sd-tonight__list [data-planet='jupiter'] { --p: #d9b48a; }
+.sd-tonight__list [data-planet='saturn'] { --p: #e6cf8f; }
+.sd-tonight__list [data-planet='uranus'] { --p: #9fe3e8; }
+.sd-tonight__list [data-planet='neptune'] { --p: #5d7ff0; }
+@media (max-width: 720px) {
+  .sd-tonight { padding: 16px; }
+  .sd-tonight__list { grid-template-columns: 1fr; gap: 0; margin-top: 8px; }
+  .sd-tonight__list li { grid-template-columns: auto auto 1fr auto; column-gap: 10px; padding: 10px 0; border-radius: 0; background: none; box-shadow: none; border-top: 1px solid var(--sd-rule); }
+  .sd-tonight__list i { grid-row: auto; margin-top: 0; align-self: center; }
+  .sd-tonight__list strong { font-size: 17px; }
+  .sd-tonight__best { display: none; }
+  .sd-tonight__list em { margin-top: 0; text-align: right; }
+}

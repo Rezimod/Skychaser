@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import CardThumb from '@/components/skychaser/CardThumb';
 import OddsBoard from '@/components/skychaser/OddsBoard';
+import PlanetsTonight from '@/components/skychaser/PlanetsTonight';
 import OrbitRing from '@/components/skychaser/OrbitRing';
 import SkyReveal from '@/components/skychaser/SkyReveal';
 import Sunburst from '@/components/skychaser/Sunburst';
@@ -75,6 +76,8 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <PlanetsTonight />
 
       <section className="sd-container sd-home-sec sd-bento" id="how" aria-label="Skychaser tonight">
         <Link href={`/card/${tonightCard?.seed.designation ?? 'HUNTERS-MOON'}`} className="sd-bento__tile sd-bento__tonight">
