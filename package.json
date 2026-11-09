@@ -33,6 +33,8 @@
     "astronomy-engine": "^2.1.19",
     "bs58": "^6.0.0",
     "drizzle-orm": "^0.45.2",
+    "gsap": "^3.13.0",
+    "lenis": "^1.3.4",
     "lucide-react": "^0.577.0",
     "next": "^15.5.28",
     "next-intl": "^4.9.0",

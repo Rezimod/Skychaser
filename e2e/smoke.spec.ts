@@ -19,10 +19,12 @@ test.describe('smoke — golden routes', () => {
     expect(response?.ok()).toBeTruthy();
 
     const nav = page.getByRole('navigation', { name: 'Skychaser' });
-    await expect(nav.getByRole('link', { name: 'Genesis', exact: true })).toBeVisible();
-    await expect(nav.getByRole('link', { name: 'Tonight', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Hold a piece of the cosmos');
-    await expect(page.getByRole('link', { name: /^Launch$/ }).first()).toHaveAttribute('href', '/genesis');
+    await expect(nav.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute('href', '/genesis');
+    await expect(nav.getByRole('link', { name: 'Capsules', exact: true })).toHaveAttribute('href', '/capsules');
+    await expect(nav.getByRole('link', { name: 'Open a capsule', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Aimed at Orion.');
+    // the hero's buttons show at the last step of the story, so they start hidden
+    await expect(page.getByRole('link', { name: /^Open a capsule · from \$\d+/, includeHidden: true })).toHaveAttribute('href', '/capsules');
 
     expect(errors, `pageerrors on /: ${errors.join('\n')}`).toEqual([]);
   });

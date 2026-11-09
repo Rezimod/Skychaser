@@ -1,209 +1,224 @@
-import { APP_URL } from '@/lib/skychaser/app-origin';
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { eq } from 'drizzle-orm';
-import CardThumb from '@/components/skychaser/CardThumb';
-import OddsBoard from '@/components/skychaser/OddsBoard';
-import OrbitRing from '@/components/skychaser/OrbitRing';
-import SkyReveal from '@/components/skychaser/SkyReveal';
-import Sunburst from '@/components/skychaser/Sunburst';
+import localFont from 'next/font/local';
+import EditorialHome, { type FeatureCard, type GridCard, type NightStep, type TierRow } from '@/components/skychaser/home/EditorialHome';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
-import { getDb } from '@/lib/db';
 import { getNode } from '@/lib/observatory/nodes';
-import { card } from '@/lib/schema';
-import { SET_GROUPS } from '@/lib/sets/groups';
-import { SET_001_CARD_BY_DESIGNATION } from '@/lib/sets/set-001';
-import { TIERS } from '@/lib/skychaser/tiers';
-import { cardPriceUsd } from '@/lib/skychaser/economics';
 import type { Rarity } from '@/lib/rarity';
-import { nightRow } from '@/lib/skychaser/night';
-import { siteNightDate } from '@/lib/skychaser/target';
+import { SET_001_CARDS } from '@/lib/sets/set-001';
+import { cardPriceUsd } from '@/lib/skychaser/economics';
+import { perkFor, SESSION_MINUTES } from '@/lib/skychaser/perks';
+import { formatOdds, TIERS } from '@/lib/skychaser/tiers';
+import '@/styles/skychaser-editorial.css';
 
-export const revalidate = 60;
+// The same Geist file the layout loads, declared over its full weight axis:
+// the editorial headlines are set at 800 and 900, and the layout stops at 700.
+const geistDisplay = localFont({
+  src: './fonts/geist-latin.woff2',
+  weight: '100 900',
+  variable: '--font-geist-display',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
-  title: 'Skychaser — the cosmos, issued in editions',
-  description:
-    'Genesis: real objects of the cosmos, each held as a numbered edition. Opened from sealed capsules, from $5.',
+  title: 'Skychaser — The universe, collected.',
+  description: `Stellar by Skychaser: ${SET_001_CARDS.length} collectible cards of real objects in the night sky. Sealed capsules from $${Math.min(...TIERS.map((t) => t.priceUsd))}.`,
 };
 
-/** Six cards from across the set, one shelf of it. */
-const SHOWCASE = ['BETELGEUSE', 'M51', 'ROADSTER', 'CARINA', 'TYCHO', 'CANYON-DIABLO'];
+const NUMBER = new Map(SET_001_CARDS.map((c, i) => [c.seed.designation, i + 1]));
+const CARD = new Map(SET_001_CARDS.map((c) => [c.seed.designation, c]));
 
-/** The phone hero's three cards. */
-const HERO = ['SATURN', 'M16', 'SUN'];
+const RARITY_NAME: Record<Rarity, string> = {
+  common: 'Common',
+  rare: 'Rare',
+  epic: 'Epic',
+  legendary: 'Legendary',
+};
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** The cards turning round the sun in the orbit section. */
-const ORBIT = ['FIRST-LIGHT', 'EARTHRISE', 'M1', 'TON-618', 'HALLEY', 'EUROPA', 'APOLLO-11', 'GREAT-ECLIPSE', 'M104', 'PLUTO', 'TARANTULA', 'IMILAC'];
+function facts(designation: string) {
+  const c = CARD.get(designation);
+  const no = NUMBER.get(designation);
+  if (!c || !no) throw new Error(`Home: ${designation} is not in Genesis`);
+  const rarity = c.seed.rarity as Rarity;
+  return {
+    designation,
+    no,
+    name: c.seed.name,
+    rarity: RARITY_NAME[rarity],
+    rarityKey: rarity,
+    type: c.seed.objectType,
+    line: c.record.line,
+    perk: perkFor(designation, rarity),
+    priceUsd: cardPriceUsd(designation, rarity),
+  };
+}
 
-/** One card of each rarity, commonest first, shown with its odds. */
-const ODDS_CARDS = ['HELIX', 'POLARIS', 'PHOBOS', 'GIBEON'];
+/** S2: six cards across the set, each with the colour its art is printed in and one field note. */
+const FEATURE: {
+  d: string;
+  word: string;
+  note: string;
+  rgb: [number, number, number];
+}[] = [
+  {
+    d: 'SATURN',
+    word: 'Saturn',
+    note: 'Ice as small as sand, as big as houses.',
+    rgb: [134, 104, 68],
+  },
+  {
+    d: 'ORION',
+    word: 'Orion',
+    note: 'Seven bright stars, one hunter — seen from everywhere on Earth.',
+    rgb: [30, 35, 84],
+  },
+  {
+    d: 'M31',
+    word: 'Andromeda',
+    note: '2.5 million light-years away, and still visible to the naked eye.',
+    rgb: [58, 44, 96],
+  },
+  {
+    d: 'BETELGEUSE',
+    word: 'Betelgeuse',
+    note: 'A star so large it would reach past the orbit of Mars.',
+    rgb: [120, 32, 28],
+  },
+  {
+    d: 'JUPITER',
+    word: 'Jupiter',
+    note: 'A storm wider than Earth, still turning after centuries.',
+    rgb: [142, 94, 56],
+  },
+  {
+    d: 'CANYON-DIABLO',
+    word: 'Diablo',
+    note: 'Iron from the asteroid that dug Meteor Crater, 50,000 years ago.',
+    rgb: [62, 66, 72],
+  },
+];
 
-const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
+/** S4: the nine cards in the open case, read left to right, top to bottom. */
+const GRID = ['ORION', 'SATURN', 'M31', 'BETELGEUSE', 'CANYON-DIABLO', 'M42', 'HORSEHEAD', 'JUPITER', 'M51'];
 
-export default async function HomePage() {
+/**
+ * S3: one night at Live Telescope V1, in minutes after 20:00 Tbilisi time. The
+ * telescope works from dusk until two (getNode availability), so the clock does too.
+ */
+const NIGHT: { at: number; title: string; text: string; d: string }[] = [
+  {
+    at: 0,
+    title: 'The night begins.',
+    text: 'Holders have voted. Tonight’s target: Orion.',
+    d: 'ORION',
+  },
+  {
+    at: 30,
+    title: 'Saturn, high in the south.',
+    text: 'Epic holders take the first 30-minute sessions.',
+    d: 'SATURN',
+  },
+  {
+    at: 120,
+    title: 'Orion clears the rooftops.',
+    text: 'Rare holders join as visitors and watch the frames land.',
+    d: 'M42',
+  },
+  {
+    at: 210,
+    title: '120-second exposures.',
+    text: 'The camera stacks the nebula, frame by frame.',
+    d: 'M42',
+  },
+  {
+    at: 290,
+    title: 'Jupiter, up in the east.',
+    text: 'The last sessions of the night, at the sharpest seeing.',
+    d: 'JUPITER',
+  },
+  {
+    at: 345,
+    title: 'The telescope comes in.',
+    text: 'Every holder of tonight’s card gets the image.',
+    d: 'ORION',
+  },
+];
+
+export default function HomePage() {
   const node = getNode('tbilisi-01')!;
-  const db = getDb();
+  const { fromHourLocal, toHourLocal } = node.availability!;
 
-  let tonight: string | null = null;
-  if (db) {
-    try {
-      const night = await nightRow(db, siteNightDate(node.timezone, new Date()));
-      if (night) {
-        const [row] = await db.select({ designation: card.designation }).from(card).where(eq(card.id, night.cardId));
-        tonight = row?.designation ?? null;
-      }
-    } catch (err) {
-      console.error('[skychaser] cannot read tonight', err);
-    }
-  }
-  const tonightCard = tonight ? SET_001_CARD_BY_DESIGNATION.get(tonight) : undefined;
+  const feature: FeatureCard[] = FEATURE.map((f) => {
+    const c = facts(f.d);
+    return {
+      designation: c.designation,
+      word: f.word,
+      no: c.no,
+      rarity: c.rarity,
+      type: cap(c.type),
+      perk: c.perk.short,
+      price: `$${c.priceUsd}`,
+      note: f.note,
+      rgb: f.rgb,
+    };
+  });
+
+  const grid: GridCard[] = GRID.map((d) => {
+    const c = facts(d);
+    return {
+      designation: d,
+      name: c.name,
+      rarity: c.rarity,
+      rarityKey: c.rarityKey,
+      no: c.no,
+      line: c.line,
+      perk: `${c.perk.line}${c.perk.soon ? ' From first light.' : ''}`,
+    };
+  });
+
+  const night: NightStep[] = NIGHT.map((n) => {
+    const c = facts(n.d);
+    return {
+      at: n.at,
+      title: n.title,
+      text: n.text,
+      designation: n.d,
+      card: `${c.name} · No. ${c.no}`,
+      perk: `${c.rarity} · ${c.perk.short}`,
+    };
+  });
+
+  const tiers: TierRow[] = TIERS.map((t) => ({
+    name: t.name,
+    price: `$${t.priceUsd}`,
+    odds: {
+      common: formatOdds(t.oddsBps.common),
+      rare: formatOdds(t.oddsBps.rare),
+      epic: formatOdds(t.oddsBps.epic),
+      legendary: formatOdds(t.oddsBps.legendary),
+    },
+  }));
 
   return (
-    <SkychaserShell>
+    <SkychaserShell bare>
       <SkychaserView step="landing" />
-
-      <section className="sd-hero3">
-        <SkyReveal />
-        <div className="sd-container sd-hero3__copy">
-          <h1 className="sd-hero3__title">
-            Hold a piece of <em>the cosmos</em>
-          </h1>
-          <p className="sd-hero3__sub">
-            Real objects, numbered editions. A card is a seat at the telescope — and, for some, an object you can hold.
-          </p>
-          <div className="sd-hero3__cta">
-            <Link href="/capsules" className="sd-btn sd-btn--light">
-              Open a capsule · ${TIERS[0].priceUsd}
-            </Link>
-            <Link href={APP_URL} className="sd-btn">
-              Browse the cards
-            </Link>
-          </div>
-          {/* A phone has no hidden sky: three cards from the set stand in for it. */}
-          <ul className="sd-hero3__cards" aria-label="Three cards from the set">
-            {HERO.map((d) => (
-              <li key={d}>
-                <Link href={`/card/${d}`} aria-label={SET_001_CARD_BY_DESIGNATION.get(d)?.seed.name ?? d} data-zoom={d}>
-                  <CardThumb designation={d} eager small />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      <section className="sd-container sd-home-sec sd-bento" id="how" aria-label="Skychaser tonight">
-        <Link href={`/card/${tonightCard?.seed.designation ?? 'HUNTERS-MOON'}`} className="sd-bento__tile sd-bento__tonight">
-          <span className="sd-bento__card">
-            <CardThumb designation={tonightCard?.seed.designation ?? 'HUNTERS-MOON'} small />
-          </span>
-          <span className="sd-bento__text">
-            <span className="sd-bento__kicker">{tonightCard ? 'Tonight over Tbilisi' : 'In the set'}</span>
-            <strong>{tonightCard?.seed.name ?? "The Hunter's Moon"}</strong>
-            <span>The card the telescope is pointed at tonight.</span>
-          </span>
-        </Link>
-        <Link href="/capsules" className="sd-bento__tile sd-bento__open">
-          <img src="/cards/capsule.webp" alt="" width={695} height={720} loading="lazy" />
-          <span className="sd-bento__text">
-            <span className="sd-bento__kicker">Capsules</span>
-            <strong>One sealed card, from ${FROM_USD}</strong>
-            <span>Every draw is fixed before sale and opened in public.</span>
-            <span className="sd-btn sd-btn--light sd-bento__btn">Open a capsule</span>
-          </span>
-        </Link>
-        <Link href="/voyage" className="sd-bento__tile sd-bento__voyage">
-          <img src="/cards/art/sm/TITAN.webp" alt="" width={440} height={584} loading="lazy" />
-          <span className="sd-bento__text">
-            <span className="sd-bento__kicker">Voyage</span>
-            <strong>Fly the Kestrel</strong>
-            <span>A game across the solar system.</span>
-          </span>
-        </Link>
-        <Link href="/vote" className="sd-bento__tile sd-bento__vote">
-          <img src="/cards/art/sm/HORSEHEAD.webp" alt="" width={440} height={584} loading="lazy" />
-          <span className="sd-bento__text">
-            <span className="sd-bento__kicker">Weekly vote</span>
-            <strong>Choose what we observe</strong>
-            <span>Holders pick the telescope&apos;s target.</span>
-          </span>
-        </Link>
-        <div className="sd-bento__tile sd-bento__seeker">
-          <span className="sd-bento__kicker">Solana Seeker</span>
-          <strong>Skychaser is coming to the Seeker dApp Store.</strong>
-          <span>Seeker owners get a badge on their account.</span>
-        </div>
-      </section>
-
-      <section className="sd-container sd-home-sec sd-oddsec" aria-labelledby="odds-title">
-        <h2 className="sd-home-sec__title" id="odds-title">
-          The odds are published
-        </h2>
-        <OddsBoard
-          cards={ODDS_CARDS.map((d) => {
-            const rarity = SET_001_CARD_BY_DESIGNATION.get(d)!.seed.rarity as Rarity;
-            return { rarity, face: <CardThumb designation={d} price={`$${cardPriceUsd(d, rarity)}`} /> };
-          })}
-        />
-      </section>
-
-      <section className="sd-container sd-home-sec sd-showcase2" aria-labelledby="set-title">
-        <div className="sd-showcase2__copy">
-          <h2 className="sd-home-sec__title" id="set-title">
-            Genesis
-          </h2>
-          <p className="sd-home-sec__lede">Real objects, numbered outward from Earth.</p>
-          <ul className="sd-families">
-            {SET_GROUPS.map((g) => (
-              <li key={g.key}>
-                <span>{g.title}</span>
-              </li>
-            ))}
-          </ul>
-          <Link href="/genesis" className="sd-btn">
-            See the set
-          </Link>
-        </div>
-        <ul className="sd-showcase2__cards">
-          {SHOWCASE.map((d) => (
-            <li key={d}>
-              <Link href={`/card/${d}`} aria-label={SET_001_CARD_BY_DESIGNATION.get(d)?.seed.name ?? d} data-zoom={d}>
-                <CardThumb designation={d} eager small />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="sd-home-sec sd-orbit" aria-labelledby="orbit-title">
-        <div className="sd-container sd-orbit__copy">
-          <h2 className="sd-home-sec__title" id="orbit-title">
-            Every card turns with the sky
-          </h2>
-          <p className="sd-home-sec__lede">
-            From the craters of the Moon to the black hole at the centre of the galaxy — each one real, issued once and numbered.
-          </p>
-        </div>
-        <OrbitRing designations={ORBIT} />
-      </section>
-
-      <section className="sd-container sd-home-sec sd-closer2" aria-labelledby="close-title">
-        <Sunburst className="sd-closer2__burst" />
-        <h2 className="sd-closer2__title" id="close-title">
-          The cosmos, <em>issued in editions</em>.
-        </h2>
-        <p className="sd-home-sec__lede">Sealed before sale. Published after opening.</p>
-        <div className="sd-hero2__cta">
-          <Link href="/capsules" className="sd-btn sd-btn--light">
-            Open a capsule · ${TIERS[0].priceUsd}
-          </Link>
-          <Link href="/capsules/log" className="sd-btn">
-            Public log
-          </Link>
-        </div>
-      </section>
+      <EditorialHome
+        fontClass={geistDisplay.variable}
+        setSize={SET_001_CARDS.length}
+        fromPrice={`$${Math.min(...TIERS.map((t) => t.priceUsd))}`}
+        feature={feature}
+        grid={grid}
+        night={night}
+        nightFrom={fromHourLocal}
+        nightTo={toHourLocal}
+        tiers={tiers}
+        scope={{
+          site: node.site,
+          optics: node.instrument.optics.replace(/^Celestron /, ''),
+          minutes: SESSION_MINUTES,
+        }}
+      />
     </SkychaserShell>
   );
 }
