@@ -251,10 +251,6 @@ export default function EditorialHome({ fontClass, setSize, editions, legendary,
 
           <div className="stage">
             <div className="lead">
-              <span className="status glass">
-                <i />
-                Genesis · on sale now
-              </span>
               <h1 className="xl">
                 Collect
                 <br />
