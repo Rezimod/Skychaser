@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
-import localFont from 'next/font/local';
+import type { ReactNode } from 'react';
 import EditorialHome, { type FeatureCard, type GridCard, type TierRow } from '@/components/skychaser/home/EditorialHome';
+import CardFront from '@/components/skychaser/card/CardFront';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
 import { getNode } from '@/lib/observatory/nodes';
@@ -8,18 +9,10 @@ import { RARITIES, type Rarity } from '@/lib/rarity';
 import { SET_001_CARDS } from '@/lib/sets/set-001';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { perkFor, SESSION_MINUTES } from '@/lib/skychaser/perks';
+import { plateFor } from '@/lib/skychaser/plate';
 import { formatOdds, TIERS } from '@/lib/skychaser/tiers';
+import '@/components/skychaser/card/skychaser-card.css';
 import '@/styles/skychaser-editorial.css';
-
-// Archivo, the family the Skychaser wordmark is drawn in, over its width axis:
-// the headlines are set expanded and light. Latin subset from Google Fonts (OFL).
-const archivo = localFont({
-  src: './fonts/archivo-latin.woff2',
-  weight: '100 900',
-  variable: '--font-archivo',
-  display: 'swap',
-  declarations: [{ prop: 'font-stretch', value: '62% 125%' }],
-});
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
 
@@ -49,6 +42,16 @@ function facts(designation: string) {
   };
 }
 
+/**
+ * The card face the shop draws, rendered here on the server so the set's data
+ * never ships to the browser: the home shows the same card as every other page.
+ */
+function face(designation: string, opts: { small?: boolean; priority?: boolean } = {}): ReactNode {
+  const plate = plateFor(designation);
+  if (!plate) throw new Error(`Home: ${designation} has no card face`);
+  return <CardFront plate={plate} small={opts.small} priority={opts.priority} u="" />;
+}
+
 /** The shelf: six cards across the set, each lit in the colour its art is printed in, with one field note. */
 const FEATURE: { d: string; note: string; rgb: [number, number, number] }[] = [
   { d: 'SATURN', note: 'Ice as small as sand, as big as houses.', rgb: [134, 104, 68] },
@@ -61,6 +64,9 @@ const FEATURE: { d: string; note: string; rgb: [number, number, number] }[] = [
 
 /** The nine cards in the open case. */
 const GRID = ['ORION', 'SATURN', 'M31', 'BETELGEUSE', 'CANYON-DIABLO', 'M42', 'HORSEHEAD', 'JUPITER', 'M51'];
+
+/** The fan in the hero: the spotlight card in front, one either side. */
+const FAN = { left: 'SATURN', front: 'M42', right: 'CANYON-DIABLO' };
 
 export default function HomePage() {
   const node = getNode('tbilisi-01')!;
@@ -80,11 +86,12 @@ export default function HomePage() {
       price: c.price,
       note: f.note,
       rgb: f.rgb,
+      face: face(f.d),
     };
   });
   const grid: GridCard[] = GRID.map((d) => {
     const c = facts(d);
-    return { designation: d, name: c.name, rarity: c.rarity };
+    return { designation: d, name: c.name, rarity: c.rarity, face: face(d, { small: true }) };
   });
   const tiers: TierRow[] = TIERS.map((t) => ({
     name: t.name,
@@ -93,18 +100,22 @@ export default function HomePage() {
   }));
   const editions = SET_001_CARDS.reduce((n, c) => n + c.seed.editionSize, 0);
   const legendary = SET_001_CARDS.filter((c) => c.seed.rarity === 'legendary').reduce((n, c) => n + c.seed.editionSize, 0);
-  const m42 = facts('M42');
+  const spot = facts(FAN.front);
 
   return (
-    <SkychaserShell bare>
+    <SkychaserShell>
       <SkychaserView step="landing" />
       <EditorialHome
-        fontClass={archivo.variable}
         setSize={SET_001_CARDS.length}
         editions={editions}
         legendary={legendary}
         fromPrice={`$${FROM_USD}`}
-        spotlight={{ designation: 'M42', name: m42.name, no: m42.no, rarity: RARITY_NAME[m42.rarity], perk: m42.perk.short, photo: '/home/m42-photo-640.webp' }}
+        fan={{
+          left: face(FAN.left, { small: true, priority: true }),
+          front: face(FAN.front, { priority: true }),
+          right: face(FAN.right, { small: true, priority: true }),
+        }}
+        spotlight={{ designation: FAN.front, name: spot.name, no: spot.no, rarity: RARITY_NAME[spot.rarity], perk: spot.perk.short, photo: '/home/m42-photo-640.webp' }}
         feature={feature}
         grid={grid}
         tiers={tiers}

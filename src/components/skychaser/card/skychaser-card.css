@@ -118,3 +118,9 @@
 .sdc-card[data-rarity='legendary'] { box-shadow: 0 0 9cqw -2cqw #5b7cffb3, 0 0 3cqw -1cqw #ffd36b80; }
 .sdc-card[data-rarity='legendary']::before { box-shadow: inset 0 0 9cqw -2cqw #5b7cff80; }
 .sdc-card[data-rarity='legendary'] .sdc-panel { border-color: #ffd36b8c; }
+
+/* The halo (CardHalo): the card page's light, for a card of any size. The wrapper is the
+   container, so the glow is measured in the card's own width. */
+.sdc-halo { position: relative; display: block; container-type: inline-size; isolation: isolate; }
+.sdc-halo::before { content: ''; position: absolute; inset: -16% -24%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, color-mix(in srgb, var(--rarity) 30%, transparent), transparent 80%); }
+.sdc-halo .sdc-card { box-shadow: inset 0 0 0 1.2cqw #0008, inset 0 0 8cqw -2cqw color-mix(in srgb, var(--card-accent) 30%, transparent), 0 12cqw 20cqw -9cqw #000, 0 0 18cqw -6.5cqw var(--card-accent); }

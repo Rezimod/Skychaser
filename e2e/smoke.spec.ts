@@ -19,8 +19,8 @@ test.describe('smoke — golden routes', () => {
     expect(response?.ok()).toBeTruthy();
 
     const nav = page.getByRole('navigation', { name: 'Skychaser' });
-    await expect(nav.getByRole('link', { name: 'Cards', exact: true })).toHaveAttribute('href', '/genesis');
-    await expect(nav.getByRole('link', { name: 'Capsules', exact: true })).toHaveAttribute('href', '/capsules');
+    await expect(nav.getByRole('link', { name: 'Genesis', exact: true })).toHaveAttribute('href', '/genesis');
+    await expect(nav.getByRole('link', { name: 'Collection', exact: true })).toHaveAttribute('href', '/collection');
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Collect');
     await expect(page.getByRole('link', { name: 'Open a capsule' }).first()).toHaveAttribute('href', '/capsules');
 

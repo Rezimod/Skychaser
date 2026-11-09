@@ -1,0 +1,27 @@
+/* The card-style proposal page. Site tokens only; the cards bring their own styles. */
+.cpv { max-width: 1240px; margin: 0 auto; padding: 24px clamp(20px, 3vw, 40px) 40px; }
+.cpv-head { max-width: 760px; }
+.cpv-ey { margin: 0; font: 600 12px var(--sd-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--sd-accent-ink); }
+.skychaser .cpv h1 { margin: 16px 0 0; font: 400 clamp(48px, 6vw, 88px)/0.94 var(--sd-title); text-transform: uppercase; }
+.cpv h1 em { font-style: normal; color: var(--sd-accent); }
+.cpv-sub { margin: 20px 0 0; max-width: 620px; font-size: 15px; line-height: 1.6; color: var(--sd-ink-2); }
+
+.cpv-sec { margin-top: 72px; }
+.cpv-label { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding-bottom: 14px; border-bottom: 1px solid var(--sd-rule); }
+.skychaser .cpv-label h2 { margin: 0; font: 400 28px/1 var(--sd-title); text-transform: uppercase; letter-spacing: 0.01em; }
+.cpv-label span { font: 600 11px var(--sd-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--sd-ink-small); }
+
+.cpv figure { margin: 0; }
+.cpv figcaption { margin-top: 18px; text-align: center; font: 600 11px var(--sd-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--sd-ink-small); }
+
+.cpv-held { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: clamp(24px, 3.4vw, 48px); padding: 56px 0 8px; }
+.cpv-shelf { display: grid; grid-template-columns: repeat(4, minmax(0, 220px)); justify-content: space-between; gap: 48px 24px; padding: 48px 0 8px; }
+.cpv-pairs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; padding: 48px 0 8px; }
+.cpv-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; align-items: start; }
+.cpv-pair img { display: block; width: 100%; height: auto; }
+
+@media (max-width: 900px) {
+  .cpv-held { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cpv-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cpv-pairs { grid-template-columns: minmax(0, 1fr); }
+}
