@@ -125,7 +125,7 @@ export default function EditorialHome({ setSize, editions, legendary, fromPrice,
         return { start: top, end: top + heroH };
       },
       draw: (p) => {
-        put(sky, `translate3d(0, ${(p * heroH * 0.22).toFixed(1)}px, 0) scale(${(1 + p * 0.08).toFixed(4)})`);
+        put(sky, `translate3d(0, ${(p * heroH * 0.22).toFixed(1)}px, 0)`, 1 - p * 0.6);
         put(lead, `translate3d(0, ${(-p * 90).toFixed(1)}px, 0)`, 1 - seg(p, 0.1, 0.6));
         put(fanWrap, `translate3d(0, ${(-p * 140).toFixed(1)}px, 0)`, 1 - seg(p, 0.45, 0.9));
         touched.add(fanEl);
@@ -356,17 +356,9 @@ export default function EditorialHome({ setSize, editions, legendary, fromPrice,
     <div ref={root} className={`ed${pin ? ' pin' : ''}`}>
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="hero" aria-label="Skychaser">
-        <div className="sky">
-          <img
-            src="/home/saturn-1280.webp"
-            srcSet="/home/saturn-1280.webp 1280w, /home/saturn-2400.webp 2400w"
-            sizes="100vw"
-            alt="Saturn eclipsing the Sun, seen from behind by Cassini"
-            fetchPriority="high"
-            decoding="async"
-          />
+        <div className="sky" aria-hidden="true">
+          <div className="lines" />
         </div>
-        <div className="veil" />
 
         <div className="stage">
           <div className="lead">
@@ -664,7 +656,7 @@ export default function EditorialHome({ setSize, editions, legendary, fromPrice,
           <div className="otext" data-rise>
             <p className="ey live">
               <i />
-              Live telescope · first light in November
+              First light · November
             </p>
             <h2>
               Then point it
@@ -759,7 +751,7 @@ export default function EditorialHome({ setSize, editions, legendary, fromPrice,
           </p>
         </div>
         <p className="credits">
-          Saturn: NASA/JPL-Caltech/SSI · Pillars of Creation: NASA, ESA, Hubble · Observatory: ESO/H.H. Heyer, CC BY 4.0, regraded for night
+          Pillars of Creation: NASA, ESA, Hubble · Observatory: ESO/H.H. Heyer, CC BY 4.0, regraded for night
         </p>
       </section>
     </div>

@@ -68,6 +68,13 @@
   .sdc-kind, .sdc-perk { font-size: 7px; letter-spacing: .06em; }
   .sdc-left { font-size: 8px; }
 }
+/* The smallest tiles (a phone's three-across grid): the number stays on one line, the badge's word fits its pill. */
+@container (max-width: 140px) {
+  .sdc-no { font-size: 7px; letter-spacing: .1em; white-space: nowrap; }
+  .sdc-tier { padding-inline: 2.4cqw; font-size: 7px; letter-spacing: .04em; }
+  .sdc-kind, .sdc-perk { font-size: 6px; letter-spacing: .04em; }
+  .sdc-left { font-size: 6.5px; }
+}
 .sdc-glare { position: absolute; inset: -50%; pointer-events: none; opacity: .4; background: radial-gradient(closest-side, #ffffff15, transparent); translate: calc((var(--px, .5) - .5) * 50%) calc((var(--py, .5) - .5) * 50%); }
 .sdc-card--back { background: linear-gradient(145deg, #1b1a17, #0c0c0b 65%); }
 .sdc-notes { position: absolute; inset: 6%; display: flex; flex-direction: column; }
