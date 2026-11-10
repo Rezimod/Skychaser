@@ -77,6 +77,13 @@ function Btn({ href, tone, children, onClick }: { href: string; tone: 'w' | 'o';
   );
 }
 
+/** One headline line inside a mask, so it can slide in and out of view. */
+const Mask = ({ children }: { children: ReactNode }) => (
+  <span className="m">
+    <span>{children}</span>
+  </span>
+);
+
 function Wordmark({ className }: { className?: string }) {
   return <svg className={className} viewBox="0 0 2648 400" aria-hidden="true" dangerouslySetInnerHTML={{ __html: WORDMARK_GLYPHS }} />;
 }
@@ -231,6 +238,32 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
     const lenis = new Lenis({ lerp: 0.09, smoothWheel: true });
     lenisRef.current = lenis;
     lenis.on('scroll', ScrollTrigger.update);
+
+    // Snapping: a short scroll inside a stepped scene finishes the move to the next step.
+    const snaps = new Set<{ st: ScrollTrigger; points: number[] }>();
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    let dir = 1;
+    let inside: ScrollTrigger | null = null;
+    const settle = () => {
+      for (const { st, points } of snaps) {
+        if (!st.isActive) continue;
+        // arriving from another scene, settle on the nearest step rather than skip the first
+        const arriving = inside !== st && st.start > 0;
+        inside = st;
+        const p = st.progress;
+        if (points.some((x) => Math.abs(x - p) < 0.003)) return;
+        const nearest = points.reduce((a, x) => (Math.abs(x - p) < Math.abs(a - p) ? x : a));
+        const next = arriving ? nearest : dir > 0 ? points.find((x) => x > p) : [...points].reverse().find((x) => x < p);
+        if (next !== undefined) lenis.scrollTo(st.start + next * (st.end - st.start), { duration: 0.75, easing: (t) => 1 - Math.pow(1 - t, 4) });
+        return;
+      }
+      inside = null;
+    };
+    lenis.on('scroll', (l: Lenis) => {
+      if (l.direction) dir = l.direction;
+      clearTimeout(idle);
+      idle = setTimeout(settle, 120);
+    });
     const raf = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
@@ -238,41 +271,77 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
     const mm = gsap.matchMedia(el);
 
     const ctx = gsap.context(() => {
-      // The hero: how light becomes a card, five photographs on one scrub
+      // The hero: four quick transitions, the scroll snapping from one step to the next.
+      // 1→2 the telescope dives into the nebula, 2→3 the colour develops from the middle,
+      // 3→4 the picture shrinks into the card and the card into its case, 4→5 the case opens.
+      const hero = one('.hero');
       const bgs = q('.hero .bg') as HTMLElement[];
       const lns = q('.hero .ln') as HTMLElement[];
       const N = bgs.length;
-      gsap.from(bgs[0], { scale: 1.1, duration: 2.4, ease: 'power2.out' });
+      const [orion, raw, colour, seal, keep] = bgs;
+      const pic = orion.querySelector('picture') as HTMLElement;
+      const slot = one('.seal .slot');
+      const words = (i: number) => lns[i].querySelectorAll('.m > span');
+      const para = (i: number) => lns[i].querySelectorAll(':scope > p');
+      const cardClip = () => {
+        let x = 0;
+        let y = 0;
+        for (let e: HTMLElement | null = slot; e && e !== hero; e = e.offsetParent as HTMLElement | null) {
+          x += e.offsetLeft;
+          y += e.offsetTop;
+        }
+        const w = slot.offsetWidth;
+        const h = slot.offsetHeight;
+        return `inset(${y}px ${hero.clientWidth - x - w}px ${hero.clientHeight - y - h}px ${x}px round ${Math.round(w * 0.05)}px)`;
+      };
+      gsap.from(pic.querySelector('img'), { scale: 1.1, duration: 2.4, ease: 'power2.out' });
       const step = one('.hero .meta .num');
       const bar = one('.hero .meta .bar i');
       const tl = gsap.timeline({
         defaults: { ease: 'none' },
         scrollTrigger: {
-          trigger: one('.hero'),
+          trigger: hero,
           start: 'top top',
-          end: '+=300%',
+          end: '+=200%',
           pin: true,
           refreshPriority: 4,
-          scrub: 0.8,
+          scrub: 0.35,
           anticipatePin: 1,
+          invalidateOnRefresh: true,
           onUpdate: (s) => {
-            const i = Math.min(N - 1, Math.max(0, Math.round(s.progress * tl.duration() - 0.2)));
+            const i = Math.min(N - 1, Math.round(s.progress * tl.duration()));
             step.textContent = `${String(i + 1).padStart(2, '0')} / ${String(N).padStart(2, '0')}`;
             bar.style.transform = `scaleX(${0.2 + 0.8 * s.progress})`;
           },
         },
       });
-      bgs.forEach((b, i) => tl.fromTo(b.querySelector('.kb'), { scale: 1.14 }, { scale: 1, duration: i === N - 1 ? 1 : 2 }, Math.max(0, i - 1)));
-      for (let i = 1; i < N; i++) {
-        tl.to(bgs[i], { opacity: 1, duration: 0.55 }, i - 0.55)
-          .to(lns[i - 1], { opacity: 0, y: -28, duration: 0.35 }, i - 0.55)
-          .fromTo(lns[i], { opacity: 0, y: 36 }, { opacity: 1, y: 0, duration: 0.45 }, i - 0.3);
+      for (let i = 0; i < N - 1; i++) {
+        // explicit starts: the first step's are mid-way through its CSS rise when this runs
+        const first = i === 0;
+        tl.fromTo(words(i), { y: 0, yPercent: 0 }, { yPercent: -112, duration: 0.3, stagger: 0.05, ease: 'power3.in', immediateRender: first }, i + 0.06)
+          .fromTo(para(i), { opacity: 1, y: 0 }, { opacity: 0, y: -10, duration: 0.24, ease: 'power2.in', immediateRender: first }, i + 0.06)
+          .fromTo(words(i + 1), { y: 0, yPercent: 112 }, { yPercent: 0, duration: 0.42, stagger: 0.07, ease: 'power3.out' }, i + 0.42)
+          .fromTo(para(i + 1), { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.36, ease: 'power2.out' }, i + 0.56);
       }
-      tl.fromTo(one('.seal .slot'), { yPercent: -64 }, { yPercent: 0, duration: 0.9 }, 2.55)
-        .fromTo(one('.seal .band'), { yPercent: -112, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.45 }, 3.15)
-        .fromTo(one('.keep .kc'), { yPercent: 18, rotate: 11, scale: 0.86 }, { yPercent: 0, rotate: 0, scale: 1, duration: 0.8 }, N - 1.5)
-        .fromTo(one('.hero .cta'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.35 }, N - 0.6)
-        .to({}, { duration: 0.4 });
+      tl.fromTo(pic, { scale: 1 }, { scale: 3, duration: 0.8, ease: 'power3.in' }, 0.04)
+        .to(orion, { opacity: 0, duration: 0.24 }, 0.6)
+        .fromTo(raw, { opacity: 0, scale: 1.6 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'power3.out' }, 0.56)
+        .set(colour, { opacity: 1 }, 1.04)
+        .fromTo(colour, { '--r': '0vmax' }, { '--r': '84vmax', duration: 0.78, ease: 'power2.inOut' }, 1.04)
+        .to(raw, { scale: 1.08, duration: 0.78, ease: 'power1.in' }, 1.04)
+        .set(raw, { opacity: 0 }, 2.04)
+        .fromTo(colour, { clipPath: 'inset(0px 0px 0px 0px round 0px)' }, { clipPath: cardClip, duration: 0.5, ease: 'power3.inOut' }, 2.04)
+        .fromTo(seal, { opacity: 0 }, { opacity: 1, duration: 0.24 }, 2.4)
+        .to(colour, { opacity: 0, duration: 0.16 }, 2.58)
+        .fromTo(slot, { yPercent: -5 }, { yPercent: 0, duration: 0.3, ease: 'power2.out' }, 2.5)
+        .fromTo(one('.seal .band'), { yPercent: -112, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 2.7)
+        .to(one('.sealcase'), { scale: 0.9, opacity: 0, duration: 0.36, ease: 'power2.in' }, 3.06)
+        .fromTo(keep, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 3.2)
+        .fromTo(one('.keep .blur'), { scale: 1.25 }, { scale: 1, duration: 0.7, ease: 'power2.out' }, 3.2)
+        .fromTo(one('.keep .kc'), { yPercent: 26, rotate: 14, scale: 0.78 }, { yPercent: 0, rotate: 0, scale: 1, duration: 0.62, ease: 'power3.out' }, 3.26)
+        .fromTo(one('.hero .cta'), { autoAlpha: 0, y: 16 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 3.66)
+        .to({}, { duration: 0.3 }, 4);
+      snaps.add({ st: tl.scrollTrigger!, points: bgs.map((_, i) => i / tl.duration()) });
 
       // The night, as a clock
       const clock = { m: 0 };
@@ -359,7 +428,13 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         .from(one('.cap .buy'), { opacity: 0, y: 20, duration: 0.4 }, 1.4)
         .to({}, { duration: 0.8 });
 
-      return () => layers.forEach((l) => l.style.removeProperty('opacity'));
+      const sideways = { st: ht.scrollTrigger!, points: slides.map((_, i) => i / (n - 1)) };
+      snaps.add(sideways);
+
+      return () => {
+        snaps.delete(sideways);
+        layers.forEach((l) => l.style.removeProperty('opacity'));
+      };
     });
     mm.add('(max-width: 820px)', () => {
       gsap
@@ -395,6 +470,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
       lenisRef.current = null;
       clearTimeout(ciTimer.current);
       clearTimeout(nsTimer.current);
+      clearTimeout(idle);
     };
   }, []);
 
@@ -441,7 +517,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
               <picture>
                 <source media="(max-width: 820px)" srcSet="/home/orion-tall-900.webp 900w, /home/orion-tall-1400.webp 1400w" sizes="100vw" />
                 <img
-                  className="kb"
                   src="/home/orion-1280.webp"
                   srcSet="/home/orion-1280.webp 1280w, /home/orion-2200.webp 2200w"
                   sizes="100vw"
@@ -453,7 +528,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             </div>
             <div className="bg raw">
               <img
-                className="kb"
                 src="/home/m42-raw-1280.webp"
                 srcSet="/home/m42-raw-1280.webp 1280w, /home/m42-raw-1800.webp 1800w"
                 sizes="100vw"
@@ -462,9 +536,8 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
               />
               <i className="grain" />
             </div>
-            <div className="bg">
+            <div className="bg dev">
               <img
-                className="kb"
                 src="/home/m42-1280.webp"
                 srcSet="/home/m42-1280.webp 1280w, /home/m42-2200.webp 2200w"
                 sizes="100vw"
@@ -487,7 +560,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
               </div>
             </div>
             <div className="bg keep">
-              <img className="blur kb" src="/home/m42-blur-800.webp" alt="" decoding="async" />
+              <img className="blur" src="/home/m42-blur-800.webp" alt="" decoding="async" />
               <div className="pos">
                 <div className="kc">
                   <div className="tilt">
@@ -502,41 +575,46 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             <div className="steps">
               <div className="ln">
                 <h1 className="xl">
-                  Aimed at
-                  <br />
-                  <em>Orion.</em>
+                  <Mask>Aimed at</Mask>
+                  <Mask>
+                    <em>Orion.</em>
+                  </Mask>
                 </h1>
                 <p>One patch of sky, chosen by the people who hold its card.</p>
               </div>
               <div className="ln">
                 <h2 className="xl">
-                  Exposed
-                  <br />
-                  <em>120 seconds.</em>
+                  <Mask>Exposed</Mask>
+                  <Mask>
+                    <em>120 seconds.</em>
+                  </Mask>
                 </h2>
                 <p>Light that left the nebula 1,344 years ago lands on the sensor.</p>
               </div>
               <div className="ln">
                 <h2 className="xl">
-                  Stacked
-                  <br />
-                  <em>by hand.</em>
+                  <Mask>Stacked</Mask>
+                  <Mask>
+                    <em>by hand.</em>
+                  </Mask>
                 </h2>
                 <p>Dozens of frames, aligned and cleaned until the colour comes through.</p>
               </div>
               <div className="ln">
                 <h2 className="xl">
-                  Sealed in
-                  <br />
-                  <em>a capsule.</em>
+                  <Mask>Sealed in</Mask>
+                  <Mask>
+                    <em>a capsule.</em>
+                  </Mask>
                 </h2>
                 <p>One card, numbered and sealed. The odds are published before sale.</p>
               </div>
               <div className="ln last">
                 <h2 className="xl">
-                  Yours
-                  <br />
-                  <em>to keep.</em>
+                  <Mask>Yours</Mask>
+                  <Mask>
+                    <em>to keep.</em>
+                  </Mask>
                 </h2>
                 <p>{setSize} cards in the Genesis series. Start with one.</p>
                 <div className="cta acts">
