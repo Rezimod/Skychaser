@@ -310,7 +310,7 @@ html.lenis, html.lenis body { height: auto; }
   .ed .hero .steps { width: 100%; height: calc(min(64px, 14.5vw) * 1.84 + 200px); }
   .ed .hero .ln p { font-size: 15px; margin-top: 14px; }
   .ed .hero .meta { display: none; }
-  .ed .hero .bg:first-child > img { object-position: 30% 50%; } /* keep Orion, not the empty sky, in a tall crop */
+  .ed .hero .bg:first-child img { object-position: 42% 40%; }
   .ed .hero .shade { background: linear-gradient(to top, rgba(5, 6, 10, 0.95) 0%, rgba(5, 6, 10, 0.4) 45%, rgba(5, 6, 10, 0) 65%), linear-gradient(to bottom, rgba(5, 6, 10, 0.6), rgba(5, 6, 10, 0) 18%); }
   .ed .hero .copy { bottom: 28px; }
   .ed .hero .cta { margin-top: 20px; }

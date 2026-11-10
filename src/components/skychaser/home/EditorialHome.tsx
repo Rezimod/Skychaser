@@ -437,15 +437,19 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         <section className="hero" aria-label="How light becomes a card">
           <div className="bgs">
             <div className="bg">
-              <img
-                className="kb"
-                src="/home/orion-1280.webp"
-                srcSet="/home/orion-1280.webp 1280w, /home/orion-2200.webp 2200w"
-                sizes="100vw"
-                alt="Orion rising over a ruined castle at night"
-                fetchPriority="high"
-                decoding="async"
-              />
+              {/* Wide screens: turned a quarter, north to the left, the way Orion rises in the east. */}
+              <picture>
+                <source media="(max-width: 820px)" srcSet="/home/orion-tall-900.webp 900w, /home/orion-tall-1400.webp 1400w" sizes="100vw" />
+                <img
+                  className="kb"
+                  src="/home/orion-1280.webp"
+                  srcSet="/home/orion-1280.webp 1280w, /home/orion-2200.webp 2200w"
+                  sizes="100vw"
+                  alt="Orion in a deep exposure: Barnard's Loop, the Orion Nebula, the Horsehead, red Betelgeuse"
+                  fetchPriority="high"
+                  decoding="async"
+                />
+              </picture>
             </div>
             <div className="bg raw">
               <img
@@ -632,7 +636,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         </section>
 
         {/* ── One night at the telescope ──────────────────── */}
-        <section className="night" id="night" aria-label="One night at the observatory">
+        <section className="night" id="night" aria-label="One night on the roof">
           <canvas ref={skyCanvas} className="sky" role="img" aria-label="The sky over Tbilisi on the night of 14 November, hour by hour, with the telescope's target marked" />
           <div className="shade" />
           <div className="head">
@@ -883,7 +887,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
           <div className="legal">
             <span>© 2026 Skychaser · Tbilisi</span>
             <span className="credits">
-              Orion over a ruined castle: Carlos Zudaire/IAU OAE, CC BY 4.0 · Night sky: Hipparcos stars and IAU figures via d3-celestial (BSD), positions by astronomy-engine · Orion Nebula,
+              Orion, head to toe: Rogelio Bernal Andreo, CC BY-SA 3.0, turned and darkened · Night sky: Hipparcos stars and IAU figures via d3-celestial (BSD), positions by astronomy-engine · Orion Nebula,
               Pillars of Creation: NASA, ESA, Hubble · The Moon: NASA/GSFC/Arizona State University · The raw frame and the capsule scene are illustrations.
             </span>
             <nav aria-label="Legal">
