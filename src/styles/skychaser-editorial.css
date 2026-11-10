@@ -147,12 +147,13 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ── The collection, sideways ────────────────────────────────── */
 .ed .coll { position: relative; height: 100vh; height: 100svh; overflow: hidden; background: var(--bg); isolation: isolate; }
-.ed .coll .glow { position: absolute; z-index: -1; inset: 0; opacity: 0; background: radial-gradient(56% 64% at 50% 52%, rgba(var(--c), 0.85), rgba(var(--c), 0.28) 48%, rgba(var(--c), 0) 80%); }
+.ed .coll .glow { position: absolute; z-index: -1; inset: 0; opacity: 0; background: radial-gradient(30% 40% at 50% 54%, rgba(var(--c), 0.9), rgba(var(--c), 0) 100%), radial-gradient(70% 80% at 50% 56%, rgba(var(--c), 0.45), rgba(var(--c), 0.12) 55%, rgba(var(--c), 0) 85%); }
+.ed .coll::after { content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(120% 90% at 50% 50%, rgba(5, 6, 10, 0) 55%, rgba(5, 6, 10, 0.7) 100%); }
 .ed .coll .glow:first-child { opacity: 1; }
 .ed .coll .track { position: relative; display: flex; width: max-content; height: 100%; }
 .ed .coll .slide { position: relative; display: grid; place-items: center; padding-top: 6vh; width: 100vw; height: 100%; flex: none; overflow: hidden; }
-.ed .coll .word { position: absolute; left: 50%; top: 50%; font-family: var(--wide); font-stretch: 125%; font-weight: 200; font-size: min(17vw, 42vh); line-height: 0.8; text-transform: uppercase; white-space: nowrap; color: rgba(255, 255, 255, 0.16); pointer-events: none; transform: translate(-50%, -50%); }
-.ed .coll .tilt { position: relative; z-index: 2; height: min(52vh, 540px); }
+.ed .coll .word { position: absolute; left: 50%; top: 50%; font-family: var(--wide); font-stretch: 125%; font-weight: 200; font-size: min(17vw, 42vh); line-height: 0.8; text-transform: uppercase; white-space: nowrap; color: transparent; background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.02) 90%); -webkit-background-clip: text; background-clip: text; -webkit-text-stroke: 1px rgba(255, 255, 255, 0.14); pointer-events: none; transform: translate(-50%, -50%); }
+.ed .coll .tilt { position: relative; z-index: 2; height: min(56vh, 580px); }
 .ed .coll .corner { position: absolute; z-index: 5; }
 .ed .coll .tl { left: var(--pad); top: 96px; }
 .ed .coll .tl .xl2 { font-size: clamp(22px, 2.2vw, 34px); }
@@ -161,7 +162,8 @@ html.lenis, html.lenis body { height: auto; }
 .ed .coll .all:hover { color: #fff; }
 .ed .coll .tr { right: var(--pad); top: 96px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .ed .coll .tr .big { font-family: var(--wide); font-stretch: 125%; font-weight: 200; font-size: clamp(44px, 4.6vw, 72px); line-height: 0.9; font-variant-numeric: tabular-nums; }
-.ed .coll .bl { left: var(--pad); bottom: clamp(28px, 5vh, 48px); max-width: 440px; }
+.ed .coll .tr .big small { margin-left: 6px; font-size: 0.32em; font-weight: 300; color: var(--ink-3); vertical-align: top; }
+.ed .coll .bl { left: var(--pad); bottom: clamp(28px, 5vh, 48px); max-width: 540px; }
 .ed .coll .bl b { display: block; margin-top: 10px; font-family: var(--wide); font-stretch: 112%; font-weight: 400; font-size: clamp(17px, 1.4vw, 21px); line-height: 1.3; text-transform: uppercase; }
 .ed .coll .bc { left: 50%; bottom: clamp(36px, 5.8vh, 56px); display: flex; gap: 8px; align-items: center; transform: translateX(-50%); }
 .ed .coll .bc i { display: block; width: 8px; height: 8px; border-radius: 99px; border: 1px solid rgba(255, 255, 255, 0.5); transition: width 0.4s var(--ease), background-color 0.4s, border-color 0.4s; }
@@ -177,10 +179,8 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ── One night at the telescope ──────────────────────────────── */
 .ed .night { position: relative; height: 100vh; height: 100svh; overflow: hidden; background: var(--bg); }
-.ed .night .ph { position: absolute; inset: 0; }
-.ed .night .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
-.ed .night .ph .n { opacity: 0; filter: brightness(1.3); }
-.ed .night .shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(5, 6, 10, 0.75) 0%, rgba(5, 6, 10, 0.2) 45%, rgba(5, 6, 10, 0.45) 100%), linear-gradient(to top, rgba(5, 6, 10, 0.8), rgba(5, 6, 10, 0) 45%), linear-gradient(to bottom, rgba(5, 6, 10, 0.7), rgba(5, 6, 10, 0) 20%); }
+.ed .night .sky { position: absolute; inset: 0; width: 100%; height: 100%; display: block; font-family: var(--sans); }
+.ed .night .shade { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(48% 46% at 0% 100%, rgba(3, 4, 9, 0.85), rgba(3, 4, 9, 0)), linear-gradient(to bottom, rgba(3, 4, 9, 0.6), rgba(3, 4, 9, 0) 16%); }
 .ed .night .head { position: absolute; left: var(--pad); bottom: clamp(28px, 5vh, 52px); max-width: 640px; }
 .ed .night .head h2 { margin-top: 22px; }
 .ed .night .head p { max-width: 400px; margin-top: 18px; color: var(--ink-2); }
@@ -188,10 +188,12 @@ html.lenis, html.lenis body { height: auto; }
 .ed .ncard .top { display: flex; justify-content: space-between; align-items: flex-start; }
 .ed .ncard .clock { font-family: var(--wide); font-stretch: 125%; font-weight: 200; font-size: 64px; line-height: 0.9; font-variant-numeric: tabular-nums; }
 .ed .ncard .top .lbl { margin-top: 4px; text-align: right; }
-.ed .ncard .ttl { margin-top: 22px; font-family: var(--wide); font-stretch: 112%; font-weight: 400; font-size: 19px; line-height: 1.25; text-transform: uppercase; }
+.ed .ncard .aim { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 18px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 138, 91, 0.08); border: 1px solid rgba(255, 138, 91, 0.22); font-size: 13px; font-weight: 600; color: #ffc3a6; font-variant-numeric: tabular-nums; }
+.ed .ncard .aim .lbl { font-size: 10px; color: rgba(255, 195, 166, 0.7); }
+.ed .ncard .ttl { margin-top: 20px; font-family: var(--wide); font-stretch: 112%; font-weight: 400; font-size: 19px; line-height: 1.25; text-transform: uppercase; }
 .ed .ncard .txt { min-height: 42px; margin-top: 8px; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
 .ed .ncard .drop { display: flex; align-items: center; gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
-.ed .ncard .drop img { width: 46px; height: auto; flex: none; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)); }
+.ed .ncard .drop img { width: 56px; height: auto; flex: none; filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)); }
 .ed .ncard .drop .lbl { font-size: 10px; }
 .ed .ncard .drop b { display: block; margin-top: 2px; font-size: 14px; font-weight: 600; }
 .ed .ncard .drop .p { font-size: 12px; color: var(--ink-3); }
@@ -199,6 +201,7 @@ html.lenis, html.lenis body { height: auto; }
 .ed .ncard .rail, .ed .ncard .fill { position: absolute; left: 0; right: 0; top: 4px; height: 2px; border-radius: 2px; }
 .ed .ncard .rail { background: rgba(255, 255, 255, 0.1); }
 .ed .ncard .fill { background: var(--accent); transform-origin: left; transform: scaleX(0); }
+.ed .ncard .tline > i { position: absolute; top: 2px; width: 6px; height: 6px; margin-left: -3px; border-radius: 99px; background: #0d0f18; border: 1px solid rgba(255, 255, 255, 0.45); }
 .ed .ncard .ends { position: absolute; left: 0; right: 0; top: 12px; display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .ed .ncard .swp { transition: opacity 0.3s; }
 .ed .ncard .swp.out { opacity: 0; }
@@ -292,6 +295,7 @@ html.lenis, html.lenis body { height: auto; }
 }
 /* short laptop screens: the odds live in the list, the bars step aside */
 @media (min-width: 821px) and (max-height: 760px) {
+  .ed .coll .tilt { height: 50vh; }
   .ed .buy .odds { display: none; }
 }
 
@@ -335,10 +339,13 @@ html.lenis, html.lenis body { height: auto; }
   .ed .night .head { top: 84px; bottom: auto; right: var(--pad); }
   .ed .night .head p { display: none; }
   .ed .night .head h2 { margin-top: 16px; }
-  .ed .night .ph img { object-position: 58% 40%; }
   .ed .ncard { left: var(--pad); right: var(--pad); top: auto; bottom: 24px; width: auto; padding: 18px; transform: none; }
   .ed .ncard .clock { font-size: 48px; }
   .ed .ncard .ttl { margin-top: 12px; font-size: 17px; }
+  .ed .ncard .aim { margin-top: 12px; padding: 8px 10px; font-size: 12px; }
+  .ed .ncard .txt { min-height: 0; font-size: 13px; }
+  .ed .ncard .drop { margin-top: 12px; padding-top: 12px; }
+  .ed .ncard .drop img { width: 40px; }
 
   .ed .cap { height: auto; }
   .ed .cap .in { position: relative; display: flex; flex-direction: column; gap: 28px; padding: 96px var(--pad) 56px; }
@@ -384,5 +391,4 @@ html.lenis, html.lenis body { height: auto; }
 .ed.rm .coll .mi .row { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; }
 .ed.rm .coll .mi .end { display: flex; align-items: center; gap: 12px; }
 .ed.rm .case .lid { display: none; }
-.ed.rm .night .ph .n { opacity: 1; }
 .ed.rm .coll .mi b { font-family: var(--wide); font-stretch: 112%; font-weight: 400; font-size: 16px; line-height: 1.3; text-transform: uppercase; }

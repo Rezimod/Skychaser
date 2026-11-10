@@ -7,6 +7,8 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import SkychaserAccountGate from '@/components/skychaser/SkychaserAccountGate';
 import type { Rarity } from '@/lib/rarity';
+import type { NightSkyData } from '@/lib/skychaser/night-sky';
+import { compass, createSky } from './night-sky-canvas';
 import { WORDMARK_GLYPHS } from './wordmark';
 
 export type FeatureCard = {
@@ -23,7 +25,7 @@ export type FeatureCard = {
   rgb: [number, number, number];
 };
 export type GridCard = { designation: string; name: string; rarity: Rarity; no: number; line: string; perk: string };
-export type NightStep = { at: number; title: string; text: string; designation: string; card: string; perk: string };
+export type NightStep = { at: number; aim: string; title: string; text: string; designation: string; card: string; perk: string };
 export type TierRow = { name: string; price: string; odds: { rarity: Rarity; label: string; pct: string; bps: number }[] };
 
 type Props = {
@@ -35,6 +37,7 @@ type Props = {
   night: NightStep[];
   nightFrom: number;
   nightTo: number;
+  sky: NightSkyData;
   tiers: TierRow[];
   scope: { site: string; optics: string; aperture: number; minutes: number };
 };
@@ -98,7 +101,7 @@ function Card({ designation, alt, delay = 0, eager = false }: { designation: str
  * Reduced motion gets each scene at its last state. Every number is passed in
  * from the set, the capsule tiers and the telescope's record.
  */
-export default function EditorialHome({ fontClass, setSize, fromPrice, feature, grid, night, nightFrom, nightTo, tiers, scope }: Props) {
+export default function EditorialHome({ fontClass, setSize, fromPrice, feature, grid, night, nightFrom, nightTo, sky, tiers, scope }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
 
@@ -127,8 +130,22 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
   const clockRef = useRef<HTMLDivElement>(null);
   const fillRef = useRef<HTMLDivElement>(null);
   const clockText = useRef('');
+  const skyCanvas = useRef<HTMLCanvasElement>(null);
+  const skyRef = useRef<ReturnType<typeof createSky> | null>(null);
+  const aimRef = useRef<HTMLSpanElement>(null);
+  const aimText = useRef('');
+  const nightMin = useRef(0);
   const setNight = useCallback(
     (min: number) => {
+      nightMin.current = min;
+      const p = skyRef.current?.draw(min);
+      if (p && aimRef.current) {
+        const a = p.slewing ? `Slewing to ${p.name}…` : `${p.name} · ${Math.round(p.alt)}° up, ${compass(p.az)}`;
+        if (a !== aimText.current) {
+          aimText.current = a;
+          aimRef.current.textContent = a;
+        }
+      }
       const h = (nightFrom + Math.floor(min / 60)) % 24;
       const t = hhmm(h, Math.floor((min % 60) / 10) * 10);
       if (t !== clockText.current && clockRef.current) {
@@ -138,7 +155,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
       if (fillRef.current) fillRef.current.style.transform = `scaleX(${Math.min(1, min / nightMinutes)})`;
       let s = 0;
       night.forEach((n, i) => {
-        if (min >= n.at - 5) s = i;
+        if (min >= n.at) s = i;
       });
       if (s === nsRef.current) return;
       nsRef.current = s;
@@ -193,11 +210,20 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
     };
     fitWords();
     window.addEventListener('resize', fitWords);
+    if (skyCanvas.current) skyRef.current = createSky(skyCanvas.current, sky, night);
+    const redrawSky = () => {
+      skyRef.current?.resize();
+      setNight(nightMin.current);
+    };
+    window.addEventListener('resize', redrawSky);
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       el.classList.add('rm');
-      setNight(night[2]?.at ?? 0);
-      return () => window.removeEventListener('resize', fitWords);
+      setNight((night[1]?.at ?? 0) + 20);
+      return () => {
+        window.removeEventListener('resize', fitWords);
+        window.removeEventListener('resize', redrawSky);
+      };
     }
 
     gsap.registerPlugin(ScrollTrigger);
@@ -257,9 +283,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
           scrollTrigger: { trigger: one('.night'), start: 'top top', end: '+=240%', pin: true, scrub: 0.8, refreshPriority: 2 },
         })
         .to(clock, { m: nightMinutes, duration: 11, onUpdate: () => setNight(clock.m) }, 0)
-        .to(one('.night .ph .n'), { opacity: 1, duration: 2.4 }, 1.4)
-        .fromTo(q('.night .ph img'), { scale: 1.08 }, { scale: 1, duration: 11 }, 0)
-        .to(one('.night .head'), { opacity: 0, y: -20, duration: 1 }, 4);
+        .to(one('.night .head'), { opacity: 0, y: -20, duration: 1 }, 3.4);
 
       // The telescope and the sign-off rise in
       gsap.from(q('.scope .rise'), {
@@ -360,6 +384,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
 
     return () => {
       window.removeEventListener('resize', fitWords);
+      window.removeEventListener('resize', redrawSky);
       window.removeEventListener('load', refresh);
       ScrollTrigger.removeEventListener('refreshInit', fitWords);
       mm.revert();
@@ -580,16 +605,17 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             </Link>
           </div>
           <div className={`corner tr sw${cardOut ? ' out' : ''}`}>
-            <div className="big">No. {f.no}</div>
+            <div className="big">
+              No. {f.no}
+              <small>/{setSize}</small>
+            </div>
             <span className="k" data-rarity={f.rarity}>
               <i className="dot" />
-              {RARITY[f.rarity]} · of {setSize}
+              {RARITY[f.rarity]} · {f.editions} editions
             </span>
           </div>
           <div className={`corner bl sw${cardOut ? ' out' : ''}`}>
-            <span className="k">
-              {f.type} · {f.perk} · {f.editions} editions
-            </span>
+            <span className="k">{f.type}</span>
             <b>{f.note}</b>
           </div>
           <div className="corner bc" aria-hidden="true">
@@ -607,27 +633,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
 
         {/* ── One night at the telescope ──────────────────── */}
         <section className="night" id="night" aria-label="One night at the observatory">
-          <div className="ph">
-            <img
-              className="k"
-              src="/home/night-dusk-1280.webp"
-              srcSet="/home/night-dusk-1280.webp 1280w, /home/night-dusk-2200.webp 2200w"
-              sizes="100vw"
-              alt="An observatory dome at dusk, its slit open"
-              loading="lazy"
-              decoding="async"
-            />
-            <img
-              className="n"
-              src="/home/night-night-1280.webp"
-              srcSet="/home/night-night-1280.webp 1280w, /home/night-night-2200.webp 2200w"
-              sizes="100vw"
-              alt=""
-              aria-hidden="true"
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
+          <canvas ref={skyCanvas} className="sky" role="img" aria-label="The sky over Tbilisi on the night of 14 November, hour by hour, with the telescope's target marked" />
           <div className="shade" />
           <div className="head">
             <span className="status glass">
@@ -637,9 +643,12 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             <h2 className="xl2">
               One night
               <br />
-              <em>at the observatory.</em>
+              <em>on the roof.</em>
             </h2>
-            <p>Holders vote on the target, and the telescope works from dusk until two.</p>
+            <p>
+              Holders vote on the target, and a {scope.aperture} mm telescope on a {scope.site.split(',')[0]} roof works from {hhmm(nightFrom, 0)} until {hhmm(nightTo % 24, 0)}. This is
+              the real sky of 14 November.
+            </p>
           </div>
           <article className="ncard glass">
             <div className="top">
@@ -652,11 +661,15 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                 GMT+4
               </span>
             </div>
+            <div className="aim">
+              <span className="lbl">Telescope on</span>
+              <span ref={aimRef} />
+            </div>
             <div className={`swp${nightOut ? ' out' : ''}`}>
               <div className="ttl">{n.title}</div>
               <p className="txt">{n.text}</p>
               <div className="drop">
-                <img src={art(n.designation, true)} alt="" width={46} height={64} loading="lazy" />
+                <img src={art(n.designation, true)} alt="" width={56} height={78} loading="lazy" />
                 <div>
                   <span className="lbl">Drops into</span>
                   <b>{n.card}</b>
@@ -667,6 +680,9 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             <div className="tline" aria-hidden="true">
               <div className="rail" />
               <div className="fill" ref={fillRef} />
+              {night.map((x, i) => (
+                <i key={i} style={{ left: `${(x.at / nightMinutes) * 100}%` }} />
+              ))}
               <div className="ends">
                 <span>{hhmm(nightFrom, 0)}</span>
                 <span>{hhmm(nightTo % 24, 0)}</span>
@@ -867,7 +883,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
           <div className="legal">
             <span>© 2026 Skychaser · Tbilisi</span>
             <span className="credits">
-              Orion over a ruined castle: Carlos Zudaire/IAU OAE, CC BY 4.0 · Observatory: ESO/H.H. Heyer, CC BY 4.0, regraded for night · Orion Nebula,
+              Orion over a ruined castle: Carlos Zudaire/IAU OAE, CC BY 4.0 · Night sky: Hipparcos stars and IAU figures via d3-celestial (BSD), positions by astronomy-engine · Orion Nebula,
               Pillars of Creation: NASA, ESA, Hubble · The Moon: NASA/GSFC/Arizona State University · The raw frame and the capsule scene are illustrations.
             </span>
             <nav aria-label="Legal">

@@ -7,6 +7,7 @@ import { getNode } from '@/lib/observatory/nodes';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { SET_001_CARDS } from '@/lib/sets/set-001';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
+import { nightSky } from '@/lib/skychaser/night-sky';
 import { perkFor, SESSION_MINUTES } from '@/lib/skychaser/perks';
 import { formatOdds, TIERS } from '@/lib/skychaser/tiers';
 import '@/styles/skychaser-editorial.css';
@@ -52,25 +53,32 @@ function facts(designation: string) {
 
 /** The shelf: six cards across the set, each lit in the colour its art is printed in, with one field note. */
 const FEATURE: { d: string; word: string; note: string; rgb: [number, number, number] }[] = [
-  { d: 'SATURN', word: 'Saturn', note: 'Ice as small as sand, as big as houses.', rgb: [134, 104, 68] },
-  { d: 'ORION', word: 'Orion', note: 'Seven bright stars, one hunter, seen from everywhere on Earth.', rgb: [44, 52, 120] },
-  { d: 'M31', word: 'Andromeda', note: 'Its light set out 2.5 million years ago.', rgb: [70, 52, 116] },
-  { d: 'BETELGEUSE', word: 'Betelgeuse', note: 'Large enough to reach past the orbit of Mars.', rgb: [130, 36, 30] },
-  { d: 'JUPITER', word: 'Jupiter', note: 'A storm wider than Earth, turning for centuries.', rgb: [142, 94, 56] },
-  { d: 'CANYON-DIABLO', word: 'Diablo', note: 'Comes with a real piece of the meteorite.', rgb: [70, 74, 82] },
+  { d: 'SATURN', word: 'Saturn', note: 'Ice as small as sand, as big as houses.', rgb: [150, 108, 52] },
+  { d: 'ORION', word: 'Orion', note: 'Seven bright stars, one hunter, seen from everywhere on Earth.', rgb: [40, 56, 150] },
+  { d: 'M31', word: 'Andromeda', note: 'Its light set out 2.5 million years ago.', rgb: [78, 52, 140] },
+  { d: 'BETELGEUSE', word: 'Betelgeuse', note: 'Large enough to reach past the orbit of Mars.', rgb: [150, 40, 28] },
+  { d: 'JUPITER', word: 'Jupiter', note: 'A storm wider than Earth, turning for centuries.', rgb: [156, 96, 50] },
+  { d: 'CANYON-DIABLO', word: 'Diablo', note: 'Comes with a real piece of the meteorite.', rgb: [88, 84, 80] },
 ];
 
 /** The nine cards in the open case. */
 const GRID = ['ORION', 'SATURN', 'M31', 'BETELGEUSE', 'CANYON-DIABLO', 'M42', 'HORSEHEAD', 'JUPITER', 'M51'];
 
-/** One night at the telescope, in minutes after it opens (20:00 Tbilisi; it works until 02:00). */
-const NIGHT: { at: number; title: string; text: string; d: string }[] = [
-  { at: 0, title: 'The dome opens.', text: 'Holders have voted. Tonight’s target: Orion.', d: 'ORION' },
-  { at: 30, title: 'Saturn, high in the south.', text: 'Epic holders take the first 30-minute sessions.', d: 'SATURN' },
-  { at: 120, title: 'Orion clears the ridge.', text: 'Rare holders join as visitors and watch the frames land.', d: 'M42' },
-  { at: 210, title: '120-second exposures.', text: 'The camera stacks the nebula, frame by frame.', d: 'M42' },
-  { at: 290, title: 'Jupiter, up in the east.', text: 'The last sessions of the night, at the sharpest seeing.', d: 'JUPITER' },
-  { at: 345, title: 'The dome closes.', text: 'Every holder of tonight’s card gets the image.', d: 'ORION' },
+/**
+ * One night on the roof, in minutes after 20:00 Tbilisi time (the telescope works until 02:00),
+ * on 14 November 2026. Every position and time below is that night's real sky, computed with
+ * astronomy-engine: the crescent Moon sets at 21:27, Saturn crosses the meridian at 22:00,
+ * Andromeda passes nearly overhead, the Orion Nebula rises after 21:00, Jupiter and Mars rise together at 00:25.
+ */
+const NIGHT_START = new Date(Date.UTC(2026, 10, 14, 16));
+const NIGHT: { at: number; title: string; text: string; d: string; aim: string }[] = [
+  { at: 0, title: 'Set up on the roof.', text: 'A thin crescent Moon, low in the south-west. It sets at 21:27.', d: 'MOON', aim: 'Moon' },
+  { at: 30, title: 'Saturn, climbing south.', text: `It is highest at 22:00. Epic holders take the first ${SESSION_MINUTES}-minute sessions.`, d: 'SATURN', aim: 'Saturn' },
+  { at: 100, title: 'Andromeda, nearly overhead.', text: 'A galaxy 2.5 million light years away, almost straight up.', d: 'M31', aim: 'M31' },
+  { at: 180, title: 'Orion clears the rooftops.', text: 'Holders voted for its nebula. Clear of the roofs, it is high enough to start.', d: 'M42', aim: 'M42' },
+  { at: 240, title: '120-second exposures.', text: 'The camera stacks the nebula frame by frame. Rare holders drawn for a seat watch live.', d: 'M42', aim: 'M42' },
+  { at: 300, title: 'Jupiter and Mars rise together.', text: 'Just over a degree apart, low in the east.', d: 'JUPITER', aim: 'Jupiter' },
+  { at: 330, title: 'The night’s picture.', text: 'Every holder of the Orion Nebula card gets the stacked image.', d: 'M42', aim: 'M42' },
 ];
 
 export default function HomePage() {
@@ -99,7 +107,7 @@ export default function HomePage() {
   });
   const night: NightStep[] = NIGHT.map((n) => {
     const c = facts(n.d);
-    return { at: n.at, title: n.title, text: n.text, designation: n.d, card: `${c.name} · No. ${c.no}`, perk: `${RARITY_NAME[c.rarity]} · ${c.perk.short}` };
+    return { at: n.at, aim: n.aim, title: n.title, text: n.text, designation: n.d, card: `${c.name} · No. ${c.no}`, perk: `${RARITY_NAME[c.rarity]} · ${c.perk.short}` };
   });
   const tiers: TierRow[] = TIERS.map((t) => ({
     name: t.name,
@@ -119,6 +127,7 @@ export default function HomePage() {
         night={night}
         nightFrom={hours.fromHourLocal}
         nightTo={hours.toHourLocal}
+        sky={nightSky(NIGHT_START, node.lat, node.lon)}
         tiers={tiers}
         scope={{
           site: node.site,
