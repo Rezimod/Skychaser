@@ -295,8 +295,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         return `inset(${y}px ${hero.clientWidth - x - w}px ${hero.clientHeight - y - h}px ${x}px round ${Math.round(w * 0.05)}px)`;
       };
       gsap.from(pic.querySelector('img'), { scale: 1.1, duration: 2.4, ease: 'power2.out' });
-      const step = one('.hero .meta .num');
-      const bar = one('.hero .meta .bar i');
       const tl = gsap.timeline({
         defaults: { ease: 'none' },
         scrollTrigger: {
@@ -308,11 +306,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
           scrub: 0.35,
           anticipatePin: 1,
           invalidateOnRefresh: true,
-          onUpdate: (s) => {
-            const i = Math.min(N - 1, Math.round(s.progress * tl.duration()));
-            step.textContent = `${String(i + 1).padStart(2, '0')} / ${String(N).padStart(2, '0')}`;
-            bar.style.transform = `scaleX(${0.2 + 0.8 * s.progress})`;
-          },
         },
       });
       for (let i = 0; i < N - 1; i++) {
@@ -334,7 +327,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         .fromTo(seal, { opacity: 0 }, { opacity: 1, duration: 0.24 }, 2.4)
         .to(colour, { opacity: 0, duration: 0.16 }, 2.58)
         .fromTo(slot, { yPercent: -5 }, { yPercent: 0, duration: 0.3, ease: 'power2.out' }, 2.5)
-        .fromTo(one('.seal .band'), { yPercent: -112, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 0.3, ease: 'power3.out' }, 2.7)
         .to(one('.sealcase'), { scale: 0.9, opacity: 0, duration: 0.36, ease: 'power2.in' }, 3.06)
         .fromTo(keep, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 3.2)
         .fromTo(one('.keep .blur'), { scale: 1.25 }, { scale: 1, duration: 0.7, ease: 'power2.out' }, 3.2)
@@ -555,9 +547,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                       <img src={art('M42')} alt="The Orion Nebula card going into its black capsule case" width={520} height={727} decoding="async" />
                     </div>
                   </div>
-                  <div className="band">
-                    <span>Sealed · Genesis</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -628,13 +617,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                   </Btn>
                 </div>
               </div>
-            </div>
-            <div className="meta" aria-hidden="true">
-              <span className="num">01 / 05</span>
-              <div className="bar">
-                <i />
-              </div>
-              <span className="lbl">Scroll</span>
             </div>
           </div>
         </section>
