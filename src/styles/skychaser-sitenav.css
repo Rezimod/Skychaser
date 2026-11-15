@@ -1,0 +1,57 @@
+/* The top bar, the same on every page: mark and wordmark, the four
+   destinations in a glass pill, the account and one action. It sits at the
+   top of the page and stays there; on the home page it floats over the hero. */
+
+.snav {
+  --snav-pad: clamp(20px, 3vw, 48px);
+  position: sticky; top: 0; z-index: 50;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px;
+  min-height: var(--sd-bar-h, 76px); padding: 14px var(--snav-pad);
+  font-family: var(--font-geist), system-ui, sans-serif; line-height: 1.5; color: #f4f4f6;
+}
+.snav--over { position: fixed; inset: 0 0 auto 0; }
+.snav *, .snav *::before, .snav *::after { box-sizing: border-box; }
+.snav a { color: inherit; text-decoration: none; }
+.snav :focus-visible { outline: 2px solid #ff8a5b; outline-offset: 3px; }
+.snav::before { content: ''; position: absolute; inset: 0 0 -24px; z-index: -1; pointer-events: none; background: linear-gradient(to bottom, rgba(5, 6, 10, 0.8), rgba(5, 6, 10, 0.35) 70%, rgba(5, 6, 10, 0)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+
+.snav__brand { position: relative; display: inline-flex; align-items: center; gap: 12px; justify-self: start; }
+.snav__brand img { display: block; width: 32px; height: 32px; }
+.snav__wm { display: block; height: 22px; width: auto; margin-left: -10px; color: #fff; }
+
+.snav__menu { display: flex; gap: 2px; padding: 5px; border-radius: 999px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)); border: 1px solid rgba(255, 255, 255, 0.1); -webkit-backdrop-filter: blur(18px) saturate(1.2); backdrop-filter: blur(18px) saturate(1.2); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+.snav__menu a { padding: 9px 18px; border-radius: 999px; font-size: 13.5px; color: rgba(244, 244, 246, 0.7); transition: color 0.25s, background-color 0.25s; }
+.snav__menu a:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
+.snav__menu a[aria-current='page'] { color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+.snav__end { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.snav__cta { display: inline-flex; align-items: center; gap: 12px; height: 40px; padding: 0 4px 0 18px; border-radius: 999px; background: #fff; color: #0a0a0a !important; font-size: 11.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.snav__cta i { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 99px; background: #0a0a0a; color: #fff; transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.1, 1); }
+.snav__cta svg { width: 14px; height: 14px; }
+.snav__cta:hover i { transform: rotate(45deg); }
+
+html body .skychaser .snav .snav__end .sd-chip.sd-chip--cta,
+html body .skychaser .snav .snav__end .sd-chip.sd-chip--cta:is(:hover, :focus-visible, :active):not(:disabled) {
+  height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04);
+  color: #fff; box-shadow: none; text-shadow: none; font: 600 11.5px var(--font-geist), system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+}
+html body .skychaser .snav .snav__end .sd-chip.sd-chip--cta:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.08); }
+
+@media (max-width: 1180px) and (min-width: 901px) {
+  .snav__menu a { padding: 9px 12px; }
+}
+@media (max-width: 900px) {
+  .snav { grid-template-columns: 1fr auto; }
+  .snav__menu, .snav__cta { display: none; }
+}
+@media (max-width: 767px) {
+  .snav__brand img { width: 28px; height: 28px; }
+  .snav__wm { height: 19px; }
+  .snav .sd-acct { height: 36px; }
+  .snav .sd-acct__seg { padding: 0 10px; }
+  .snav .sd-acct__in span { display: none; }
+  .snav .sd-avatar { width: 36px; height: 36px; }
+}
+@media (pointer: coarse) {
+  .snav__brand::after { content: ''; position: absolute; inset: -12px -8px; }
+}

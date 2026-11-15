@@ -23,17 +23,7 @@
 .sd-tabs { display: none; }
 
 @media (max-width: 767px) {
-  .skychaser { --sd-bar-h: 56px; --sd-tabs-h: calc(76px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--sd-tabs-h); }
-
-  /* The top bar: the mark and the account, nothing else. */
-  .sd-bar__inner { grid-template-columns: 1fr auto; grid-template-areas: "mark account"; padding-top: 0; min-height: var(--sd-bar-h); }
-  .sd-bar .sd-bar__links { display: none; }
-  .sd-bar .sd-chip { height: 40px; }
-  .sd-bar .sd-chip--cta { padding: 0 16px; font-size: 14px; }
-  .sd-bar .sd-acct { height: 36px; }
-  .sd-bar .sd-acct__seg { padding: 0 10px; }
-  .sd-bar .sd-acct__in span { display: none; }
-  .sd-bar .sd-avatar { width: 36px; height: 36px; }
+  .skychaser { --sd-bar-h: 68px; --sd-tabs-h: calc(76px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--sd-tabs-h); }
 
   /* The bottom bar: a floating capsule, its tabs sharing the width equally. */
   .skychaser .sd-tabs {

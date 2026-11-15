@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
-import SkychaserAccountGate from '@/components/skychaser/SkychaserAccountGate';
+import SiteNav from '@/components/skychaser/SiteNav';
 import type { Rarity } from '@/lib/rarity';
 import type { NightSkyData } from '@/lib/skychaser/night-sky';
 import { compass, createSky } from './night-sky-canvas';
@@ -24,21 +24,17 @@ export type FeatureCard = {
   note: string;
   rgb: [number, number, number];
 };
-export type GridCard = { designation: string; name: string; rarity: Rarity; no: number; line: string; perk: string };
 export type NightStep = { at: number; aim: string; title: string; text: string; designation: string; card: string; perk: string };
-export type TierRow = { name: string; price: string; odds: { rarity: Rarity; label: string; pct: string; bps: number }[] };
 
 type Props = {
   fontClass: string;
   setSize: number;
   fromPrice: string;
   feature: FeatureCard[];
-  grid: GridCard[];
   night: NightStep[];
   nightFrom: number;
   nightTo: number;
   sky: NightSkyData;
-  tiers: TierRow[];
   scope: { site: string; optics: string; aperture: number; minutes: number };
 };
 
@@ -103,12 +99,12 @@ function Card({ designation, alt, delay = 0, eager = false }: { designation: str
 /**
  * The home page as one scroll story: how light becomes a card (pinned), the
  * collection (pinned, sideways), one night at the telescope (pinned, a clock),
- * the capsule opening (pinned), then the telescope and the sign-off. GSAP
+ * then the telescope and the sign-off. GSAP
  * ScrollTrigger drives every scene; Lenis smooths the wheel and feeds it.
  * Reduced motion gets each scene at its last state. Every number is passed in
- * from the set, the capsule tiers and the telescope's record.
+ * from the set and the telescope's record.
  */
-export default function EditorialHome({ fontClass, setSize, fromPrice, feature, grid, night, nightFrom, nightTo, sky, tiers, scope }: Props) {
+export default function EditorialHome({ fontClass, setSize, fromPrice, feature, night, nightFrom, nightTo, sky, scope }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
 
@@ -175,10 +171,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
     },
     [night, nightFrom, nightMinutes],
   );
-
-  // The capsule: the tier chosen, and the card under the pointer or the focus.
-  const [tier, setTier] = useState(0);
-  const [active, setActive] = useState<number | null>(null);
 
   // The sign-off: one email when a series opens. There is no list yet, so the note goes by email.
   const [mailNote, setMailNote] = useState('');
@@ -370,7 +362,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
       });
     }, el);
 
-    // The collection sideways and the capsule pinned (desktop)
+    // The collection sideways (desktop)
     mm.add('(min-width: 821px)', () => {
       const track = one('.coll .track');
       const slides = q('.coll .slide') as HTMLElement[];
@@ -415,29 +407,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         layers.forEach((l) => l.style.removeProperty('opacity'));
       };
     });
-    // The capsule pinned, where the screen is tall enough to hold all of it
-    mm.add('(min-width: 821px) and (min-height: 521px)', () => {
-      gsap
-        .timeline({
-          defaults: { ease: 'none' },
-          scrollTrigger: { trigger: one('.cap'), start: 'top top', end: '+=130%', pin: true, scrub: 0.8, refreshPriority: 1 },
-        })
-        .from(q('.cap .ctext > *'), { y: 40, opacity: 0, stagger: 0.1, duration: 0.5 }, 0)
-        .to(one('.case .band'), { yPercent: -104, duration: 0.6 }, 0.35)
-        .to(one('.case .lid'), { opacity: 0, scale: 1.06, y: -24, duration: 0.8 }, 0.85)
-        .fromTo(q('.case .cell img'), { opacity: 0, scale: 0.9, y: 14 }, { opacity: 1, scale: 1, y: 0, stagger: { each: 0.06, from: 'center' }, duration: 0.6 }, 0.95)
-        .from(q('.cap .list li'), { opacity: 0, x: 20, stagger: 0.05, duration: 0.4 }, 1.2)
-        .from(one('.cap .buy'), { opacity: 0, y: 20, duration: 0.4 }, 1.4)
-        .to({}, { duration: 0.8 });
-    });
-    mm.add('(max-width: 820px), (max-height: 520px)', () => {
-      gsap
-        .timeline({ scrollTrigger: { trigger: one('.case'), start: 'top 70%', once: true } })
-        .to(one('.case .band'), { yPercent: -104, duration: 0.6, ease: 'power2.in' })
-        .to(one('.case .lid'), { opacity: 0, scale: 1.05, duration: 0.7, ease: 'power2.out' })
-        .fromTo(q('.case .cell img'), { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, stagger: { each: 0.05, from: 'center' }, duration: 0.5 }, '-=0.4');
-    });
-
     // Pinned scenes are created out of page order (the desktop ones last), and
     // each one's start depends on the pins above it: refresh them top to bottom
     // (refreshPriority), then the plain triggers below them.
@@ -470,9 +439,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
 
   const f = feature[ci];
   const n = night[ns];
-  const t = tiers[tier];
-  const leave = () => setActive(null);
-  const lit = active === null ? null : grid[active].rarity;
 
   return (
     <div ref={root} className={`ed ${fontClass}`}>
@@ -480,27 +446,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         Skip to content
       </a>
 
-      <header className="nav">
-        <Link className="brand" href="/" aria-label="Skychaser home">
-          <img src="/brand/logo-mark.svg" alt="" width={22} height={22} />
-          <Wordmark className="wm" />
-        </Link>
-        <nav className="menu glass" aria-label="Skychaser">
-          <Link href="/genesis">Cards</Link>
-          <Link href="/capsules">Capsules</Link>
-          <Link href="/collection">Collection</Link>
-          <Link href="/node">Observatory</Link>
-        </nav>
-        <div className="end">
-          <SkychaserAccountGate />
-          <Link className="btn w sm" href="/capsules">
-            <span>Open a capsule</span>
-            <i className="chip">
-              <Arrow />
-            </i>
-          </Link>
-        </div>
-      </header>
+      <SiteNav overlay />
 
       <main id="main">
         {/* ── How light becomes a card ─────────────────────── */}
@@ -757,113 +703,6 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
           </article>
         </section>
 
-        {/* ── The capsule ─────────────────────────────────── */}
-        <section className="cap" id="capsule" aria-label="Inside a capsule">
-          <div className="lines" aria-hidden="true" />
-          <div className="in">
-            <div className="lft">
-              <div className="ctext">
-                <h2 className="xl2">
-                  Nine of {setSize}.
-                  <br />
-                  <em>One is yours.</em>
-                </h2>
-                <p>Every capsule holds one sealed card. The more it costs, the rarer the odds.</p>
-              </div>
-              <div className="buy glass">
-                <div className="seg" role="group" aria-label="Capsule">
-                  {tiers.map((x, i) => (
-                    <button key={x.name} type="button" aria-pressed={i === tier} onClick={() => setTier(i)}>
-                      {x.price}
-                    </button>
-                  ))}
-                </div>
-                <div className="price">
-                  <b>{t.price}</b>
-                  <span>{t.name} capsule · one sealed card</span>
-                </div>
-                <ul className="odds">
-                  {t.odds.map((o) => (
-                    <li key={o.rarity} data-rarity={o.rarity} className={lit && lit !== o.rarity ? 'dim' : undefined}>
-                      <span className="nm">
-                        <i className="dot" />
-                        {o.label}
-                      </span>
-                      <span className="bar">
-                        <i style={{ transform: `scaleX(${o.bps / 10000})` }} />
-                      </span>
-                      <b>{o.pct}</b>
-                    </li>
-                  ))}
-                </ul>
-                <Btn href="/capsules" tone="w">
-                  Open {t.name}
-                </Btn>
-              </div>
-            </div>
-            <div className="mid">
-              <div className={`case${active !== null ? ' hl' : ''}`} onMouseLeave={leave}>
-                <div className="grid">
-                  {grid.map((g, i) => (
-                    <div key={g.designation} className={`cell${active === i ? ' on' : ''}`} onMouseEnter={() => setActive(i)}>
-                      <img src={art(g.designation, true)} alt={`${g.name} card, ${RARITY[g.rarity]}`} width={400} height={559} loading="lazy" decoding="async" />
-                    </div>
-                  ))}
-                </div>
-                <div className="lid" aria-hidden="true">
-                  <div className="emb">
-                    <Wordmark />
-                    <span>Genesis · Series 01</span>
-                  </div>
-                  <div className="band">
-                    <span>Sealed · {t.name}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="rgt">
-              <ul
-                className="list"
-                onMouseLeave={leave}
-                onBlur={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave();
-                }}
-              >
-                {grid.map((g, i) => {
-                  const odds = t.odds.find((o) => o.rarity === g.rarity);
-                  return (
-                    <li key={g.designation} className={active === i ? 'on' : undefined} onMouseEnter={() => setActive(i)}>
-                      <button
-                        type="button"
-                        aria-expanded={active === i}
-                        aria-controls={`acc-${g.designation}`}
-                        onFocus={() => setActive(i)}
-                        onClick={() => setActive(i)}
-                      >
-                        <i className="b" />
-                        {g.name}
-                        <span className="r" data-rarity={g.rarity}>
-                          {RARITY[g.rarity]}
-                        </span>
-                      </button>
-                      <div className="acc" id={`acc-${g.designation}`}>
-                        <div>
-                          <p>
-                            No. {g.no}. {g.line} {g.perk}
-                            <b>
-                              {RARITY[g.rarity]} odds in a {t.price} capsule: {odds?.pct}
-                            </b>
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        </section>
-
         {/* ── The telescope, after the cards ──────────────── */}
         <section className="scope" id="observatory" aria-label="The telescope">
           <div className="lines" aria-hidden="true" />
@@ -950,7 +789,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             <span>© 2026 Skychaser · Tbilisi</span>
             <span className="credits">
               Orion, head to toe: Rogelio Bernal Andreo, CC BY-SA 3.0, turned and darkened · Night sky: Hipparcos stars and IAU figures via d3-celestial (BSD), positions by astronomy-engine · Orion Nebula,
-              Pillars of Creation: NASA, ESA, Hubble · The Moon: NASA/GSFC/Arizona State University · The raw frame and the capsule scene are illustrations.
+              Pillars of Creation: NASA, ESA, Hubble · The Moon: NASA/GSFC/Arizona State University · The raw frame is an illustration.
             </span>
             <nav aria-label="Legal">
               <Link href="/contact">Contact</Link>

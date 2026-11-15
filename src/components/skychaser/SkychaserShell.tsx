@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import Wordmark from './ui/Wordmark';
-import SkychaserNavLinks from './SkychaserNavLinks';
 import SkychaserTabBar from './SkychaserTabBar';
-import SkychaserAccountGate from './SkychaserAccountGate';
+import SiteNav from './SiteNav';
 import SkychaserAuth from './SkychaserAuth';
 import SkychaserLiving from './SkychaserLiving';
 import SkychaserHello from './SkychaserHello';
@@ -65,17 +64,7 @@ export default function SkychaserShell({
     <SkychaserAuth>
       <div className="skychaser skychaser--framed">
         <div className="sd-backdrop" aria-hidden="true" />
-        <header className="sd-bar">
-          <div className="sd-container sd-bar__inner">
-            <div className="sd-bar__mark">
-              <Wordmark href="/" />
-            </div>
-            <SkychaserNavLinks />
-            <div className="sd-bar__account">
-              <SkychaserAccountGate />
-            </div>
-          </div>
-        </header>
+        <SiteNav />
 
         {title && <h1 className="sr-only">{title}</h1>}
         <div className="sd-page">{children}</div>

@@ -221,14 +221,6 @@
 .sd-status--not_available { color: var(--sd-status-not-available); border-style: dashed; }
 
 /* ── Shell ────────────────────────────────────────────────────── */
-.sd-bar {
-  position: sticky; top: 0; z-index: 40;
-  background: var(--sd-bar-bg);
-  border-bottom: 1px solid var(--sd-rule);
-}
-.sd-bar__inner { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-areas: "mark links account"; align-items: center; column-gap: 32px; min-height: var(--sd-bar-h); }
-.sd-bar__mark { grid-area: mark; }
-.sd-bar__account { grid-area: account; justify-self: end; }
 .sd-bar__links { grid-area: links; justify-self: center; display: flex; gap: 28px; margin: 0; padding: 0; list-style: none; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .sd-navlink { position: relative; font-family: var(--sd-sans); font-weight: 500; font-size: 14px; color: var(--sd-ink-3); text-decoration: none; padding-block: 10px; white-space: nowrap; transition: color var(--sd-dur-fast) var(--sd-ease); }
 .sd-navlink::after {
@@ -240,7 +232,6 @@
 .sd-navlink:hover { color: var(--sd-ink); }
 .sd-navlink[aria-current="page"] { color: var(--sd-ink); }
 @media (max-width: 1023px) {
-  .sd-bar__inner { grid-template-columns: 1fr auto; grid-template-areas: "mark account" "links links"; padding-top: 12px; }
   .sd-bar__links { gap: 14px; border-top: 1px solid var(--sd-rule); margin-top: 12px; overflow-x: auto; }
   .sd-bar__links .sd-navlink { font-size: 14px; }
 }
@@ -651,8 +642,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 /* ── The bar, again ───────────────────────────────────────────── */
 /* Taller and darker, the mark larger, the account corner as chips. */
 .skychaser { --sd-bar-h: 76px; }
-.sd-bar .sd-container { max-width: 1480px; }
-.sd-bar .sd-wordmark--sm .sd-wordmark__word { height: 28px; }
 .sd-navlink { font-weight: 600; font-size: 15px; color: var(--sd-ink-3); }
 /* A phone: the four destinations share the second row, spread across it. */
 @media (max-width: 1023px) {
@@ -710,7 +699,6 @@ html:has(.skychaser) #skychaser-main { padding-top: 0; padding-bottom: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .sd-acct, .sd-acct__in, .sd-menu__usdc i.is-funded { animation: none; } }
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .sd-bar__inner { column-gap: 24px; }
   .sd-bar__links { gap: 20px; }
 }
 

@@ -71,22 +71,6 @@
 .ed .btn.sm .chip { width: 32px; height: 32px; }
 .ed .acts { display: flex; flex-wrap: wrap; gap: 12px; }
 
-/* ── Nav ─────────────────────────────────────────────────────── */
-.ed .nav { position: fixed; inset: 0 0 auto 0; z-index: 50; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; padding: 18px var(--pad); }
-.ed .nav::before { content: ''; position: absolute; inset: 0 0 -24px; z-index: -1; pointer-events: none; background: linear-gradient(to bottom, rgba(5, 6, 10, 0.8), rgba(5, 6, 10, 0.35) 70%, rgba(5, 6, 10, 0)); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
-.ed .brand { display: inline-flex; align-items: center; gap: 10px; justify-self: start; }
-.ed .brand img { width: 22px; height: 22px; }
-.ed .brand .wm { height: 15px; width: auto; margin-left: -8px; color: #fff; }
-.ed .menu { display: flex; gap: 2px; padding: 5px; border-radius: 999px; box-shadow: none; }
-.ed .menu a { padding: 9px 18px; border-radius: 999px; font-size: 13.5px; color: var(--ink-2); transition: color 0.25s, background-color 0.25s; }
-.ed .menu a:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
-.ed .nav .end { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-html body .skychaser .ed .nav .end .sd-chip.sd-chip--cta,
-html body .skychaser .ed .nav .end .sd-chip.sd-chip--cta:is(:hover, :focus-visible, :active):not(:disabled) {
-  height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.04);
-  color: #fff; box-shadow: none; text-shadow: none; font: 600 11.5px var(--sans); letter-spacing: 0.1em; text-transform: uppercase;
-}
-html body .skychaser .ed .nav .end .sd-chip.sd-chip--cta:hover { border-color: rgba(255, 255, 255, 0.4); background: rgba(255, 255, 255, 0.08); }
 
 html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth { scroll-behavior: auto !important; }
@@ -211,54 +195,7 @@ html.lenis, html.lenis body { height: auto; }
 .ed .ncard .swp { transition: opacity 0.3s; }
 .ed .ncard .swp.out { opacity: 0; }
 
-/* ── The capsule ─────────────────────────────────────────────── */
-.ed .cap { position: relative; height: 100vh; height: 100svh; overflow: hidden; background: var(--bg); }
 .ed .lines { position: absolute; inset: 0; z-index: 0; pointer-events: none; background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px); background-size: 120px 120px; background-position: center; -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%); mask-image: radial-gradient(ellipse at center, #000 20%, transparent 72%); }
-.ed .cap .in { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: clamp(24px, 3vw, 56px); max-width: var(--max); margin: 0 auto; padding: 96px var(--pad) clamp(28px, 5vh, 44px); }
-.ed .cap .lft { display: flex; flex-direction: column; justify-content: space-between; gap: 24px; min-width: 0; }
-.ed .cap .ctext .xl2 { font-size: clamp(26px, 2.5vw, 40px); white-space: nowrap; }
-.ed .cap .ctext p { max-width: 330px; margin-top: 20px; color: var(--ink-2); }
-.ed .buy { display: grid; gap: 18px; max-width: 360px; padding: 20px; border-radius: 22px; }
-.ed .seg { display: grid; grid-template-columns: repeat(4, 1fr); padding: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); }
-.ed .seg button { height: 36px; border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--ink-2); transition: background-color 0.3s, color 0.3s; }
-.ed .seg button[aria-pressed='true'] { background: #fff; color: #0a0a0a; }
-.ed .buy .price b { display: block; font-family: var(--wide); font-stretch: 125%; font-weight: 300; font-size: 44px; line-height: 1; font-variant-numeric: tabular-nums; }
-.ed .buy .price span { display: block; margin-top: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }
-.ed .odds { display: grid; gap: 10px; }
-.ed .odds li { display: grid; grid-template-columns: 96px minmax(0, 1fr) 46px; align-items: center; gap: 12px; font-size: 13px; transition: opacity 0.3s; }
-.ed .odds li.dim { opacity: 0.3; }
-.ed .odds .nm { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); }
-.ed .odds .bar { height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, 0.08); }
-.ed .odds .bar i { display: block; height: 100%; background: var(--rarity); transform-origin: left; transition: transform 0.6s var(--ease); }
-.ed .odds b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.ed .buy .btn { justify-content: space-between; }
-.ed .cap .mid { display: grid; place-items: center; min-width: 0; }
-.ed .case { position: relative; padding: 12px; border-radius: 24px; background: #0b0c11; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 60px 120px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05); }
-.ed .case .grid { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; }
-.ed .case .cell { position: relative; height: calc((min(100vh, 1000px) - 96px - 44px - 24px - 16px - 40px) / 3); aspect-ratio: 520 / 727; transition: transform 0.45s var(--ease), opacity 0.45s, filter 0.45s; }
-.ed .case .cell img { width: 100%; height: 100%; object-fit: contain; }
-.ed .case.hl .cell { opacity: 0.28; filter: grayscale(0.6); }
-.ed .case.hl .cell.on { z-index: 2; opacity: 1; filter: none; transform: translateY(-6px) scale(1.05); }
-.ed .case .lid { position: absolute; inset: -1px; display: grid; place-items: center; overflow: hidden; border-radius: 24px; pointer-events: none; background: radial-gradient(120% 90% at 30% 15%, #26272e 0%, #121319 55%, #090a0d 100%); border: 1px solid rgba(255, 255, 255, 0.09); }
-.ed .case .emb { display: flex; flex-direction: column; align-items: center; gap: 18px; color: #464752; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.05); }
-.ed .case .emb svg { width: 48%; min-width: 160px; height: auto; }
-.ed .case .emb span { font-size: 10px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: #4a4b55; }
-.ed .case .band { position: absolute; top: 0; bottom: 0; left: 50%; width: 40px; margin-left: -20px; display: grid; place-items: center; background: #ececec; }
-.ed .case .band span { writing-mode: vertical-rl; font-size: 10px; font-weight: 700; letter-spacing: 0.3em; text-transform: uppercase; color: #111; }
-.ed .cap .rgt { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-.ed .cap .list { width: 100%; max-width: 340px; margin-left: auto; border-top: 1px solid var(--line); }
-.ed .cap .list li { border-bottom: 1px solid var(--line); }
-.ed .cap .list button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 0; text-align: left; font-size: 14.5px; font-weight: 500; color: var(--ink-3); transition: color 0.25s; }
-.ed .cap .list .b { width: 6px; height: 6px; flex: none; border-radius: 9px; background: var(--accent); transform: scale(0); transition: transform 0.3s var(--ease); }
-.ed .cap .list .r { margin-left: auto; font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
-.ed .cap .list li.on button { color: #fff; }
-.ed .cap .list li.on .r { color: var(--rarity); }
-.ed .cap .list li.on .b { transform: scale(1); }
-.ed .cap .list .acc { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.45s var(--ease); }
-.ed .cap .list li.on .acc { grid-template-rows: 1fr; }
-.ed .cap .list .acc > div { overflow: hidden; }
-.ed .cap .list .acc p { padding: 0 0 12px 16px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
-.ed .cap .list .acc b { display: block; margin-top: 4px; font-weight: 600; color: #fff; }
 
 /* ── The telescope ───────────────────────────────────────────── */
 .ed .scope { position: relative; padding: clamp(96px, 14vh, 150px) var(--pad); overflow: hidden; isolation: isolate; }
@@ -294,19 +231,13 @@ html.lenis, html.lenis body { height: auto; }
 .ed .legal nav { display: flex; gap: 16px; flex: none; }
 .ed .legal a:hover { color: #fff; }
 
-/* ── Laptops ─────────────────────────────────────────────────── */
-@media (max-width: 1180px) and (min-width: 821px) {
-  .ed .menu a { padding: 9px 12px; }
-}
-/* short laptop screens: the odds live in the list, the bars step aside */
+/* short laptop screens */
 @media (min-width: 821px) and (max-height: 760px) {
   .ed .coll .tilt { height: 50vh; }
-  .ed .buy .odds { display: none; }
 }
 
 /* Phones held sideways and other short screens: the night card drops its
-   longer lines so all of it fits, the pager steps off the caption, and the
-   capsule scene scrolls instead of pinning (pinned, it ran off the bottom). */
+   longer lines so all of it fits. */
 @media (min-width: 821px) and (max-height: 520px) {
   .ed .coll .bc { display: none; }
   .ed .coll .tl, .ed .coll .tr { top: 76px; }
@@ -319,18 +250,8 @@ html.lenis, html.lenis body { height: auto; }
   .ed .ncard .drop { margin-top: 10px; padding-top: 10px; }
   .ed .ncard .drop img { width: 34px; }
   .ed .ncard .tline { margin-top: 10px; }
-  .ed .cap { height: auto; }
-  .ed .cap .in { position: relative; padding-top: 84px; }
-  .ed .case .cell { height: 132px; }
-  .ed .buy .odds { display: grid; }
 }
 
-/* ── Tablets and phones ──────────────────────────────────────── */
-@media (max-width: 900px) {
-  .ed .nav { grid-template-columns: 1fr auto; padding: 14px var(--pad); }
-  .ed .menu { display: none; }
-  .ed .nav .end .btn { display: none; }
-}
 @media (max-width: 820px) {
   .ed .hero .xl { font-size: min(64px, 14.5vw); }
   .ed .hero .steps { width: 100%; height: calc(min(64px, 14.5vw) * 1.84 + 200px); }
@@ -372,19 +293,6 @@ html.lenis, html.lenis body { height: auto; }
   .ed .ncard .txt { min-height: 0; font-size: 13px; }
   .ed .ncard .drop { margin-top: 12px; padding-top: 12px; }
   .ed .ncard .drop img { width: 40px; }
-
-  .ed .cap { height: auto; }
-  .ed .cap .in { position: relative; display: flex; flex-direction: column; gap: 28px; padding: 96px var(--pad) 56px; }
-  .ed .cap .lft { display: contents; }
-  .ed .cap .ctext { order: 1; }
-  .ed .cap .mid { order: 2; }
-  .ed .cap .rgt { order: 3; }
-  .ed .cap .buy { order: 4; max-width: none; }
-  .ed .case { padding: 10px; border-radius: 18px; }
-  .ed .case .lid { border-radius: 18px; }
-  .ed .case .grid { gap: 7px; }
-  .ed .case .cell { height: auto; width: calc((min(100vw, 520px) - 2 * var(--pad) - 20px - 14px) / 3); }
-  .ed .cap .list { max-width: none; }
 
   .ed .scope .g { grid-template-columns: minmax(0, 1fr); }
   .ed .moon { aspect-ratio: 1 / 1; width: 100%; margin: 0; }
@@ -446,14 +354,11 @@ html.lenis, html.lenis body { height: auto; }
   .ed .ncard .ttl { font-size: 19px; }
   .ed .ncard .txt { font-size: 14px; }
   .ed .ncard .drop img { width: 52px; }
-  .ed .cap .in, .ed .scope .g { max-width: 640px; }
-  .ed .case .cell { width: calc((580px - 20px - 14px) / 3); }
+  .ed .scope .g { max-width: 640px; }
   .ed .scope .lead, .ed .ftext p { font-size: 17px; }
 }
 /* Touch: the small text links take a finger-sized hit area */
 @media (pointer: coarse) {
-  .ed .brand, .ed .legal a, .ed .coll .all { position: relative; }
-  .ed .brand::after, .ed .legal a::after, .ed .coll .all::after { content: ''; position: absolute; inset: -12px -8px; }
   .ed .mail input { align-self: stretch; }
 }
 @media (max-width: 420px) {
@@ -480,5 +385,4 @@ html.lenis, html.lenis body { height: auto; }
 .ed.rm .coll .mi { display: grid; gap: 10px; position: absolute; left: var(--pad); right: var(--pad); bottom: 32px; z-index: 4; }
 .ed.rm .coll .mi .row { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; }
 .ed.rm .coll .mi .end { display: flex; align-items: center; gap: 12px; }
-.ed.rm .case .lid { display: none; }
 .ed.rm .coll .mi b { font-family: var(--wide); font-stretch: 112%; font-weight: 400; font-size: 16px; line-height: 1.3; text-transform: uppercase; }

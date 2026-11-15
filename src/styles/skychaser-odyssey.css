@@ -40,7 +40,6 @@
 .skychaser :is(.sd-eyebrow, .sd-kicker, .sd-counter__label) { color: var(--sd-hal); }
 
 /* The mark and the bar: a cockpit strip of black glass. */
-.skychaser .sd-bar { background: var(--sd-bar-bg); border-bottom-color: var(--sd-line); backdrop-filter: blur(14px) saturate(140%); -webkit-backdrop-filter: blur(14px) saturate(140%); }
 .skychaser .sd-navlink[aria-current] { color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, 0.35); }
 
 /* ── Buttons: HAL red, square-shouldered, lit from inside ───────── */

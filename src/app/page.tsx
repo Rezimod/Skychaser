@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
-import EditorialHome, { type FeatureCard, type GridCard, type NightStep, type TierRow } from '@/components/skychaser/home/EditorialHome';
+import EditorialHome, { type FeatureCard, type NightStep } from '@/components/skychaser/home/EditorialHome';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
 import { getNode } from '@/lib/observatory/nodes';
-import { RARITIES, type Rarity } from '@/lib/rarity';
+import type { Rarity } from '@/lib/rarity';
 import { SET_001_CARDS } from '@/lib/sets/set-001';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { nightSky } from '@/lib/skychaser/night-sky';
 import { perkFor, SESSION_MINUTES } from '@/lib/skychaser/perks';
-import { formatOdds, TIERS } from '@/lib/skychaser/tiers';
+import { TIERS } from '@/lib/skychaser/tiers';
 import '@/styles/skychaser-editorial.css';
 
 // Archivo, the family the Skychaser wordmark is drawn in, over its width axis:
@@ -43,7 +43,6 @@ function facts(designation: string) {
     no,
     name: c.seed.name,
     rarity,
-    line: c.record.line,
     type: cap(c.seed.objectType),
     editions: c.seed.editionSize,
     perk: perkFor(designation, rarity),
@@ -60,9 +59,6 @@ const FEATURE: { d: string; word: string; note: string; rgb: [number, number, nu
   { d: 'JUPITER', word: 'Jupiter', note: 'A storm wider than Earth, turning for centuries.', rgb: [156, 96, 50] },
   { d: 'CANYON-DIABLO', word: 'Diablo', note: 'Comes with a real piece of the meteorite.', rgb: [88, 84, 80] },
 ];
-
-/** The nine cards in the open case. */
-const GRID = ['ORION', 'SATURN', 'M31', 'BETELGEUSE', 'CANYON-DIABLO', 'M42', 'HORSEHEAD', 'JUPITER', 'M51'];
 
 /**
  * One night on the roof, in minutes after 20:00 Tbilisi time (the telescope works until 02:00),
@@ -101,19 +97,10 @@ export default function HomePage() {
       rgb: f.rgb,
     };
   });
-  const grid: GridCard[] = GRID.map((d) => {
-    const c = facts(d);
-    return { designation: d, name: c.name, rarity: c.rarity, no: c.no, line: c.line, perk: `${c.perk.line}${c.perk.soon ? ' From first light.' : ''}` };
-  });
   const night: NightStep[] = NIGHT.map((n) => {
     const c = facts(n.d);
     return { at: n.at, aim: n.aim, title: n.title, text: n.text, designation: n.d, card: `${c.name} · No. ${c.no}`, perk: `${RARITY_NAME[c.rarity]} · ${c.perk.short}` };
   });
-  const tiers: TierRow[] = TIERS.map((t) => ({
-    name: t.name,
-    price: `$${t.priceUsd}`,
-    odds: RARITIES.map((r) => ({ rarity: r, label: RARITY_NAME[r], pct: formatOdds(t.oddsBps[r]), bps: t.oddsBps[r] })),
-  }));
 
   return (
     <SkychaserShell bare>
@@ -123,12 +110,10 @@ export default function HomePage() {
         setSize={SET_001_CARDS.length}
         fromPrice={`$${FROM_USD}`}
         feature={feature}
-        grid={grid}
         night={night}
         nightFrom={hours.fromHourLocal}
         nightTo={hours.toHourLocal}
         sky={nightSky(NIGHT_START, node.lat, node.lon)}
-        tiers={tiers}
         scope={{
           site: node.site,
           optics: node.instrument.optics.replace(/^Celestron /, ''),
