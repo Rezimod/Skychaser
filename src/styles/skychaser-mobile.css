@@ -169,7 +169,7 @@ body .skychaser .sn { --btn: var(--sn-accent); --btn-ink: var(--accent-ink, #fff
   .skychaser .sd-zoom__trust { margin-top: 10px; }
   .skychaser .sd-zoom__panel::before { inset: 40px -20px 55%; }
 
-  /* Capsules: the sealed stack smaller, the odds four to a row, the shelf two to a row. */
+  /* Capsules: the sealed stack smaller, the odds four to a row, one capsule to a row (two squeezed the commitment to a letter a line). */
   .skychaser .sd-capsule-top { gap: 14px; }
   .skychaser .sd-sealed { height: 236px; }
   .skychaser .sd-sealed__card { width: 150px; }
@@ -183,17 +183,23 @@ body .skychaser .sn { --btn: var(--sn-accent); --btn-ink: var(--accent-ink, #fff
   .skychaser .sd-oddsboard { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .skychaser .sd-oddsboard li { gap: 8px; padding: 12px 6px 12px 0; border-bottom: 0; }
   .skychaser .sd-oddsboard__n { font-size: clamp(20px, 6.4vw, 26px); letter-spacing: -0.03em; }
-  .skychaser .sd-capsules { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .skychaser .sd-capsules { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .skychaser .sd-capsule { padding: 14px; margin-bottom: 0; }
   .skychaser .sd-capsule__head { margin-bottom: 8px; gap: 8px; }
   .skychaser .sd-capsule__n { font-size: 18px; gap: 6px; }
   .skychaser .sd-capsule .sd-datarow--stacked { margin-bottom: 10px; }
+  .skychaser .sd-capsule .sd-datarow--stacked dd { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* The Collection gate and the coming-soon pages. */
   .skychaser .sd-gate { padding: 24px 18px; }
   .skychaser .sd-gate__or { margin-top: 16px; }
   .skychaser .sd-legal__ledger { margin-top: 20px; }
   .skychaser .sd-legal p + p { margin-top: 0.7em; }
+}
+
+/* The narrowest phones: four rarity tags do not fit side by side. */
+@media (max-width: 379px) {
+  .skychaser .sd-oddsboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* The home hero on a phone: the words, the button, and three cards from the set in the sky's place. */

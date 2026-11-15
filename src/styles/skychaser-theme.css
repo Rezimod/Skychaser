@@ -183,7 +183,7 @@
 .sd-datarow > div { display: flex; gap: 8px; min-width: 0; align-items: baseline; }
 .sd-datarow dt { color: var(--sd-ink-3); text-transform: uppercase; letter-spacing: 0.12em; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
 .sd-datarow dd { margin: 0; min-width: 0; overflow-wrap: anywhere; color: var(--sd-ink); }
-.sd-datarow--stacked { flex-direction: column; row-gap: 0; }
+.sd-datarow--stacked { flex-direction: column; flex-wrap: nowrap; row-gap: 0; }
 .sd-datarow--stacked > div { justify-content: space-between; padding: 9px 0; gap: 12px; }
 .sd-datarow--stacked > div::after { content: ''; order: 1; flex: 1 1 auto; min-width: 24px; border-bottom: 1px dotted var(--sd-ink-4); transform: translateY(-4px); }
 .sd-datarow--stacked dd { order: 2; text-align: right; }
@@ -271,8 +271,8 @@
 .sd-link:hover { border-bottom-color: var(--sd-ink-2); }
 /* Text links stay small on screen but take a finger-sized hit area. */
 @media (pointer: coarse) {
-  .sd-link, .sd-crumb a, .sd-flags a { position: relative; }
-  .sd-link::after, .sd-crumb a::after, .sd-flags a::after { content: ''; position: absolute; inset: -12px -8px; }
+  .sd-link, .sd-crumb a, .sd-flags a, .sd-foot__x { position: relative; }
+  .sd-link::after, .sd-crumb a::after, .sd-flags a::after, .sd-foot__x::after { content: ''; position: absolute; inset: -12px -8px; }
 }
 
 /* Buttons — one hot primary, everything else quiet */
