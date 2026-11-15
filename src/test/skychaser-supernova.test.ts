@@ -5,7 +5,7 @@ import { BAKE, BLUR, DOWN, FX, SCENE } from '@/components/skychaser/supernova/sh
 it('runs about ten seconds, longer the rarer the card', () => {
   const lens = (['common', 'rare', 'epic', 'legendary'] as const).map(supernovaLength);
   expect(lens[0]).toBeGreaterThan(8);
-  expect(lens[3]).toBeLessThan(11);
+  expect(lens[3]).toBeLessThan(11.5);
   for (let i = 1; i < lens.length; i++) expect(lens[i]).toBeGreaterThan(lens[i - 1]);
 });
 

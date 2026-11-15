@@ -194,15 +194,14 @@ export async function readEdition(db: Db, designation: string, editionNumber: nu
   const { rows } = (await db.execute(sql`
     SELECT e.id, e.edition_number, e.owner_wallet, e.acquired_at, e.capsule_id, e.order_id,
       c.id AS card_id, c.designation, c.name, c.rarity, c.edition_size, c.observation_status,
-      (SELECT cp.sequence FROM capsule cp WHERE cp.id = e.capsule_id) AS sequence,
-      EXISTS (SELECT 1 FROM holder_contact h WHERE h.welcome_edition_id = e.id) AS welcome
+      (SELECT cp.sequence FROM capsule cp WHERE cp.id = e.capsule_id) AS sequence
     FROM edition e JOIN card c ON c.id = e.card_id
     WHERE c.designation = ${designation} AND e.edition_number = ${editionNumber}
   `)) as {
     rows: Array<{
       id: string; edition_number: number | string; owner_wallet: string; acquired_at: string | Date; capsule_id: string | null; order_id: string | null
       card_id: string; designation: string; name: string; rarity: string; edition_size: number | string; observation_status: string
-      sequence: number | string | null; welcome: boolean
+      sequence: number | string | null
     }>
   }
   const r = rows[0]
@@ -216,11 +215,17 @@ export async function readEdition(db: Db, designation: string, editionNumber: nu
     .orderBy(desc(nightlyTarget.nightDate))
     .limit(1)
 
+  // holder_contact arrives with scripts/skychaser-growth.sql; until it is applied an edition
+  // with no capsule and no order reads as given rather than failing the whole page.
+  const welcome = !r.capsule_id && !r.order_id && (await db
+    .execute(sql`SELECT 1 FROM holder_contact WHERE welcome_edition_id = ${r.id}::uuid`)
+    .then((w) => (w as { rows: unknown[] }).rows.length > 0, () => false))
+
   const provenance: EditionView['provenance'] = r.capsule_id
     ? { kind: 'capsule', capsuleId: r.capsule_id, sequence: r.sequence === null ? null : Number(r.sequence) }
     : r.order_id
       ? { kind: 'outright' }
-      : r.welcome
+      : welcome
         ? { kind: 'welcome' }
         : { kind: 'given' }
 

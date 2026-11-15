@@ -15,7 +15,7 @@ test('browse, turn, navigate and filter the Genesis cards', async ({ page }) => 
   await expect(imilac).toBeVisible();
   await page.screenshot({ path: 'qa/genesis-desktop.png' });
   await imilac.click();
-  const dialog = page.getByRole('dialog', { name: 'IMILAC', exact: true });
+  const dialog = page.getByRole('dialog', { name: /^imilac$/i });
   await expect(dialog).toBeVisible();
   await imagesLoaded(dialog);
   await page.screenshot({ path: 'qa/card-front-desktop.png' });
@@ -25,7 +25,7 @@ test('browse, turn, navigate and filter the Genesis cards', async ({ page }) => 
   await imagesLoaded(dialog);
   await page.screenshot({ path: 'qa/card-back-desktop.png' });
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('#sd-zoom-name')).not.toHaveText('IMILAC');
+  await expect(page.locator('#sd-zoom-name')).not.toHaveText(/^imilac$/i);
   await expect(page.getByRole('button', { name: /Tap to turn it over/ })).toHaveAttribute('aria-pressed', 'false');
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -60,7 +60,10 @@ test('every card has a legible back inside its frame', async ({ page }) => {
   const tiles = page.locator('.sd-tile[data-zoom]');
   const total = await tiles.count();
   await tiles.first().click();
+  // The first card waits on the page finishing its start-up work; later ones open at once.
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 15_000 });
   for (let index = 0; index < total; index++) {
+    await expect(page.getByRole('dialog').getByRole('button', { name: /Tap to turn it over/ })).toHaveAttribute('aria-pressed', 'false');
     await page.keyboard.press('f');
     const back = page.locator('.sd-zoom .sdc-card--back');
     await expect(back).toBeVisible();

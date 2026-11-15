@@ -48,11 +48,12 @@ export async function POST(req: NextRequest) {
     req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     req.headers.get('x-real-ip') ||
     'unknown';
-  try {
-    const { success } = await checkRateLimit(trackRateLimit, ip);
-    if (!success) return new NextResponse(null, { status: 204 });
-  } catch {
-    // Upstash not configured — analytics is best-effort, proceed unthrottled.
+  // Analytics is best-effort: with no Redis configured (local dev) or Redis down, proceed unthrottled.
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+      const { success } = await checkRateLimit(trackRateLimit, ip);
+      if (!success) return new NextResponse(null, { status: 204 });
+    } catch {}
   }
 
   const db = getDb();
