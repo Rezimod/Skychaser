@@ -415,6 +415,16 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         gsap.fromTo(s.querySelector('.tilt'), { rotate: 12, y: 30 }, { rotate: -10, y: -20, ease: 'none', scrollTrigger: { ...along } });
       }
 
+      const sideways = { st: ht.scrollTrigger!, points: slides.map((_, i) => i / (n - 1)) };
+      snaps.add(sideways);
+
+      return () => {
+        snaps.delete(sideways);
+        layers.forEach((l) => l.style.removeProperty('opacity'));
+      };
+    });
+    // The capsule pinned, where the screen is tall enough to hold all of it
+    mm.add('(min-width: 821px) and (min-height: 521px)', () => {
       gsap
         .timeline({
           defaults: { ease: 'none' },
@@ -427,16 +437,8 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
         .from(q('.cap .list li'), { opacity: 0, x: 20, stagger: 0.05, duration: 0.4 }, 1.2)
         .from(one('.cap .buy'), { opacity: 0, y: 20, duration: 0.4 }, 1.4)
         .to({}, { duration: 0.8 });
-
-      const sideways = { st: ht.scrollTrigger!, points: slides.map((_, i) => i / (n - 1)) };
-      snaps.add(sideways);
-
-      return () => {
-        snaps.delete(sideways);
-        layers.forEach((l) => l.style.removeProperty('opacity'));
-      };
     });
-    mm.add('(max-width: 820px)', () => {
+    mm.add('(max-width: 820px), (max-height: 520px)', () => {
       gsap
         .timeline({ scrollTrigger: { trigger: one('.case'), start: 'top 70%', once: true } })
         .to(one('.case .band'), { yPercent: -104, duration: 0.6, ease: 'power2.in' })
