@@ -34,6 +34,7 @@
  * and does not wait on a dark, transparent night.
  */
 
+import { FIRST_LIGHT_MONTH } from '@/lib/skychaser/first-light';
 import { fieldOfView, resolvingPowerArcsec, DEFAULT_SEEING_ARCSEC, TRAIN_BY_ID } from '@/lib/observatory/optics';
 import { LIMITS } from '@/lib/observatory/safety';
 import { SIM_TARGET_BY_ID, unattendedStack } from '@/lib/observatory/sim-targets';
@@ -165,10 +166,10 @@ export function observability(subject: ObservabilitySubject, node: ObservatoryNo
     subject.resolveArcsec !== null &&
     subject.resolveArcsec >= DEDICATED_ELEMENTS * limit
   ) {
-    return { status: 'dedicated', reason: `A showcase: bright and large, the Live Telescope will photograph it often after first light in November.` };
+    return { status: 'dedicated', reason: `A showcase: bright and large, the Live Telescope will photograph it often after first light in ${FIRST_LIGHT_MONTH}.` };
   }
 
-  return { status: 'eligible', reason: 'The Live Telescope can photograph it after first light in November.' };
+  return { status: 'eligible', reason: `The Live Telescope can photograph it after first light in ${FIRST_LIGHT_MONTH}.` };
 }
 
 function formatArcsec(arcsec: number): string {

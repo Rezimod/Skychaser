@@ -21,7 +21,7 @@ export default function AgencyBadge({ agencies, label, className = '' }: { agenc
         <circle cx="10" cy="10" r="2.6" />
         <circle cx="17.2" cy="6.6" r="1.1" />
       </svg>
-      <b>{agencies.join(' · ')}</b>
+      <b>{agencies.join(' · ')}</b>{' '}
       <i>{label}</i>
     </span>
   );

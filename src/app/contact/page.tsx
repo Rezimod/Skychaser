@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { FIRST_LIGHT_WHEN } from '@/lib/skychaser/first-light';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import DataRow from '@/components/skychaser/ui/DataRow';
 
@@ -22,7 +23,7 @@ export default function ContactPage() {
           items={[
             { label: 'Email', value: <a href="mailto:info@astroman.ge">info@astroman.ge</a> },
             { label: 'Store', value: <a href="https://astroman.ge" target="_blank" rel="noopener noreferrer">astroman.ge</a> },
-            { label: 'Live Telescope', value: 'Coming soon · first light in November' },
+            { label: 'Live Telescope', value: `Commissioning · first light in ${FIRST_LIGHT_WHEN}` },
           ]}
         />
       </article>

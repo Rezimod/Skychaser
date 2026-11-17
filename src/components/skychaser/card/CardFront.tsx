@@ -64,6 +64,7 @@ function CardFront({ plate, capture, priority = false, small = false, price, sub
     >
       <header className="sdc-top">
         <span className="sdc-no">No. {plate.num}</span>
+        {' '}
         <span className="sdc-tier">{plate.rname}<i aria-hidden="true" /></span>
       </header>
       <div className="sdc-panel">
@@ -74,11 +75,12 @@ function CardFront({ plate, capture, priority = false, small = false, price, sub
         <div className="sdc-caption">
           <div className="sdc-title">
             <strong className="sdc-name" style={{ '--card-name-size': `${Math.max(7, Math.min(10.5, 150 / plate.name.length))}cqw` } as CSSProperties}>{plate.name}</strong>
+            {' '}
             <span className="sdc-price">{shown}</span>
           </div>
           <span className="sdc-kind">{seed?.objectType ?? plate.poster.headline}</span>
           <div className="sdc-foot">
-            <span className="sdc-perk">{perk.short}</span>
+            <span className="sdc-perk">{perk.short}</span>{' '}
             <span className="sdc-left">{foot}</span>
           </div>
         </div>

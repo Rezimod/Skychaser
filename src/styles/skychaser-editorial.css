@@ -132,6 +132,8 @@ html.lenis, html.lenis body { height: auto; }
 /* from 0.01, not 0: an element first painted at opacity 0 never counts as the LCP */
 @keyframes ed-rise { from { opacity: 0.01; transform: translateY(40px); } }
 .ed .hero .ln p { max-width: 460px; margin-top: 20px; font-size: 16px; color: var(--ink-2); }
+.ed .hero .ln p .ulink { color: inherit; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.ed .hero .ln p .ulink:hover { color: var(--ink, #fff); }
 .ed .hero .cta { margin-top: 28px; opacity: 0; visibility: hidden; }
 
 /* ── The collection, sideways ────────────────────────────────── */

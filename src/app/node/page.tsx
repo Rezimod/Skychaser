@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { FIRST_LIGHT_WHEN } from '@/lib/skychaser/first-light';
 import Link from 'next/link';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import DataRow from '@/components/skychaser/ui/DataRow';
@@ -26,10 +27,10 @@ export default function ObservatoryPage() {
           layout="stacked"
           className="sd-legal__ledger"
           items={[
-            { label: 'Live Telescope', value: 'Coming soon · first light in November' },
+            { label: 'Live Telescope', value: `Commissioning · first light in ${FIRST_LIGHT_WHEN}` },
             { label: 'Site', value: node.site },
             { label: 'Sessions', value: 'Open with first light' },
-            { label: 'Open now', value: <Link href="/genesis">The Founding set</Link> },
+            { label: 'Open now', value: <Link href="/genesis">The Genesis cards</Link> },
           ]}
         />
       </article>

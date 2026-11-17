@@ -35,6 +35,10 @@ type Props = {
   nightFrom: number;
   nightTo: number;
   sky: NightSkyData;
+  /** The worked-example night the clock scene shows, e.g. "14 November". */
+  nightDate: string;
+  /** The telescope's status chip, from the node's record: "Commissioning · first light November". */
+  scopeStatus: string;
   scope: { site: string; optics: string; aperture: number; minutes: number };
 };
 
@@ -104,7 +108,7 @@ function Card({ designation, alt, delay = 0, eager = false }: { designation: str
  * Reduced motion gets each scene at its last state. Every number is passed in
  * from the set and the telescope's record.
  */
-export default function EditorialHome({ fontClass, setSize, fromPrice, feature, night, nightFrom, nightTo, sky, scope }: Props) {
+export default function EditorialHome({ fontClass, setSize, fromPrice, feature, night, nightFrom, nightTo, sky, nightDate, scopeStatus, scope }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
 
@@ -471,7 +475,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                 src="/home/m42-raw-1280.webp"
                 srcSet="/home/m42-raw-1280.webp 1280w, /home/m42-raw-1800.webp 1800w"
                 sizes="100vw"
-                alt="A raw, grainy black-and-white frame of the Orion Nebula"
+                alt="An illustration of a raw, grainy black-and-white frame of the Orion Nebula"
                 decoding="async"
               />
               <i className="grain" />
@@ -481,7 +485,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                 src="/home/m42-1280.webp"
                 srcSet="/home/m42-1280.webp 1280w, /home/m42-2200.webp 2200w"
                 sizes="100vw"
-                alt="The Orion Nebula in full colour"
+                alt="The Orion Nebula in full colour, as Hubble saw it"
                 decoding="async"
               />
             </div>
@@ -517,7 +521,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                     <em>Orion.</em>
                   </Mask>
                 </h1>
-                <p>One patch of sky, chosen by the people who hold its card.</p>
+                <p>One patch of sky, chosen by the people who hold its card. Here is how our telescope will turn it into one.</p>
               </div>
               <div className="ln">
                 <h2 className="xl">
@@ -544,7 +548,13 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                     <em>a capsule.</em>
                   </Mask>
                 </h2>
-                <p>One card, numbered and sealed. The odds are published before sale.</p>
+                <p>
+                  One card, numbered and sealed. The odds are published before sale:{' '}
+                  <Link className="ulink" href="/capsules#odds">
+                    see them
+                  </Link>
+                  .
+                </p>
               </div>
               <div className="ln last">
                 <h2 className="xl">
@@ -553,7 +563,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                     <em>to keep.</em>
                   </Mask>
                 </h2>
-                <p>{setSize} cards in the Genesis series. Start with one.</p>
+                <p>{setSize} cards in the Genesis series. The rarest come with a real piece of a meteorite. Start with one.</p>
                 <div className="cta acts">
                   <Btn href="/capsules" tone="w">
                     Open a capsule · from {fromPrice}
@@ -645,12 +655,12 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
 
         {/* ── One night at the telescope ──────────────────── */}
         <section className="night" id="night" aria-label="One night on the roof">
-          <canvas ref={skyCanvas} className="sky" role="img" aria-label="The sky over Tbilisi on the night of 14 November, hour by hour, with the telescope's target marked" />
+          <canvas ref={skyCanvas} className="sky" role="img" aria-label={`The sky over Tbilisi on the night of ${nightDate}, hour by hour, with the telescope's target marked`} />
           <div className="shade" />
           <div className="head">
             <span className="status glass">
               <i />
-              First light · November
+              {scopeStatus}
             </span>
             <h2 className="xl2">
               One night
@@ -658,8 +668,8 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
               <em>on the roof.</em>
             </h2>
             <p>
-              Holders vote on the target, and a {scope.aperture} mm telescope on a {scope.site.split(',')[0]} roof works from {hhmm(nightFrom, 0)} until {hhmm(nightTo % 24, 0)}. This is
-              the real sky of 14 November.
+              Holders vote on the target, and a {scope.aperture} mm telescope on a {scope.site.split(',')[0]} roof works from {hhmm(nightFrom, 0)} until {hhmm(nightTo % 24, 0)}. A
+              worked example: the real sky of {nightDate}, hour by hour, as a night will run once the telescope opens.
             </p>
           </div>
           <article className="ncard glass">
@@ -710,7 +720,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
             <div>
               <span className="status glass rise">
                 <i />
-                First light · November
+                {scopeStatus}
               </span>
               <h2 className="xl2 rise">
                 Then point it
@@ -738,8 +748,8 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                 <Btn href="#signup" tone="w" onClick={toHash}>
                   Join the first-light list
                 </Btn>
-                <Btn href="/contact" tone="o">
-                  Own a telescope? Earn from it
+                <Btn href="/node" tone="o">
+                  How the telescope works
                 </Btn>
               </div>
             </div>
