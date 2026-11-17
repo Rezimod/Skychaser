@@ -23,7 +23,7 @@ type Props = {
 };
 
 /** The card's painted scene (scripts/skychaser-plates/art-prompts.json). */
-export const artFor = (designation: string, small = false) => `/cards/art/${small ? 'sm/' : ''}${designation}.webp?v=4`;
+export const artFor = (designation: string, small = false) => `/cards/art/${small ? 'sm/' : ''}${designation}.webp?v=5`;
 
 /** The card's colour, sampled from its own picture (scripts/skychaser-plates/accents.ts). */
 export const accentFor = (designation: string) => (ACCENTS as Record<string, string>)[designation] ?? '#dfe3ea';
