@@ -26,7 +26,7 @@ export type CardOptics = Pick<ObservabilitySubject, 'resolveArcsec' | 'magnitude
 export type Section = 'object' | 'almanac';
 
 /** Where a card sits on the shelf. The Rare Sights are what the sky does now and then — eclipses, aurorae, great comets — not things in it. */
-export type Family = 'near' | 'stars' | 'deep' | 'galaxies' | 'extremes' | 'sights' | 'almanac';
+export type Family = 'near' | 'stars' | 'deep' | 'galaxies' | 'extremes' | 'sights' | 'almanac' | 'instruments' | 'treasures';
 
 /** What the card prints and how it is sold, beyond the row the database keeps. */
 export type CardRecord = {

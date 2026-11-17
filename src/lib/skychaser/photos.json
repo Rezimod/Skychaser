@@ -1051,5 +1051,175 @@
   "license": "Skychaser",
   "url": "https://skychaser.io/card/ROADSTER",
   "focus": "50% 62%"
+ },
+ "FORESEEN-70": {
+  "file": "/cards/photo/FORESEEN-70.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=8546",
+  "focus": "50% 50%"
+ },
+ "BRESSER-VENUS": {
+  "file": "/cards/photo/BRESSER-VENUS.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=13403",
+  "focus": "50% 50%"
+ },
+ "NATGEO-90": {
+  "file": "/cards/photo/NATGEO-90.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=10335",
+  "focus": "50% 50%"
+ },
+ "ASTROMASTER-114": {
+  "file": "/cards/photo/ASTROMASTER-114.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=14109",
+  "focus": "50% 50%"
+ },
+ "NEXSTAR-90": {
+  "file": "/cards/photo/NEXSTAR-90.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=12908",
+  "focus": "50% 50%"
+ },
+ "NEXSTAR-6": {
+  "file": "/cards/photo/NEXSTAR-6.webp",
+  "kind": "photo",
+  "credit": "Astroman",
+  "source": "Product photograph",
+  "year": "2026",
+  "license": "Astroman",
+  "url": "https://astroman.ge/?p=14117",
+  "focus": "50% 50%"
+ },
+ "BRONZE-MIRROR": {
+  "file": "/cards/photo/BRONZE-MIRROR.webp",
+  "kind": "photo",
+  "credit": "Gary Todd",
+  "source": "Han Bronze Mirror 11",
+  "year": "",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Han_Bronze_Mirror_11.jpg",
+  "focus": "50% 50%"
+ },
+ "MOUNTAIN-CRYSTAL": {
+  "file": "/cards/photo/MOUNTAIN-CRYSTAL.webp",
+  "kind": "photo",
+  "credit": "Unbreaking",
+  "source": "A clear quartz crystal with natural features",
+  "year": "",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:A_clear_quartz_crystal_with_natural_features.jpg",
+  "focus": "50% 50%"
+ },
+ "MOONSTONE": {
+  "file": "/cards/photo/MOONSTONE.webp",
+  "kind": "photo",
+  "credit": "Géry PARENT",
+  "source": "Feldspar 9",
+  "year": "",
+  "license": "Public domain",
+  "url": "https://commons.wikimedia.org/wiki/File:Feldspar_9.jpg",
+  "focus": "50% 50%"
+ },
+ "AMETHYST": {
+  "file": "/cards/photo/AMETHYST.webp",
+  "kind": "photo",
+  "credit": "James St. John",
+  "source": "Amethyst (Anahi Mine, Santa Cruz, Bolivia) 12",
+  "year": "",
+  "license": "CC BY 2.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Amethyst_(Anahi_Mine,_Santa_Cruz,_Bolivia)_12.jpg",
+  "focus": "50% 50%"
+ },
+ "RUBY": {
+  "file": "/cards/photo/RUBY.webp",
+  "kind": "photo",
+  "credit": "Darla Sondrol",
+  "source": "Ruby (GeoDIL number - 1026)",
+  "year": "",
+  "license": "CC0",
+  "url": "https://commons.wikimedia.org/wiki/File:Ruby_(GeoDIL_number_-_1026).jpg",
+  "focus": "50% 50%"
+ },
+ "SAPPHIRE": {
+  "file": "/cards/photo/SAPPHIRE.webp",
+  "kind": "photo",
+  "credit": "James St. John",
+  "source": "Synthetic sapphire 4",
+  "year": "",
+  "license": "CC BY 2.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Synthetic_sapphire_4.jpg",
+  "focus": "50% 50%"
+ },
+ "MOLDAVITE": {
+  "file": "/cards/photo/MOLDAVITE.webp",
+  "kind": "photo",
+  "credit": "Kevin Walsh",
+  "source": "Moldavite from Moldavia",
+  "year": "",
+  "license": "CC BY 2.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Moldavite_from_Moldavia.jpg",
+  "focus": "50% 50%"
+ },
+ "EMERALD": {
+  "file": "/cards/photo/EMERALD.webp",
+  "kind": "photo",
+  "credit": "Gems International",
+  "source": "Natural Zambian Emerald Gemstone",
+  "year": "",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Natural_Zambian_Emerald_Gemstone.jpg",
+  "focus": "50% 50%"
+ },
+ "GOLD-NUGGET": {
+  "file": "/cards/photo/GOLD-NUGGET.webp",
+  "kind": "photo",
+  "credit": "James St. John",
+  "source": "Gold nugget (placer gold) 2 (17025829922)",
+  "year": "",
+  "license": "CC BY 2.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Gold_nugget_(placer_gold)_2_(17025829922).jpg",
+  "focus": "50% 50%"
+ },
+ "DIAMOND": {
+  "file": "/cards/photo/DIAMOND.webp",
+  "kind": "impression",
+  "credit": "Digital Gemology",
+  "source": "Round brilliant cut diamond in profile (computer render)",
+  "year": "",
+  "license": "CC BY 4.0",
+  "url": "https://commons.wikimedia.org/wiki/File:Round_brilliant_cut_diamond_in_profile_(computer_render).jpg",
+  "focus": "50% 50%"
+ },
+ "SILVER-BAR": {
+  "file": "/cards/photo/SILVER-BAR.webp",
+  "kind": "impression",
+  "credit": "Skychaser",
+  "source": "Collector's render",
+  "year": "2026",
+  "license": "Skychaser",
+  "url": "https://skychaser.io/card/SILVER-BAR",
+  "focus": "50% 40%"
  }
 }

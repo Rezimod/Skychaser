@@ -4,7 +4,10 @@ import { SET_001_CARDS } from '@/lib/sets/set-001';
 import { perkFor, votePower } from '@/lib/skychaser/perks';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 
-const of = (r: Rarity) => SET_001_CARDS.filter((c) => c.seed.rarity === r).map((c) => c.seed.designation);
+const VAULT = new Set(['instruments', 'treasures']);
+/** The sky's own cards; the Telescopes and the Treasures take their rarity as a collector's call, not from the telescope. */
+const SKY = SET_001_CARDS.filter((c) => !VAULT.has(c.record.family));
+const of = (r: Rarity) => SKY.filter((c) => c.seed.rarity === r).map((c) => c.seed.designation);
 
 describe('the perk tiers', () => {
   it('makes the meteorites and the moon rock, and only they, legendary', () => {
@@ -17,13 +20,20 @@ describe('the perk tiers', () => {
   });
 
   it('makes rare what the telescope will point at beyond the planets, and leaves nothing it can photograph common', () => {
-    for (const c of SET_001_CARDS.filter((x) => x.seed.rarity === 'rare')) {
+    for (const c of SKY.filter((x) => x.seed.rarity === 'rare')) {
       const pointed = c.seed.observationStatus !== 'not_available' || (c.record.section === 'almanac' && c.seed.designation !== 'GREAT-ECLIPSE');
       expect(pointed, c.seed.designation).toBe(true);
     }
     const photographableCommons = SET_001_CARDS.filter((x) => x.seed.observationStatus !== 'not_available' && x.seed.rarity === 'common');
     expect(photographableCommons.map((c) => c.seed.designation)).toEqual([]);
     expect(of('rare')).toHaveLength(18);
+  });
+
+  it('never makes a telescope or a treasure legendary: that tier is the real meteorites', () => {
+    const vault = SET_001_CARDS.filter((c) => VAULT.has(c.record.family));
+    expect(vault).toHaveLength(17);
+    for (const c of vault) expect(c.seed.rarity, c.seed.designation).not.toBe('legendary');
+    expect(vault.filter((c) => c.seed.rarity === 'epic').map((c) => c.seed.designation)).toEqual(['NEXSTAR-6', 'EMERALD', 'GOLD-NUGGET', 'DIAMOND']);
   });
 
   it('gives every card a perk and every edition a vote', () => {

@@ -10,6 +10,9 @@
  * - Common: the rest. Each edition votes on the night's target, and the cards
  *   that were the set's headliners vote harder.
  *
+ * The Telescopes and the Treasures sit in the tiers by a collector's call, not
+ * by the telescope, and are never legendary: they take the tier's perk.
+ *
  * Every edition votes; the tiers above common vote with a fixed weight.
  * PROVISIONAL (Gate 4): sessions and visitor seats open with the telescope,
  * which is commissioning.

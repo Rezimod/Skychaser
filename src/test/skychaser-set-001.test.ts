@@ -20,10 +20,10 @@ const pointable = objects.filter((c) => c.seed.targetId !== 'kept' && c.seed.tar
 const MOVING = new Set(['moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'halley']);
 
 describe('First Light', () => {
-  it('is a hundred and seven cards in seven families, the Almanac after the objects, then Phobos and the Roadster, each filed under its own designation', () => {
+  it('is a hundred and twenty-four cards in nine families, the Almanac after the objects, then Phobos, the Roadster, the Telescopes and the Treasures, each filed under its own designation', () => {
     expect(SET_001.name).toBe('Genesis');
-    expect(seeds.length).toBe(107);
-    expect(objects).toHaveLength(99);
+    expect(seeds.length).toBe(124);
+    expect(objects).toHaveLength(116);
     expect(almanac).toHaveLength(8);
     // The original 105 keep their numbers: 97 objects, then the Almanac; Phobos was added after, as No. 106.
     expect(SET_001_CARDS.slice(0, 97)).toEqual(objects.slice(0, 97));
@@ -32,9 +32,14 @@ describe('First Light', () => {
     expect(plateFor('PHOBOS')!.num).toBe('106');
     expect(SET_001_CARDS[106].seed.designation).toBe('ROADSTER');
     expect(plateFor('ROADSTER')!.num).toBe('107');
+    // The Telescopes and the Treasures came after, as Nos. 108–124.
+    expect(SET_001_CARDS[107].seed.designation).toBe('FORESEEN-70');
+    expect(plateFor('FORESEEN-70')!.num).toBe('108');
+    expect(SET_001_CARDS[123].seed.designation).toBe('DIAMOND');
+    expect(plateFor('DIAMOND')!.num).toBe('124');
     const families = SET_GROUPS.map((g) => groupCards(SET_001_CARDS, g.key).length);
-    expect(families).toEqual([41, 16, 17, 12, 5, 8, 8]);
-    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(107);
+    expect(families).toEqual([41, 16, 17, 12, 5, 8, 8, 6, 11]);
+    expect(SET_GROUPS.flatMap((g) => groupCards(SET_001_CARDS, g.key))).toHaveLength(124);
     expect(new Set(seeds.map((c) => c.designation)).size).toBe(seeds.length);
     for (const c of seeds) expect(c.designation).toMatch(/^[A-Z0-9-]+$/);
   });
@@ -76,9 +81,9 @@ describe('First Light', () => {
     });
   });
 
-  it('counts the tiers as the perks say: 7 legendary, 10 epic, 18 rare, 72 common', () => {
+  it('counts the tiers as the perks say: 7 legendary, 14 epic, 27 rare, 76 common', () => {
     const count = (r: string) => seeds.filter((c) => c.rarity === r).length;
-    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 10, 18, 72]);
+    expect([count('legendary'), count('epic'), count('rare'), count('common')]).toEqual([7, 14, 27, 76]);
   });
 
   it('never offers the telescope what it cannot point at, and says why', () => {

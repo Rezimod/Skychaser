@@ -1,7 +1,7 @@
 /**
  * First Light.
  *
- * A hundred and seven cards in seven families, numbered outward from Earth: the Solar
+ * A hundred and twenty-four cards in nine families, numbered outward from Earth: the Solar
  * System (from the observatory's own first frame and two fragments held in
  * the hand, out to a visitor from another star), the Stars, the Deep Sky, the
  * Galaxies and the Extremes are real things, every one of them well known;
@@ -10,7 +10,8 @@
  * ends, then sealed. The first twenty-four are written here; the rest by
  * family in ./first-light/. Phobos, the special card, came last of all and
  * is numbered after the Almanac (No. 106) so no card that came before moved;
- * the Roadster, the first limited card, follows it (No. 107).
+ * the Roadster, the first limited card, follows it (No. 107). The Telescopes
+ * and the Treasures, two shelves of their own, came after (Nos. 108–124).
  *
  * Rarity is a decision made here and stored; it has nothing to do with whether
  * Live Telescope V1 can photograph the object — that is judged from the instrument and
@@ -29,6 +30,7 @@ import { GALAXY_CARDS } from './first-light/galaxies';
 import { NEAR_CARDS } from './first-light/near';
 import { NO_POSITION, OFF_MOON, body, deepSky } from './first-light/shared';
 import { STAR_CARDS } from './first-light/stars';
+import { TELESCOPE_CARDS, TREASURE_CARDS } from './first-light/vault';
 
 export const SET_001 = {
   code: 'SET001',
@@ -369,10 +371,15 @@ const ORDER = [
   'PHOBOS',
   // The first limited card, after Phobos: No. 107. On the Solar System shelf; never in a capsule.
   'ROADSTER',
+  // The Telescopes, Nos. 108–113, smallest first: instruments from the Astroman shop.
+  'FORESEEN-70', 'BRESSER-VENUS', 'NATGEO-90', 'ASTROMASTER-114', 'NEXSTAR-90', 'NEXSTAR-6',
+  // The Treasures, Nos. 114–124, bronze to diamond.
+  'BRONZE-MIRROR', 'MOUNTAIN-CRYSTAL', 'MOONSTONE', 'SILVER-BAR', 'AMETHYST', 'RUBY', 'SAPPHIRE', 'MOLDAVITE',
+  'EMERALD', 'GOLD-NUGGET', 'DIAMOND',
 ];
 
 const AUTHORED = new Map(
-  [...FIRST_24, ...NEAR_CARDS, ...STAR_CARDS, ...DEEP_CARDS, ...GALAXY_CARDS, ...EXTREME_CARDS, ...FAMOUS_CARDS, ...SPECIMENS, ...LIMITED].map((c) => [c.seed.designation, c]),
+  [...FIRST_24, ...NEAR_CARDS, ...STAR_CARDS, ...DEEP_CARDS, ...GALAXY_CARDS, ...EXTREME_CARDS, ...FAMOUS_CARDS, ...SPECIMENS, ...LIMITED, ...TELESCOPE_CARDS, ...TREASURE_CARDS].map((c) => [c.seed.designation, c]),
 );
 if (AUTHORED.size !== ORDER.length || ORDER.some((d) => !AUTHORED.has(d))) {
   throw new Error('First Light: ORDER and the authored cards disagree');

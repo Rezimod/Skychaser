@@ -9,6 +9,8 @@ export const SET_GROUPS: Array<{ key: Family; title: string; short: string }> = 
   { key: 'extremes', title: 'The Extremes', short: 'Extremes' },
   { key: 'sights', title: 'Rare Sights', short: 'Rare Sights' },
   { key: 'almanac', title: 'Meteors & Moons', short: 'Meteors & Moons' },
+  { key: 'instruments', title: 'The Telescopes', short: 'Telescopes' },
+  { key: 'treasures', title: 'The Treasures', short: 'Treasures' },
 ];
 
 export function groupCards(cards: AuthoredCard[], family: Family): AuthoredCard[] {
