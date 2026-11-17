@@ -16,13 +16,16 @@ import { capsulesOnSale, readSetSupply } from '@/lib/skychaser/capsule';
 import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { nightRow } from '@/lib/skychaser/night';
 import { siteNightDate } from '@/lib/skychaser/target';
+import { TIERS } from '@/lib/skychaser/tiers';
 
 export const revalidate = 60;
 
+const CARD_FROM_USD = Math.min(...SET_001_CARDS.map((c) => cardPriceUsd(c.seed.designation, c.seed.rarity as Rarity)));
+const CAPSULE_FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
+
 export const metadata: Metadata = {
   title: 'Genesis — capsules and cards',
-  description:
-    'Genesis: real objects of the cosmos, each held as a numbered edition. Opened from sealed capsules, from $5.',
+  description: `Genesis: real objects of the cosmos, each held as a numbered edition. Cards from $${CARD_FROM_USD}, sealed capsules from $${CAPSULE_FROM_USD}; the rarest come with a real meteorite.`,
 };
 
 export default async function FirstLightPage() {

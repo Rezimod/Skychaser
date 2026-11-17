@@ -76,7 +76,11 @@ export default function SkychaserShell({
               <div className="sd-foot__brand">
                 <Wordmark href="/" />
               </div>
-              <div className="sd-foot__trust" aria-label="Partner brands" role="group">
+              <div className="sd-foot__trust" aria-labelledby="sd-foot-brands" role="group">
+                {/* Astroman runs Skychaser; the others are brands Astroman stocks, not partners of Skychaser. */}
+                <p className="sd-label" id="sd-foot-brands">
+                  Run by Astroman · brands we carry
+                </p>
                 <ul className="sd-partners">
                   {PARTNERS.map((p) => (
                     <li key={p.alt}>

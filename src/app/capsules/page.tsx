@@ -9,6 +9,7 @@ import RarityMark from '@/components/skychaser/ui/RarityMark';
 import { getDb } from '@/lib/db';
 import { RARITIES, type Rarity } from '@/lib/rarity';
 import { CARDS_PER_CAPSULE, ORDER_WINDOW_MINUTES } from '@/lib/skychaser/economics';
+import { SESSION_MINUTES } from '@/lib/skychaser/perks';
 import { TIERS, formatOdds, tierByKey } from '@/lib/skychaser/tiers';
 import { capsulesOnSale, goneRarities, heldDraws, readSupply, type SupplyRow } from '@/lib/skychaser/capsule';
 
@@ -87,14 +88,18 @@ export default async function CapsulesPage({ searchParams }: { searchParams: Pro
             />
             <p className="sd-capsule-top__line">
               One card, committed by hash before the sale. Your nonce seals the draw; anyone can recompute it after
-              the card is out.
+              the card is out. Open any capsule in the{' '}
+              <Link href="/capsules/log" className="sd-link">
+                public log
+              </Link>{' '}
+              and press Verify again to check it yourself.
             </p>
             {process.env.NEXT_PUBLIC_SOLANA_CLUSTER === 'devnet' && <p className="sd-strip-note">Solana devnet · paid in test SOL</p>}
           </div>
         </div>
       </section>
 
-      <section className="sd-container sd-chapter-block">
+      <section className="sd-container sd-chapter-block" id="odds">
         <Chapter title="Odds per card" />
         {odds.map((row) => (
           <div key={row.key} className="sd-section">
@@ -110,6 +115,18 @@ export default async function CapsulesPage({ searchParams }: { searchParams: Pro
           </div>
         ))}
         <p className="sd-strip-note">Fixed when a capsule is listed, and logged with it</p>
+        <div className="sd-section">
+          <p className="sd-label">What each rarity gives</p>
+          <DataRow
+            layout="stacked"
+            items={[
+              { label: 'Common', value: 'A vote on what the telescope photographs' },
+              { label: 'Rare', value: 'A vote, and an entry in the draw for a visitor’s seat at a live session' },
+              { label: 'Epic', value: `A ${SESSION_MINUTES}-minute session on the telescope` },
+              { label: 'Legendary', value: 'A real piece of the meteorite it shows · redemption opens soon' },
+            ]}
+          />
+        </div>
         {left && (
           <p className="sd-strip-note">
             Editions left to draw: {left.map(({ r, n }) => `${r} ${n.toLocaleString('en-US')}`).join(' · ')}. A capsule goes

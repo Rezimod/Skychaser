@@ -3,10 +3,11 @@ import Link from 'next/link';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import SkychaserView from '@/components/skychaser/SkychaserView';
 import DataRow from '@/components/skychaser/ui/DataRow';
+import { FIRST_LIGHT_MONTH, FIRST_LIGHT_WHEN } from '@/lib/skychaser/first-light';
 
 export const metadata: Metadata = {
   title: 'Vote — the week’s observation',
-  description: 'One object a week, chosen by the holders among what the Live Telescope can photograph. Voting opens with first light in November.',
+  description: `One object a week, chosen by the holders among what the Live Telescope can photograph. Voting opens with first light in ${FIRST_LIGHT_MONTH}.`,
 };
 
 /** The vote is not open yet. Only the cards are live; this page says so and offers nothing else. */
@@ -18,7 +19,7 @@ export default function VotePage() {
         <p className="sd-eyebrow">Coming soon</p>
         <p className="sd-lede">Holders choose what the telescope observes each week.</p>
         <p>
-          Voting opens with first light in November, when there is a telescope to point. Every holder votes with the
+          Voting opens with first light in {FIRST_LIGHT_MONTH}, when there is a telescope to point. Every holder votes with the
           editions they hold; the week’s card is locked on Sunday at 13:00 UTC and photographed on the first clear night.
         </p>
         <DataRow
@@ -26,8 +27,8 @@ export default function VotePage() {
           className="sd-legal__ledger"
           items={[
             { label: 'Vote', value: 'Opens with first light' },
-            { label: 'Live Telescope', value: 'Coming soon · first light in November' },
-            { label: 'Open now', value: <Link href="/genesis">The Founding set</Link> },
+            { label: 'Live Telescope', value: `Commissioning · first light in ${FIRST_LIGHT_WHEN}` },
+            { label: 'Open now', value: <Link href="/genesis">The Genesis cards</Link> },
           ]}
         />
       </article>

@@ -10,6 +10,7 @@ import { cardPriceUsd } from '@/lib/skychaser/economics';
 import { nightSky } from '@/lib/skychaser/night-sky';
 import { perkFor, SESSION_MINUTES } from '@/lib/skychaser/perks';
 import { TIERS } from '@/lib/skychaser/tiers';
+import { FIRST_LIGHT_MONTH } from '@/lib/skychaser/first-light';
 import '@/styles/skychaser-editorial.css';
 
 // Archivo, the family the Skychaser wordmark is drawn in, over its width axis:
@@ -23,10 +24,11 @@ const archivo = localFont({
 });
 
 const FROM_USD = Math.min(...TIERS.map((t) => t.priceUsd));
+const CARD_FROM_USD = Math.min(...SET_001_CARDS.map((c) => cardPriceUsd(c.seed.designation, c.seed.rarity as Rarity)));
 
 export const metadata: Metadata = {
   title: 'Skychaser — Collect the cosmos',
-  description: `${SET_001_CARDS.length} numbered cards of real objects in the night sky, sealed in capsules from $${FROM_USD}.`,
+  description: `${SET_001_CARDS.length} numbered cards of real objects in the night sky. Cards from $${CARD_FROM_USD}, sealed capsules from $${FROM_USD}. The rarest come with a real meteorite.`,
 };
 
 const NUMBER = new Map(SET_001_CARDS.map((c, i) => [c.seed.designation, i + 1]));
@@ -53,7 +55,7 @@ function facts(designation: string) {
 /** The shelf: six cards across the set, each lit in the colour its art is printed in, with one field note. */
 const FEATURE: { d: string; word: string; note: string; rgb: [number, number, number] }[] = [
   { d: 'SATURN', word: 'Saturn', note: 'Ice as small as sand, as big as houses.', rgb: [150, 108, 52] },
-  { d: 'ORION', word: 'Orion', note: 'Seven bright stars, one hunter, seen from everywhere on Earth.', rgb: [40, 56, 150] },
+  { d: 'ORION', word: 'Orion', note: 'Seven bright stars, one hunter, seen from both hemispheres.', rgb: [40, 56, 150] },
   { d: 'M31', word: 'Andromeda', note: 'Its light set out 2.5 million years ago.', rgb: [78, 52, 140] },
   { d: 'BETELGEUSE', word: 'Betelgeuse', note: 'Large enough to reach past the orbit of Mars.', rgb: [150, 40, 28] },
   { d: 'JUPITER', word: 'Jupiter', note: 'A storm wider than Earth, turning for centuries.', rgb: [156, 96, 50] },
@@ -114,6 +116,8 @@ export default function HomePage() {
         nightFrom={hours.fromHourLocal}
         nightTo={hours.toHourLocal}
         sky={nightSky(NIGHT_START, node.lat, node.lon)}
+        nightDate="14 November"
+        scopeStatus={node.status === 'commissioning' ? `Commissioning · first light ${FIRST_LIGHT_MONTH}` : node.status === 'active' ? 'Live · bookable' : `First light · ${FIRST_LIGHT_MONTH}`}
         scope={{
           site: node.site,
           optics: node.instrument.optics.replace(/^Celestron /, ''),

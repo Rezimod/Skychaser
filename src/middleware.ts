@@ -9,6 +9,10 @@ const RETIRED_CARD = /^\/card\/(TRANQUILITY-BASE|TWIN-SUN|TIDE-WORLD|RING-HABITA
 /** The pages the card product serves. */
 const CARD_PAGES = /^\/($|(genesis|set|card|edition|collection|capsules?|tonight|vote|node|book|voyage|invite|terms|privacy|contact)(\/|$))/;
 
+/** Names people type or link to for pages the card product serves under another path. Checked before the legacy
+ * redirect, so the bare /observatory lands on the card product's telescope page while legacy /observatory/* links still forward. */
+const ALIASES: Record<string, string> = { '/observatory': '/node', '/cards': '/genesis' };
+
 /** The legacy app's pages, which now live on its own domain. Anything else is the card product's 404. */
 const LEGACY_PAGES = /^\/(en|ka|accessibility|admin|chat|club|cookie-policy|darksky|earn|faq|feed|field|first-light|games|hub|leaderboard|learn|marketplace|missions|moon|network|nfts|observations|observatory|observe|play|profile|proof|returns|security-policy|settings|shop|sky|solar-system|star|u)(\/|$)/;
 
@@ -25,6 +29,8 @@ export async function middleware(req: NextRequest) {
   // The app host has no landing page: its front door is the set.
   if (pathname === '/' && req.headers.get('host')?.split(':')[0] === APP_HOST) return NextResponse.rewrite(new URL('/genesis', req.url));
   if (RETIRED_CARD.test(pathname)) return NextResponse.redirect(new URL('/genesis', req.url), 307);
+  const alias = ALIASES[pathname.replace(/\/$/, '')];
+  if (alias) return NextResponse.redirect(new URL(`${alias}${search}`, req.url), 308);
   if (LEGACY_PAGES.test(pathname)) return NextResponse.redirect(`${LEGACY_HOST}${pathname}${search}`, 307);
   if (!CARD_PAGES.test(pathname)) return NextResponse.next();
 

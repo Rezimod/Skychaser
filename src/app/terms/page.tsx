@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import SkychaserShell from '@/components/skychaser/SkychaserShell';
 import Chapter from '@/components/skychaser/ui/Chapter';
+import { FIRST_LIGHT_WHEN } from '@/lib/skychaser/first-light';
 
 export const metadata: Metadata = {
   title: 'Terms — Skychaser',
@@ -13,14 +14,22 @@ export default function TermsPage() {
   return (
     <SkychaserShell title="Terms">
       <article className="sd-container sd-top sd-legal">
-        <p className="sd-label">Last updated 23 September 2026</p>
+        <p className="sd-label">Last updated 17 November 2026</p>
 
         <section className="sd-chapter-block">
           <Chapter title="What Skychaser is" />
           <p>
             Skychaser is a set of collectible cards, each a numbered edition of a real object or a dated event in the sky. It is run
-            by Astroman (astroman.ge). The Live Telescope, the telescope that will photograph the night&rsquo;s card, sees first light in November 2026: until it
-            is operational, no photograph is promised.
+            by Astroman (astroman.ge). The Live Telescope, the telescope that will photograph the night&rsquo;s card, is being commissioned for first light
+            in {FIRST_LIGHT_WHEN}: until it is operational, no photograph is promised.
+          </p>
+        </section>
+
+        <section className="sd-chapter-block">
+          <Chapter title="Who can buy" />
+          <p>
+            Capsules and cards are sold to adults, 18 or older. A parent or guardian may buy for a child, and holds the account
+            the cards sit on.
           </p>
         </section>
 
@@ -58,9 +67,19 @@ export default function TermsPage() {
           </p>
           <p>
             Each edition of an Epic card is one 30-minute session on the Live Telescope, and each edition of a Rare card is one entry
-            in the draw for a visitor&rsquo;s seat at a live session. The Live Telescope sees first light in November 2026; sessions and visitor
-            seats open with it, and how they are booked and drawn will be published here first. Every card votes on the night&rsquo;s
+            in the draw for a visitor&rsquo;s seat at a live session. The Live Telescope is being commissioned for first light in {FIRST_LIGHT_WHEN};
+            sessions and visitor seats open with it, and how they are booked and drawn will be published here first. If first light
+            comes later than planned, these perks do not lapse: each is honoured once the telescope opens. Every card votes on the night&rsquo;s
             target, with the weight shown on the card.
+          </p>
+        </section>
+
+        <section className="sd-chapter-block">
+          <Chapter title="Paying in SOL" />
+          <p>
+            The price of SOL moves. The dollar price is fixed for the fifteen minutes of a quote; after that a new quote may
+            ask for more or less SOL. A payment on Solana cannot be reversed by us or by anyone else once it is confirmed, so
+            check the amount before you send it. We cannot recover cards from an account you lose access to.
           </p>
         </section>
 
