@@ -124,6 +124,12 @@ describe('weapons: switching', () => {
     expect(fired.filter((w) => w === 'pulse').length).toBeGreaterThan(2);
     // The sight is on the glass while the guns are up.
     expect(session.telemetry.aim.on).toBe(1);
+    // A hit from the camera's right shows on the right of the rim.
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    ship.takeDamage(5, ship.group.position.clone().addScaledVector(right, 0.01));
+    step(1);
+    expect(session.telemetry.hurtT).toBeGreaterThan(0.9);
+    expect(session.telemetry.hurtAngle).toBeCloseTo(Math.PI / 2, 1);
     ship.dispose();
   });
 });

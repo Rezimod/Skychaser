@@ -144,15 +144,15 @@ export function makeWeaponFx(opts: WeaponFxOptions): WeaponFx {
       at: new THREE.Vector3(),
     });
   }
-  let muzzleNext = 0;
-  let impactNext = 0;
-  let flickerNext = 0;
-  let boomNext = 0;
 
-  /** The oldest of a pool when every one is busy. */
-  const take = <T extends { life: number }>(list: T[], next: number): [T, number] => {
-    for (const x of list) if (x.life < 0) return [x, next];
-    return [list[next % list.length], (next + 1) % list.length];
+  /** A free one from a pool, or the next in turn when every one is busy;
+   *  `cursor` holds each pool's turn. No tuple, so nothing is allocated. */
+  const cursor = { muzzle: 0, impact: 0, flicker: 0, boom: 0 };
+  const take = <T extends { life: number }>(list: T[], key: keyof typeof cursor): T => {
+    for (let i = 0; i < list.length; i++) if (list[i].life < 0) return list[i];
+    const x = list[cursor[key] % list.length];
+    cursor[key] = (cursor[key] + 1) % list.length;
+    return x;
   };
   const light = (f: Flash, at: THREE.Vector3, color: THREE.Color, size: number, dur: number) => {
     f.sprite.position.copy(at);
@@ -246,27 +246,24 @@ export function makeWeaponFx(opts: WeaponFxOptions): WeaponFx {
       debris: DEBRIS_N,
     },
     muzzle(at, dir, color, size = 1) {
-      let f: Flash;
-      [f, muzzleNext] = take(muzzles, muzzleNext);
+      const f = take(muzzles, 'muzzle');
       tmp.copy(at).addScaledVector(dir, u * 0.15);
       light(f, tmp, color, u * 0.9 * size, 0.06);
     },
     impact(at, color, size) {
-      let f: Flash;
-      [f, impactNext] = take(impacts, impactNext);
-      light(f, at, color, size, 0.14);
+      light(take(impacts, 'impact'), at, color, size, 0.14);
     },
     flicker(target, size) {
       if (!flickers.length) return;
       // Already lit on this hull: light it again rather than stack a second.
-      let f = flickers.find((x) => x.life >= 0 && x.follow === target);
-      if (!f) [f, flickerNext] = take(flickers, flickerNext);
+      let f: Flash | null = null;
+      for (let i = 0; i < flickers.length; i++) if (flickers[i].life >= 0 && flickers[i].follow === target) f = flickers[i];
+      if (!f) f = take(flickers, 'flicker');
       light(f, target.position, FLICKER, size, 0.12);
       f.follow = target;
     },
     explode(at, size) {
-      let b: Boom;
-      [b, boomNext] = take(booms, boomNext);
+      const b = take(booms, 'boom');
       b.at.copy(at);
       b.size = size;
       b.life = 0;
