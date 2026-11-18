@@ -4,6 +4,7 @@
 // waits on the other.
 
 import type { ShipKind } from '@/lib/solar-system/ship-mesh';
+import { isSkinId, type SkinId } from '@/lib/solar-system/skin-catalog';
 
 /** Where an explorer is: the system view, the deck, or on a surface. */
 export type Scene = 'orbit' | 'flight' | 'surface';
@@ -25,6 +26,8 @@ export interface PoseMsg {
   /** Flight: hull orientation, x y z w. */
   q?: number[];
   k?: ShipKind;
+  /** The sender's livery (skin-catalog.ts). Not cleared off the deck: it is who they are. */
+  c?: SkinId;
   /** Flight: the pilot outside on EVA, offset from the same body. */
   e?: number[];
   /** Surface: facing, rad. */
@@ -243,6 +246,8 @@ export function readPose(raw: unknown): PoseMsg | null {
   if (r.s !== 'orbit' && r.s !== 'flight' && r.s !== 'surface') return null;
   const k = r.k === 'kestrel' || r.k === 'xfoil' || r.k === 'endurance' || r.k === 'cruiser' ? r.k : undefined;
   const pose: PoseMsg = { id: r.id, n: r.n, s: r.s, w: str(r.w), b: str(r.b), p: nums(r.p, 3), q: nums(r.q, 4), k, e: nums(r.e, 3), y: num(r.y), v: num(r.v) };
+  // A livery this build does not know (a newer client's) reads as none: the factory paint.
+  if (isSkinId(r.c)) pose.c = r.c;
   const t = num(r.t);
   if (t !== undefined) pose.t = t;
   return pose;

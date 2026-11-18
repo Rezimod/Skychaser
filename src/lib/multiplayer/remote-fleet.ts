@@ -7,12 +7,14 @@ import * as THREE from 'three';
 import type { FlightBody } from '@/lib/solar-system/player-ship';
 import { buildShip, buildSuitForFlight, FLIGHT_UNIT, KM_PER_SCENE_UNIT } from '@/lib/solar-system/player-ship';
 import type { ShipKind, ShipParts } from '@/lib/solar-system/ship-mesh';
+import { applySkin, DEFAULT_SKIN, SKINS, type SkinId } from '@/lib/solar-system/ship-skins';
 import { makeNameLabel, type NameLabel } from '@/lib/multiplayer/name-label';
 import { bracket, fmtRange, peerAlpha, RENDER_DELAY_MS, trim, trimShots, type Blip, type PoseMsg, type RoomLink, type ShotWeapon } from '@/lib/multiplayer/room-link';
 import { makeRemoteWeapons } from '@/lib/multiplayer/remote-weapons';
 
 interface Craft {
   kind: ShipKind;
+  skin: SkinId;
   ship: ShipParts;
   suit: ShipParts | null;
   label: NameLabel;
@@ -55,8 +57,9 @@ function nearestBody(pos: THREE.Vector3, bodies: FlightBody[]): FlightBody | nul
 const offset = (pos: THREE.Vector3, from: THREE.Vector3) => [trim(pos.x - from.x), trim(pos.y - from.y), trim(pos.z - from.z)];
 
 /** Where this explorer's ship (and suit, on EVA) is, for the room. */
-export function writeFlightPose(self: PoseMsg, ship: THREE.Object3D, eva: THREE.Object3D | null, kind: ShipKind, bodies: FlightBody[]) {
+export function writeFlightPose(self: PoseMsg, ship: THREE.Object3D, eva: THREE.Object3D | null, kind: ShipKind, bodies: FlightBody[], skin?: SkinId) {
   self.s = 'flight';
+  if (skin) self.c = skin;
   self.w = undefined;
   self.y = undefined;
   self.v = undefined;
@@ -236,10 +239,16 @@ export function makeRemoteFleet(): RemoteFleet {
         const kind = next.k ?? 'kestrel';
         let c = crafts.get(peer.id);
         if (c && c.kind !== kind) { drop(peer.id); c = undefined; }
+        const skin = next.c ?? DEFAULT_SKIN;
         if (!c) {
-          c = { kind, ship: buildShip(kind), suit: null, label: makeNameLabel(0.09), labelAt: 0 };
+          c = { kind, skin, ship: buildShip(kind, skin), suit: null, label: makeNameLabel(0.09), labelAt: 0 };
           group.add(c.ship.group, c.label.sprite);
           crafts.set(peer.id, c);
+        } else if (c.skin !== skin) {
+          // A new livery is repainted onto the same hull, not rebuilt.
+          c.skin = skin;
+          applySkin(c.ship, skin);
+          c.labelAt = 0;
         }
         const pa = resolve(at.a, at.a.p, a) ?? resolve(next, next.p, a);
         const pb = resolve(next, next.p, b);
@@ -279,7 +288,7 @@ export function makeRemoteFleet(): RemoteFleet {
         const km = camera.position.distanceTo(tagged.position) * KM_PER_SCENE_UNIT;
         if (now - c.labelAt > 400) {
           c.labelAt = now;
-          c.label.set(peer.name || '…', fmtRange(km));
+          c.label.set(peer.name || '…', fmtRange(km), SKINS[c.skin].chip);
         }
         let blip = blips.get(peer.id);
         if (!blip) blips.set(peer.id, (blip = { id: peer.id, name: '', km: 0, x: 0, y: 0, onScreen: false, alpha: 1 }));

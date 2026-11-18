@@ -5,7 +5,9 @@
 // the mode.
 
 import { isWorldId, type WorldId } from '@/lib/solar-system/world-profiles';
+import { isSkinId, type SkinId } from '@/lib/solar-system/skin-catalog';
 import { DEFAULT_MODE, isGameMode, modeOr, type GameMode } from './mode';
+import { chosenLivery } from './livery';
 
 /** Where the player is: in the ship over the orrery, or on a surface. */
 export type GameScene = 'orbit' | 'moon' | WorldId;
@@ -19,6 +21,8 @@ export interface Checkpoint {
    *  it reads as Free Fly, the game it was played as minus the objectives. */
   mode: GameMode;
   savedAt: string;
+  /** The livery picked when this was saved, if one was (livery.ts keeps the live choice). */
+  skin?: SkinId;
 }
 
 export function isGameScene(v: string): v is GameScene {
@@ -29,9 +33,11 @@ export function readCheckpoint(): Checkpoint | null {
   try {
     const raw = typeof localStorage === 'undefined' ? null : localStorage.getItem(KEY);
     if (!raw) return null;
-    const v = JSON.parse(raw) as { v?: number; scene?: unknown; mode?: unknown; savedAt?: unknown };
+    const v = JSON.parse(raw) as { v?: number; scene?: unknown; mode?: unknown; savedAt?: unknown; skin?: unknown };
     if (v.v !== VERSION || typeof v.scene !== 'string' || !isGameScene(v.scene)) return null;
-    return { scene: v.scene, mode: modeOr(v.mode), savedAt: typeof v.savedAt === 'string' ? v.savedAt : '' };
+    const cp: Checkpoint = { scene: v.scene, mode: modeOr(v.mode), savedAt: typeof v.savedAt === 'string' ? v.savedAt : '' };
+    if (isSkinId(v.skin)) cp.skin = v.skin;
+    return cp;
   } catch {
     return null;
   }
@@ -39,7 +45,7 @@ export function readCheckpoint(): Checkpoint | null {
 
 export function writeCheckpoint(scene: GameScene, mode: GameMode = DEFAULT_MODE) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ v: VERSION, scene, mode, savedAt: new Date().toISOString() }));
+    localStorage.setItem(KEY, JSON.stringify({ v: VERSION, scene, mode, savedAt: new Date().toISOString(), skin: chosenLivery() ?? undefined }));
   } catch {
     // Private mode — the expedition restarts from the Moon next time.
   }

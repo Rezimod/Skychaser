@@ -4645,6 +4645,23 @@
     }
   },
   "play": {
+    "livery": {
+      "title": "Ship livery",
+      "auto": "Picked for you from your pilot ID. Tap a colour to change it.",
+      "names": {
+        "factory": "Factory",
+        "crimson": "Crimson",
+        "cobalt": "Cobalt",
+        "stealth": "Stealth",
+        "gold": "Gold",
+        "synthwave": "Synthwave",
+        "arctic": "Arctic",
+        "aurora": "Aurora",
+        "georgia": "Georgia",
+        "carbon": "Carbon",
+        "hazard": "Hazard"
+      }
+    },
     "title": "Stellar Explore",
     "tagline": "Fly the solar system from Georgia",
     "enter": "Enter the solar system",
