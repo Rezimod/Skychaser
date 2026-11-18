@@ -17,6 +17,58 @@ export const HULL_REGEN_DELAY = 8;
 /** Damage one cannon bolt does to an alien craft. */
 export const PLAYER_BOLT_DAMAGE = 15;
 
+/** ── The player's other weapons ──
+ *  Missiles: a few in the rack, one back every so often; a direct hit and
+ *  a blast round it. Plasma: held to charge, let go to fire; the damage and
+ *  the energy it drinks both grow with the charge. Neither out-damages the
+ *  cannon over a fight — they are for a lock or a burst, not a new ceiling. */
+export const MISSILE_MAX = 4;
+export const MISSILE_REGEN_SEC = 7;
+export const MISSILE_REFIRE = 0.6;
+export const MISSILE_DAMAGE = 40;
+/** Blast damage to everything else inside MISSILE_BLAST (saucer units, S). */
+export const MISSILE_SPLASH = 15;
+export const MISSILE_BLAST = 3;
+/** Seconds a hostile has to sit in the cone before the seeker locks. */
+export const MISSILE_LOCK_SEC = 0.6;
+export const PLASMA_CHARGE_SEC = 1.1;
+/** Below this much charge a release fizzles instead of firing. */
+export const PLASMA_MIN_CHARGE = 0.25;
+export const PLASMA_DAMAGE_MIN = 18;
+export const PLASMA_DAMAGE_MAX = 60;
+export const PLASMA_ENERGY_MIN = 0.1;
+export const PLASMA_ENERGY_MAX = 0.32;
+/** The cannon's energy budget (player-ship.ts reads these too). */
+export const CANNON_INTERVAL = 0.13;
+export const CANNON_ENERGY_PER_SHOT = 0.045;
+export const CANNON_ENERGY_REGEN = 0.17;
+
+/** Plasma damage and energy for a charge 0..1 (0 below the minimum). */
+export function plasmaShot(charge: number): { damage: number; energy: number } {
+  if (charge < PLASMA_MIN_CHARGE) return { damage: 0, energy: 0 };
+  const k = Math.min(1, (charge - PLASMA_MIN_CHARGE) / (1 - PLASMA_MIN_CHARGE));
+  return {
+    damage: PLASMA_DAMAGE_MIN + (PLASMA_DAMAGE_MAX - PLASMA_DAMAGE_MIN) * k,
+    energy: PLASMA_ENERGY_MIN + (PLASMA_ENERGY_MAX - PLASMA_ENERGY_MIN) * k,
+  };
+}
+
+export type WeaponKind = 'pulse' | 'missile' | 'plasma';
+
+/** Damage a second each weapon can keep up once its bank or rack is empty —
+ *  on a single target, every shot landing. */
+export function sustainedDps(w: WeaponKind): number {
+  switch (w) {
+    case 'pulse': return Math.min(1 / CANNON_INTERVAL, CANNON_ENERGY_REGEN / CANNON_ENERGY_PER_SHOT) * PLAYER_BOLT_DAMAGE;
+    case 'missile': return MISSILE_DAMAGE / Math.max(MISSILE_REGEN_SEC, MISSILE_REFIRE);
+    case 'plasma': {
+      const full = plasmaShot(1);
+      // Limited by the charge time or by the energy, whichever is slower.
+      return full.damage / Math.max(PLASMA_CHARGE_SEC, full.energy / CANNON_ENERGY_REGEN);
+    }
+  }
+}
+
 /** ── Pacing and mercy ── */
 /** At most this many craft may be lining up or firing a burst at once. */
 export const MAX_SHOOTERS = 2;

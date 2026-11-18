@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { connectRealtime, realtimeConfig, type Channel, type PresenceState, type RealtimeClient } from '@/lib/multiplayer/realtime';
-import { makeRoomCode, normalizeRoomCode, pushSample, pushShot, readPose, readShot, type RoomLink, type Scene } from '@/lib/multiplayer/room-link';
+import { makeRoomCode, normalizeRoomCode, pushSample, pushShot, readPose, readShot, trimShots, type RoomLink, type Scene } from '@/lib/multiplayer/room-link';
 
 export const ROOM_MAX = 8;
 const SEND_EVERY_MS = 200;
@@ -308,7 +308,7 @@ export function useExploreRoom(link: RoomLink, opts: { name: string; epochMs: nu
         lastJson = json;
       }
       const out = link.shotsOut;
-      if (out.length > SHOTS_WAITING) out.splice(0, out.length - SHOTS_WAITING);
+      trimShots(out, SHOTS_WAITING);
       if (out.length && now - lastShot >= SHOT_GAP_MS) {
         const shot = out.shift()!;
         room.send('shot', { ...shot, id: self.id, t: Math.round(now) });

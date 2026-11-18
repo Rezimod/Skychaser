@@ -492,6 +492,129 @@
   mix-blend-mode: screen;
 }
 
+/* ── The guns on the glass: the sight where the cannon converges (an X on
+   it for a hit, a ring for a kill), the seeker's diamond, a wedge on the
+   rim toward whatever hit the ship, and the amber edge of low shields.
+   Each is positioned by a transform and faded by opacity — nothing here
+   lays the deck out again while a fight is on. ── */
+.flight-sight,
+.flight-lock {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.flight-sight::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(190, 225, 255, 0.5);
+}
+.flight-sight::after {
+  content: '';
+  position: absolute;
+  left: -1.5px;
+  top: -1.5px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(220, 240, 255, 0.85);
+}
+.flight-sight__hit,
+.flight-sight__kill { position: absolute; display: block; }
+.flight-sight__hit {
+  left: -17px;
+  top: -17px;
+  width: 34px;
+  height: 34px;
+  opacity: var(--hm, 0);
+  background:
+    linear-gradient(45deg, transparent 47%, #fff 47%, #fff 53%, transparent 53%),
+    linear-gradient(-45deg, transparent 47%, #fff 47%, #fff 53%, transparent 53%);
+  -webkit-mask: radial-gradient(circle, transparent 9px, #000 10px);
+  mask: radial-gradient(circle, transparent 9px, #000 10px);
+}
+.flight-sight__kill {
+  left: -19px;
+  top: -19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #ff9a5c;
+  box-shadow: 0 0 8px rgba(255, 140, 70, 0.7);
+  opacity: var(--km, 0);
+  transform: scale(calc(1.7 - var(--km, 0) * 0.7));
+}
+.flight-lock::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 40px;
+  height: 40px;
+  border: 2px dashed rgba(255, 200, 90, 0.85);
+  border-radius: 4px;
+  transform: rotate(45deg);
+}
+.flight-lock[data-state='locked']::before {
+  border-style: solid;
+  border-color: #ff5a4a;
+  box-shadow: 0 0 10px rgba(255, 90, 74, 0.6);
+  transform: rotate(45deg) scale(0.78);
+}
+.flight-lock span {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #ffc65a;
+}
+.flight-lock[data-state='locked'] span { color: #ff7a6a; }
+.flight-hurt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 7;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.flight-hurt i {
+  position: absolute;
+  left: -70px;
+  top: calc(-1 * min(40vh, 42vw));
+  width: 140px;
+  height: 30px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(255, 80, 55, 0.9), rgba(255, 80, 55, 0) 72%);
+}
+.flight-hud__low {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 70px 10px rgba(255, 150, 40, 0.42);
+  transition: opacity 0.3s;
+}
+.flight-hud[data-low='true'] .flight-hud__low { opacity: 1; animation: flight-low 1.4s ease-in-out infinite; }
+@keyframes flight-low { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .flight-hud[data-low='true'] .flight-hud__low { animation: none; opacity: 0.7; }
+}
+
 /* Falling into a black hole (black-hole-fall.ts). --tidal 0..1 closes a
    vignette in, blueshifts the light ahead and reddens the rim, with a
    chromatic smear of offset rings; --void takes the view to black at the
@@ -540,7 +663,7 @@
    answers. ── */
 .flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
-.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit, .flight-hud__hole) { display: none; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit, .flight-hud__hole, .flight-hud__low, .flight-hurt) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
 .flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
 .flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
@@ -1103,6 +1226,37 @@
   color: var(--hud-dim);
 }
 
+/* The weapon key: the gun up, the missile rack as pips (the next one
+   filling in), the plasma's charge as a bar. */
+.flight-hud .flight-weapon { gap: 8px; }
+.flight-weapon svg { flex: none; color: var(--hud-ink); }
+.flight-weapon[data-weapon='missile'] svg { color: #ffb35c; }
+.flight-weapon[data-weapon='plasma'] svg { color: #b9a4ff; }
+.flight-weapon__ammo,
+.flight-weapon__charge { display: none; }
+.flight-weapon[data-weapon='missile'] .flight-weapon__ammo { display: flex; gap: 3px; }
+.flight-weapon[data-weapon='plasma'] .flight-weapon__charge { display: block; }
+.flight-weapon__ammo i { width: 6px; height: 6px; border-radius: 50%; background: rgba(120, 165, 220, 0.3); }
+.flight-weapon__ammo[data-n='1'] i:nth-child(-n + 1),
+.flight-weapon__ammo[data-n='2'] i:nth-child(-n + 2),
+.flight-weapon__ammo[data-n='3'] i:nth-child(-n + 3),
+.flight-weapon__ammo[data-n='4'] i { background: #ffb35c; }
+.flight-weapon__ammo[data-n='0'] i:nth-child(1),
+.flight-weapon__ammo[data-n='1'] i:nth-child(2),
+.flight-weapon__ammo[data-n='2'] i:nth-child(3),
+.flight-weapon__ammo[data-n='3'] i:nth-child(4) { background: rgba(255, 179, 92, calc(0.15 + var(--regen, 0) * 0.5)); }
+.flight-weapon__charge { width: 34px; height: 3px; border-radius: 2px; overflow: hidden; background: rgba(120, 165, 220, 0.3); }
+.flight-weapon__charge i { display: block; height: 100%; background: #b9a4ff; transform-origin: left; transform: scaleX(0); }
+.flight-weapon kbd {
+  font: inherit;
+  font-size: 9px;
+  line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--hud-line);
+  border-radius: 5px;
+  color: var(--hud-dim);
+}
+
 /* ── The two pads ── */
 .flight-hud__move { width: var(--stick); height: var(--stick); }
 .flight-hud .flight-hud__move .game-stick {
@@ -1162,6 +1316,18 @@
 .flight-hud[data-touch='true'] .flight-hud__keys [data-place='boost'] { right: calc(var(--key) * 1.7); bottom: calc(var(--key) * 0.1); }
 .flight-hud[data-touch='true'] .flight-hud__keys [data-place='brake'] { right: calc(var(--key) * 0.2); bottom: calc(var(--key) * 1.7); }
 .flight-hud[data-touch='true'] .flight-hud__gear-slot { right: calc(var(--key) * 1.85); bottom: calc(var(--key) * 1.6); }
+/* The weapon key rides above the cluster, in reach of the thumb on the fire key. */
+.flight-hud[data-touch='true'] .flight-hud__keys [data-place='weapon'] {
+  right: calc(var(--key) * 1.05);
+  bottom: calc(var(--key) * 2.85);
+  width: calc(var(--key) * 0.92);
+  height: calc(var(--key) * 0.92);
+  flex-direction: column;
+  gap: 3px;
+}
+.flight-hud[data-touch='true'] .flight-weapon[data-weapon='missile'] .flight-weapon__ammo { display: flex; gap: 2px; }
+.flight-hud[data-touch='true'] .flight-weapon[data-weapon='plasma'] .flight-weapon__charge { display: block; width: 60%; }
+.flight-hud[data-touch='true'] .flight-weapon__ammo i { width: 4px; height: 4px; }
 /* No fire key: three keys in a tight corner — brake under the thumb, boost
    beside it, the gear above — instead of round a gap for a key that is not there. */
 .flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] { width: calc(var(--key) * 2.3); height: calc(var(--key) * 2.3); }

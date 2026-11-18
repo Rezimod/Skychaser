@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { game } from '@/game/state';
 import type { GameMode } from '@/game/mode';
 import { ModeIcon } from './TitleScreen';
+import { LiveryPicker } from './LiveryPicker';
 
 interface PauseMenuProps {
   onResume: () => void;
@@ -33,6 +34,7 @@ export function PauseMenu({ onResume, mode, onTitle, room }: PauseMenuProps) {
           {room && <small><Users size={13} aria-hidden /> {t('lobby.inRoom', { code: room.code, n: room.count })}</small>}
         </p>
         <p className="game-pause__hint">{t('pauseHint')}</p>
+        <LiveryPicker compact />
         <div className="game-menu__list">
           <button type="button" className="game-menu__item game-menu__item--primary" style={n(i++)} onClick={onResume} autoFocus><Play size={18} aria-hidden /><span>{t('resume')}</span></button>
           {mode === 'story' && <button type="button" className="game-menu__item" style={n(i++)} onClick={() => game.openOverlay('missions')}><Trophy size={18} aria-hidden /><span>{t('story.panelTitle')}</span></button>}

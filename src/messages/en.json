@@ -1168,6 +1168,15 @@
       "board": "Board",
       "evaOut": "EVA — suit jets",
       "evaBoardTouch": "EVA — tap Board",
+      "weapons": {
+        "pulse": "Pulse cannon",
+        "missile": "Missiles",
+        "plasma": "Plasma",
+        "next": "Next weapon",
+        "seek": "Locking",
+        "locked": "Locked",
+        "charge": "Charge"
+      },
       "fire": "Fire",
       "boost": "Boost",
       "brake": "Brake",
@@ -1441,7 +1450,9 @@
         "t14": "Sound — on and off in the menu",
         "r15": "Z — flight assist · V — step out in the suit, and back aboard · R — clear the target",
         "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
-        "t15": "Near a planet or moon, tap Land and the ship lands itself — fly into the ground and it blows up"
+        "t15": "Near a planet or moon, tap Land and the ship lands itself — fly into the ground and it blows up",
+        "r18": "B — next weapon (Shift+B back): pulse cannon; homing missiles — hold a hostile ahead until it locks; plasma — hold Space to charge, let go to fire",
+        "t17": "Weapon key, above the fire key — pulse cannon, homing missiles, plasma (hold fire to charge, let go to shoot)"
       },
       "dockedAt": "Docked at {body} — push forward to leave",
       "supplying": "Taking on fuel and stores",
@@ -1486,7 +1497,8 @@
         "boost": "Boost",
         "brake": "Brake",
         "gear": "Gear",
-        "console": "Console bar"
+        "console": "Console bar",
+        "weapon": "Weapon"
       },
       "dock": "Dock",
       "docking": "Docking… tap to cancel",
@@ -4633,6 +4645,23 @@
     }
   },
   "play": {
+    "livery": {
+      "title": "Ship livery",
+      "auto": "Picked for you from your pilot ID. Tap a colour to change it.",
+      "names": {
+        "factory": "Factory",
+        "crimson": "Crimson",
+        "cobalt": "Cobalt",
+        "stealth": "Stealth",
+        "gold": "Gold",
+        "synthwave": "Synthwave",
+        "arctic": "Arctic",
+        "aurora": "Aurora",
+        "georgia": "Georgia",
+        "carbon": "Carbon",
+        "hazard": "Hazard"
+      }
+    },
     "title": "Stellar Explore",
     "tagline": "Fly the solar system from Georgia",
     "enter": "Enter the solar system",
