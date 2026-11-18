@@ -10,11 +10,10 @@ export default function NotFound() {
       <section className="sd-container sd-top">
         <div className="sd-gate">
           <p className="sd-label">Not found</p>
-          <p className="sd-lede">Nothing is catalogued at this address. The set, the capsules and tonight&rsquo;s card are below.</p>
+          <p className="sd-lede">Nothing is catalogued at this address. The cards and your collection are below.</p>
           <div className="sd-links" style={{ justifyContent: 'center' }}>
             <Link href="/genesis" className="sd-chip">Genesis</Link>
-            <Link href="/capsules" className="sd-chip">Capsules</Link>
-            <Link href="/vote" className="sd-chip">Vote</Link>
+            <Link href="/collection" className="sd-chip">Collection</Link>
           </div>
         </div>
       </section>

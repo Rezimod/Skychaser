@@ -5,7 +5,7 @@ const ROUTES = [
   ['set-001', '/genesis'],
   ['card-saturn', '/card/SATURN'],
   ['card-halley', '/card/HALLEY'],
-  ['capsules', '/capsules'],
+  ['collection', '/collection'],
 ] as const;
 
 const SIZES = [

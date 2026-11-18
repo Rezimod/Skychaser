@@ -4,7 +4,7 @@ test('nothing animates under reduced motion', async ({ page }) => {
   test.setTimeout(180_000);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const path of ['/', '/genesis', '/card/SATURN', '/capsules']) {
+  for (const path of ['/', '/genesis', '/card/SATURN', '/collection']) {
     await page.goto(path, { waitUntil: 'domcontentloaded', timeout: 120_000 });
     await page.waitForTimeout(2500);
     const r = await page.evaluate(() => ({

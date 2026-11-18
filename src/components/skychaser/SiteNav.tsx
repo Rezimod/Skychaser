@@ -7,10 +7,8 @@ import { WORDMARK_GLYPHS } from './home/wordmark';
 import '@/styles/skychaser-sitenav.css';
 
 const LINKS = [
-  { href: '/genesis', label: 'Cards', match: ['/genesis', '/card'] },
-  { href: '/capsules', label: 'Capsules', match: ['/capsule'] },
+  { href: '/genesis', label: 'Cards', match: ['/genesis', '/card', '/capsule'] },
   { href: '/collection', label: 'Collection', match: ['/collection'] },
-  { href: '/node', label: 'Observatory', match: ['/node'] },
 ];
 
 /** The one top bar, the same on every page. On the home page it floats over the hero (`overlay`). */
@@ -31,7 +29,7 @@ export default function SiteNav({ overlay = false }: { overlay?: boolean }) {
       </nav>
       <div className="snav__end">
         <SkychaserAccountGate />
-        <Link className="snav__cta" href="/capsules">
+        <Link className="snav__cta" href="/genesis">
           <span>Open a capsule</span>
           <i>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden="true">

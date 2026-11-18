@@ -15,7 +15,6 @@ const PARTNERS = [
 ];
 
 const EXPLORE = [
-  { href: '/node', label: 'Observatory' },
   { href: '/vote', label: 'Vote' },
   { href: '/voyage', label: 'Voyage' },
 ];

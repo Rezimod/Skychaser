@@ -141,13 +141,13 @@ export default function SkychaserAccount() {
           )}
         </Link>
         {credits !== null && (
-          <Link href="/node" className="sd-acct__seg sd-acct__credits" aria-label={`${credits} telescope credits, for sessions from first light`}>
+          <span className="sd-acct__seg sd-acct__credits" aria-label={`${credits} telescope credits, for sessions from first light`}>
             {CreditsGlyph}
             <span className="sd-acct__in">
               <strong>{credits}</strong>
               <span>{credits === 1 ? 'credit' : 'credits'}</span>
             </span>
-          </Link>
+          </span>
         )}
       </div>
       <button

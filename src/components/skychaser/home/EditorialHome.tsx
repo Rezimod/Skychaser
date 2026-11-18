@@ -40,7 +40,7 @@ type Props = {
 
 const CONTACT = 'info@astroman.ge';
 const RARITY: Record<Rarity, string> = { common: 'Common', rare: 'Rare', epic: 'Epic', legendary: 'Legendary' };
-const art = (designation: string, small = false) => `/cards/plate/${designation}/card${small ? '-sm' : ''}.webp?v=specimen10`;
+const art = (designation: string, small = false) => `/cards/plate/${designation}/card${small ? '-sm' : ''}.webp?v=specimen11`;
 const hhmm = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -555,7 +555,7 @@ export default function EditorialHome({ fontClass, setSize, fromPrice, feature, 
                 </h2>
                 <p>{setSize} cards in the Genesis series. Start with one.</p>
                 <div className="cta acts">
-                  <Btn href="/capsules" tone="w">
+                  <Btn href="/genesis" tone="w">
                     Open a capsule · from {fromPrice}
                   </Btn>
                   <Btn href="/genesis" tone="o">

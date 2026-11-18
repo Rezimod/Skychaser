@@ -59,6 +59,10 @@ const nextConfig: NextConfig = {
       { source: '/:path((?!api/|m/|_next/).+)', has: oldHost, destination: 'https://skychaser.io/:path', permanent: true },
       { source: '/set/001', destination: '/genesis', permanent: true },
       { source: '/tonight', destination: '/vote', permanent: true },
+      // The observatory and the capsules page are gone (owner, 2026-11-18); capsules are bought on the shelf.
+      { source: '/capsules', destination: '/genesis', permanent: true },
+      { source: '/node/:path*', destination: '/genesis', permanent: true },
+      { source: '/book', destination: '/genesis', permanent: true },
     ];
   },
   async rewrites() {

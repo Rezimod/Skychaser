@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Layers, Wallet } from 'lucide-react';
 
-/** Two destinations only (owner, 2026-10-23): the shelf and the Collection. The observatory and the vote stay in the footer. */
+/** Two destinations only (owner, 2026-10-23): the shelf and the Collection. The vote stays in the footer. */
 const TABS = [
   { href: '/genesis', label: 'Genesis', icon: Layers, match: ['/genesis', '/card', '/capsule', '/edition'] },
   { href: '/collection', label: 'Collection', icon: Wallet, match: ['/collection'] },

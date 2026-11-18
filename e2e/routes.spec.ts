@@ -11,7 +11,6 @@ const ROUTES = [
   '/genesis',
   '/card/TYCHO',
   '/edition/TYCHO/1',
-  '/capsules',
   '/capsules/log',
   '/collection',
   '/vote',
@@ -19,7 +18,6 @@ const ROUTES = [
   '/terms',
   '/privacy',
   '/voyage',
-  '/node',
   '/invite',
 ];
 
