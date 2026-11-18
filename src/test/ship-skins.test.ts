@@ -129,7 +129,7 @@ describe('painting a hull', () => {
       fragmentShader: THREE.ShaderLib.physical.fragmentShader,
     };
     mat.onBeforeCompile(sh as unknown as THREE.WebGLProgramParametersWithUniforms, {} as THREE.WebGLRenderer);
-    expect(sh.vertexShader).toContain('vSkinPos = position;');
+    expect(sh.vertexShader).toContain('vSkinPos = position * length(modelMatrix[0].xyz);');
     expect(sh.fragmentShader).toContain('uniform sampler2D uSkinPat;');
     expect(sh.fragmentShader).toContain('totalEmissiveRadiance += uSkinGlow');
     expect(sh.uniforms.uSkinGlow).toBe(skinUniforms(mat)!.uSkinGlow);

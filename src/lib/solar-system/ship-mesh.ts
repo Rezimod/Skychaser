@@ -535,7 +535,7 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
     glowMats: [], glowSprites: [], plumes: [], plumeMat, plumeCores: [], plumeCoreMat, plasmaMat, plasma, streaks, streakMat, strobeMat,
     navMats: [], rcs: [], owned: [skinMat, engineMat, bellMat, plumeMat, plumeCoreMat, streakMat, strobeMat],
     length: spec.length * H, spinner: null, env: null, reflective: [skinMat, bellMat],
-    paint: { hull: [skinMat], trim: [], accent: [], lamp: [], unit: spec.metres, baked: true },
+    paint: { hull: [skinMat], trim: [], accent: [], lamp: [], unit: spec.length * H, baked: true },
     release() {
       released = true;
       for (const o of loaded) o.removeFromParent();

@@ -194,7 +194,9 @@ export interface PaintTargets {
   accent: THREE.MeshStandardMaterial[];
   /** Windows and lamps: their glow tinted. */
   lamp: THREE.MeshStandardMaterial[];
-  /** Hull length in the hull materials' own space, for the pattern's scale. */
+  /** Hull length at flight scale, for the pattern's scale. The hook works in
+   *  each mesh's own axes at world size: a model's quantised positions carry
+   *  their size on the node, not in the vertices. */
   unit: number;
   /** Hull maps carry baked paint (model ships): paint only their light parts.
    *  Otherwise the material colour is the paint, all of it. */
@@ -270,7 +272,7 @@ function hook(mat: THREE.MeshStandardMaterial): HullUniforms {
     Object.assign(sh.uniforms, uniforms);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', `#include <common>\n${VERT_HEAD}`)
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSkinPos = position;\nvSkinN = normal;');
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSkinPos = position * length(modelMatrix[0].xyz);\nvSkinN = normal;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>\n${FRAG_HEAD}`)
       .replace('#include <emissivemap_fragment>', FRAG_BODY);
