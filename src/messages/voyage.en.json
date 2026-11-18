@@ -379,7 +379,9 @@
         "r16": "+ / − or [ ] — pull the camera in and out · wheel does the same",
         "t15": "Near a planet or moon, tap Land and the ship lands itself — fly into the ground and it blows up",
         "r17": "Aliens — some greet you and leave gifts, some attack: shoot the hostiles, fly through the green crystals to repair",
-        "t16": "Fire key — shoot raiders, drones, mines and wrecks; green crystals repair the ship"
+        "t16": "Fire key — shoot raiders, drones, mines and wrecks; green crystals repair the ship",
+        "r18": "B — next weapon (Shift+B back): pulse cannon; homing missiles — hold a hostile ahead until it locks; plasma — hold Space to charge, let go to fire",
+        "t17": "Weapon key, above the fire key — pulse cannon, homing missiles, plasma (hold fire to charge, let go to shoot)"
       },
       "dockedAt": "Docked at {body} — push forward to leave",
       "supplying": "Taking on fuel and stores",
@@ -424,7 +426,8 @@
         "boost": "Boost",
         "brake": "Brake",
         "gear": "Gear",
-        "console": "Console bar"
+        "console": "Console bar",
+        "weapon": "Weapon"
       },
       "dock": "Dock",
       "docking": "Docking… tap to cancel",
@@ -522,6 +525,15 @@
         "clear": "Area clear — grab the salvage to repair",
         "breakoff": "They are pulling back — repair while you can",
         "spooked": "You scared the visitor off"
+      },
+      "weapons": {
+        "pulse": "Pulse cannon",
+        "missile": "Missiles",
+        "plasma": "Plasma",
+        "next": "Next weapon",
+        "seek": "Locking",
+        "locked": "Locked",
+        "charge": "Charge"
       }
     },
     "moon": {
@@ -2010,6 +2022,23 @@
       "title": "Something in the game broke",
       "body": "The world could not carry on. Start again from orbit, or go back to the title.",
       "retry": "Start again from orbit"
+    },
+    "livery": {
+      "title": "Ship livery",
+      "auto": "Picked for you from your pilot ID. Tap a colour to change it.",
+      "names": {
+        "factory": "Factory",
+        "crimson": "Crimson",
+        "cobalt": "Cobalt",
+        "stealth": "Stealth",
+        "gold": "Gold",
+        "synthwave": "Synthwave",
+        "arctic": "Arctic",
+        "aurora": "Aurora",
+        "georgia": "Georgia",
+        "carbon": "Carbon",
+        "hazard": "Hazard"
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowDownToLine, Check, ChevronsUp, Crosshair, Eye, Globe, HelpCircle, LogOut, Menu, Minus, Moon,
+  ArrowDownToLine, Atom, Check, ChevronsUp, Crosshair, Eye, Globe, HelpCircle, LogOut, Menu, Minus, Moon,
   Orbit, Pause, Play, Plus, Radio, Rocket, RotateCcw, Ruler, Satellite, Shield, Smartphone, Sparkles, Star, Volume2, VolumeX, X, Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -58,8 +58,8 @@ interface PlayerShipProps {
 }
 const SHIPS: ShipKind[] = ['kestrel', 'xfoil', 'cruiser', 'endurance'];
 const BARS = ['shield', 'energy', 'boost'] as const;
-const KEY_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r17', 'r6', 'r10', 'r12', 'r13', 'r7', 'r15', 'r8', 'r16', 'r11', 'r14', 'r9'] as const;
-const TOUCH_ROWS = ['t1', 't2', 't3', 't16', 't11', 't6', 't15', 't12', 't14', 't5'] as const;
+const KEY_ROWS = ['r1', 'r2', 'r3', 'r4', 'r5', 'r18', 'r17', 'r6', 'r10', 'r12', 'r13', 'r7', 'r15', 'r8', 'r16', 'r11', 'r14', 'r9'] as const;
+const TOUCH_ROWS = ['t1', 't2', 't3', 't16', 't17', 't11', 't6', 't15', 't12', 't14', 't5'] as const;
 const HELP_SEEN = 'stellar_explore_help';
 /** The arrival has been watched once; from now on it can be skipped from the first second. */
 const ARRIVAL_SEEN = 'stellar_explore_arrival';
@@ -68,6 +68,10 @@ const ARRIVAL_SKIP_AFTER = APPROACH_LEGS[0].seconds + 1;
 /** How far through the arrival the surface starts building behind it, 0…1: the last leg, about five seconds out. */
 const STANDBY_AT = 0.62;
 const ICONS = [Shield, Zap, ChevronsUp];
+/** The weapons, in the order B steps through them. */
+const WEAPON_ICONS = { pulse: Crosshair, missile: Rocket, plasma: Atom } as const;
+type WeaponName = keyof typeof WEAPON_ICONS;
+const MISSILE_PIPS = [0, 1, 2, 3];
 /** How long a passing moment stays up in the popup. */
 const POPUP_MS = 4200;
 /** The ship's alerts that are a danger, and the ones that are good news. */
@@ -111,7 +115,7 @@ const LOOK_GAIN = 3.2;
 const LAYOUT_KEY = 'stellar_hud_layout_v2';
 interface Place { x: number; y: number; s: number }
 type Layout = Record<string, Place>;
-const PLACEABLE = ['head', 'topkeys', 'side', 'move', 'fire', 'boost', 'brake', 'gear', 'console'] as const;
+const PLACEABLE = ['head', 'topkeys', 'side', 'move', 'fire', 'weapon', 'boost', 'brake', 'gear', 'console'] as const;
 type Placeable = (typeof PLACEABLE)[number];
 const loadLayout = (): Layout => {
   try {
@@ -160,7 +164,16 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
   const [editing, setEditing] = useState(false);
   const [layout, setLayout] = useState<Layout>({});
   const [picked, setPicked] = useState<Placeable | null>(null);
+  const [weapon, setWeapon] = useState<WeaponName>('pulse');
   const rootRef = useRef<HTMLDivElement>(null);
+  /** The guns: the crosshair, the seeker's bracket, where a hit came from,
+   *  and the weapon key's rack and charge. */
+  const sightRef = useRef<HTMLDivElement>(null);
+  const lockRef = useRef<HTMLDivElement>(null);
+  const lockTextRef = useRef<HTMLSpanElement>(null);
+  const hurtRef = useRef<HTMLDivElement>(null);
+  const ammoRef = useRef<HTMLSpanElement>(null);
+  const chargeRef = useRef<HTMLElement>(null);
   const arrivalRef = useRef<LandingSite | null>(null);
   const arrivalSkipRef = useRef(false);
   const arrivalArmedRef = useRef(0);
@@ -217,6 +230,7 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
   const flickRef = useRef(makeFlickDodge());
   const heldRef = useRef<Partial<Record<'fire' | 'boost' | 'brake', number>>>({});
   const lookRef = useRef<{ id: number; x: number; y: number } | null>(null);
+  const weaponRef = useRef<string>('pulse');
   const zoomRef = useRef(1);
   const landscapeRef = useRef(landscape);
   landscapeRef.current = landscape;
@@ -763,6 +777,49 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
       // A hit on the glass: the shield's blue shimmer while it holds, red once
       // the hull is taking it.
       root?.style.setProperty('--hit', tel.hitFlash.toFixed(3));
+      // Shields low: the glass edges glow a slow warning.
+      const low = String(!tel.crashed && tel.shield < tel.maxShield * 0.25);
+      if (root && root.dataset.low !== low) root.dataset.low = low;
+
+      // ── The guns. ──
+      if (tel.weapon !== weaponRef.current) {
+        weaponRef.current = tel.weapon;
+        setWeapon(tel.weapon);
+      }
+      const sight = sightRef.current;
+      if (sight) {
+        const on = !!tel.aim.on && !tel.crashed;
+        if (sight.hidden === on) sight.hidden = !on;
+        if (on) {
+          sight.style.transform = `translate3d(${Math.round((tel.aim.x * 0.5 + 0.5) * vw)}px, ${Math.round((-tel.aim.y * 0.5 + 0.5) * vh)}px, 0)`;
+          sight.style.setProperty('--hm', tel.hitMarker.toFixed(2));
+          sight.style.setProperty('--km', tel.killMarker.toFixed(2));
+        }
+      }
+      const lockEl = lockRef.current;
+      if (lockEl) {
+        const on = !!tel.lock && !!tel.lockScreen.on;
+        if (lockEl.hidden === on) lockEl.hidden = !on;
+        if (on) {
+          lockEl.style.transform = `translate3d(${Math.round((tel.lockScreen.x * 0.5 + 0.5) * vw)}px, ${Math.round((-tel.lockScreen.y * 0.5 + 0.5) * vh)}px, 0)`;
+          if (lockEl.dataset.state !== tel.lock) {
+            lockEl.dataset.state = tel.lock;
+            text(lockTextRef.current, t(tel.lock === 'locked' ? 'weapons.locked' : 'weapons.seek'));
+          }
+        }
+      }
+      const hurt = hurtRef.current;
+      if (hurt) {
+        hurt.style.opacity = tel.hurtT > 0.01 ? tel.hurtT.toFixed(2) : '0';
+        if (tel.hurtT > 0.01) hurt.style.transform = `rotate(${tel.hurtAngle.toFixed(3)}rad)`;
+      }
+      const ammo = ammoRef.current;
+      if (ammo) {
+        const n = String(tel.missiles);
+        if (ammo.dataset.n !== n) ammo.dataset.n = n;
+        ammo.style.setProperty('--regen', tel.missileRegen.toFixed(2));
+      }
+      chargeRef.current?.style.setProperty('transform', `scaleX(${tel.charge.toFixed(3)})`);
       const marker = markerRef.current;
       if (marker) {
         const locked = tel.navId && tel.nav.on;
@@ -961,6 +1018,17 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
               coming up through the glide. */}
           <div className="flight-heat" aria-hidden />
           <div className="flight-hud__hit" aria-hidden />
+          {/* Shields low: the edges of the glass pulse amber. */}
+          <div className="flight-hud__low" aria-hidden />
+          {/* Where the last hit came from: a wedge on the rim of the glass. */}
+          <div ref={hurtRef} className="flight-hurt" aria-hidden><i /></div>
+          {session.armed && (
+            <>
+              {/* Where the guns converge; a hit lands an X on it, a kill a ring. */}
+              <div ref={sightRef} className="flight-sight" hidden aria-hidden><i className="flight-sight__hit" /><i className="flight-sight__kill" /></div>
+              <div ref={lockRef} className="flight-lock" hidden aria-hidden><span ref={lockTextRef} /></div>
+            </>
+          )}
 
           {/* The world's name, letter-spaced across the glass, with one line
               of what it is like down there — the entry's title card. */}
@@ -1105,12 +1173,28 @@ export function PlayerShip({ session, onActiveChange, onLand, onStandby, onWarm,
               {touch ? (
                 <>
                   {session.armed && <button type="button" className="flight-hud__key flight-hud__key--fire" {...placed('fire')} {...hold('fire')} disabled={keysOff} aria-label={t('fire')} title={t('fire')}><Crosshair size={26} aria-hidden /><span>{t('fire')}</span></button>}
+                  {session.armed && (() => { const Icon = WEAPON_ICONS[weapon]; return (
+                    <button type="button" className="flight-hud__key flight-weapon" data-weapon={weapon} {...placed('weapon')} {...tapKey(() => { session.input.weaponStep = 1; })} disabled={keysOff} aria-label={`${t('weapons.next')} · ${t(`weapons.${weapon}`)}`} title={t('weapons.next')}>
+                      <Icon size={18} aria-hidden /><span className="flight-weapon__name">{t(`weapons.${weapon}`)}</span>
+                      <span ref={ammoRef} className="flight-weapon__ammo" data-n="4">{MISSILE_PIPS.map((i) => <i key={i} />)}</span>
+                      <span className="flight-weapon__charge"><i ref={chargeRef} /></span>
+                      {!touch && <kbd>B</kbd>}
+                    </button>
+                  ); })()}
                   <button type="button" className="flight-hud__key" {...placed('boost')} {...hold('boost')} disabled={keysOff} aria-label={t('boost')} title={t('boost')}><ChevronsUp size={20} aria-hidden /><span>{t('boost')}</span></button>
                   <button type="button" className="flight-hud__key" {...placed('brake')} {...hold('brake')} disabled={keysOff} aria-label={t('brake')} title={t('brake')}><Pause size={16} aria-hidden /><span>{t('brake')}</span></button>
                   <div className="flight-hud__gear-slot" {...placed('gear')}><FlightGear session={session} paused={keysOff} touch={touch} /></div>
                 </>
               ) : (
                 <>
+                  {session.armed && (() => { const Icon = WEAPON_ICONS[weapon]; return (
+                    <button type="button" className="flight-hud__key flight-weapon" data-weapon={weapon} {...placed('weapon')} {...tapKey(() => { session.input.weaponStep = 1; })} disabled={keysOff} aria-label={`${t('weapons.next')} · ${t(`weapons.${weapon}`)}`} title={t('weapons.next')}>
+                      <Icon size={18} aria-hidden /><span className="flight-weapon__name">{t(`weapons.${weapon}`)}</span>
+                      <span ref={ammoRef} className="flight-weapon__ammo" data-n="4">{MISSILE_PIPS.map((i) => <i key={i} />)}</span>
+                      <span className="flight-weapon__charge"><i ref={chargeRef} /></span>
+                      {!touch && <kbd>B</kbd>}
+                    </button>
+                  ); })()}
                   <div className="flight-hud__gear-slot" {...placed('gear')}><FlightGear session={session} paused={keysOff} touch={touch} /></div>
                 </>
               )}

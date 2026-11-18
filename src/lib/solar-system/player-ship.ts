@@ -22,14 +22,19 @@ import { makeShipFx } from '@/lib/solar-system/ship-fx';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
 import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
 import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, PLUME_TIME, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
+import { applySkin, type SkinId } from '@/lib/solar-system/ship-skins';
 import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
 import { createBlackHoleFall, type SwallowPhase } from '@/lib/solar-system/black-hole-fall';
 import {
-  HULL_REGEN_DELAY, HULL_REGEN_PER_SEC, MAX_HULL, MAX_SHIELD, PLAYER_BOLT_DAMAGE, SHIELD_REGEN_DELAY, SHIELD_REGEN_PER_SEC,
-  alienZone, type AlienZone, type ZoneOrbits,
+  CANNON_ENERGY_PER_SHOT, CANNON_ENERGY_REGEN, CANNON_INTERVAL, HULL_REGEN_DELAY, HULL_REGEN_PER_SEC, MAX_HULL, MAX_SHIELD,
+  MISSILE_MAX, PLAYER_BOLT_DAMAGE, SHIELD_REGEN_DELAY, SHIELD_REGEN_PER_SEC,
+  alienZone, type AlienZone, type WeaponKind, type ZoneOrbits,
 } from '@/lib/solar-system/combat-balance';
+import { makeArmory, type LockState } from '@/lib/solar-system/armory';
+import { makeWeaponFx } from '@/lib/solar-system/weapon-fx';
+import { currentQuality } from '@/game/quality';
 import { approachPose, approachProfileFor, APPROACH_SECONDS, descentBurn, entryHeat, type ApproachPhase, type ApproachProfile } from '@/lib/solar-system/flight-approach';
 
 export type { ShipKind } from '@/lib/solar-system/ship-mesh';
@@ -185,14 +190,19 @@ const FREE_ANG_MAX = 2.2;
 const LEVEL_DELAY = 0.8;
 const LEVEL_RATE = 1.1;
 
-const BOLT_SPEED = 24 * U;
+const BOLT_SPEED = 30 * U;
 const BOLT_LIFE = 0.8;
 const BOLT_POOL = 16;
-const FIRE_INTERVAL = 0.13;
+const FIRE_INTERVAL = CANNON_INTERVAL;
+/** Held down, the cannon walks: each shot in a burst strays a little more,
+ *  up to this cone (rad). A short pause settles it again. */
+const SPREAD_PER_SHOT = 0.0018;
+const SPREAD_MAX = 0.011;
+const SPREAD_SETTLE = 0.3;
 
 /** Cannon energy: each bolt spends some, the bank refills between bursts. */
-const ENERGY_PER_SHOT = 0.045;
-const ENERGY_REGEN = 0.17;
+const ENERGY_PER_SHOT = CANNON_ENERGY_PER_SHOT;
+const ENERGY_REGEN = CANNON_ENERGY_REGEN;
 /** Boost reservoir: burns while the throttle is firewalled, refills after. */
 const BOOST_DRAIN = 0.12;
 /** Dodge: the sideways kick (scene units/s), its cost from the boost
@@ -295,6 +305,10 @@ export interface FlightInput {
   targetKind: string | null;
   /** Chase-camera distance multiplier — 1 = the regime's own distance. */
   camZoom: number;
+  /** One-shot: the next (+1) or previous (-1) weapon. */
+  weaponStep: number;
+  /** One-shot: a weapon by name. */
+  weaponPick: WeaponKind | null;
   /** Right button held: the chase camera walks around the hull. */
   orbiting: boolean;
   /** Where the free look has walked to (rad); both zero = back on the tail. */
@@ -428,6 +442,24 @@ export interface FlightTelemetry {
   swallow: SwallowPhase;
   swallowT: number;
   tidal: number;
+  /** The weapon up, the missile rack and its refill (0..1), the plasma
+   *  charge (0..1), the seeker and where its target is on the glass. */
+  weapon: WeaponKind;
+  missiles: number;
+  missileMax: number;
+  missileRegen: number;
+  charge: number;
+  lock: LockState;
+  lockScreen: TargetScreen;
+  /** Where the guns converge, on the glass. */
+  aim: TargetScreen;
+  /** 1 on a hit landed / a kill, decaying to 0 — the crosshair's markers. */
+  hitMarker: number;
+  killMarker: number;
+  /** Where the last hit on the ship came from: the angle round the glass
+   *  (rad, 0 up, clockwise), and 1 decaying to 0 since. */
+  hurtAngle: number;
+  hurtT: number;
 }
 
 export interface FlightSession {
@@ -436,6 +468,8 @@ export interface FlightSession {
   paused: boolean;
   /** Chosen in the hangar before launch. */
   shipKind: ShipKind;
+  /** The livery (ship-skins.ts); a change is painted on in flight. */
+  shipSkin: SkinId;
   /** Standing orders to take worlds apart. The game runs without them. */
   combat: boolean;
   /** The cannon — on wherever there are aliens to shoot at. */
@@ -499,6 +533,7 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
     active: false,
     paused: false,
     shipKind: 'kestrel',
+    shipSkin: 'factory',
     combat: opts.combat ?? true,
     armed: opts.armed ?? opts.combat ?? true,
     destination: 'alphaCentauri',
@@ -509,6 +544,7 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
       approachRequest: null, approachSkip: false, fromHome: true, relaunch: false, relaunchAt: '',
       targetStep: 0, targetClear: false, targetRequest: null, targetKind: null,
       camZoom: 1, orbiting: false, orbitYaw: 0, orbitPitch: 0,
+      weaponStep: 0, weaponPick: null,
     },
     telemetry: {
       speed: 0,
@@ -590,6 +626,18 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
       swallow: '',
       swallowT: 0,
       tidal: 0,
+      weapon: 'pulse',
+      missiles: MISSILE_MAX,
+      missileMax: MISSILE_MAX,
+      missileRegen: 1,
+      charge: 0,
+      lock: '',
+      lockScreen: { x: 0, y: 0, on: 0, angle: 0 },
+      aim: { x: 0, y: 0, on: 0, angle: 0 },
+      hitMarker: 0,
+      killMarker: 0,
+      hurtAngle: 0,
+      hurtT: 0,
     },
   };
 }
@@ -614,8 +662,10 @@ export interface PlayerShipHandle {
   takeDamage: (amount: number, from?: THREE.Vector3) => void;
   /** A gift or salvage reached the ship: top the hull and shields up. */
   repair: (hull: number, shield: number) => void;
-  /** Told of each bolt as it leaves (where from, its velocity): a room sends it on. */
-  onFire?: (from: THREE.Vector3, velocity: THREE.Vector3) => void;
+  /** Told of each shot as it leaves (where from, its velocity, which gun): a room sends it on. */
+  onFire?: (from: THREE.Vector3, velocity: THREE.Vector3, weapon: WeaponKind) => void;
+  /** Told of each warhead going off (where, how big): a room sends it on. */
+  onBlast?: (at: THREE.Vector3, size: number) => void;
   update: (
     dtSec: number,
     timeSec: number,
@@ -660,11 +710,15 @@ const BUILDERS: Record<ShipKind, (h: number) => ShipParts> = {
 };
 
 /** A hull at the size the player flies it. */
-export const buildShip = (kind: ShipKind): ShipParts => (BUILDERS[kind] ?? BUILDERS.kestrel)(H);
+export const buildShip = (kind: ShipKind, skin?: SkinId): ShipParts => {
+  const parts = (BUILDERS[kind] ?? BUILDERS.kestrel)(H);
+  if (skin) applySkin(parts, skin);
+  return parts;
+};
 export const buildSuitForFlight = (): ShipParts => buildCosmonaut(E);
 
 export function createPlayerShip(session: FlightSession): PlayerShipHandle {
-  const shipParts = buildShip(session.shipKind);
+  const shipParts = buildShip(session.shipKind, session.shipSkin);
   const evaParts = buildSuitForFlight();
   const { group, cannonTips } = shipParts;
   const evaG = evaParts.group;
@@ -679,7 +733,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const blast = makeCrashFx(H, ONE_G);
   // Engine trails, the shield's flare, smoke off a hurt hull.
   const shipFx = makeShipFx(H, shipParts.length);
-  const driveColor = shipParts.plumeMat?.color.clone() ?? new THREE.Color(0x9fd8ff);
+  // The plume's own colour, not a copy: a new livery retints the trails too.
+  const driveColor = shipParts.plumeMat?.color ?? new THREE.Color(0x9fd8ff);
   const rig = makeCameraRig();
   const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
@@ -699,11 +754,85 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   fxGroup.add(shipFx.group);
   fxGroup.add(evaG);
 
+  // The guns' effects, and the missiles and plasma beside the cannon. A
+  // phone or the performance preset gets the lighter set.
+  let liteFx = false;
+  try {
+    liteFx = currentQuality().lite
+      || (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches);
+  } catch {
+    // No settings to read: the full set.
+  }
+  const weaponFx = makeWeaponFx({ unit: H * 4, lite: liteFx });
+  fxGroup.add(weaponFx.group);
+  const armory = makeArmory({ unit: U, hull: H }, weaponFx, audio, {
+    onLaunch: (kind, from, velocity) => handle.onFire?.(from, velocity, kind),
+    onBlast: (at, size) => {
+      handle.onBlast?.(at, size);
+      shakeFrom(at, size * 1.4);
+    },
+    onHit: (e, killed, at) => landed(e, killed, at),
+    onBodyHit: (b, at, hits) => {
+      const body = b as FlightBody;
+      if (body.kind === 'station') {
+        body.hp = (body.hp ?? STATION_HP) - hits;
+        if (body.hp <= 0) destroyStation(body, at);
+      } else if (body.id === orderId) {
+        orderHits -= hits;
+        if (orderHits <= 0) destroyWorld(body, at);
+      }
+    },
+  });
+  const armoryFrame = {
+    dt: 0, trigger: false, ready: false,
+    origin: new THREE.Vector3(), fwd: new THREE.Vector3(), aim: new THREE.Vector3(), vel: new THREE.Vector3(),
+    energy: 1,
+    aliens: null as unknown as AlienHandle,
+    bodies: [] as FlightBody[],
+  };
+  tel.weapon = armory.weapon;
+  const PULSE_FLASH = new THREE.Color(2.6, 1.6, 0.7);
+  const IMPACT = new THREE.Color(3, 2, 1.1);
+
   // Pooled bolts — HDR amber so the bloom pass lights them up, and long
-  // enough to read as a tracer rather than a dot.
-  const boltGeom = new THREE.CylinderGeometry(0.14 * H, 0.14 * H, 6 * H, 6);
-  boltGeom.rotateX(Math.PI / 2); // along +Z
-  const boltMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.8, 1.5, 0.5) });
+  // enough to read as a tracer rather than a dot. One draw each: a white-hot
+  // core where the tube faces the eye, a soft amber edge round it, and a
+  // tail that fades out behind the head.
+  const boltGeom = new THREE.CylinderGeometry(0.3 * H, 0.3 * H, 10 * H, 6, 1, true);
+  boltGeom.rotateX(Math.PI / 2); // along +Z, the head at +Z
+  const boltMat = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(2.8, 1.5, 0.5) } },
+    vertexShader: `
+      varying float vAlong;
+      varying vec3 vN;
+      varying vec3 vV;
+      void main() {
+        vAlong = uv.y;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalMatrix * normal;
+        vV = -mv.xyz;
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 uColor;
+      varying float vAlong;
+      varying vec3 vN;
+      varying vec3 vV;
+      void main() {
+        float facing = abs(dot(normalize(vN), normalize(vV)));
+        float core = pow(facing, 4.0);
+        float tail = smoothstep(0.0, 0.85, vAlong);
+        vec3 col = uColor * (0.25 + 0.75 * facing) + vec3(1.6, 1.4, 1.1) * core;
+        gl_FragColor = vec4(col * tail * facing, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
   const bolts: Bolt[] = [];
   const boltGroup = new THREE.Group();
   boltGroup.name = 'playerBolts';
@@ -922,6 +1051,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   let pendYaw = 0;
   let pendPitch = 0;
   let fireAcc = 0;
+  let spread = 0;
+  let sinceShot = 99;
   let cannonIdx = 0;
   let hull = MAX_HULL;
   let shield = MAX_SHIELD;
@@ -1037,13 +1168,44 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       }
     }
     b.dir.copy(tmp).sub(b.mesh.position).normalize();
+    // A held trigger walks the shots off the line a little.
+    if (spread > 0) {
+      tmp.set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).cross(b.dir);
+      if (tmp.lengthSq() > 1e-12) b.dir.addScaledVector(tmp.normalize(), Math.random() * spread).normalize();
+    }
+    spread = Math.min(SPREAD_MAX, spread + SPREAD_PER_SHOT);
     b.mesh.quaternion.setFromUnitVectors(tmp.set(0, 0, 1), b.dir);
     b.velocity.copy(b.dir).multiplyScalar(BOLT_SPEED).add(vel);
     b.life = 0;
     b.mesh.visible = true;
-    handle.onFire?.(b.mesh.position, b.velocity);
+    weaponFx.muzzle(b.mesh.position, b.dir, PULSE_FLASH);
+    handle.onFire?.(b.mesh.position, b.velocity, 'pulse');
     audio.laser();
     rig.kick(0.05);
+  };
+
+  /** A shot of any gun landed on a craft: the light where it struck, the
+   *  hull's flicker, the crosshair's marker; a kill blows it apart. */
+  const landed = (e: AlienHandle['enemies'][number], killed: boolean, at: THREE.Vector3) => {
+    weaponFx.impact(at, IMPACT, e.radius * 1.6);
+    tel.hitMarker = 1;
+    if (!killed) {
+      weaponFx.flicker(e.group, e.radius * 2.6);
+      return;
+    }
+    tel.kills += 1;
+    tel.killMarker = 1;
+    weaponFx.explode(e.group.position, e.radius * 1.2);
+    audio.blast(e.radius > 0.003);
+    shakeFrom(e.group.position, e.radius * 2);
+  };
+
+  /** A kick of the camera for something going off nearby, by how big it
+   *  was against how far. The rig keeps it to a trace under reduced motion. */
+  const shakeFrom = (at: THREE.Vector3, size: number) => {
+    const d = Math.max(at.distanceTo(group.position), 1e-6);
+    const k = Math.min(0.7, (size / d) * 1.5);
+    if (k > 0.02) rig.kick(k);
   };
 
   const spawn = (anchor: FlightAnchor) => {
@@ -1089,6 +1251,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     lowShieldWarned = false;
     group.visible = true;
     shipFx.clear();
+    armory.clear();
+    tel.hurtT = 0;
     input.dodge = 0;
     dodgeCool = 0;
     dodgeT = 99;
@@ -1191,6 +1355,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       b.life = -1;
       b.mesh.visible = false;
     }
+    armory.clear();
     audio.boom();
     tel.hp = 0;
     tel.shield = 0;
@@ -1211,6 +1376,11 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     tel.shield = shield;
     tel.hp = hull;
     if (!fromHeat) {
+      if (from) {
+        hurtFrom.copy(from).sub(actor().position);
+        hurtLive = hurtFrom.lengthSq() > 1e-14;
+        if (hurtLive) tel.hurtT = 1;
+      }
       if (toShield > 0) shipFx.shieldHit(from ?? null, toShield / 30);
       tel.hitFlash = 1;
       rig.kick(rest > 0 ? 0.5 : 0.25);
@@ -1289,6 +1459,11 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     }
   };
   const camLift = new THREE.Vector3();
+  /** Where the last hit came from, relative to the ship. */
+  const hurtFrom = new THREE.Vector3();
+  let hurtLive = false;
+  const camRight = new THREE.Vector3();
+  const camUp = new THREE.Vector3();
 
   const updateDust = (dt: number, speed: number) => {
     const jumping = jumpPhase === 'travel';
@@ -1558,6 +1733,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     },
     update(dt, timeSec, camera, aliens, world) {
       audio.setPaused(session.paused);
+      if (shipParts.skin !== session.shipSkin) applySkin(shipParts, session.shipSkin);
       if (session.paused) return;
       // One step is never longer than a tenth of a second, whatever the
       // caller was doing between frames.
@@ -1612,9 +1788,25 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       }
       tel.hitFlash = Math.max(0, tel.hitFlash - dt * 2.5);
       tel.jumpFlash = Math.max(0, tel.jumpFlash - dt * 1.6);
+      tel.hitMarker = Math.max(0, tel.hitMarker - dt * 5);
+      tel.killMarker = Math.max(0, tel.killMarker - dt * 1.6);
+      tel.hurtT = Math.max(0, tel.hurtT - dt * 1.1);
       alertHold -= dt;
       crash.update(dt);
       blast.update(dt);
+      weaponFx.update(dt);
+      if (input.weaponPick) {
+        armory.select(input.weaponPick);
+        input.weaponPick = null;
+      }
+      if (input.weaponStep) {
+        armory.step(input.weaponStep);
+        input.weaponStep = 0;
+      }
+      if (armory.weapon !== tel.weapon) {
+        tel.weapon = armory.weapon;
+        audio.weaponSwitch();
+      }
       if (jumpPhase !== 'none' || crashT >= 0) {
         input.mouseDX = input.mouseDY = 0;
         input.dockRequest = false;
@@ -2095,13 +2287,44 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
 
         // The leftover carries, so the rate is the same at 20 fps as at 60;
         // an idle gun does not bank a burst.
+        const pulse = armory.weapon === 'pulse';
+        const canFight = session.armed && pilot === 'ship' && cannonTips.length > 0;
         fireAcc -= dt;
-        fireAcc = Math.max(fireAcc, input.fire ? -FIRE_INTERVAL : 0);
-        if (input.fire && session.armed && fireAcc <= 0 && pilot === 'ship' && cannonTips.length > 0 && energy >= ENERGY_PER_SHOT) {
+        fireAcc = Math.max(fireAcc, input.fire && pulse ? -FIRE_INTERVAL : 0);
+        sinceShot += dt;
+        if (sinceShot > SPREAD_SETTLE) spread = 0;
+        if (pulse && input.fire && canFight && fireAcc <= 0 && energy >= ENERGY_PER_SHOT) {
           fireAcc += FIRE_INTERVAL;
           energy -= ENERGY_PER_SHOT;
+          sinceShot = 0;
           fire(enemies);
         }
+        // The missiles and the plasma: from the nose, along the line the
+        // cannon's aim help would pick.
+        const f = armoryFrame;
+        f.dt = dt;
+        f.trigger = input.fire;
+        f.ready = canFight && jumpPhase === 'none' && !dockedTo;
+        f.fwd.copy(fwd);
+        f.origin.copy(group.position).addScaledVector(fwd, 3 * H);
+        f.vel.copy(vel);
+        f.energy = energy;
+        f.aliens = aliens;
+        f.bodies = world.bodies;
+        f.aim.copy(group.position).addScaledVector(fwd, BORESIGHT);
+        {
+          let bestDot = Math.cos(AIM_ASSIST_CONE);
+          for (const e of enemies) {
+            if (e.hostile === false) continue;
+            tmp2.copy(e.group.position).sub(group.position);
+            const d = tmp2.length();
+            if (d < 1e-9 || d > BORESIGHT * 3) continue;
+            const dot = tmp2.divideScalar(d).dot(fwd);
+            if (dot > bestDot) { bestDot = dot; f.aim.copy(e.group.position); }
+          }
+        }
+        f.aim.sub(f.origin).normalize();
+        energy = Math.max(0, energy - armory.update(f));
         odometerKm += vel.length() * dt * KM_PER_SCENE_UNIT;
       }
 
@@ -2396,7 +2619,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
           tmp2.copy(prevPos).addScaledVector(seg, along);
           if (tmp2.distanceToSquared(e.group.position) < r * r) {
             aliens.spawnSparks(b.mesh.position, 0.034);
-            if (aliens.damage(e, PLAYER_BOLT_DAMAGE)) tel.kills += 1;
+            landed(e, aliens.damage(e, PLAYER_BOLT_DAMAGE), tmp2);
             spent = true;
             break;
           }
@@ -2412,6 +2635,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
             tmp2.copy(prevPos).addScaledVector(seg, t);
             if (tmp2.distanceToSquared(body.position) < r * r) {
               aliens.spawnSparks(b.mesh.position, 0.02);
+              weaponFx.impact(tmp2, IMPACT, 3 * H);
               if (body.kind === 'station') {
                 body.hp = (body.hp ?? STATION_HP) - 1;
                 if (body.hp <= 0) destroyStation(body, b.mesh.position);
@@ -2619,6 +2843,22 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       tel.odometerKm = odometerKm;
       tel.energy = energy;
       tel.boostCharge = boostCharge;
+      tel.missiles = armory.missiles;
+      tel.missileRegen = armory.missileRegen;
+      tel.charge = armory.charge;
+      tel.lock = armory.lock;
+      const lockOn = armory.lockTarget;
+      if (lockOn && tel.lock) projectTarget(lockOn.group.position, camera, tel.lockScreen);
+      else tel.lockScreen.on = 0;
+      if (session.armed && pilot === 'ship' && jumpPhase === 'none') {
+        projectTarget(tmp.copy(group.position).addScaledVector(fwd, BORESIGHT), camera, tel.aim);
+      } else tel.aim.on = 0;
+      // The hit's direction on the glass, from the camera's own axes.
+      if (hurtLive && tel.hurtT > 0) {
+        camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+        camUp.setFromMatrixColumn(camera.matrixWorld, 1);
+        tel.hurtAngle = Math.atan2(hurtFrom.dot(camRight), hurtFrom.dot(camUp));
+      }
       tel.alert = alert;
       tel.jumpPhase = jumpPhase;
       tel.jumpT = jumpPhase === 'charge' ? jumpT / JUMP_CHARGE : jumpPhase === 'travel' ? Math.min(1, jumpT / JUMP_TRAVEL) : 0;
@@ -2668,6 +2908,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
       shipFx.dispose();
       boltGeom.dispose();
       boltMat.dispose();
+      weaponFx.dispose();
       dustGeom.dispose();
       dustMat.dispose();
       tunnelGeom.dispose();

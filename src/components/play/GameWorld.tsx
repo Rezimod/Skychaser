@@ -22,6 +22,7 @@ import { useExploreRewards } from './useExploreRewards';
 import { retryImport } from '@/game/retry-import';
 import { requestStill } from '@/game/frame-tap';
 import { isAirlessSite } from '@/lib/solar-system/flight-approach';
+import { currentLivery, onLiveryChange } from '@/game/livery';
 
 /** The handover's picture of the scene left behind, set into the veil. */
 function StillFrame({ canvas }: { canvas: HTMLCanvasElement }) {
@@ -93,8 +94,13 @@ export function GameWorld({ scene, state, mode, room, epoch, onTurn }: GameWorld
   const rewards = useExploreRewards();
   const paused = state === 'paused';
   const flightRef = useRef<FlightSession | null>(null);
-  if (!flightRef.current) flightRef.current = createFlightSession({ combat: false, armed: true });
+  if (!flightRef.current) {
+    flightRef.current = createFlightSession({ combat: false, armed: true });
+    flightRef.current.shipSkin = currentLivery();
+  }
   const session = flightRef.current;
+  // A livery picked in the menus is painted on at the next frame the deck flies.
+  useEffect(() => onLiveryChange((skin) => { session.shipSkin = skin; }), [session]);
   // The clock the canvas reads is a mutable cell; React only sees it once a
   // second, for the mini-clock, so ticking it never re-renders the deck.
   const [clockMs, setClockMs] = useState(epoch.current);

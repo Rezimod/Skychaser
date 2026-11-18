@@ -492,6 +492,129 @@
   mix-blend-mode: screen;
 }
 
+/* ── The guns on the glass: the sight where the cannon converges (an X on
+   it for a hit, a ring for a kill), the seeker's diamond, a wedge on the
+   rim toward whatever hit the ship, and the amber edge of low shields.
+   Each is positioned by a transform and faded by opacity — nothing here
+   lays the deck out again while a fight is on. ── */
+.flight-sight,
+.flight-lock {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.flight-sight::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: -11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(190, 225, 255, 0.5);
+}
+.flight-sight::after {
+  content: '';
+  position: absolute;
+  left: -1.5px;
+  top: -1.5px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(220, 240, 255, 0.85);
+}
+.flight-sight__hit,
+.flight-sight__kill { position: absolute; display: block; }
+.flight-sight__hit {
+  left: -17px;
+  top: -17px;
+  width: 34px;
+  height: 34px;
+  opacity: var(--hm, 0);
+  background:
+    linear-gradient(45deg, transparent 47%, #fff 47%, #fff 53%, transparent 53%),
+    linear-gradient(-45deg, transparent 47%, #fff 47%, #fff 53%, transparent 53%);
+  -webkit-mask: radial-gradient(circle, transparent 9px, #000 10px);
+  mask: radial-gradient(circle, transparent 9px, #000 10px);
+}
+.flight-sight__kill {
+  left: -19px;
+  top: -19px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #ff9a5c;
+  box-shadow: 0 0 8px rgba(255, 140, 70, 0.7);
+  opacity: var(--km, 0);
+  transform: scale(calc(1.7 - var(--km, 0) * 0.7));
+}
+.flight-lock::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: -20px;
+  width: 40px;
+  height: 40px;
+  border: 2px dashed rgba(255, 200, 90, 0.85);
+  border-radius: 4px;
+  transform: rotate(45deg);
+}
+.flight-lock[data-state='locked']::before {
+  border-style: solid;
+  border-color: #ff5a4a;
+  box-shadow: 0 0 10px rgba(255, 90, 74, 0.6);
+  transform: rotate(45deg) scale(0.78);
+}
+.flight-lock span {
+  position: absolute;
+  top: 26px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #ffc65a;
+}
+.flight-lock[data-state='locked'] span { color: #ff7a6a; }
+.flight-hurt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 7;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.flight-hurt i {
+  position: absolute;
+  left: -70px;
+  top: calc(-1 * min(40vh, 42vw));
+  width: 140px;
+  height: 30px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(255, 80, 55, 0.9), rgba(255, 80, 55, 0) 72%);
+}
+.flight-hud__low {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 70px 10px rgba(255, 150, 40, 0.42);
+  transition: opacity 0.3s;
+}
+.flight-hud[data-low='true'] .flight-hud__low { opacity: 1; animation: flight-low 1.4s ease-in-out infinite; }
+@keyframes flight-low { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) {
+  .flight-hud[data-low='true'] .flight-hud__low { animation: none; opacity: 0.7; }
+}
+
 /* Falling into a black hole (black-hole-fall.ts). --tidal 0..1 closes a
    vignette in, blueshifts the light ahead and reddens the rim, with a
    chromatic smear of offset rings; --void takes the view to black at the
@@ -540,7 +663,7 @@
    answers. ── */
 .flight-hud .flight-hud__unhide { position: absolute; top: var(--edge-top); right: var(--edge-right); display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__unhide { display: flex; opacity: 0.55; }
-.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit, .flight-hud__hole) { display: none; }
+.flight-hud[data-immersive='true'] > :not(.flight-hud__unhide, .flight-hud__dock, .flight-hud__help, .flight-hud__lookpad, .flight-hud__warp, .flight-hud__flash, .flight-hud__hit, .flight-hud__hole, .flight-hud__low, .flight-hurt) { display: none; }
 .flight-hud[data-immersive='true'] .flight-hud__dock > :not(.flight-hud__move, .flight-hud__prompts) { visibility: hidden; }
 .flight-hud[data-immersive='true'] .flight-hud__move { opacity: 0; }
 .flight-hud .flight-hud__turn[data-on='true'] { color: var(--hud-accent); }
@@ -1103,6 +1226,37 @@
   color: var(--hud-dim);
 }
 
+/* The weapon key: the gun up, the missile rack as pips (the next one
+   filling in), the plasma's charge as a bar. */
+.flight-hud .flight-weapon { gap: 8px; }
+.flight-weapon svg { flex: none; color: var(--hud-ink); }
+.flight-weapon[data-weapon='missile'] svg { color: #ffb35c; }
+.flight-weapon[data-weapon='plasma'] svg { color: #b9a4ff; }
+.flight-weapon__ammo,
+.flight-weapon__charge { display: none; }
+.flight-weapon[data-weapon='missile'] .flight-weapon__ammo { display: flex; gap: 3px; }
+.flight-weapon[data-weapon='plasma'] .flight-weapon__charge { display: block; }
+.flight-weapon__ammo i { width: 6px; height: 6px; border-radius: 50%; background: rgba(120, 165, 220, 0.3); }
+.flight-weapon__ammo[data-n='1'] i:nth-child(-n + 1),
+.flight-weapon__ammo[data-n='2'] i:nth-child(-n + 2),
+.flight-weapon__ammo[data-n='3'] i:nth-child(-n + 3),
+.flight-weapon__ammo[data-n='4'] i { background: #ffb35c; }
+.flight-weapon__ammo[data-n='0'] i:nth-child(1),
+.flight-weapon__ammo[data-n='1'] i:nth-child(2),
+.flight-weapon__ammo[data-n='2'] i:nth-child(3),
+.flight-weapon__ammo[data-n='3'] i:nth-child(4) { background: rgba(255, 179, 92, calc(0.15 + var(--regen, 0) * 0.5)); }
+.flight-weapon__charge { width: 34px; height: 3px; border-radius: 2px; overflow: hidden; background: rgba(120, 165, 220, 0.3); }
+.flight-weapon__charge i { display: block; height: 100%; background: #b9a4ff; transform-origin: left; transform: scaleX(0); }
+.flight-weapon kbd {
+  font: inherit;
+  font-size: 9px;
+  line-height: 1;
+  padding: 3px 5px;
+  border: 1px solid var(--hud-line);
+  border-radius: 5px;
+  color: var(--hud-dim);
+}
+
 /* ── The two pads ── */
 .flight-hud__move { width: var(--stick); height: var(--stick); }
 .flight-hud .flight-hud__move .game-stick {
@@ -1162,6 +1316,18 @@
 .flight-hud[data-touch='true'] .flight-hud__keys [data-place='boost'] { right: calc(var(--key) * 1.7); bottom: calc(var(--key) * 0.1); }
 .flight-hud[data-touch='true'] .flight-hud__keys [data-place='brake'] { right: calc(var(--key) * 0.2); bottom: calc(var(--key) * 1.7); }
 .flight-hud[data-touch='true'] .flight-hud__gear-slot { right: calc(var(--key) * 1.85); bottom: calc(var(--key) * 1.6); }
+/* The weapon key rides above the cluster, in reach of the thumb on the fire key. */
+.flight-hud[data-touch='true'] .flight-hud__keys [data-place='weapon'] {
+  right: calc(var(--key) * 1.05);
+  bottom: calc(var(--key) * 2.85);
+  width: calc(var(--key) * 0.92);
+  height: calc(var(--key) * 0.92);
+  flex-direction: column;
+  gap: 3px;
+}
+.flight-hud[data-touch='true'] .flight-weapon[data-weapon='missile'] .flight-weapon__ammo { display: flex; gap: 2px; }
+.flight-hud[data-touch='true'] .flight-weapon[data-weapon='plasma'] .flight-weapon__charge { display: block; width: 60%; }
+.flight-hud[data-touch='true'] .flight-weapon__ammo i { width: 4px; height: 4px; }
 /* No fire key: three keys in a tight corner — brake under the thumb, boost
    beside it, the gear above — instead of round a gap for a key that is not there. */
 .flight-hud[data-touch='true'] .flight-hud__keys[data-combat='false'] { width: calc(var(--key) * 2.3); height: calc(var(--key) * 2.3); }
@@ -3093,3 +3259,177 @@
 }
 .moon-surface[data-phase='surface'][data-far='true'] .moon-hud__gobase { display: inline-flex; }
 .moon-surface[data-immersive='true'] .moon-hud__basekey { display: none !important; }
+
+/* ── Multiplayer rooms: the panel, and the badge that follows the explorer
+   into flight and onto the surfaces. Both sit outside the viewport, above
+   the deck and the surface HUDs and below the loaders. ── */
+.room-panel {
+  position: absolute;
+  z-index: 45;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  max-height: min(78dvh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(6, 9, 14, 0.92);
+  border: 0.5px solid rgba(248, 244, 236, 0.14);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: rgba(240, 244, 252, 0.94);
+  font-family: var(--font-body, "Geist"), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (min-width: 680px) {
+  .room-panel {
+    left: auto;
+    bottom: auto;
+    top: max(66px, calc(env(safe-area-inset-top) + 56px));
+    width: 360px;
+  }
+}
+.room-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.room-panel__title { display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; font-weight: 500; }
+.room-panel__sub { margin: 4px 0 0; font-size: 12px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 214, 156, 0.85); }
+.room-panel__note { margin: 0; font-size: 13px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__error { margin: 0; font-size: 13px; color: var(--error); }
+.room-panel__label { font-size: 12px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__icon {
+  width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: 0; background: transparent; color: inherit; cursor: pointer;
+}
+.room-panel__primary, .room-panel__secondary, .room-panel__leave {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 16px; border-radius: 12px; cursor: pointer;
+  font: inherit; font-weight: 500;
+}
+.room-panel__primary { border: 0; background: var(--terracotta, #FFB347); color: #1a1206; }
+.room-panel__secondary { border: 0.5px solid rgba(248, 244, 236, 0.22); background: rgba(255, 255, 255, 0.05); color: inherit; white-space: nowrap; }
+.room-panel__secondary:disabled { opacity: 0.45; cursor: default; }
+.room-panel__leave { border: 0.5px solid var(--error); background: transparent; color: var(--error); }
+.room-panel__join { display: flex; flex-direction: column; gap: 6px; }
+.room-panel__row { display: flex; gap: 8px; }
+.room-panel__input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border-radius: 12px;
+  border: 0.5px solid rgba(248, 244, 236, 0.22); background: rgba(0, 0, 0, 0.35); color: inherit;
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace; font-size: 16px; letter-spacing: 0.18em; text-transform: uppercase;
+}
+.room-panel__input[aria-invalid='true'] { border-color: var(--error); }
+.room-panel__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.room-panel__item {
+  display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 4px 4px 4px 12px;
+  border-radius: 12px; background: rgba(255, 255, 255, 0.04);
+}
+.room-panel__code, .room-panel__count, .room-panel__bigcode { font-family: var(--font-mono, 'JetBrains Mono'), monospace; }
+.room-panel__code { letter-spacing: 0.12em; color: var(--seafoam, #5EEAD4); }
+.room-panel__who, .room-panel__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-panel__count { font-size: 12px; color: rgba(220, 228, 240, 0.72); }
+.room-panel__where { padding-right: 8px; font-size: 12px; color: rgba(220, 228, 240, 0.72); white-space: nowrap; }
+.room-panel__invite { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; }
+.room-panel__invite .room-panel__label { grid-column: 1; }
+.room-panel__bigcode { grid-column: 1; font-size: 28px; letter-spacing: 0.2em; color: var(--seafoam, #5EEAD4); }
+.room-panel__invite .room-panel__secondary { grid-column: 2; grid-row: 1 / span 2; }
+
+.room-badge {
+  position: absolute;
+  z-index: 40;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.room-badge__chip {
+  pointer-events: auto;
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 36px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  border: 0.5px solid rgba(94, 234, 212, 0.35);
+  background: rgba(6, 9, 14, 0.82);
+  color: var(--seafoam, #5EEAD4);
+  font-family: var(--font-mono, 'JetBrains Mono'), monospace; font-size: 12px; letter-spacing: 0.1em;
+}
+.room-badge__count { color: rgba(240, 244, 252, 0.9); }
+.room-badge__toasts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.room-badge__toast {
+  padding: 6px 12px; border-radius: 10px; max-width: calc(100vw - 32px);
+  background: rgba(6, 9, 14, 0.82); color: rgba(240, 244, 252, 0.94);
+  font-family: var(--font-body, "Geist"), system-ui, sans-serif; font-size: 13px;
+  animation: room-toast-in 240ms ease-out;
+}
+@keyframes room-toast-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .room-badge__toast { animation: none; } }
+/* Joining made easy: the one-tap way in, the callsign, and plain states. */
+.room-panel__quick { min-height: 52px; font-size: 16px; box-shadow: 0 12px 34px -16px rgba(255, 150, 40, 0.7); }
+.room-panel__wide { width: 100%; }
+.room-panel__wait { display: flex; align-items: center; gap: 10px; }
+.room-panel__wait::before {
+  content: ''; width: 14px; height: 14px; flex: none; border-radius: 50%;
+  border: 2px solid rgba(94, 234, 212, 0.25); border-top-color: var(--seafoam, #5EEAD4);
+  animation: room-spin 900ms linear infinite;
+}
+@keyframes room-spin { to { transform: rotate(360deg); } }
+.room-panel__pilot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.room-panel__flying { font-weight: 500; color: var(--seafoam, #5EEAD4); overflow-wrap: anywhere; }
+.room-panel__link {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 2px;
+  border: 0; background: none; color: rgba(220, 228, 240, 0.8); font: inherit; font-size: 13px;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.room-panel__input--name { letter-spacing: 0.02em; text-transform: none; font-family: inherit; }
+.room-panel__problem { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.room-panel__item--room {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px; padding: 8px 6px 8px 12px;
+}
+.room-panel__roomhead { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.room-panel__members { grid-column: 1; font-size: 12px; color: rgba(220, 228, 240, 0.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-panel__item--room .room-panel__secondary { grid-column: 2; grid-row: 1 / span 2; }
+.room-badge__chip.is-reconnecting { color: #ffd08a; border-color: rgba(255, 196, 120, 0.45); }
+.room-badge__spin { animation: room-spin 1.1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .room-panel__wait::before, .room-badge__spin { animation: none; } }
+
+/* The others in flight: an arrow at the edge toward each one off the screen,
+   and the nearest few in a list. */
+.room-radar { position: absolute; inset: 0; z-index: 30; pointer-events: none; overflow: hidden; }
+.room-radar__arrow { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+.room-radar__tip {
+  position: absolute; left: -9px; top: -9px; width: 18px; height: 18px;
+  background: var(--seafoam, #5EEAD4);
+  clip-path: polygon(100% 50%, 0 0, 26% 50%, 0 100%);
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.9));
+}
+.room-radar__name {
+  position: absolute; white-space: nowrap; padding: 2px 8px; border-radius: 8px;
+  background: rgba(4, 7, 12, 0.72); color: rgba(240, 244, 252, 0.95);
+  font: 500 12px/1.3 var(--font-body, "Geist"), system-ui, sans-serif;
+}
+.room-radar__arrow[data-side='left'] .room-radar__name { right: 16px; top: -10px; }
+.room-radar__arrow[data-side='right'] .room-radar__name { left: 16px; top: -10px; }
+.room-radar__arrow[data-side='below'] .room-radar__name { top: 14px; left: 0; transform: translateX(-50%); }
+.room-radar__arrow[data-side='above'] .room-radar__name { bottom: 14px; left: 0; transform: translateX(-50%); }
+.room-nearby {
+  position: absolute; z-index: 31; pointer-events: none;
+  /* Under the place readout on the left: the right side holds the jump card. */
+  left: max(12px, env(safe-area-inset-left));
+  top: max(164px, calc(env(safe-area-inset-top) + 154px));
+  width: min(210px, 46vw); padding: 8px 10px; border-radius: 12px;
+  background: rgba(6, 9, 14, 0.66); border: 0.5px solid rgba(94, 234, 212, 0.22);
+  color: rgba(240, 244, 252, 0.94);
+  font-family: var(--font-body, "Geist"), system-ui, sans-serif; font-size: 12px;
+}
+.room-nearby__title { margin: 0 0 4px; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--seafoam, #5EEAD4); }
+.room-nearby__none { margin: 0; color: rgba(220, 228, 240, 0.7); }
+.room-nearby__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.room-nearby__row { display: flex; justify-content: space-between; gap: 8px; }
+.room-nearby__row.is-faded { opacity: 0.5; }
+.room-nearby__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-nearby__km { flex: none; font-family: var(--font-mono, 'JetBrains Mono'), monospace; color: rgba(220, 228, 240, 0.8); }

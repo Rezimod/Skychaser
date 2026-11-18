@@ -51,7 +51,7 @@ export const FOOT_BINDINGS: readonly Binding<FootAction>[] = [
 ];
 
 export type FlightAction =
-  | 'thrust' | 'turn' | 'look' | 'roll' | 'boost' | 'fire' | 'align' | 'view' | 'zoom';
+  | 'thrust' | 'turn' | 'look' | 'roll' | 'boost' | 'fire' | 'weapon' | 'align' | 'view' | 'zoom';
 
 /** The ship's keys are its own (flight-input handles the rest of the deck); these are the ones a gamepad also flies. */
 export const FLIGHT_BINDINGS: readonly Binding<FlightAction>[] = [
@@ -61,6 +61,8 @@ export const FLIGHT_BINDINGS: readonly Binding<FlightAction>[] = [
   { action: 'roll', keys: ['KeyQ', 'KeyE'], keyLabel: 'Q E', pad: [PAD.LB, PAD.RB], padLabel: 'LB RB' },
   { action: 'boost', keys: ['ShiftLeft', 'ShiftRight'], keyLabel: 'Shift', pad: [PAD.RT], padLabel: 'RT' },
   { action: 'fire', keys: ['Space'], keyLabel: 'Space', pad: [PAD.A], padLabel: 'A' },
+  // Next weapon; Shift+B the one before. The touch deck has its own key.
+  { action: 'weapon', keys: ['KeyB'], keyLabel: 'B', pad: [PAD.B], padLabel: 'B', touch: true },
   { action: 'align', keys: ['KeyG'], keyLabel: 'G', pad: [PAD.X], padLabel: 'X' },
   { action: 'view', keys: ['KeyC'], keyLabel: 'C', pad: [PAD.Y], padLabel: 'Y' },
   { action: 'zoom', keys: ['Minus', 'Equal', 'BracketLeft', 'BracketRight'], keyLabel: '- =', pad: [PAD.UP, PAD.DOWN], padLabel: '↑ ↓' },

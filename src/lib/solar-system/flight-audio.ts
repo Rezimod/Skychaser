@@ -16,6 +16,18 @@ export interface FlightAudio {
   laser: () => void;
   /** An explosion: a hull, a station, a world. */
   boom: () => void;
+  /** A missile away: a hiss and a rising whine. */
+  missile: () => void;
+  /** A plasma ball let go; `k` 0..1 is how charged it was. */
+  plasma: (k: number) => void;
+  /** The seeker has a lock: two quick high pips. */
+  lock: () => void;
+  /** Nothing to fire: a dry click. */
+  empty: () => void;
+  /** Another weapon picked. */
+  weaponSwitch: () => void;
+  /** A craft or a warhead going off — lighter than `boom`. */
+  blast: (big: boolean) => void;
   /** Entering and leaving light speed. */
   whoosh: () => void;
   /** The side thrusters' hard kick for a dodge. */
@@ -66,6 +78,7 @@ export function makeFlightAudio(): FlightAudio {
   const dronePipes: { osc: OscillatorNode; f: number }[] = [];
   let roar: { gain: GainNode; filter: BiquadFilterNode; src: AudioBufferSourceNode; rumble: OscillatorNode } | null = null;
   let lastHit = -1;
+  let lastBlast = -1;
   let paused = false;
   let disposed = false;
   // Suspended while the page is hidden, the shell holds the mix, or the deck is paused.
@@ -214,6 +227,41 @@ export function makeFlightAudio(): FlightAudio {
       safe((c) => {
         burst(c, 'lowpass', 900, 60, 1.6, 1.8);
         tone(c, 'sine', 90, 28, 1.1, 1.4);
+      });
+    },
+    missile() {
+      safe((c) => {
+        burst(c, 'bandpass', 900, 3200, 0.5, 0.45);
+        tone(c, 'sawtooth', 220, 520, 0.16, 0.4);
+      });
+    },
+    plasma(k) {
+      safe((c) => {
+        tone(c, 'sine', 900 - 400 * k, 120, 0.4 + 0.4 * k, 0.25 + 0.2 * k);
+        tone(c, 'triangle', 1800, 300, 0.15, 0.12);
+      });
+    },
+    lock() {
+      safe((c) => {
+        tone(c, 'square', 1760, 1760, 0.08, 0.06);
+        tone(c, 'square', 1760, 1760, 0.08, 0.06, 0.09);
+      });
+    },
+    empty() {
+      safe((c) => tone(c, 'square', 320, 200, 0.06, 0.04));
+    },
+    weaponSwitch() {
+      safe((c) => {
+        tone(c, 'triangle', 660, 700, 0.12, 0.05);
+        tone(c, 'triangle', 990, 1000, 0.1, 0.06, 0.05);
+      });
+    },
+    blast(big) {
+      safe((c) => {
+        if (c.currentTime - lastBlast < HIT_GAP) return;
+        lastBlast = c.currentTime;
+        burst(c, 'lowpass', big ? 1400 : 2200, 80, big ? 0.9 : 0.45, big ? 0.7 : 0.3);
+        tone(c, 'sine', big ? 110 : 180, 35, big ? 0.6 : 0.3, big ? 0.6 : 0.25);
       });
     },
     whoosh() {
