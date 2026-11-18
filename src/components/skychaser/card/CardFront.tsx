@@ -22,8 +22,8 @@ type Props = {
   sub?: ReactNode;
 };
 
-/** The card's painted scene (scripts/skychaser-plates/art-prompts.json). */
-export const artFor = (designation: string, small = false) => `/cards/art/${small ? 'sm/' : ''}${designation}.webp?v=5`;
+/** The card's picture: a real photograph where one reads well (scripts/skychaser-plates/real.py), else its painted scene. */
+export const artFor = (designation: string, small = false) => `/cards/art/${small ? 'sm/' : ''}${designation}.webp?v=6`;
 
 /** The card's colour, sampled from its own picture (scripts/skychaser-plates/accents.ts). */
 export const accentFor = (designation: string) => (ACCENTS as Record<string, string>)[designation] ?? '#dfe3ea';

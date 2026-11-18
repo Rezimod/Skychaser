@@ -39,7 +39,7 @@ async function main() {
   Object.assign(globalThis, { React });
   const { default: CardFront } = await import('@/components/skychaser/card/CardFront');
   let html = '';
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: 'chrome' });
   const page = await browser.newPage({ viewport: { width: 600, height: 800 }, deviceScaleFactor: 2 });
   page.setDefaultTimeout(120000);
   await page.route(`${ORIGIN}/**`, (route) => {

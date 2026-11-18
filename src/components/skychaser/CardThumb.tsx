@@ -18,7 +18,7 @@ export default function CardThumb({ designation, eager = false, price, sub, smal
   if (!plate) return <span className="sd-thumb sd-thumb--blank" aria-hidden="true">{designation}</span>;
   return (
     <div className="sd-thumb" role="img" aria-label={`${plate.name}, ${plate.rname}, Genesis ${plate.num} of ${plate.total}`}>
-      {price ? <CardFront plate={plate} priority={eager} small price={price} sub={sub} u="" /> : <FadeImg src={`${plate.art}/card${small ? '-sm' : ''}.webp?v=specimen10`} width={520} height={726} priority={eager} />}
+      {price ? <CardFront plate={plate} priority={eager} small price={price} sub={sub} u="" /> : <FadeImg src={`${plate.art}/card${small ? '-sm' : ''}.webp?v=specimen11`} width={520} height={726} priority={eager} />}
     </div>
   );
 }
