@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { softSpriteTexture } from '@/lib/solar-system/soft-sprite';
 import { acquireModel, type ModelHandle } from '@/game/models';
+import { applySkin, rebaseSkin, type PaintTargets, type SkinId } from '@/lib/solar-system/ship-skins';
 
 export type ShipKind = 'kestrel' | 'xfoil' | 'cruiser' | 'endurance';
 
@@ -80,6 +81,9 @@ export interface ShipParts {
   /** What the hull reflects (setShipEnvironment), and the materials that take it. */
   env?: THREE.Texture | null;
   reflective?: THREE.MeshStandardMaterial[];
+  /** The livery it flies in (ship-skins.ts) and the materials that take it. */
+  skin?: SkinId;
+  paint?: PaintTargets;
 }
 
 interface Palette {
@@ -531,6 +535,7 @@ function buildModelShip(H: number, spec: ModelSpec): ShipParts {
     glowMats: [], glowSprites: [], plumes: [], plumeMat, plumeCores: [], plumeCoreMat, plasmaMat, plasma, streaks, streakMat, strobeMat,
     navMats: [], rcs: [], owned: [skinMat, engineMat, bellMat, plumeMat, plumeCoreMat, streakMat, strobeMat],
     length: spec.length * H, spinner: null, env: null, reflective: [skinMat, bellMat],
+    paint: { hull: [skinMat], trim: [], accent: [], lamp: [], unit: spec.metres, baked: true },
     release() {
       released = true;
       for (const o of loaded) o.removeFromParent();
@@ -574,6 +579,7 @@ function fitModel(parts: ShipParts, source: THREE.Group, spec: ModelSpec, H: num
         lampMat.envMapIntensity = HULL_ENV;
         parts.owned.push(lampMat);
         parts.reflective?.push(lampMat);
+        parts.paint?.lamp.push(lampMat);
       }
       mesh.material = lampMat;
     } else if (m !== parts.skinMat) {
@@ -585,6 +591,7 @@ function fitModel(parts: ShipParts, source: THREE.Group, spec: ModelSpec, H: num
         parts.skinMat.envMap = parts.env ?? null;
         parts.skinMat.envMapIntensity = HULL_ENV;
         parts.skinMat.needsUpdate = true;
+        rebaseSkin(parts.skinMat);
       }
       mesh.material = parts.skinMat;
     }
@@ -676,6 +683,8 @@ function fitModel(parts: ShipParts, source: THREE.Group, spec: ModelSpec, H: num
       add(strobe);
     } else if (e.name === 'Plasma') parts.plasma.position.copy(at);
   }
+  // The hull came in factory paint: put the livery back on it.
+  if (parts.skin) applySkin(parts, parts.skin);
 }
 
 /** A hot core on the nozzle's back wall, the bell that soaks heat round it,
@@ -817,7 +826,9 @@ export function buildEndurance(H: number): ShipParts {
   standardRcs(b, 1.1 * H, -1.1 * H, 0.55 * H);
   const strobeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
   mesh(b, new THREE.SphereGeometry(0.07 * H, 8, 8), strobeMat, 0, 0.56 * H, -1.3 * H);
-  return finish(b, [], cannonTips, strobeMat, 8.4 * H, 1.8 * H, spinner);
+  const parts = finish(b, [], cannonTips, strobeMat, 8.4 * H, 1.8 * H, spinner);
+  parts.paint = { hull: [pal.titanium, pal.panel], trim: [pal.graphite, pal.dark], accent: [pal.accent], lamp: [pal.glass], unit: 8.4 * H, baked: false };
+  return parts;
 }
 
 /**

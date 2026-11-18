@@ -22,6 +22,7 @@ import { makeShipFx } from '@/lib/solar-system/ship-fx';
 import { makeFlightAudio } from '@/lib/solar-system/flight-audio';
 import { makeCameraRig, prefersReducedMotion, type CameraFrame } from '@/lib/solar-system/flight-camera';
 import { buildCosmonaut, buildCruiser, buildEndurance, buildKestrel, buildXfoil, PLUME_TIME, type ShipKind, type ShipParts } from '@/lib/solar-system/ship-mesh';
+import { applySkin, type SkinId } from '@/lib/solar-system/ship-skins';
 import { shapeMouse } from '@/lib/solar-system/flight-input';
 import { makeMissionTracker, type MissionContext } from '@/lib/solar-system/flight-missions';
 import { projectTarget, stepTarget, type TargetCandidate, type TargetKind, type TargetScreen } from '@/lib/solar-system/flight-targeting';
@@ -436,6 +437,8 @@ export interface FlightSession {
   paused: boolean;
   /** Chosen in the hangar before launch. */
   shipKind: ShipKind;
+  /** The livery (ship-skins.ts); a change is painted on in flight. */
+  shipSkin: SkinId;
   /** Standing orders to take worlds apart. The game runs without them. */
   combat: boolean;
   /** The cannon — on wherever there are aliens to shoot at. */
@@ -499,6 +502,7 @@ export function createFlightSession(opts: { combat?: boolean; armed?: boolean } 
     active: false,
     paused: false,
     shipKind: 'kestrel',
+    shipSkin: 'factory',
     combat: opts.combat ?? true,
     armed: opts.armed ?? opts.combat ?? true,
     destination: 'alphaCentauri',
@@ -660,11 +664,15 @@ const BUILDERS: Record<ShipKind, (h: number) => ShipParts> = {
 };
 
 /** A hull at the size the player flies it — for the other explorers in a room. */
-export const buildShip = (kind: ShipKind): ShipParts => (BUILDERS[kind] ?? BUILDERS.kestrel)(H);
+export const buildShip = (kind: ShipKind, skin?: SkinId): ShipParts => {
+  const parts = (BUILDERS[kind] ?? BUILDERS.kestrel)(H);
+  if (skin) applySkin(parts, skin);
+  return parts;
+};
 export const buildSuitForFlight = (): ShipParts => buildCosmonaut(E);
 
 export function createPlayerShip(session: FlightSession): PlayerShipHandle {
-  const shipParts = buildShip(session.shipKind);
+  const shipParts = buildShip(session.shipKind, session.shipSkin);
   const evaParts = buildSuitForFlight();
   const { group, cannonTips } = shipParts;
   const evaG = evaParts.group;
@@ -679,7 +687,8 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
   const blast = makeCrashFx(H, ONE_G);
   // Engine trails, the shield's flare, smoke off a hurt hull.
   const shipFx = makeShipFx(H, shipParts.length);
-  const driveColor = shipParts.plumeMat?.color.clone() ?? new THREE.Color(0x9fd8ff);
+  // The plume's own colour, not a copy: a new livery retints the trails too.
+  const driveColor = shipParts.plumeMat?.color ?? new THREE.Color(0x9fd8ff);
   const rig = makeCameraRig();
   const reducedMotion = prefersReducedMotion();
   const missions = makeMissionTracker();
@@ -1558,6 +1567,7 @@ export function createPlayerShip(session: FlightSession): PlayerShipHandle {
     },
     update(dt, timeSec, camera, aliens, world) {
       audio.setPaused(session.paused);
+      if (shipParts.skin !== session.shipSkin) applySkin(shipParts, session.shipSkin);
       if (session.paused) return;
       // One step is never longer than a tenth of a second, whatever the
       // caller was doing between frames.

@@ -7,6 +7,7 @@ import { CODE_LENGTH } from '@/lib/multiplayer/room-link';
 import { NAME_MAX } from '@/lib/multiplayer/guest';
 import { ROOM_MAX, type useExploreRoom } from '@/lib/multiplayer/useExploreRoom';
 import { GamePanel } from '@/components/play/GamePanel';
+import { LiveryPicker } from '@/components/play/LiveryPicker';
 
 type Room = ReturnType<typeof useExploreRoom>;
 
@@ -126,6 +127,7 @@ export function RoomBody({ room, pilot, onLaunch }: RoomBodyProps) {
       {room.status === 'idle' && (
         <>
           <PilotLine pilot={pilot} />
+          <LiveryPicker compact />
           {room.error === 'full' && <p className="room-panel__error" role="alert">{t('full', { max: ROOM_MAX })} {t('fullHint')}</p>}
           {unreachable}
           <button type="button" className="room-panel__primary room-panel__quick" onClick={room.quickPlay} autoFocus={!!onLaunch}>
@@ -195,6 +197,7 @@ export function RoomBody({ room, pilot, onLaunch }: RoomBodyProps) {
               </button>
             </span>
           </div>
+          <LiveryPicker compact />
           {onLaunch && <button type="button" className="room-panel__primary room-panel__launch" onClick={onLaunch} autoFocus><Rocket size={18} aria-hidden /> {tp('launch')}</button>}
           <p className="room-panel__note">{t('howItWorks')}</p>
           <h3 className="room-panel__sub">{t('explorers', { n: room.roster.length, max: ROOM_MAX })}</h3>

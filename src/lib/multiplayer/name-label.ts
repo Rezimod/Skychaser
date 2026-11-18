@@ -10,7 +10,8 @@ const accent = () => getComputedStyle(document.documentElement).getPropertyValue
 
 export interface NameLabel {
   sprite: THREE.Sprite;
-  set: (name: string, detail: string) => void;
+  /** `chip`: a CSS colour drawn as a dot before the name (the pilot's livery). */
+  set: (name: string, detail: string, chip?: string) => void;
   /** 0..1, for a pilot fading out. */
   setOpacity: (a: number) => void;
   dispose: () => void;
@@ -34,19 +35,21 @@ export function makeNameLabel(height: number): NameLabel {
   let shown = '';
   return {
     sprite,
-    set(name, detail) {
-      const key = `${name}\n${detail}`;
+    set(name, detail, chip) {
+      const key = `${name}\n${detail}\n${chip ?? ''}`;
       if (key === shown || !ctx) return;
       shown = key;
       ctx.clearRect(0, 0, W, H);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = '600 50px system-ui, sans-serif';
-      const nameW = Math.min(W - 24, ctx.measureText(name).width);
+      // The livery chip takes a dot's width before the name.
+      const dot = chip ? 32 : 0;
+      const nameW = Math.min(W - 24 - dot, ctx.measureText(name).width);
       ctx.font = '500 34px ui-monospace, monospace';
       const detailW = detail ? Math.min(W - 24, ctx.measureText(detail).width) : 0;
       // The pill behind the text, as wide as the longer line.
-      const pw = Math.max(nameW, detailW) + 36;
+      const pw = Math.max(nameW + dot, detailW) + 36;
       const ph = detail ? H - 8 : 70;
       const px = (W - pw) / 2;
       const py = (H - ph) / 2;
@@ -57,7 +60,14 @@ export function makeNameLabel(height: number): NameLabel {
       ctx.fill();
       ctx.fillStyle = accent();
       ctx.font = '600 50px system-ui, sans-serif';
-      ctx.fillText(name, W / 2, detail ? 42 : H / 2, W - 24);
+      const nameY = detail ? 42 : H / 2;
+      ctx.fillText(name, W / 2 + dot / 2, nameY, W - 24 - dot);
+      if (chip) {
+        ctx.fillStyle = chip;
+        ctx.beginPath();
+        ctx.arc((W - nameW - dot) / 2 + 11, nameY, 11, 0, Math.PI * 2);
+        ctx.fill();
+      }
       if (detail) {
         ctx.fillStyle = 'rgba(232,238,248,0.9)';
         ctx.font = '500 34px ui-monospace, monospace';

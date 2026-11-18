@@ -14,6 +14,7 @@ import { ExploreRoomPanel, MultiplayerLobby, type Pilot } from '@/components/sol
 import { ExploreRoomBadge } from '@/components/solar-system/ExploreRoomBadge';
 import { RoomRadar } from '@/components/solar-system/RoomRadar';
 import { guestIdentity, setGuestName } from '@/lib/multiplayer/guest';
+import { currentLivery, onLiveryChange, setLiverySeed } from '@/game/livery';
 import { attachConsoleGuards, enterFullscreen, exitFullscreen, unlockPointer } from '@/game/console';
 import { exitToStellar } from '@/game/platform';
 import { takeEscape } from '@/game/escape';
@@ -107,6 +108,13 @@ export default function GameShell() {
   const pilotName = signedIn
     ? account.name || ts('room.defaultName', { tag: (account.userId ?? '').slice(-4).toUpperCase() })
     : guest.name || ts('room.guestName', { tag: guest.tag });
+  // The livery: hashed from the account's id once signed in, and carried on every pose.
+  useEffect(() => { if (signedIn && account.userId) setLiverySeed(account.userId); }, [signedIn, account.userId]);
+  useEffect(() => {
+    const link = roomLinkRef.current!;
+    link.self.c = currentLivery();
+    return onLiveryChange((skin) => { link.self.c = skin; });
+  }, []);
   const pilot: Pilot = {
     name: pilotName,
     guest: !signedIn,

@@ -1595,7 +1595,7 @@ export function SolarSystemCanvas({
         const link = roomRef.current;
         fleet.group.visible = !!link;
         if (link) {
-          writeFlightPose(link.self, ship.group, tel.pilot === 'eva' ? ship.eva : null, session!.shipKind, world.bodies);
+          writeFlightPose(link.self, ship.group, tel.pilot === 'eva' ? ship.eva : null, session!.shipKind, world.bodies, session!.shipSkin);
           fleet.update(link, world.bodies, camera, now);
         }
         markTargets(tel, world, camera);
