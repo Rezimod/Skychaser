@@ -16,7 +16,7 @@ const HANDLED_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space',
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight',
   'Digit1', 'Digit2', 'Digit3', 'KeyF', 'KeyH', 'KeyJ', 'KeyV', 'KeyC', 'KeyZ', 'KeyT', 'KeyG', 'KeyR', 'KeyI',
-  'Minus', 'Equal', 'BracketLeft', 'BracketRight', 'KeyK', 'KeyL', 'KeyM',
+  'Minus', 'Equal', 'BracketLeft', 'BracketRight', 'KeyK', 'KeyL', 'KeyM', 'KeyB',
 ]);
 
 /** Chase-camera distance multiplier: how close and how far the player can pull. */
@@ -134,6 +134,7 @@ export function attachDesktopControls(
     pad.boost = any('boost'); pad.fire = any('fire'); pad.align = any('align');
     const edge = (i: number) => { const on = down(i); const was = padWas[i]; padWas[i] = on; return on && !was; };
     if (buttons('view').some(edge)) input.viewToggle = true;
+    if (buttons('weapon').some(edge)) input.weaponStep = 1;
     if (edge(zoomIn)) zoomFlightCamera(input, -1);
     if (edge(zoomOut)) zoomFlightCamera(input, 1);
     sync();
@@ -180,6 +181,7 @@ export function attachDesktopControls(
     else if (e.code === 'KeyT') input.targetStep = e.shiftKey ? -1 : 1;
     else if (e.code === 'KeyR') input.targetClear = true;
     else if (e.code === 'KeyM') setSoundOn(!soundOn());
+    else if (e.code === 'KeyB') input.weaponStep = e.shiftKey ? -1 : 1;
     else if (e.code === 'Minus' || e.code === 'BracketLeft') zoomFlightCamera(input, 1);
     else if (e.code === 'Equal' || e.code === 'BracketRight') zoomFlightCamera(input, -1);
   };
@@ -311,6 +313,8 @@ export function clearFlightInput(input: FlightInput) {
   input.targetRequest = null;
   input.targetKind = null;
   input.camZoom = 1;
+  input.weaponStep = 0;
+  input.weaponPick = null;
   input.orbiting = false;
   input.orbitYaw = 0;
   input.orbitPitch = 0;

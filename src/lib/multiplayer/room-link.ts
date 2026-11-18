@@ -36,14 +36,29 @@ export interface PoseMsg {
   t?: number;
 }
 
-/** One cannon bolt on the wire: where it left from, offset from a body the
- *  way flight poses are, and its velocity (scene units a second). */
+/** Which gun a shot came from: absent for the cannon, 'm' a missile, 'p' a
+ *  plasma ball, 'x' a warhead going off (`p` is where; `v` is still). */
+export type ShotWeapon = 'm' | 'p' | 'x';
+const SHOT_WEAPONS: readonly string[] = ['m', 'p', 'x'];
+
+/** One shot on the wire: where it left from, offset from a body the way
+ *  flight poses are, and its velocity (scene units a second). */
 export interface ShotMsg {
   id: string;
   b: string;
   p: number[];
   v: number[];
+  w?: ShotWeapon;
   t?: number;
+}
+
+/** Shots waiting to go, cut to `max`: the oldest cannon bolts give way
+ *  first, so a held trigger never crowds out a missile or a blast. */
+export function trimShots(out: ShotMsg[], max: number): void {
+  while (out.length > max) {
+    const i = out.findIndex((s) => !s.w);
+    out.splice(i >= 0 ? i : 0, 1);
+  }
 }
 
 export interface Sample {
@@ -242,7 +257,10 @@ export function readShot(raw: unknown): ShotMsg | null {
   const p = vec(r.p);
   const v = vec(r.v);
   if (!p || !v) return null;
+  // An unknown gun is dropped rather than drawn as the wrong thing.
+  if (r.w !== undefined && (typeof r.w !== 'string' || !SHOT_WEAPONS.includes(r.w))) return null;
   const shot: ShotMsg = { id: r.id, b: r.b, p, v };
+  if (r.w !== undefined) shot.w = r.w as ShotWeapon;
   if (typeof r.t === 'number' && Number.isFinite(r.t)) shot.t = r.t;
   return shot;
 }

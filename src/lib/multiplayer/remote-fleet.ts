@@ -8,7 +8,8 @@ import type { FlightBody } from '@/lib/solar-system/player-ship';
 import { buildShip, buildSuitForFlight, FLIGHT_UNIT, KM_PER_SCENE_UNIT } from '@/lib/solar-system/player-ship';
 import type { ShipKind, ShipParts } from '@/lib/solar-system/ship-mesh';
 import { makeNameLabel, type NameLabel } from '@/lib/multiplayer/name-label';
-import { bracket, fmtRange, peerAlpha, RENDER_DELAY_MS, trim, type Blip, type PoseMsg, type RoomLink } from '@/lib/multiplayer/room-link';
+import { bracket, fmtRange, peerAlpha, RENDER_DELAY_MS, trim, trimShots, type Blip, type PoseMsg, type RoomLink, type ShotWeapon } from '@/lib/multiplayer/room-link';
+import { makeRemoteWeapons } from '@/lib/multiplayer/remote-weapons';
 
 interface Craft {
   kind: ShipKind;
@@ -73,13 +74,14 @@ export function writeFlightPose(self: PoseMsg, ship: THREE.Object3D, eva: THREE.
   self.e = eva ? offset(eva.position, anchor.position) : undefined;
 }
 
-/** A bolt this ship just fired, queued for the room: body-relative like a pose. */
-export function queueShot(link: RoomLink, from: THREE.Vector3, velocity: THREE.Vector3, bodies: FlightBody[]) {
+/** A shot this ship just fired (or a warhead of its own going off, `w` 'x'),
+ *  queued for the room: body-relative like a pose. */
+export function queueShot(link: RoomLink, from: THREE.Vector3, velocity: THREE.Vector3, bodies: FlightBody[], w?: ShotWeapon) {
   if (!link.code) return;
   const anchor = nearestBody(from, bodies);
   if (!anchor) return;
-  link.shotsOut.push({ id: link.self.id, b: anchor.id, p: offset(from, anchor.position), v: [trim(velocity.x), trim(velocity.y), trim(velocity.z)] });
-  if (link.shotsOut.length > 4) link.shotsOut.shift();
+  link.shotsOut.push({ id: link.self.id, b: anchor.id, p: offset(from, anchor.position), v: [trim(velocity.x), trim(velocity.y), trim(velocity.z)], ...(w ? { w } : {}) });
+  trimShots(link.shotsOut, 4);
 }
 
 export interface RemoteFleet {
@@ -119,6 +121,8 @@ export function makeRemoteFleet(): RemoteFleet {
   boltGeom.rotateX(Math.PI / 2);
   const boltMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.2, 2.4), toneMapped: false });
   const bolts: RemoteBolt[] = [];
+  const heavy = makeRemoteWeapons(BOLT_H);
+  group.add(heavy.group);
   for (let i = 0; i < BOLT_POOL; i++) {
     const mesh = new THREE.Mesh(boltGeom, boltMat);
     mesh.visible = false;
@@ -191,8 +195,13 @@ export function makeRemoteFleet(): RemoteFleet {
       const { at, msg } = queue[used];
       if (at > due) break;
       const age = (due - at) / 1000;
-      if (age >= BOLT_LIFE_S) continue; // long gone
+      if (age >= BOLT_LIFE_S && !msg.w) continue; // long gone
       const body = byId.get(msg.b);
+      if (msg.w) {
+        // Missiles, plasma and blasts have their own pools.
+        if (body) heavy.spawn(msg.w, msg.id, a.set(msg.p[0], msg.p[1], msg.p[2]).add(body.position), v.set(msg.v[0], msg.v[1], msg.v[2]), age);
+        continue;
+      }
       const free = bolts.find((x) => x.life < 0);
       if (!body || !free) continue;
       free.velocity.set(msg.v[0], msg.v[1], msg.v[2]);
@@ -203,6 +212,7 @@ export function makeRemoteFleet(): RemoteFleet {
       free.mesh.visible = true;
     }
     if (used) queue.splice(0, used);
+    heavy.update(dt);
   };
 
   return {
@@ -287,6 +297,7 @@ export function makeRemoteFleet(): RemoteFleet {
       for (const bolt of bolts) group.remove(bolt.mesh);
       boltGeom.dispose();
       boltMat.dispose();
+      heavy.dispose();
     },
   };
 }

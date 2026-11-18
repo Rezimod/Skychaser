@@ -1567,7 +1567,9 @@ export function SolarSystemCanvas({
             status: session.telemetry,
           });
           // In a room, every bolt fired goes to the others too.
-          live.onFire = (from, velocity) => { if (roomRef.current) queueShot(roomRef.current, from, velocity, world.bodies); };
+          live.onFire = (from, velocity, weapon) => { if (roomRef.current) queueShot(roomRef.current, from, velocity, world.bodies, weapon === 'missile' ? 'm' : weapon === 'plasma' ? 'p' : undefined); };
+          const still = new THREE.Vector3();
+          live.onBlast = (at) => { if (roomRef.current) queueShot(roomRef.current, at, still, world.bodies, 'x'); };
           if (QA_HOOKS) window.__stellarFlight = { session, ship: live, world, aliens };
         }
       } else if (ship) {
